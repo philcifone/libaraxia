@@ -28,8 +28,9 @@ SQLite & Flask
 - [x] Search function
 - [x] Version Control
 - [ ] Fix tile text alignment
+- [ ] Fix image upload in add_image route (works in edit image)
 - [ ] Cover fetch script/button
-- [/] Add back to list on search page
+- [/] Add back to list on search page (other pages say catalog? pick one and update)
 - [/] Fix add book button on index
 - [ ] Light & dark mode toggle
 - [x] Backup project files!!
