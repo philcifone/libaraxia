@@ -5,7 +5,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Indexaria</h1>
+	<h1><a href="/" style="color: white">Indexaria</a></h1>
 
     <!-- Add a search form above or below the book list -->
     <form method="GET" action="{{ url_for('search') }}">
@@ -14,7 +14,7 @@
         <button type="submit">Search</button>
     </form>
     <br>
-    <button href="/add">Add New Book</button>
+    <a href="/add" style="color: white">Add New Book</a>
 
     <!-- Grid for displaying books -->
     <div class="book-grid">
@@ -29,9 +29,9 @@
                         <p>No Image</p>
                     {% endif %}
                     <h3>{{ book[1] }}</h3> <!-- Book Title -->
-                    <p>{{ book[2] }} - {{ book[3] }}</p> <!-- Author and Publisher -->
-                    <p>Year: {{ book[4] }} | Pages: {{ book[5] }}</p>
-                    <p>Read: {{ "Yes" if book[7] else "No" }}</p> <!-- Read Status -->
+		    <!-- <p>{{ book[2] }} - {{ book[3] }}</p> <!-- Author and Publisher -->
+		    <!-- <p>Year: {{ book[4] }} | Pages: {{ book[5] }}</p>-->
+		    <!-- <p>Read: {{ "Yes" if book[7] else "No" }}</p> <!-- Read Status -->
                 </div>
             </a>
         </div>

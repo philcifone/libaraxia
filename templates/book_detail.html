@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <h1>{{ book[1] }}</h1> <!-- Book Title -->
     <div class="book-detail-container">
         <div class="book-detail-header">
             <!-- Display the book's cover image, if available -->
@@ -14,9 +15,6 @@
                 <p>No Image Available</p>
             {% endif %}
 	    <!-- Link to go back to the list of books -->
-	    <br>
-	    <a href="{{ url_for('index') }}" class="back-to-list">Back to Book List</a>
-            <h1>{{ book[1] }}</h1> <!-- Book Title -->
             <p><strong>Author:</strong> {{ book[2] }}</p> <!-- Author -->
             <p><strong>Publisher:</strong> {{ book[3] }}</p> <!-- Publisher -->
             <p><strong>Year:</strong> {{ book[4] }}</p> <!-- Year -->
@@ -33,6 +31,11 @@
      	<a href="/edit/{{ book[0] }}">Edit</a>
 	<br>
 	<a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')">Delete</a>
+    </div>
+    <br>
+    <br>
+    <div>
+        <a href="{{ url_for('index') }}" class="back-to-list">Back to Book List</a>
     </div>
 
 </body>
