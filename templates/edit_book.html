@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Book</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Edit Book</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" value="{{ book[1] }}" required><br>
+        
+	<label for="author">Author:</label>
+        <input type="text" id="author" name="author" value="{{ book[2] }}" required><br>
+
+	<label for="isbn">ISBN:</label>
+        <input type="text" id="isbn" name="isbn" value="{{ book[5] }}"><br>
+
+        <label for="publisher">Publisher:</label>
+        <input type="text" id="publisher" name="publisher" value="{{ book[3] }}"><br>
+        
+	<label for="year">Year:</label>
+        <input type="text" id="year" name="year" value="{{ book[4] }}"><br>
+        
+	<label for="page_count">Page Count:</label>
+        <input type="text" id="page_count" name="page_count" value="{{ book[8] }}"><br>
+       
+	<label for="image">Change Book Cover:</label>
+	<input type="file" id="image" name="image" accept="image/*"><br>
+
+
+	<label for="read">Have you read this book?</label>
+        <input type="checkbox" id="read" name="read" {% if book[7] %}checked{% endif %}><br>
+        
+	<button type="submit">Save Changes</button>
+    </form>
+    <a href="/">Back to Catalog</a>
+</body>
+</html>
