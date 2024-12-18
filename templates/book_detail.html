@@ -9,10 +9,13 @@
         <div class="book-detail-header">
             <!-- Display the book's cover image, if available -->
             {% if book.cover_image_url %}
-                <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image">
+                <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
             {% else %}
                 <p>No Image Available</p>
             {% endif %}
+	    <!-- Link to go back to the list of books -->
+	    <br>
+	    <a href="{{ url_for('index') }}" class="back-to-list">Back to Book List</a>
             <h1>{{ book[1] }}</h1> <!-- Book Title -->
             <p><strong>Author:</strong> {{ book[2] }}</p> <!-- Author -->
             <p><strong>Publisher:</strong> {{ book[3] }}</p> <!-- Publisher -->
@@ -26,9 +29,12 @@
             <p><strong>Book Description:</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin luctus erat quis libero sollicitudin, id tincidunt nisl suscipit. (You can replace this with an actual description if available.)</p>
         </div>
 
-        <!-- Link to go back to the list of books -->
-        <a href="{{ url_for('index') }}" class="back-to-list">Back to Book List</a>
+     </div>
+     	<a href="/edit/{{ book[0] }}">Edit</a>
+	<br>
+	<a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')">Delete</a>
     </div>
+
 </body>
 </html>
 
