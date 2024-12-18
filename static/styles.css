@@ -146,11 +146,11 @@ a:hover {
 
 /* Image styling */
 .book-tile img {
-    width: 100%;
+    width: 250px;
     height: 250px; /* Fixed height to maintain consistency */
     object-fit: contain; /* Ensures the full image is visible without cropping */
     border-radius: 6px;
-    background-color: #fff; /* Adds contrast for images with transparency */
+    background-color: none; /* Adds contrast for images with transparency */
     margin-bottom: 10px;
 }
 
@@ -160,7 +160,7 @@ a:hover {
     font-weight: bold;
     color: #EEEEEE;
     margin: 0; /* Space below the title */
-    text-align: left; /* Aligns text to center horizontally */
+    text-align: center; /* Aligns text to center horizontally */
     white-space: nowrap; /* Prevents wrapping */
     overflow: hidden; /* Hides the overflowed text */
     text-overflow: ellipsis; /* Adds an ellipsis at the end */
@@ -181,6 +181,6 @@ a:hover {
     -webkit-box-orient: vertical;
     text-overflow: ellipsis;
     margin: 0;
-    text-align: left;
+    text-align: center;
 }
 
