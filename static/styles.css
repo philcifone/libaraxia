@@ -349,6 +349,8 @@ a:hover {
 
 .container {
     display: flex;
+    gap: 20px;
+    align-items: flex-start;
     max-width: 900px;
     margin: 20px auto;
     padding: 20px;
