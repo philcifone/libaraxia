@@ -361,6 +361,7 @@ a:hover {
 }
 
 .container {
+    display: flex;
     max-width: 900px;
     margin: 20px auto;
     padding: 20px;
