@@ -42,8 +42,9 @@
 
         <button type="submit" name="submit_book">Add Book</button>
     </form>
-
-    <a href="/">Back to Catalog</a>
+    <div class="back-to-list">
+        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+    </div>
 </body>
 </html>
 
