@@ -32,7 +32,8 @@
 
 	    <div class="action-links">
             <a href="/edit/{{ book[0] }}" class="edit-link">Edit</a>
-            <a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+            <a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a><br>
+            
             <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>   
         </div>
 
