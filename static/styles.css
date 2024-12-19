@@ -34,7 +34,7 @@ form input[type="text"],
 form input[type="number"],
 textarea {
     width: 300px;
-    align: center;
+    box-align: center;
     padding: 10px;
     text-align: center;
     margin: 4px;
@@ -214,7 +214,7 @@ a:hover {
     text-overflow: ellipsis; /* Adds an ellipsis at the end */
     max-width: 100%; /* Ensures the text stays within its container */
     box-sizing: border-box;
-    padding 0 5px,
+    padding: 0 5px;
 }
 
 
@@ -225,6 +225,7 @@ a:hover {
     line-height: 1.4;
     overflow: hidden;
     display: -webkit-box;
+    line-clamp: 3;
     -webkit-line-clamp: 3; /* Limits to 3 lines */
     -webkit-box-orient: vertical;
     text-overflow: ellipsis;
@@ -353,4 +354,5 @@ a:hover {
     background-color: #666666;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
+}
 }
