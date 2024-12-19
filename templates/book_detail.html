@@ -9,24 +9,25 @@
     <div class="container">
         <h1>{{ book[1] }}</h1> <!-- Book Title -->
         <div class="book-detail-header">
-            <!-- Display the book's cover image, if available -->
-            {% if book.cover_image_url %}
-                <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
-            {% else %}
-                <p>No Image Available</p>
-            {% endif %}
-	    <!-- Link to go back to the list of books -->
-            <p><strong>Author:</strong> {{ book[2] }}</p> <!-- Author -->
-            <p><strong>Publisher:</strong> {{ book[3] }}</p> <!-- Publisher -->
-            <p><strong>Year:</strong> {{ book[4] }}</p> <!-- Year -->
-            <p><strong>Pages:</strong> {{ book[8] }}</p> <!-- Page Count -->
-            <p><strong>ISBN:</strong> {{ book[5] }}</p> <!-- ISBN -->
-        </div>
-
-        <div class="book-detail-content">
-            <p><strong>Read:</strong> {{ "Yes" if book[7] else "No" }}</p> <!-- Read Status -->
-            <p><strong>Book Description:</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin luctus erat quis libero sollicitudin, id tincidunt nisl suscipit. (You can replace this with an actual description if available.)</p>
-            <br>
+            <!-- Book Cover Image -->
+            <div class="book-cover">
+                {% if book.cover_image_url %}
+                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
+                {% else %}
+                    <p>No Image Available</p>
+                {% endif %}
+            </div>
+        
+            <!-- Book Details -->
+            <div class="book-info">
+                <p><strong>Author:</strong> {{ book[2] }}</p>
+                <p><strong>Publisher:</strong> {{ book[3] }}</p>
+                <p><strong>Year:</strong> {{ book[4] }}</p>
+                <p><strong>Pages:</strong> {{ book[8] }}</p>
+                <p><strong>ISBN:</strong> {{ book[5] }}</p>
+                <p><strong>Read:</strong> {{ "Yes" if book[7] else "No" }}</p>
+                <p><strong>Book Description:</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin luctus erat quis libero sollicitudin, id tincidunt nisl suscipit. (You can replace this with an actual description if available.)</p>
+            </div>
         </div>
 
 	    <div class="action-links">
