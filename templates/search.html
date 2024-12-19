@@ -12,11 +12,13 @@
         <label for="search_term">Search Books:</label>
         <input type="text" id="search_term" name="search_term" placeholder="Search by title, author, year..." value="{{ request.args.get('search_term', '') }}">
         <button type="submit">Search</button>
+	<br>
+	<br>
+        <div>
+	    <a href="/add" class="add-book-link">Add Book<a/>
+	</div>
     </form>
-    <br>
-    <a href="{{ url_for('add_book') }}" class="add-book-link">
-    	 Add Book
-    </a>
+    <a></a>
 
     <!-- Grid for displaying books -->
     <div class="book-grid">
@@ -39,6 +41,9 @@
         </div>
         {% endfor %}
     </div>
-    <a href="/">Back to Catalog<a/>
+    <br>
+        <div class="back-to-list">
+            <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+        </div>
 </body>
 </html>
