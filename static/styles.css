@@ -301,8 +301,9 @@ a:hover {
 
 .action-links {
     display: flex;
-    align-items: flex-end;
-    text-align: left;
+    align-items: flex-start;
+    justify-content: baseline;
+    text-align: center;
     margin-bottom: 20px;
 }
 
