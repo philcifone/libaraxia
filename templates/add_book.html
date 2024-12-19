@@ -35,13 +35,14 @@
 	<input type="text" id="page_count" name="page_count" value="{{ book_details.page_count if book_details }}"><br><br>
 
         <label for="read">Have you read this book?</label>
-	<input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}><br>
+	<input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}><br><br>
 
 	<label for="image">Upload Book Cover</label>
-	<input type="file" id="image" name="image" accept="image/*"><br>
+	<input type="file" id="image" name="image" accept="image/*"><br><br>
 
         <button type="submit" name="submit_book">Add Book</button>
     </form>
+    <br>
     <div class="back-to-list">
         <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
     </div>

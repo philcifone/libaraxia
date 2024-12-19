@@ -12,7 +12,11 @@
         <label for="search_term">Search Books</label>
         <input type="text" id="search_term" name="search_term" placeholder="Search by title, author, year..." value="{{ request.args.get('search_term', '') }}">
         <button class="form button" type="submit">Search</button>
-	<a href="/add" class="add-book-link">Add Book<a/>
+	<br>
+	<br>
+	<div>
+	    <a href="/add" class="add-book-link">Add Book<a/>
+	</div>
     </form>
     <a></a> <!-- I had to put this in, or else there was an empty spot at the beginning of the grid? strange. -->
     

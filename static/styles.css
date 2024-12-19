@@ -8,7 +8,7 @@ h1, h2, h3, h4, h5, h6, p, ul, li, dl, dt, dd, blockquote, figure, figcaption, p
 }
 
 body {
-    font-family: Arial, sans-serif;
+    font-family: Helvetica, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     background-color: #424242;
@@ -18,14 +18,14 @@ body {
 
 /* Center the form */
 form {
-    max-width: 400px;
+    max-width: 500px;
     margin: 20px auto;
     padding: 20px;
     background-color: #2c2c2c; /* Slightly lighter gray for contrast */
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    font-family: Arial, sans-serif;
-    text-align: left;
+    font-family: Helvetica, sans-serif;
+    text-align: center;
 }
 
 /* Input Field Styling */
@@ -33,7 +33,7 @@ form {
 form input[type="text"],
 form input[type="number"],
 textarea {
-    width: 330px;
+    width: 300px;
     align: center;
     padding: 10px;
     text-align: center;
@@ -43,11 +43,12 @@ textarea {
     background-color: #424242; /* Lighter gray */
     color: #EEEEEE;
     border-radius: 5px;
+    margin-bottom: 16px;
 }
 
 /* Button Styling */
 form button {
-    width: 100%;
+    width: auto;
     margin-bottom: 10px;
     text-decoration: none;
     font-size: 16px;
@@ -68,7 +69,7 @@ form button:hover {
 
 /* Checkbox label alignment */
 form label {
-    display: inline-flex;
+    display: block;
     align-items: center;
     color: white;
     margin-bottom: 15px;
@@ -83,7 +84,7 @@ form input[type="checkbox"] {
 form a {
     display: block;
     text-align: center;
-    color: #007bff;
+    color: #007BFF;
     margin-top: 15px;
     text-decoration: none;
 }
@@ -137,7 +138,7 @@ tr:nth-child(even) {
 }
 
 a {
-    color: #1e90ff;
+    color: #1E90FF;
     text-decoration: none;
 }
 
@@ -232,7 +233,7 @@ a:hover {
 }
 
 .add-book-link {
-    width:;
+    width: auto;
     margin-bottom: 10px;
     text-decoration: none;
     font-size: 16px;

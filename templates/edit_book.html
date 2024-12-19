@@ -30,10 +30,12 @@
 
 
 	<label for="read">Have you read this book?</label>
-        <input type="checkbox" id="read" name="read" {% if book[7] %}checked{% endif %}><br>
+	<input type="checkbox" id="read" name="read" {% if book[7] %}checked{% endif %}><br><br>
+
         
 	<button type="submit">Save Changes</button>
     </form>
+    <br>
     <div class="back-to-list">
         <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
     </div>
