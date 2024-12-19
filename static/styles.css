@@ -297,6 +297,7 @@ a:hover {
 
 .book-detail-content p {
     margin: 10px 0;
+    text-align: right;
 }
 
 .action-links {
