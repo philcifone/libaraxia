@@ -27,22 +27,25 @@ SQLite & Flask
 ### To Do:
 - [x] Search function
 - [x] Version Control
-- [ ] Fix tile text alignment
-- [ ] Fix image upload in add_image route (works in edit image)
+- [x] Fix tile text alignment
+- [x] Add Author to tile
+- [x] Fix image upload in add_image route
 - [ ] Cover fetch script/button
-- [/] Add back to list on search page (other pages say catalog? pick one and update)
-- [/] Fix add book button on index
-- [ ] Light & dark mode toggle
+- [ ] Add better back to list on search page.
+- [x] Fix add book button on index
+- [ ] Add icons for actions
+- [ ] Make book details page pretty
+- [ ] Light & dark mode toggle (tailwind css?)
 - [x] Backup project files!!
 - [x] Have fun!!!!!!
 
-#### desired future features:
+#### potential future features:
 cover fetch script and button
 rating system
 comment system
 multi-user login & authentication
 barcode scanner
 mobile integration
-React
-Tailwind css
-icons for actions
+react
+tailwind css
+"want" bookshelf
