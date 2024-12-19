@@ -9,36 +9,36 @@
 
     <!-- ISBN Lookup Form -->
     <form method="POST" enctype="multipart/form-data">
-        <label for="isbn_lookup">Enter ISBN:</label>
+        <label for="isbn_lookup">Enter ISBN</label>
         <input type="text" id="isbn_lookup" name="isbn" value="{{ book_details.isbn if book_details }}" required>
         <button type="submit" name="isbn_lookup">Fetch Details</button>
     </form>
 
     <!-- Add Book Form -->
-    <form method="POST">
-        <label for="title">Title:</label>
-        <input type="text" id="title" name="title" value="{{ book_details.title if book_details }}" required><br>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="title">Title</label>
+	<input type="text" id="title" name="title" value="{{ book_details.title if book_details }}" required><br><br>
 
-        <label for="author">Author:</label>
-        <input type="text" id="author" name="author" value="{{ book_details.author if book_details }}" required><br>
+        <label for="author">Author</label>
+	<input type="text" id="author" name="author" value="{{ book_details.author if book_details }}" required><br><br>
 
-	<label for="isbn">ISBN:</label>
-        <input type="text" id="isbn" name="isbn" value="{{ book_details.isbn if book_details }}"><br>
+	<label for="isbn">ISBN</label>
+	<input type="text" id="isbn" name="isbn" value="{{ book_details.isbn if book_details }}"><br><br>
 
-        <label for="publisher">Publisher:</label>
-        <input type="text" id="publisher" name="publisher" value="{{ book_details.publisher if book_details }}"><br>
+        <label for="publisher">Publisher</label>
+	<input type="text" id="publisher" name="publisher" value="{{ book_details.publisher if book_details }}"><br><br>
 
-        <label for="year">Year:</label>
-        <input type="text" id="year" name="year" value="{{ book_details.year if book_details }}"><br>
+        <label for="year">Year</label>
+	<input type="text" id="year" name="year" value="{{ book_details.year if book_details }}"><br><br>
 
-        <label for="page_count">Page Count:</label>
-        <input type="text" id="page_count" name="page_count" value="{{ book_details.page_count if book_details }}"><br>
+        <label for="page_count">Page Count</label>
+	<input type="text" id="page_count" name="page_count" value="{{ book_details.page_count if book_details }}"><br><br>
 
         <label for="read">Have you read this book?</label>
-        <input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}><br>
+	<input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}><br>
 
-	<label for="image">Upload Book Cover:</label>
-        <input type="file" id="image" name="image" accept="image/*"><br>
+	<label for="image">Upload Book Cover</label>
+	<input type="file" id="image" name="image" accept="image/*"><br>
 
         <button type="submit" name="submit_book">Add Book</button>
     </form>

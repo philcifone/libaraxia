@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Indexaria</title>
+    <title>Ataraxia</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-	<h1><a href="/" style="color: white">Indexaria</a></h1>
+	<h1><a href="/" style="color: white">Ataraxia</a></h1>
 
     <!-- Add a search form above or below the book list -->
     <form method="GET" action="{{ url_for('search') }}">
-        <label for="search_term">Search Books:</label>
+        <label for="search_term">Search Books</label>
         <input type="text" id="search_term" name="search_term" placeholder="Search by title, author, year..." value="{{ request.args.get('search_term', '') }}">
-        <button type="submit">Search</button>
+        <button class="form button" type="submit">Search</button>
+	<a href="/add" class="add-book-link">Add Book<a/>
     </form>
-    <br>
-    <a href="/add" style="color: white">Add New Book</a>
-
+    <a></a> <!-- I had to put this in, or else there was an empty spot at the beginning of the grid? strange. -->
+    
     <!-- Grid for displaying books -->
     <div class="book-grid">
         {% for book in books %}
@@ -28,8 +28,8 @@
                     {% else %}
                         <p>No Image</p>
                     {% endif %}
-                    <h3>{{ book[1] }}</h3> <!-- Book Title -->
-		    <!-- <p>{{ book[2] }} - {{ book[3] }}</p> <!-- Author and Publisher -->
+                    <h3>{{ book[1] }}</h3> <!-- Book title -->
+		    <p>by {{ book[2] }}</p> <!-- Author and Publisher -->
 		    <!-- <p>Year: {{ book[4] }} | Pages: {{ book[5] }}</p>-->
 		    <!-- <p>Read: {{ "Yes" if book[7] else "No" }}</p> <!-- Read Status -->
                 </div>
