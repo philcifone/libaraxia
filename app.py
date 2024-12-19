@@ -68,8 +68,9 @@ def add_book():
             if "image" in request.files:
                 image = request.files["image"]
                 if image.filename != '':
-                    if allowed_file(image.filename):  # Check if the file is valid
-                        filename = secure_filename(image.filename)
+                    if image and allowed_file(image.filename):
+                        filename = secure_filename(image.filename)        
+                        
                         # Add timestamp to the filename for uniqueness
                         timestamp = int(time.time())  # Current timestamp in seconds
                         unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
@@ -153,7 +154,7 @@ def search():
 
     conn.close()
 
-    return render_template("index.html", books=books)
+    return render_template("search.html", books=books)
 
 @app.route("/book/<int:id>")
 def show_book(id):
