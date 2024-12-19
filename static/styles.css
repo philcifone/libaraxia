@@ -297,6 +297,7 @@ a:hover {
 
 .book-detail-content p {
     margin: 10px 0;
+    flex: 1;
 }
 
 .action-links {
@@ -351,9 +352,6 @@ a:hover {
 }
 
 .container {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
     max-width: 900px;
     margin: 20px auto;
     padding: 20px;
