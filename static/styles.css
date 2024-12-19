@@ -300,6 +300,8 @@ a:hover {
 }
 
 .action-links {
+    display: flex;
+    align-items: flex-end;
     text-align: left;
     margin-bottom: 20px;
 }
