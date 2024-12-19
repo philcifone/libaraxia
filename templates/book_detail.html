@@ -26,18 +26,18 @@
         <div class="book-detail-content">
             <p><strong>Read:</strong> {{ "Yes" if book[7] else "No" }}</p> <!-- Read Status -->
             <p><strong>Book Description:</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin luctus erat quis libero sollicitudin, id tincidunt nisl suscipit. (You can replace this with an actual description if available.)</p>
+	    <br>
+	    <div class="action-links">
+            <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+            <a href="/edit/{{ book[0] }}" class="edit-link">Edit</a>
+            <a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+            </div>
         </div>
 
      </div>
-    	<div class="action-links">
-     	<a href="/edit/{{ book[0] }}" class="edit-link">Edit</a>
-	<a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
-	</div>
     </div>
     <br>
     <br>
-    <div class="back-to-list">
-        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
     </div>
 
 </body>

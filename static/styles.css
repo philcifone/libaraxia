@@ -34,7 +34,7 @@ form input[type="text"],
 form input[type="number"],
 textarea {
     width: 300px;
-    align: center;
+    box-align: center;
     padding: 10px;
     text-align: center;
     margin: 4px;
@@ -299,7 +299,7 @@ a:hover {
 }
 
 .action-links {
-    text-align: center;
+    text-align: left;
     margin-bottom: 20px;
 }
 
