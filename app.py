@@ -87,9 +87,9 @@ def add_book():
             conn = sqlite3.connect("library.db")
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO books (title, author, publisher, publish_year, isbn, page_count, read, cover_image_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, author, publisher, year, isbn, page_count, read, cover_image_url))
+                INSERT INTO books (title, author, publisher, publish_year, isbn, page_count, read, cover_image_url, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (title, author, publisher, year, isbn, page_count, read, cover_image_url, description))
             conn.commit()
             conn.close()
             return redirect("/")
@@ -99,48 +99,70 @@ def add_book():
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
 def edit_book(id):
     conn = get_db_connection()
+    book_details = None  # Initialize book_details for ISBN lookup
 
     if request.method == "POST":
-        # Get form data
-        title = request.form["title"]
-        author = request.form["author"]
-        publisher = request.form.get("publisher")
-        year = request.form.get("year")
-        page_count = request.form.get("page_count", 0)
-        read = 1 if "read" in request.form else 0
-
-        # Handle the image upload
-        cover_image_url = None  # Default to None if no image is uploaded
-        if "image" in request.files:
-            image = request.files["image"]
-            if image and allowed_file(image.filename):
-                filename = secure_filename(image.filename)
-        
-                # Add timestamp to the filename for uniqueness
-                timestamp = int(time.time())  # Current timestamp in seconds
-                unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
-        
-                cover_image_url = os.path.join('uploads', unique_filename)  # Store relative path
-                image.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))  # Save the image to the uploads folder
+        if "isbn_lookup" in request.form:
+            # Handle ISBN lookup
+            isbn = request.form["isbn"]
+            import requests
+            api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+            response = requests.get(api_url).json()
+            if "items" in response:
+                book_data = response["items"][0]["volumeInfo"]
+                book_details = {
+                    "title": book_data.get("title", ""),
+                    "author": ", ".join(book_data.get("authors", [])),
+                    "publisher": book_data.get("publisher",""),
+                    "year": book_data.get("publishedDate", "").split("-")[0],
+                    "isbn": isbn,
+                    "page_count": book_data.get("pageCount", 0),
+                    "description": book_data.get("description", ""),
+                }
             else:
-                # If no valid image is uploaded, keep the existing image path from the database
-                cover_image_url = conn.execute("SELECT cover_image_url FROM books WHERE id = ?", (id,)).fetchone()[0] 
-        
-        # Update the book record, including the new image path (if uploaded)
-        conn.execute("""
-            UPDATE books
-            SET title = ?, author = ?, publisher = ?, publish_year = ?, page_count = ?, read = ?, cover_image_url = ?
-            WHERE id = ?
-        """, (title, author, publisher, year, page_count, read, cover_image_url, id))
-        conn.commit()
-        conn.close()
+                flash("Book not found. Please enter details manually.", "error")
+        else:
+            # Handle editing the book
+            title = request.form["title"]
+            author = request.form["author"]
+            publisher = request.form.get("publisher")
+            year = request.form.get("year")
+            page_count = request.form.get("page_count", 0)
+            description = request.form.get("description", "")
+            read = 1 if "read" in request.form else 0
 
-        return redirect("/")
+            # Handle the image upload
+            cover_image_url = None  # Default to None if no image is uploaded
+            if "image" in request.files:
+                image = request.files["image"]
+                if image and allowed_file(image.filename):
+                    filename = secure_filename(image.filename)
+            
+                    # Add timestamp to the filename for uniqueness
+                    timestamp = int(time.time())  # Current timestamp in seconds
+                    unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
+            
+                    cover_image_url = os.path.join('uploads', unique_filename)  # Store relative path
+                    image.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))  # Save the image to the uploads folder
+                else:
+                    # If no valid image is uploaded, keep the existing image path from the database
+                    cover_image_url = conn.execute("SELECT cover_image_url FROM books WHERE id = ?", (id,)).fetchone()[0] 
+            
+            # Update the book record, including the new image path (if uploaded)
+            conn.execute("""
+                UPDATE books
+                SET title = ?, author = ?, publisher = ?, publish_year = ?, page_count = ?, read = ?, cover_image_url = ?, description = ?
+                WHERE id = ?
+            """, (title, author, publisher, year, page_count, read, cover_image_url, description, id))
+            conn.commit()
+            conn.close()
+
+            return redirect("/")
 
     # Retrieve the existing book details for the form
     book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
     conn.close()
-    return render_template("edit_book.html", book=book)
+    return render_template("edit_book.html", book=book, book_details=book_details)
 
 @app.route("/search", methods=["GET"])
 def search():

@@ -6,26 +6,36 @@
 </head>
 <body>
 	<h1><a href="/" style="color: white">A T A R A X I A</a></h1>
-    <form>     
-	<div class="back-to-list">
-        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
-    	</div>
+
+    <!-- ISBN Lookup Form -->
+    <form method="POST" enctype="multipart/form-data">
+        <div class="back-to-list">
+            <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+        </div>
+        <input type="text" id="isbn_lookup" name="isbn" placeholder="Enter ISBN to fetch book info" value="{{ book_details.isbn if book_details }}">
+        <button type="submit" name="isbn_lookup">Fetch Details</button>
     </form>
 
+    <!-- Edit Book Form -->
     <form method="POST" enctype="multipart/form-data" class="book-info-form">
 	<h1> Edit book info<h1>
-	<input placeholder="Title" type="text" id="title" name="title" value="{{ book[1] }}" required><br><br>
-        
-	<input placeholder="Author" type="text" id="author" name="author" value="{{ book[2] }}" required><br><br>
+	
+	<input placeholder="Title" type="text" id="title" name="title" value="{{ book_details.title if book.details else book[1] }}" required><br>
 
-	<input placeholder="ISBN" type="text" id="isbn" name="isbn" value="{{ book[5] }}"><br><br>
+	<input placeholder="Author" type="text" id="author" name="author" value="{{ book_details.author if book_details else book[2] }}" required><br>
 
-	<input placeholder="Publisher" type="text" id="publisher" name="publisher" value="{{ book[3] }}"><br><br>
-        
-	<input placeholder="Year" type="text" id="year" name="year" value="{{ book[4] }}"><br><br>
-        
-	<input placeholder="Page Count" type="text" id="page_count" name="page_count" value="{{ book[8] }}"><br><br>
-       
+	<input placeholder="ISBN" type="text" id="isbn" name="isbn" value="{{ book_details.isbn if book_details else book[5] }}"><br>
+
+	<input placeholder="Publisher" type="text" id="publisher" name="publisher" value="{{ book_details.publisher if book_details else book[3] }}"><br>
+
+	<input placeholder="Year" type="text" id="year" name="year" value="{{ book_details.year if book_details else book[4] }}"><br>
+
+	<input placeholder="Page Count" type="text" id="page_count" name="page_count" value="{{ book_details.page_count if book_details else book[8] }}"><br><br>
+
+	<label for="text">Description:</label>
+        <input placeholder="Description" type="text" id="description" name="description" value="{{ book_details.description if book_details else book[10] }}"><br><br>   
+
+
 	<input type="file" id="image" name="image" accept="image/*"><br><br>
 
 	<button type="submit">Save Changes</button>
