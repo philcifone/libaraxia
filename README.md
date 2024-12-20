@@ -50,12 +50,12 @@ Anyone is absolutely welcome to use this, as of now I'm still learning and canno
 - [ ] Fetch book descriptions
 - [ ] user creation & login authentication
 #### potential future features:
-rating system
-comment system
-multi-user login & authentication
-barcode scanner
-mobile integration
-react
-tailwind css
-"want" bookshelf
+- rating system
+- comment system
+- multi-user login & authentication
+- barcode scanner
+- mobile integration
+- react
+- tailwind css
+- "want" bookshelf
 
