@@ -26,10 +26,23 @@ def get_db_connection():
 
 @app.route("/")
 def index():
+    sort_by = request.args.get("sort_by", "title")  # Default sort by title
+    sort_order = request.args.get("sort_order", "asc")  # Default ascending order
+
+    valid_columns = {"title", "author", "publish_year", "date_added"}  # Add columns you want to sort by
+    valid_orders = {"asc", "desc"}
+
+    if sort_by not in valid_columns:
+        sort_by = "title"
+    if sort_order not in valid_orders:
+        sort_order = "asc"
+
     conn = get_db_connection()
-    books = conn.execute("SELECT * FROM books").fetchall()
+    query = f"SELECT * FROM books ORDER BY {sort_by} {sort_order}"
+    books = conn.execute(query).fetchall()
     conn.close()
-    return render_template("index.html", books=books)
+
+    return render_template("index.html", books=books, sort_by=sort_by, sort_order=sort_order)
 
 @app.route("/add", methods=["GET", "POST"])
 def add_book():

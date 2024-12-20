@@ -396,4 +396,49 @@ a:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
 }
+
+/* sort buttons*/
+
+/* Internal flexbox for alignment */
+.sort-buttons {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px; /* Space between elements */
+}
+
+.sort-buttons form {
+    display: flex; /* Align elements horizontally */
+    align-items: center; /* Center elements vertically */
+    gap: 10px; /* Space between elements */
+}
+
+/* Label styling */
+.sort-buttons label {
+    margin-right: 5px;
+    color: #fff; /* White text */
+}
+
+/* Select (dropdown) styling */
+.sort-buttons select {
+    padding: 5px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Button styling */
+.sort-buttons button {
+    background-color: #28a745; /* Green button */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.sort-buttons button:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
 }
