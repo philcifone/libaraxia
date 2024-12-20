@@ -8,7 +8,7 @@ h1, h2, h3, h4, h5, h6, p, ul, li, dl, dt, dd, blockquote, figure, figcaption, p
 }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: Helvetica, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     background-color: #424242;
@@ -18,32 +18,40 @@ body {
 
 /* Center the form */
 form {
-    max-width: 500px;
+    max-width: 500px auto;
     margin: 20px auto;
     padding: 20px;
     background-color: #2c2c2c; /* Slightly lighter gray for contrast */
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: Helvetica, sans-serif;
     text-align: center;
+    align-items: center;
 }
 
 /* Input Field Styling */
 
 form input[type="text"],
 form input[type="number"],
+form input[type="file"],
 textarea {
-    width: 300px;
-    box-align: center;
+    width: 50%;
+    font-size: 18px;
     padding: 10px;
-    text-align: center;
+    text-align: left;
+    align-items: center;
     margin: 4px;
-    height: 18px;
+    height: 20px;
     border: 1px solid #555;
     background-color: #424242; /* Lighter gray */
     color: #EEEEEE;
-    border-radius: 5px;
+    border-radius: 8px;
     margin-bottom: 16px;
+}
+
+form input[type="file"],
+textarea {
+    height: auto;
 }
 
 /* Button Styling */
@@ -57,10 +65,10 @@ form button {
     padding: 10px 24px; /* Added more padding for space */
     margin: 10px 0; /* Added margin around the button */
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    display: inline-block;
     transition: background-color 0.3s ease-in-out;
+    align-items: center;
 }
 
 form button:hover {
@@ -79,6 +87,14 @@ form input[type="checkbox"] {
     margin-right: 8px;
 }
 
+/* book info form */
+.book-info-form {
+    width: 75%;
+}    
+
+.book-info-form input[type="text"] {
+    width: 65%;
+}
 
 /* Back to Catalog link */
 form a {
@@ -99,7 +115,7 @@ form a:hover {
 /* Desktop Styles */
 
 body {
-    font-family: Arial, sans-serif;
+    font-family: Helvetica, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     background-color: #424242;
@@ -233,19 +249,28 @@ a:hover {
     text-align: center;
 }
 
+.button-group {
+    display: flex;
+    gap: 10px; /* Add spacing between the buttons */
+    margin-bottom: 10px; /* Add spacing below the group */i
+    justify-content: center !important;
+    align-items: center !important;
+}
+
 .add-book-link {
-    width: auto;
-    margin-bottom: 10px;
+    width: 25%; /* Set width to auto for better flexibility */
     text-decoration: none;
     font-size: 16px;
     background-color: #28a745;
     color: white;
-    padding: 10px 24px; /* Added more padding for space */
-    margin: 0px 0; /* Added margin around the button */
+    padding: 10px 24px;
+    margin-bottom: 10px;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    display: inline-block;
+    /*display: flex;
+    justify-content: space-evenly; /* Center align text horizontally */
+    align-items: center;
     transition: background-color 0.3s ease-in-out;
 }
 
@@ -345,12 +370,18 @@ a:hover {
 }
 
 .back-to-list-link {
-    font-size: 1.1em;
+    font-size: 16px;
+    width: 25%; /* Set width to auto for better flexibility */
     text-decoration: none;
-    padding: 10px 20px;
+    padding: 10px 24px;
+    margin-bottom: 10px;
     background-color: #007bff;
     color: white;
     border-radius: 8px;
+   display: flex;
+    justify-content: space-evenly; /* Center align text horizontally */
+    align-items: center; /* Center align text vertically */
+    transition: background-color 0.3s ease-in-out;
 }
 
 .back-to-list-link:hover {

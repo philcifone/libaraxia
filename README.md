@@ -1,4 +1,4 @@
-# Indexaria
+# ataraxia
 
 # Project scope:
 
@@ -28,28 +28,34 @@ Anyone is absolutely welcome to use this, as of now I'm still learning and canno
 - Cover upload
 
 ### To Do:
-- [x] Search function
-- [x] Version Control
+
+- [ ] Backup project files!!
+- [ ] Have fun!!!!!!
+#### Frontend
 - [x] Fix tile text alignment
 - [x] Add Author to tile
-- [x] Fix image upload in add_image route
-- [ ] Cover fetch script/button
-- [ ] Add better back to list on search page.
+- [ ] Add better back to list on search page inside search container
 - [x] Fix add book button on index
-- [ ] Add icons for actionsi
-- [x] Make add & edit book pages pretty
-- [ ] Make book details page pretty
+- [ ] Add icons for actions?
+- [ ] Make add & edit book pages prettier
+- [ ] Make book details page prettier
 - [ ] Light & dark mode toggle (tailwind css?)
-- [x] Backup project files!!
-- [x] Have fun!!!!!!
-
+#### Backend
+- [x] Search function
+- [x] Version Control
+- [x] Fix image upload in add_image route
+- [ ] Image resize/optimize during upload
+- [ ] Cover fetch script/button
+- [ ] Remove read status (will be a future user feature)
+- [ ] Fetch book descriptions
+- [ ] user creation & login authentication
 #### potential future features:
-cover fetch script and button
-rating system
-comment system
-multi-user login & authentication
-barcode scanner
-mobile integration
-react
-tailwind css
-"want" bookshelf
+- rating system
+- comment system
+- multi-user login & authentication
+- barcode scanner
+- mobile integration
+- react
+- tailwind css
+- "want" bookshelf
+
