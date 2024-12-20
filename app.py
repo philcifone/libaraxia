@@ -36,19 +36,20 @@ def add_book():
     if request.method == "POST":
         if "isbn_lookup" in request.form:
             isbn = request.form["isbn"]
-            # Fetch details using API
-            import requests
-            api_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
+            # Fetch details using Google Books API
+            api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
             response = requests.get(api_url).json()
-            if f"ISBN:{isbn}" in response:
-                book_data = response[f"ISBN:{isbn}"]
+
+            if "items" in response:
+                book_data = response["items"][0]["volumeInfo"]
                 book_details = {
                     "title": book_data.get("title", ""),
-                    "author": book_data["authors"][0]["name"] if "authors" in book_data else "",
-                    "publisher": book_data["publishers"][0]["name"] if "publishers" in book_data else "",
-                    "year": book_data.get("publish_date", "").split()[-1],
+                    "author": ", ".join(book_data.get("authors", [])),  # Join multiple authors
+                    "publisher": book_data.get("publisher", ""),
+                    "year": book_data.get("publishedDate", "").split("-")[0],  # Extract year
                     "isbn": isbn,
-                    "page_count": book_data.get("pagination", 0),
+                    "page_count": book_data.get("pageCount", 0),
+                    "description": book_data.get("description", ""),  # Fetch description
                     "read": 0,
                 }
             else:
@@ -61,6 +62,7 @@ def add_book():
             year = request.form["year"]
             isbn = request.form["isbn"]
             page_count = request.form["page_count"]
+            description = request.form.get("description", "")  # Add description here
             read = 1 if "read" in request.form else 0
 
             # Handle the image upload
