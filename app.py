@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 import sqlite3, os, time, requests
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Generates a secure random secret key
+
 
 # Image upload variables
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -121,6 +123,7 @@ def edit_book(id):
                 }
             else:
                 flash("Book not found. Please enter details manually.", "error")
+        
         else:
             # Handle editing the book
             title = request.form["title"]
