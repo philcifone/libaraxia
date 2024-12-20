@@ -5,47 +5,40 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Add a New Book</h1>
+    <h1><a href="/" style="color: white">A T A R A X I A</a><h1>
 
     <!-- ISBN Lookup Form -->
     <form method="POST" enctype="multipart/form-data">
-        <label for="isbn_lookup">Enter ISBN</label>
-        <input type="text" id="isbn_lookup" name="isbn" value="{{ book_details.isbn if book_details }}" required>
+	<div class="back-to-list">
+        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+	</div>
+        <input type="text" id="isbn_lookup" name="isbn" placeholder="Enter ISBN to fetch book info" value="{{ book_details.isbn if book_details }}">
         <button type="submit" name="isbn_lookup">Fetch Details</button>
     </form>
 
     <!-- Add Book Form -->
-    <form method="POST" enctype="multipart/form-data">
-        <label for="title">Title</label>
-	<input type="text" id="title" name="title" value="{{ book_details.title if book_details }}" required><br><br>
+    <form method="POST" enctype="multipart/form-data" class="book-info-form">
+	    <h3>Book Info</h3><br>
+	<input type="text" id="title" name="title" placeholder="Title" value="{{ book_details.title if book_details }}" required><br>
 
-        <label for="author">Author</label>
-	<input type="text" id="author" name="author" value="{{ book_details.author if book_details }}" required><br><br>
+	<input type="text" id="author" name="author" placeholder="Author" value="{{ book_details.author if book_details }}" required><br>
 
-	<label for="isbn">ISBN</label>
-	<input type="text" id="isbn" name="isbn" value="{{ book_details.isbn if book_details }}"><br><br>
+	<input type="text" id="isbn" name="isbn" placeholder="ISBN" value="{{ book_details.isbn if book_details }}"><br>
 
-        <label for="publisher">Publisher</label>
-	<input type="text" id="publisher" name="publisher" value="{{ book_details.publisher if book_details }}"><br><br>
+	<input type="text" id="publisher" name="publisher" placeholder="Publisher" value="{{ book_details.publisher if book_details }}"><br>
 
-        <label for="year">Year</label>
-	<input type="text" id="year" name="year" value="{{ book_details.year if book_details }}"><br><br>
+	<input type="text" id="year" name="year" placeholder="Year" value="{{ book_details.year if book_details }}"><br>
 
-        <label for="page_count">Page Count</label>
-	<input type="text" id="page_count" name="page_count" value="{{ book_details.page_count if book_details }}"><br><br>
+	<input type="text" id="page_count" name="page_count" placeholder="Page Count" value="{{ book_details.page_count if book_details }}"><br><br>
 
-        <label for="read">Have you read this book?</label>
-	<input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}><br><br>
+     <!--   <label for="read">Have you read this book?</label>
+     <input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}-->
 
-	<label for="image">Upload Book Cover</label>
+        <label for="image">Upload Book Cover</label>
 	<input type="file" id="image" name="image" accept="image/*"><br><br>
 
-        <button type="submit" name="submit_book">Add Book</button>
+        <button type="submit" name="submit_book" class="add-book-link">Add Book</button>
     </form>
-    <br>
-    <div class="back-to-list">
-        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
-    </div>
 </body>
 </html>
 
