@@ -1,18 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ataraxia</title>
+    <title>libaraxia</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
 	<h1><a href="/" style="color: white">L I B A R A X I A</a></h1>
 
     <!-- Add a search form above or below the book list -->
-    <form method="GET" action="{{ url_for('search') }}">
-    <div class="button-group">
-        <a href="/add" class="add-book-link">Add Book</a>
-        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
-    </div>
+    <form method="GET" action="{{ url_for('search') }}" class="searchpage-bar">
     <input
         type="text"
         id="search_term"
@@ -22,6 +18,10 @@
     >
     <button type="submit">Search</button>
     </form>
+    <div class="button-group">
+        <a href="/add" class="add-book-link">Add Book</a>
+        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+    </div>
     <a></a>
 
     <!-- Grid for displaying books -->

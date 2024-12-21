@@ -29,7 +29,7 @@ def index():
     sort_by = request.args.get("sort_by", "title")  # Default sort by title
     sort_order = request.args.get("sort_order", "asc")  # Default ascending order
 
-    valid_columns = {"title", "author", "publish_year", "date_added"}  # Add columns you want to sort by
+    valid_columns = {"title", "author", "publish_year", "created_at"}  # Add columns you want to sort by
     valid_orders = {"asc", "desc"}
 
     if sort_by not in valid_columns:

@@ -4,19 +4,21 @@ body {
     font-family: Helvetica, sans-serif;
     font-size: 16px;
     line-height: 1.5;
-    /*background-color: #424242;*/
-    /*color: #424242;*/
+    background-color: #424242;
+    color: #424242;
     padding: 20px;
 }
 
 /* Center the form */
 form {
-    /*display: flex;
-    flex-direction: column;*/
-    /*max-width: 100%;*/
-    margin: 10px;
-    padding: 0px;
+    display: flex;
+    flex-direction: column;
+    max-width: 75%;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #2c2c2c; /* Slightly lighter gray for contrast */
     border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     font-family: Helvetica, sans-serif;
     text-align: center;
     align-items: space-evenly;
@@ -28,13 +30,11 @@ form input[type="text"],
 form input[type="number"],
 form input[type="file"],
 textarea {
-    display: flex;
     width: 75%;
     font-size: 18px;
     padding: 10px;
     text-align: left;
     align-items: center;
-    justify-content: center;
     margin: 8px;
     height: 20px;
     border: 1px solid #555;
@@ -87,70 +87,39 @@ form input[type="checkbox"] {
 /* Container for the form */
 .form-container {
     display: flex;
-    flex-direction: column;
-    background-color: #2c2c2c;
-    gap: 0rem; 
-    width: 100%;
-    justify-content: center;
+    flex-direction: column; /* Stack items vertically */
+    gap: 1rem; /* Add space between sections */
+    width: 700px;
+    justify-content: space-evenly;
     align-items: center;
-    border-radius: 24px;
-    margin: 4px;
-    margin-bottom: 25px;
-    padding: 4px;
 }
 
-/*.index-bar {
+.index-bar {
     display: flex;
     justify-content: space-around;
     margin: 8px;
     align-items: center;
-}*/
+}
 
 .search-sort {
     margin: 4px;
     padding: 4px;
     width: 100%;
-    gap: 1rem;
-    width: auto;
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
-}
-
-/* Styling for each section */
-.search-bar {
-    display: flex; /* Align items within the group */
-    flex-direction: row;
-    margin: 4px;
-    padding: 4px;
-    gap: 0.5rem; /* Space between elements in the group */
-    width: 100%;
-    align-items: center;
     justify-content: center;
 }
 
+/* Styling for each section */
+.search-bar,
 .sort-bar {
     display: flex; /* Align items within the group */
     flex-direction: row;
     margin: 4px;
     padding: 4px;
     gap: 0.5rem; /* Space between elements in the group */
-    width: 50%;
+    width: 95%;
     align-items: center;
-    justify-content: center;
-}
-
-.searchpage-bar {
-    display: flex; /* Align items within the group */
-    flex-direction: row;
-    margin: 4px;
-    margin-bottom: 22px;
-    padding: 4px;
-    gap: 0.5rem; /* Space between elements in the group */
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    background-color: #2c2c2c;
 }
 
 /* Styling for input and button elements */
@@ -161,10 +130,6 @@ select, button {
     font-size: 1rem;
     align-items: right;
     width: 100%; /* Make inputs stretch full width */
-    background-color: #424242;
-    color: #EEEEEE;
-    border-radius: 8px;
-    border: 1px solid #555;
 }
 
 .sort-bar {
@@ -195,7 +160,7 @@ form a:hover {
 
 /* Mobile-First Approach */
 @media (min-width: 768px) {
-}
+
 /* Desktop Styles */
 
 body {
@@ -203,7 +168,7 @@ body {
     font-size: 16px;
     line-height: 1.5;
     background-color: #424242;
-    /*color: #2c2c2c;*/
+    color: #2c2c2c;
     padding: 20px;
 }
 
@@ -336,7 +301,7 @@ a:hover {
 .button-group {
     display: flex;
     gap: 10px; /* Add spacing between the buttons */
-    margin: 4px; /* Add spacing below the group */
+    margin-bottom: 10px; /* Add spacing below the group */
     justify-content: center !important;
     align-items: center !important;
 }
@@ -349,7 +314,7 @@ a:hover {
     font-size: 24px;
     background-color: #28a745;
     color: white;
-    height: 50px;
+    height: 75px;
     align-items: center;
     padding: 5px;
     margin-top: 14px;
@@ -458,22 +423,18 @@ a:hover {
 }
 
 .back-to-list-link {
-    background-color: #007bff;
-    transition: background-color 0.3s ease-in-out;
+    font-size: 16px;
     width: 25%; /* Set width to auto for better flexibility */
     text-decoration: none;
-    font-size: 20px;
+    padding: 10px 24px;
+    margin-bottom: 10px;
+    background-color: #007bff;
     color: white;
-    height: 50px;
-    align-items: center;
-    padding: 5px;
-    margin-top: 14px;
-    margin: 8px;
-    border: none;
     border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-evenly;
+   display: flex;
+    justify-content: space-evenly; /* Center align text horizontally */
+    align-items: center; /* Center align text vertically */
+    transition: background-color 0.3s ease-in-out;
 }
 
 .back-to-list-link:hover {
@@ -531,4 +492,6 @@ a:hover {
 
 .sort-buttons button:hover {
     background-color: #218838; /* Darker green on hover */
+}
+
 }

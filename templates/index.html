@@ -1,54 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ataraxia</title>
+    <title>libaraxia</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <h1><a href="/" style="color: white">L I B A R A X I A</a></h1>
-    <!-- Single Form for Both Search and Sort -->
-    <form method="GET" action="{{ url_for('search') }}" enctype="multipart/form-data" class="form-container">
-       
-	    <div class="index-bar">
-	    <a href="/add" class="add-book-link">Add Book<a/>
-	
+    <!-- Single Form for Both Search and Sort --> 
+    <div class="form-container">
 	    <!-- Search Section -->
-	    <div class="search-sort">
-                <div class="search-bar">
+            <form method="GET" action="{{ url_for('search') }}" enctype="multipart/form-data" class="search-bar">
+                <!--<div class="search-bar">-->
                     <input 
-                        type="text" 
-                        id="search_term" 
-                        name="search_term" 
-                        placeholder="Search Catalog by title, author, year..." 
-                        value="{{ request.args.get('search_term', '') }}">
-                    <button class="form-button" type="submit">Search</button>
-                </div>
-
-                <!-- Sort Section -->
-                <div class="sort-bar">
-		    <form method="get" action="/">
+                            type="text" 
+                            id="search_term" 
+                            name="search_term" 
+                            placeholder="Search Catalog by title, author, year..." 
+                            value="{{ request.args.get('search_term', '') }}">
+                        <button class="form-button" type="submit">Search</button>
+            </form>              
+        <!-- Sort Section -->        		    
+            <form method="GET" action="/" class="sort-bar">
                         <label for="sort_by">Sort By:</label>
                         <select name="sort_by" id="sort_by">
-                            <option value="title">Title</option>
-                            <option value="author">Author</option>
-                            <option value="publish_year">Year Published</option>
-                            <option value="created_at">Date Added</option>
+                            <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title</option>itle</option>
+                            <option value="author" {% if sort_by == "author" %}selected{% endif %}>Author</option>
+                            <option value="publish_year" {% if sort_by == "publish_year" %}selected{% endif %}>Year Published</option>
+                            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Date Added</option>
                         </select>
 
                         <label for="sort_order">Order:</label>
                         <select name="sort_order" id="sort_order">
-                            <option value="asc">Ascending</option>
-                            <option value="desc">Descending</option>
+                            <option value="asc" {% if sort_order == "asc" %}selected{% endif %}>Ascending</option>
+                            <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>Descending</option>
                         </select>
 
                         <button type="submit">Sort</button>
 		    </form>
-		</div>
 	    </div>
-        </div>
-    </form>
+    </div>
+    <a href="/add" class="add-book-link">Add Book<a/>
 
-    <a></a>
+    <a></a> <!-- Had to put this here or else there was a missing tile on the grid-->
     <!-- Grid for displaying books -->
     <div class="book-grid">
         {% for book in books %}
