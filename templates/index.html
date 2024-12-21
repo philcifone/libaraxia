@@ -6,37 +6,47 @@
 </head>
 <body>
     <h1><a href="/" style="color: white">L I B A R A X I A</a></h1>
-    <!-- Add a search form above or below the book list -->
-    <form method="GET" action="{{ url_for('search') }}" enctype="multipart/form-data">
-        <a href="/add" class="add-book-link">Add Book<a/>
-        <input type="text" id="search_term" name="search_term" placeholder="Search Catalog by title, author, year..." value="{{ request.args.get('search_term', '') }}">
-        <button class="form button" type="submit">Search</button>
+    <!-- Single Form for Both Search and Sort -->
+    <form method="GET" action="{{ url_for('search') }}" enctype="multipart/form-data" class="form-container">
+       
+	    <div class="index-bar">
+	    <a href="/add" class="add-book-link">Add Book<a/>
+	
+	    <!-- Search Section -->
+	    <div class="search-sort">
+                <div class="search-bar">
+                    <input 
+                        type="text" 
+                        id="search_term" 
+                        name="search_term" 
+                        placeholder="Search Catalog by title, author, year..." 
+                        value="{{ request.args.get('search_term', '') }}">
+                    <button class="form-button" type="submit">Search</button>
+                </div>
+
+                <!-- Sort Section -->
+                <div class="sort-bar">
+                    <label for="sort_by">Sort By:</label>
+                    <select name="sort_by" id="sort_by">
+                        <option value="title">Title</option>
+                        <option value="author">Author</option>
+                        <option value="publish_year">Year Published</option>
+                        <option value="created_at">Date Added</option>
+                    </select>
+
+                    <label for="sort_order">Order:</label>
+                    <select name="sort_order" id="sort_order">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+
+                    <button type="submit">Sort</button>
+		</div>
+	    </div>
+        </div>
     </form>
-    <a></a> <!-- I had to put this in, or else there was an empty spot at the beginning of the grid? strange. -->
-   
-    <!-- sort content section -->
-    <div class="sort-buttons">
-    <form method="get" action="/">
-        <label for="sort_by">Sort By:</label>
-        <select name="sort_by" id="sort_by">
-            <option value="title">Title</option>
-            <option value="author">Author</option>
-            <option value="publish_year">Year Published</option>
-            <option value="created_at">Date Added</option>
-        </select>
 
-        <label for="sort_order">Order:</label>
-        <select name="sort_order" id="sort_order">
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-        </select>
-
-        <button type="submit">Sort</button>
-    </form>
-    </div>
-
-
-
+    <a></a>
     <!-- Grid for displaying books -->
     <div class="book-grid">
         {% for book in books %}
