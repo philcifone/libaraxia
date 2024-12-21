@@ -26,21 +26,23 @@
 
                 <!-- Sort Section -->
                 <div class="sort-bar">
-                    <label for="sort_by">Sort By:</label>
-                    <select name="sort_by" id="sort_by">
-                        <option value="title">Title</option>
-                        <option value="author">Author</option>
-                        <option value="publish_year">Year Published</option>
-                        <option value="created_at">Date Added</option>
-                    </select>
+		    <form method="get" action="/">
+                        <label for="sort_by">Sort By:</label>
+                        <select name="sort_by" id="sort_by">
+                            <option value="title">Title</option>
+                            <option value="author">Author</option>
+                            <option value="publish_year">Year Published</option>
+                            <option value="created_at">Date Added</option>
+                        </select>
 
-                    <label for="sort_order">Order:</label>
-                    <select name="sort_order" id="sort_order">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
-                    </select>
+                        <label for="sort_order">Order:</label>
+                        <select name="sort_order" id="sort_order">
+                            <option value="asc">Ascending</option>
+                            <option value="desc">Descending</option>
+                        </select>
 
-                    <button type="submit">Sort</button>
+                        <button type="submit">Sort</button>
+		    </form>
 		</div>
 	    </div>
         </div>
