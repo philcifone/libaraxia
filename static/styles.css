@@ -76,7 +76,7 @@ form label {
     flex-direction: row;
     align-items: center;
     color: white;
-    margin-bottom: 0px;
+    margin-top: 24px;
 }
 
 form input[type="checkbox"] {

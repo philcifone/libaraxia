@@ -43,13 +43,13 @@
         <!--<label for="text">Description:</label>
             <input type="text" id="description" name="description" placeholder="Description" value="{{ book_details.description if book_details }}"><br><br>-->
 
-        <input type="text" placeholder="Enter description here..." id="description" name="description" value="{{ book_details.description if book_details }}" class="desc-box"><br><br>   
+	    <input type="text" placeholder="Enter description here..." id="description" name="description" value="{{ book_details.description if book_details }}" class="desc-box"><br><br>   
 
 
         <!--   <label for="read">Have you read this book?</label>
         <input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}-->
 
-            <label for="image">Upload Book Cover</label>
+        <label for="image">Upload Book Cover</label>
         <input type="file" id="image" name="image" accept="image/*"><br><br>
 
             <button type="submit" name="submit_book" class="add-book-link">Add Book</button>
