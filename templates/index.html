@@ -6,7 +6,7 @@
 </head>
 <body>
     <a href="/logout" class="logout-button">Logout</a>
-    <h1><a href="/" style="color: white">L I B A R A X I A</a></h1>
+    <h1 style="color: white">L I B A R A X I A</h1>
     <!-- Single Form for Both Search and Sort --> 
     <div class="form-container">
 	    <!-- Search Section -->
@@ -20,7 +20,7 @@
                             value="{{ request.args.get('search_term', '') }}">
                         <button class="form-button" type="submit">Search</button>
             </form>              
-            <form method="GET" action="/" class="sort-bar" id="sort-form">
+            <form method="GET" action="/index" class="sort-bar" id="sort-form">
                 <label for="sort_by" class="sort-buttons">Sort:</label>
                 <select name="sort_by" id="sort_by" onchange="submitSortForm()">
                     <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title</option>
