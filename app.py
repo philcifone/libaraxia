@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
-import sqlite3, os, time, requests, logging
+import sqlite3, os, time, requests, logging, bcrypt
 from models import User
 
 DATABASE = 'library.db'
@@ -43,14 +43,17 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
-        password = generate_password_hash(request.form['password'])  # Hash password
+        password = request.form['password']  # Capture password from the form
+
+        # Ensure password is hashed using bcrypt
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
             cursor.execute(
                 'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-                (username, email, password)
+                (username, email, hashed_password.decode('utf-8'))  # Decode hashed password for storage
             )
             conn.commit()
             flash('Registration successful!', 'success')
@@ -60,6 +63,7 @@ def register():
         finally:
             conn.close()
     return render_template('register.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -73,7 +77,8 @@ def login():
 
         if user:
             user_dict = dict(user)
-            if check_password_hash(user_dict['password'], password) and user_dict.get('is_active', 0) == 1:
+            if bcrypt.checkpw(password.encode('utf-8'), user_dict['password'].encode('utf-8')):
+                # Password matches
                 user_obj = User(
                     id=user_dict['id'],
                     username=user_dict['username'],
@@ -85,26 +90,6 @@ def login():
                 return redirect(url_for('index'))
         flash('Invalid email or password!', 'danger')
     return render_template('login.html')
-
-#@app.route('/login', methods=['GET', 'POST'])
-#def login():
-#    if request.method == 'POST':
-#        email = request.form['email']
-#        password = request.form['password']
-#
-#        conn = get_db_connection()
-#        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
-#        conn.close()
-#
-#        # Convert row to dictionary (assuming user is not None)
-#        user_dict = dict(user)  
-#
-#        if user_dict and check_password_hash(user_dict['password'], password) and user_dict.get('is_active'):  # Use get to avoid potential KeyError
-#            login_user(user_dict) 
-#            flash(f"Welcome, {user_dict['username']}!", 'success')
-#            return redirect(url_for('index'))
-#        flash('Invalid email or password!', 'danger')
-#    return render_template('login.html')
 
 @app.route('/logout')
 def logout():

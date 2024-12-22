@@ -27,6 +27,8 @@ form {
 form input[type="text"],
 form input[type="number"],
 form input[type="file"],
+form input[type="email"],
+form input[type="password"],
 textarea {
     display: flex;
     width: 75%;
@@ -97,6 +99,10 @@ form input[type="checkbox"] {
     margin: 4px;
     margin-bottom: 25px;
     padding: 4px;
+}
+
+.auth-form-container {
+    padding-top: 24px;
 }
 
 /*.index-bar {

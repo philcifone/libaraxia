@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Login Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
 <!-- templates/login.html -->
-<form method="POST" action="/login">
-    <label>Email:</label>
-    <input type="email" name="email" required>
-    <label>Password:</label>
-    <input type="password" name="password" required>
-    <button type="submit">Login</button>
-</form>
+    <form method="POST" action="/login" class="form-container auth-form-container">
+        <input placeholder="email" type="email" name="email" required>
+        <input placeholder="password" type="password" name="password" required>
+        <button type="submit">Login</button>
+    </form>
+<a href="/register">No account? Register here.</a>
 </body>
 </html>
