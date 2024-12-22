@@ -135,9 +135,10 @@ form input[type="checkbox"] {
     margin: 4px;
     padding: 4px;
     gap: 0.5rem; /* Space between elements in the group */
-    width: 50%;
+    width: 65%;
     align-items: center;
     justify-content: center;
+    height: 50px;
 }
 
 .searchpage-bar {
@@ -165,10 +166,6 @@ select, button {
     color: #EEEEEE;
     border-radius: 8px;
     border: 1px solid #555;
-}
-
-.sort-bar {
-    height: 50px;
 }
 
 /* book info form */
@@ -335,10 +332,12 @@ a:hover {
 
 .button-group {
     display: flex;
+    width: 100%;
+    flex-direction: row;
     gap: 10px; /* Add spacing between the buttons */
     margin: 4px; /* Add spacing below the group */
-    justify-content: center !important;
-    align-items: center !important;
+    justify-content: center;
+    align-items: center;
 }
 
 /* ADD BOOK LINK */
