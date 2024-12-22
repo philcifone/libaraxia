@@ -116,6 +116,10 @@ def get_db_connection():
     return conn
 
 @app.route("/")
+def home():
+    return redirect(url_for('login'))
+
+@app.route("/index")
 @login_required
 def index():
     sort_by = request.args.get("sort_by", "title")  # Default sort by title
