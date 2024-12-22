@@ -269,7 +269,7 @@ def edit_book(id):
             conn.commit()
             conn.close()
 
-            return redirect("/")
+            return redirect("/index")
 
     # Retrieve the existing book details for the form
     book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
