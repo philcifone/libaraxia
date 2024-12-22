@@ -1,3 +1,5 @@
 library.db
 
 static/uploads/
+
+__pycache__/
