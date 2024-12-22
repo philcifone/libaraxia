@@ -11,7 +11,7 @@ class DevelopmentConfig(Config):
     DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///library-dev.db')
 
 class ProductionConfig(Config):
-    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///library-prod.db')
+    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:////home/phil/library-catalog/library-prod.db')
 
 class TestingConfig(Config):
     TESTING = True

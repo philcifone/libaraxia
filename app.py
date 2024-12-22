@@ -3,7 +3,14 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 import sqlite3, os, time, requests, logging, bcrypt
+
+# user models
 from models import User
+
+#load environment variables from .env
+from dotenv import load_dotenv
+load_dotenv()
+
 from config import DevelopmentConfig, ProductionConfig
 
 DATABASE = 'library.db'
