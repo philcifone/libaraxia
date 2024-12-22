@@ -8,40 +8,50 @@
     <h1><a href="/" style="color: white">L I B A R A X I A</a><h1>
 
     <!-- ISBN Lookup Form -->
-    <form method="POST" enctype="multipart/form-data">
-	<div class="back-to-list">
-        <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
-	</div>
-        <input type="text" id="isbn_lookup" name="isbn" placeholder="Enter ISBN to fetch book info" value="{{ book_details.isbn if book_details }}">
-        <button type="submit" name="isbn_lookup">Fetch Details</button>
-    </form>
+    <div class="form-container">
+        <form method="POST" enctype="multipart/form-data" class="search-bar">
+            <input 
+                type="text" 
+                id="isbn_lookup" 
+                name="isbn" 
+                placeholder="Enter ISBN to fetch book info" 
+                value="{{ book_details.isbn if book_details }}"
+                >
+            <button type="submit" name="isbn_lookup" id="isbn-fetch">Fetch Details</button>
+        </form>
+        <div class="back-to-list">
+            <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+        </div>
+    </div>
 
     <!-- Add Book Form -->
-    <form method="POST" enctype="multipart/form-data" class="book-info-form">
-	    <h3>Book Info</h3><br>
-	<input type="text" id="title" name="title" placeholder="Title" value="{{ book_details.title if book_details }}" required><br>
+    <div class="form-container">
+        <form method="POST" enctype="multipart/form-data" class="book-info-form">
+            <h3>Book Info</h3><br>
+        <input type="text" id="title" name="title" placeholder="Title" value="{{ book_details.title if book_details }}" required><br>
 
-	<input type="text" id="author" name="author" placeholder="Author" value="{{ book_details.author if book_details }}" required><br>
+        <input type="text" id="author" name="author" placeholder="Author" value="{{ book_details.author if book_details }}" required><br>
 
-	<input type="text" id="isbn" name="isbn" placeholder="ISBN" value="{{ book_details.isbn if book_details }}"><br>
+        <input type="text" id="isbn" name="isbn" placeholder="ISBN" value="{{ book_details.isbn if book_details }}"><br>
 
-	<input type="text" id="publisher" name="publisher" placeholder="Publisher" value="{{ book_details.publisher if book_details }}"><br>
+        <input type="text" id="publisher" name="publisher" placeholder="Publisher" value="{{ book_details.publisher if book_details }}"><br>
 
-	<input type="text" id="year" name="year" placeholder="Year" value="{{ book_details.year if book_details }}"><br>
+        <input type="text" id="year" name="year" placeholder="Year" value="{{ book_details.year if book_details }}"><br>
 
-	<input type="text" id="page_count" name="page_count" placeholder="Page Count" value="{{ book_details.page_count if book_details }}"><br><br>
+        <input type="text" id="page_count" name="page_count" placeholder="Page Count" value="{{ book_details.page_count if book_details }}"><br><br>
 
-	<label for="text">Description:</label>
-        <input type="text" id="description" name="description" placeholder="Description" value="{{ book_details.description if book_details }}"><br><br>
+        <label for="text">Description:</label>
+            <input type="text" id="description" name="description" placeholder="Description" value="{{ book_details.description if book_details }}"><br><br>
 
-     <!--   <label for="read">Have you read this book?</label>
-     <input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}-->
+        <!--   <label for="read">Have you read this book?</label>
+        <input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}-->
 
-        <label for="image">Upload Book Cover</label>
-	<input type="file" id="image" name="image" accept="image/*"><br><br>
+            <label for="image">Upload Book Cover</label>
+        <input type="file" id="image" name="image" accept="image/*"><br><br>
 
-        <button type="submit" name="submit_book" class="add-book-link">Add Book</button>
-    </form>
+            <button type="submit" name="submit_book" class="add-book-link">Add Book</button>
+        </form>
+    </div>
 </body>
 </html>
 

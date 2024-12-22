@@ -50,14 +50,14 @@ textarea {
 }
 
 /* Button Styling */
-form button {
+form button, #isbn-fetch {
     width: auto;
     margin-bottom: 5px;
     text-decoration: none;
     font-size: 16px;
     background-color: #28a745;
     color: white;
-    padding: 10px 24px; /* Added more padding for space */
+    padding: 10px; /* Added more padding for space */
     margin: 0px; /* Added margin around the button */
     border: none;
     border-radius: 8px;
@@ -171,6 +171,10 @@ select, button {
 /* book info form */
 .book-info-form {
     width: 75%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }    
 
 .book-info-form input[type="text"] {
@@ -454,6 +458,9 @@ a:hover {
 
 .back-to-list {
     text-align: center;
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 .back-to-list-link {
