@@ -19,24 +19,28 @@
                             value="{{ request.args.get('search_term', '') }}">
                         <button class="form-button" type="submit">Search</button>
             </form>              
-        <!-- Sort Section -->        		    
-            <form method="GET" action="/" class="sort-bar">
-                        <label for="sort_by">Sort By:</label>
-                        <select name="sort_by" id="sort_by">
-                            <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title</option>itle</option>
-                            <option value="author" {% if sort_by == "author" %}selected{% endif %}>Author</option>
-                            <option value="publish_year" {% if sort_by == "publish_year" %}selected{% endif %}>Year Published</option>
-                            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Date Added</option>
-                        </select>
-
-                        <label for="sort_order">Order:</label>
-                        <select name="sort_order" id="sort_order">
-                            <option value="asc" {% if sort_order == "asc" %}selected{% endif %}>Ascending</option>
-                            <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>Descending</option>
-                        </select>
-
-                        <button type="submit">Sort</button>
-		    </form>
+            <form method="GET" action="/" class="sort-bar" id="sort-form">
+                <label for="sort_by">Sort By:</label>
+                <select name="sort_by" id="sort_by" onchange="submitSortForm()">
+                    <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title</option>
+                    <option value="author" {% if sort_by == "author" %}selected{% endif %}>Author</option>
+                    <option value="publish_year" {% if sort_by == "publish_year" %}selected{% endif %}>Year Published</option>
+                    <option value="date_added" {% if sort_by == "date_added" %}selected{% endif %}>Date Added</option>
+                </select>
+            
+                <label for="sort_order">Order:</label>
+                <select name="sort_order" id="sort_order" onchange="submitSortForm()">
+                    <option value="asc" {% if sort_order == "asc" %}selected{% endif %}>Ascending</option>
+                    <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>Descending</option>
+                </select>
+            </form>
+            
+            <script>
+                // Function to automatically submit the form
+                function submitSortForm() {
+                    document.getElementById('sort-form').submit();
+                }
+            </script>
             <a href="/add" class="add-book-link">Add Book<a/>
 	    </div>
     </div>
