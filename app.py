@@ -1,8 +1,117 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
-import sqlite3, os, time, requests
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+import sqlite3, os, time, requests, logging
+from models import User
+
+DATABASE = 'library.db'
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+app.debug = True
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row  # Dict-like access to rows
+    return conn
+
+@login_manager.user_loader
+def load_user(user_id):
+    logging.debug(f"Loading user with ID: {user_id}") 
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    conn.close()
+    if user:
+        user_dict = dict(user)
+        return User(
+            id=user_dict['id'],
+            username=user_dict['username'],
+            email=user_dict['email'],
+            is_active=user_dict.get('is_active', 0) == 1
+        )
+    return None
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = generate_password_hash(request.form['password'])  # Hash password
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+                (username, email, password)
+            )
+            conn.commit()
+            flash('Registration successful!', 'success')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Email or username already registered!', 'danger')
+        finally:
+            conn.close()
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+        conn.close()
+
+        if user:
+            user_dict = dict(user)
+            if check_password_hash(user_dict['password'], password) and user_dict.get('is_active', 0) == 1:
+                user_obj = User(
+                    id=user_dict['id'],
+                    username=user_dict['username'],
+                    email=user_dict['email'],
+                    is_active=user_dict.get('is_active', 0) == 1
+                )
+                login_user(user_obj)
+                flash(f"Welcome, {user_obj.username}!", 'success')
+                return redirect(url_for('index'))
+        flash('Invalid email or password!', 'danger')
+    return render_template('login.html')
+
+#@app.route('/login', methods=['GET', 'POST'])
+#def login():
+#    if request.method == 'POST':
+#        email = request.form['email']
+#        password = request.form['password']
+#
+#        conn = get_db_connection()
+#        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+#        conn.close()
+#
+#        # Convert row to dictionary (assuming user is not None)
+#        user_dict = dict(user)  
+#
+#        if user_dict and check_password_hash(user_dict['password'], password) and user_dict.get('is_active'):  # Use get to avoid potential KeyError
+#            login_user(user_dict) 
+#            flash(f"Welcome, {user_dict['username']}!", 'success')
+#            return redirect(url_for('index'))
+#        flash('Invalid email or password!', 'danger')
+#    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    flash('Logged out successfully!', 'success')
+    return redirect(url_for('login'))
+
 app.secret_key = os.urandom(24)  # Generates a secure random secret key
 
 
@@ -15,9 +124,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
-DATABASE = 'library.db'
-
 # Helper function to connect to the database
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -25,6 +131,7 @@ def get_db_connection():
     return conn
 
 @app.route("/")
+@login_required
 def index():
     sort_by = request.args.get("sort_by", "title")  # Default sort by title
     sort_order = request.args.get("sort_order", "asc")  # Default ascending order
