@@ -1,5 +1,8 @@
+.env
 library.db
-
 static/uploads/
-
+*.db
 __pycache__/
+*.pyc
+*.pyo
+instance/

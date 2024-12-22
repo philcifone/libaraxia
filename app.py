@@ -4,12 +4,23 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 import sqlite3, os, time, requests, logging, bcrypt
 from models import User
+from config import DevelopmentConfig, ProductionConfig
 
 DATABASE = 'library.db'
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
-app.debug = True
+# Set configuration based on an environment variable
+env = os.getenv('FLASK_ENV', 'development')
+
+if env == 'production':
+    app.config.from_object(ProductionConfig)
+else:
+    app.config.from_object(DevelopmentConfig)
+
+# Initialize SQLite database
+from flask_sqlalchemy import SQLAlchemy
+app.config['SQLALCHEMY_DATABASE_URI'] = app.config['DATABASE_URI']
+db = SQLAlchemy(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -141,6 +152,7 @@ def index():
     return render_template("index.html", books=books, sort_by=sort_by, sort_order=sort_order)
 
 @app.route("/add", methods=["GET", "POST"])
+@login_required
 def add_book():
     book_details = None
 
@@ -208,6 +220,7 @@ def add_book():
     return render_template("add_book.html", book_details=book_details)
 
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
+@login_required
 def edit_book(id):
     conn = get_db_connection()
     book_details = None  # Initialize book_details for ISBN lookup
@@ -277,6 +290,7 @@ def edit_book(id):
     return render_template("edit_book.html", book=book, book_details=book_details)
 
 @app.route("/search", methods=["GET"])
+@login_required
 def search():
     search_term = request.args.get("search_term", "").lower()  # Get the search term from the form
 
@@ -293,6 +307,7 @@ def search():
     return render_template("search.html", books=books)
 
 @app.route("/book/<int:id>")
+@login_required
 def show_book(id):
     conn = get_db_connection()
     book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
@@ -300,6 +315,7 @@ def show_book(id):
     return render_template("book_detail.html", book=book)
 
 @app.route("/delete/<int:id>")
+@login_required
 def delete_book(id):
     conn = get_db_connection()
     conn.execute("DELETE FROM books WHERE id = ?", (id,))
