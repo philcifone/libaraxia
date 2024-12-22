@@ -77,7 +77,7 @@ def add_book():
             year = request.form["year"]
             isbn = request.form["isbn"]
             page_count = request.form["page_count"]
-            description = request.form.get("description", "")  # Add description here
+            description = request.form.get("description")  # Add description here
             read = 1 if "read" in request.form else 0
 
             # Handle the image upload

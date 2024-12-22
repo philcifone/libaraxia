@@ -181,6 +181,28 @@ select, button {
     width: 65%;
 }
 
+.desc-box, #desc-box {
+    width: 75%; /* Makes the input stretch across the container */
+    max-width: 500px; /* Optional: Limit the maximum width */
+    height: 150px; /* Defines height for readability */
+    padding: 10px; /* Adds space inside the box */
+    font-size: 16px; /* Ensures text is legible */
+    font-family: Arial, sans-serif; /* Use a readable font */
+    border: 1px solid #555; /* Light border */
+    border-radius: 5px; /* Rounded corners for a softer look */
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    resize: vertical; /* Allow vertical resizing only */
+    background-color: #424242; /* Light background for readability */
+    outline: none; /* Removes the default outline when focused */
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Smooth transitions */
+}
+
+.desc-box:focus, #desc-box:focus {
+    border-color: #555; /* Highlight border on focus */
+    box-shadow: 0 0 8px #28a745; /* Glow effect */
+    background-color: #424242; /* Brighten background when active */
+}
+
 /* Back to Catalog link */
 form a {
     display: block;
