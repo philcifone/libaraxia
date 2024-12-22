@@ -158,6 +158,8 @@ def index():
 
     return render_template("index.html", books=books, sort_by=sort_by, sort_order=sort_order)
 
+    return redirect(url_for('login'))
+
 @app.route("/add", methods=["GET", "POST"])
 @login_required
 def add_book():
