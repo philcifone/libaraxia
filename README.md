@@ -1,31 +1,24 @@
 # Libaraxia
 
+
+![Libaraxia](static/git/libaraxiaAlpha.jpg)
+![Book Details](static/git/IMG_7682.jpg)
+![Book Details](static/git/IMG_7683.jpg)
+
 # Project scope:
 
-A self hosted personal library catalog. Accessible via web app to easily list, add, edit, and delete books from one's personal collection. 
+A self hosted personal library catalog. Accessible via web app to easily list, add, edit, and delete books from one's personal collection. Frontend in HTML and CSS and backend is SQLite and Flask (python). 
 
-This is a beginner project I'm developing to achieve the goal of cataloging my personal library. It is a basic CRUD application, that sports a few additional features right now, although I'm still adding and testing more. I'm not much of a developer, and I am learning as I go. Thus, if you find this interesting or useful and want to offer feedback I will happily listen!
-
-## Frontend:
-
-HTML and CSS
-
-## Backend:
-
-SQLite & Flask
+This is a beginner project I'm developing to achieve the goal of cataloging my personal library. It is a basic CRUD application, that sports a few additional features right now, although I'm still adding and testing more. I'm not much of a developer, and I am learning as I go. It is a bit of a hobby project I'm trying to to take seriously. Thus, if you find this interesting or useful and want to offer feedback I will happily listen!
 
 ## Usage & Installation
 
-Anyone is absolutely welcome to use or fork this under the GPL license but I strongly recommend against it in it's current form. As I said previously it's missing multi-user login, authentication, and sanitized inputs—for now. I'm still learning and do not feel comfortable deploying it as any sort of full fledge self hosted application for public use just yet.
+Anyone stumbling across this is absolutely welcome to use or fork this under the GPL license I guess? I strongly recommend against it in it's current form. While I am currently handling much of the security concerns I had, I am still learning and do not feel comfortable deploying it as any sort of full fledged self hosted application for public use just yet.
 
-That said, if you were to clone the repo and set up your own SQLite3 database with the following layout in the project folder you should, in theory, have yourself a basic CMS application after you run 'python3 app.py' on the command line to start a debugging environment. After that, you're on your own for production web server deployment.
-
-```sql
-DATABASE LAYOUT;
-```
+I guess all you would need to do is setup the users and books tables in a sqlite3 library.db and downloading all the flask packages but that's on you.
 
 ### Known Issues
-There is sloppiness all over the place right now. I'm sure the HTML is not pretty according to best practices, and it seems CSS styles are fighting for specificity. I'm sure there's also redundancy causing performance overhead from the python routes that could be optimized as well. The SQL database inputs also need sanitized. It also does not support multi-user login or authentication yet, but I intend on cleaning up the code and implementing all of these features in the near future. 
+I'm learning how to clean up the HTML and CSS, so bear with me. I'm working on [[#Future Refactoring]] for flask blueprints as well. 
 
 ### Existing features:
 - Tiled homepage
@@ -36,6 +29,19 @@ There is sloppiness all over the place right now. I'm sure the HTML is not prett
 - Search
 - Cover upload
 - Catalog sort
+- Account register
+- Multi-user login & authentication
+
+### Future features:
+- Rating system
+- Comment system
+- User filter
+- Custom shelf collections
+- Share shelf
+- Barcode scanner
+- Better mobile UI
+- React
+- Tailwind css
 
 ### To Do:
 
@@ -44,10 +50,10 @@ There is sloppiness all over the place right now. I'm sure the HTML is not prett
 #### Frontend
 - [x] Fix tile text alignment
 - [x] Add Author to tile
-- [ ] Add better back to list on search page inside search container
-- [ ] Fix add book button
-- [ ] Style main page search bar add sort
-- [ ] Make add & edit book pages prettier
+- [x] Add better back to list on search page inside search container
+- [x] Fix add book button
+- [x] Style main page search bar add sort
+- [x] Make add & edit book pages prettier
 - [ ] Make book details page prettier
 - [x] Update book details style to match
 - [ ] Light & dark mode toggle (tailwind css?)
@@ -56,35 +62,73 @@ There is sloppiness all over the place right now. I'm sure the HTML is not prett
 - [x] Search function
 - [x] Version Control
 - [x] Fix image upload in add_image route
-- [ ] Sanitize SQL database inputs
 - [ ] Image resize/optimize during upload
-- [ ] Cover fetch script/button (auto fetch during add but user can replace in add and edit)
-- [ ] Genre fetch
+- [ ] Cover image fetch script/button (auto fetch during add but user can replace in add and edit) - revisit
+- [ ] Genre & subtitle add to book details
 - [x] Remove read status (will be a future user feature)
 - [x] Fetch book descriptions
-- [ ] Multi-user creation & login authentication
-- [ ] user "bookshelves" (collections)
-- [x] sort catalog feature
-#### potential future features:
-- rating system
-- comment system
-- multi-user login & authentication
-- barcode scanner
-- mobile integration
-- react
-- tailwind css
-- bookshelf collections
+- [x] Multi-user creation & login authentication
+- [ ] User "bookshelves" (collections)
+- [x] Sort catalog feature
+- [x] Admin only access to CRUD functions
+- [ ] Admin dashboard
 
-#### User Info
-username
-email
-password
+### Future Planning:
 
-#### User Book Collections
-read
-want to read
+#### Tables Layout
 
-#### User Read Data
-date read
-rating
-comment
+1. Users
+
+    user_id (Primary Key)
+    username
+    password_hash
+    email
+    is_admin (Boolean, for admin tools)
+
+2. User Collections
+
+    collection_id (Primary Key)
+    user_id (Foreign Key to Users)
+    book_id (Foreign Key to Books)
+    status (Enum: 'read', 'want to read', 'currently reading')
+
+3. Read Data
+
+    read_data_id (Primary Key)
+    user_id (Foreign Key to Users)
+    book_id (Foreign Key to Books)
+    date_read
+    rating
+    comment
+
+#### Future Refactoring
+
+libaraxia/
+├── app.py                    # The main entry point for your app
+├── config.py                 # App configuration (e.g., secret keys, database URI)
+├── instance/                 # Contains your SQLite database
+│   └── library.db
+├── libaraxia/                # Application package
+│   ├── __init__.py           # Initializes the app and extensions
+│   ├── routes/               # Directory for blueprints
+│   │   ├── __init__.py       # Registers blueprints
+│   │   ├── main.py           # Core app routes (homepage, index, etc.)
+│   │   ├── admin.py          # Admin tools routes
+│   │   └── user.py           # User-specific features routes
+│   ├── models.py             # Database models
+│   ├── services.py           # Business logic functions
+│   └── utils.py              # Helper functions (e.g., format dates)
+├── static/
+│   ├── css/
+│   │   └── styles.css        # Your stylesheet (break into smaller files if needed)
+│   ├── js/
+│   │   └── scripts.js        # JavaScript for interactivity
+│   └── images/
+│       └── logo.png          # Static images
+├── templates/
+│   ├── base.html             # Base template
+│   ├── home.html             # Home page template
+│   └── admin/
+│       ├── dashboard.html    # Admin dashboard template
+│       └── tools.html        # Admin tools template
+└── README.md                 # Project documentation
