@@ -5,7 +5,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 import sqlite3, os, time, requests, logging, bcrypt
 
 # user models
-from models import User
+from models import User, admin_required
 
 #load environment variables from .env
 from dotenv import load_dotenv
@@ -57,7 +57,8 @@ def load_user(user_id):
             id=user_dict['id'],
             username=user_dict['username'],
             email=user_dict['email'],
-            is_active=user_dict.get('is_active', 0) == 1
+            is_active=user_dict.get('is_active', 0) == 1,
+            is_admin=user_dict.get('is_admin', 0) == 1
         )
     return None
 
@@ -106,7 +107,8 @@ def login():
                     id=user_dict['id'],
                     username=user_dict['username'],
                     email=user_dict['email'],
-                    is_active=user_dict.get('is_active', 0) == 1
+                    is_active=user_dict.get('is_active', 0) == 1,
+                    is_admin=user_dict.get('is_admin', 0) == 1
                 )
                 login_user(user_obj)
                 flash(f"Welcome, {user_obj.username}!", 'success')
@@ -167,6 +169,7 @@ def index():
 
 @app.route("/add", methods=["GET", "POST"])
 @login_required
+@admin_required
 def add_book():
     book_details = None
 
@@ -235,6 +238,7 @@ def add_book():
 
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
 @login_required
+@admin_required
 def edit_book(id):
     conn = get_db_connection()
     book_details = None  # Initialize book_details for ISBN lookup
@@ -330,6 +334,7 @@ def show_book(id):
 
 @app.route("/delete/<int:id>")
 @login_required
+@admin_required
 def delete_book(id):
     conn = get_db_connection()
     conn.execute("DELETE FROM books WHERE id = ?", (id,))
