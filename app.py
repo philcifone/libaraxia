@@ -34,6 +34,9 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+app.config['LOGIN_VIEW'] = 'login'  # This tells Flask-Login to redirect to 'login' route
+
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -333,6 +336,13 @@ def delete_book(id):
     conn.commit()
     conn.close()
     return redirect("/")
+
+# unauthorized page customization
+@app.errorhandler(401)
+def unauthorized(error):
+    flash('You must be logged in to access this page.', 'danger')
+    return redirect(url_for('login'))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
