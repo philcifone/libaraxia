@@ -233,7 +233,7 @@ def add_book():
             """, (title, author, publisher, year, isbn, page_count, read, cover_image_url, description))
             conn.commit()
             conn.close()
-            return redirect("/")
+            return redirect("/index")
 
     return render_template("add_book.html", book_details=book_details)
 
@@ -341,7 +341,7 @@ def delete_book(id):
     conn.execute("DELETE FROM books WHERE id = ?", (id,))
     conn.commit()
     conn.close()
-    return redirect("/")
+    return redirect("/index")
 
 # unauthorized page customization
 @app.errorhandler(401)
