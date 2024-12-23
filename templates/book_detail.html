@@ -6,6 +6,11 @@
 </head>
 <body>
     <h1 style="color: white">L I B A R A X I A</h1>
+    <div class="action-links">
+        <a href="/edit/{{ book[0] }}" class="edit-link">Edit</a>
+        <a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+        <a href="{{ url_for('index') }}" class="details-back-to-list-link">Back to Catalog</a>   
+    </div>
     <div class="container">
         <h1>{{ book[1] }}</h1> <!-- Book Title -->
         <div class="book-detail-header">
@@ -30,11 +35,6 @@
             </div>
         </div>
 
-    </div>
-    <div class="action-links">
-        <a href="/edit/{{ book[0] }}" class="edit-link">Edit</a>
-        <a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
-        <a href="{{ url_for('index') }}" class="details-back-to-list-link">Back to Catalog</a>   
     </div>
 </body>
 </html>

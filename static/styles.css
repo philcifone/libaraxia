@@ -475,7 +475,8 @@ a:hover {
 
 .action-links {
     display: flex;
-    align-items: flex-start;
+    justify-content: flex-end;
+    align-items: flex-end;
     justify-content: baseline;
     text-align: center;
     margin-bottom: 20px;
