@@ -537,6 +537,25 @@ a:hover {
     background-color: #0056b3;
 }
 
+.details-back-to-list-link {
+    background-color: #007bff;
+    transition: background-color 0.3s ease-in-out;
+    width: 25%; /* Set width to auto for better flexibility */
+    text-decoration: none;
+    font-size: 1.1em;
+    color: white;
+    height: 47px;
+    align-items: center;
+    padding: 0px;
+    margin-top: 0px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-evenly;
+}
+
 .container {
     max-width: 900px;
     margin: 20px auto;
