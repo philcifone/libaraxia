@@ -5,7 +5,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 import sqlite3, os, time, requests, logging, bcrypt
 
 #image handling
-from PIL import Image
+from PIL import Image, ImageOps
 
 # user models
 from models import User, admin_required
@@ -224,10 +224,9 @@ def add_book():
                         
                         # Open and resize the image
                         img = Image.open(image)
-                        img = ImageOps.exif_transpose(img)
                         max_size = (500, 1000)  # Maximum dimensions (width, height)
                         img.thumbnail(max_size)  # Resize while maintaining aspect ratio
-                        #img = ImageOps.exif_transpose(img)
+                        img = ImageOps.exif_transpose(img)
 
                         # Save the resized image
                         img.save(save_path)
