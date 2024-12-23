@@ -224,6 +224,7 @@ def add_book():
                         
                         # Open and resize the image
                         img = Image.open(image)
+                        img = ImageOps.exif_transpose(img)
                         max_size = (800, 800)  # Maximum dimensions (width, height)
                         img.thumbnail(max_size)  # Resize while maintaining aspect ratio
                         img = ImageOps.exif_transpose(img)
