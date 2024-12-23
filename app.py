@@ -63,6 +63,7 @@ def load_user(user_id):
     return None
 
 @app.route('/register', methods=['GET', 'POST'])
+@admin_required
 def register():
     if request.method == 'POST':
         username = request.form['username']
