@@ -226,6 +226,7 @@ def add_book():
                         img = Image.open(image)
                         max_size = (800, 800)  # Maximum dimensions (width, height)
                         img.thumbnail(max_size)  # Resize while maintaining aspect ratio
+                        img = ImageOps.exif_transpose(img)
 
                         # Save the resized image
                         img.save(save_path)
@@ -300,6 +301,8 @@ def edit_book(id):
                     img = Image.open(image)
                     max_size = (800, 800)  # Maximum dimensions (width, height)
                     img.thumbnail(max_size)  # Resize while maintaining aspect ratio
+                    img = ImageOps.exif_transpose(img)
+
 
                     # Save the resized image
                     img.save(save_path)
