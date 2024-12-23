@@ -4,6 +4,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 import sqlite3, os, time, requests, logging, bcrypt
 
+#image handling
+from PIL import Image
+
 # user models
 from models import User, admin_required
 
@@ -217,10 +220,16 @@ def add_book():
                         # Add timestamp to the filename for uniqueness
                         timestamp = int(time.time())  # Current timestamp in seconds
                         unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
-                        cover_image_url = os.path.join('uploads', unique_filename)
+                        save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                        
+                        # Open and resize the image
+                        img = Image.open(image)
+                        max_size = (800, 800)  # Maximum dimensions (width, height)
+                        img.thumbnail(max_size)  # Resize while maintaining aspect ratio
 
-                        # Save the image with the unique filename
-                        image.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                        # Save the resized image
+                        img.save(save_path)
+                        cover_image_url = os.path.join('uploads', unique_filename)
                     else:
                         print("Invalid file type.")
 
@@ -285,9 +294,16 @@ def edit_book(id):
                     # Add timestamp to the filename for uniqueness
                     timestamp = int(time.time())  # Current timestamp in seconds
                     unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
-            
-                    cover_image_url = os.path.join('uploads', unique_filename)  # Store relative path
-                    image.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))  # Save the image to the uploads folder
+                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                    
+                    # Open and resize the image
+                    img = Image.open(image)
+                    max_size = (800, 800)  # Maximum dimensions (width, height)
+                    img.thumbnail(max_size)  # Resize while maintaining aspect ratio
+
+                    # Save the resized image
+                    img.save(save_path)
+                    cover_image_url = os.path.join('uploads', unique_filename)
                 else:
                     # If no valid image is uploaded, keep the existing image path from the database
                     cover_image_url = conn.execute("SELECT cover_image_url FROM books WHERE id = ?", (id,)).fetchone()[0] 
