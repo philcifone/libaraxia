@@ -15,6 +15,7 @@ from config import DevelopmentConfig, ProductionConfig
 
 DATABASE = 'library.db'
 
+
 app = Flask(__name__)
 # Set configuration based on an environment variable
 env = os.getenv('FLASK_ENV', 'development')
@@ -23,6 +24,7 @@ if env == 'production':
     app.config.from_object(ProductionConfig)
 else:
     app.config.from_object(DevelopmentConfig)
+
 
 # Initialize SQLite database
 from flask_sqlalchemy import SQLAlchemy
