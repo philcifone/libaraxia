@@ -33,7 +33,7 @@
         {% for book in books %}
         <div class="book-tile">
             <!-- Make the entire tile clickable -->
-            <a href="/book/{{ book[0] }}" style="text-decoration: none; color: inherit;">
+            <a href="/books/book/{{ book[0] }}" style="text-decoration: none; color: inherit;">
                 <div>
                     {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" />

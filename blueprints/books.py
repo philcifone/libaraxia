@@ -96,7 +96,7 @@ def add_book():
             """, (title, author, publisher, year, isbn, page_count, read, cover_image_url, description))
             conn.commit()
             conn.close()
-            return redirect("base.index")
+            return redirect(url_for("base.index"))
 
     return render_template("add_book.html", book_details=book_details)
 
@@ -174,7 +174,7 @@ def edit_book(id):
             conn.commit()
             conn.close()
 
-            return redirect("base.index")
+            return redirect(url_for("base.index"))
 
     # Retrieve the existing book details for the form
     book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()

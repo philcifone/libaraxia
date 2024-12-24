@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect, url_for
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
@@ -55,6 +55,12 @@ def create_app():
         app.config.from_object(ProductionConfig)
     else:
         app.config.from_object(DevelopmentConfig)
+
+    # FOR HOME PAGE LANDING & REDIRECTS
+    @app.route("/")
+    def root():
+        return redirect(url_for("base.home"))
+
 
     # Image upload configuration
     UPLOAD_FOLDER = os.path.join('static', 'uploads')

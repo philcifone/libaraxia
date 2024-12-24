@@ -31,22 +31,20 @@
                 <p><strong>Read:</strong> {{ "Yes" if book[7] else "No" }}</p>
 		<p><strong>Book Description:</strong> {{ book[10] }}</p><br>
             </div>
-
-            <form action="{{ url_for('collections.add_to_collection') }}" method="post">
-                <input type="hidden" name="book_id" value="{{ book_id }}">
-                <label for="status">Status:</label>
-                <select name="status" id="status">
-                    <option value="read">Read</option>
-                    <option value="want to read">Want to Read</option>
-                    <option value="currently reading">Currently Reading</option>
-                </select>
-                <button type="submit">Add to Collection</button>
-            </form>
-            
         </div>
     </div>
-            <a href="/edit/{{ book[0] }}" class="edit-link">Edit</a>
-        <a href="/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+        <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
+        <a href="/books/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+        <form action="{{ url_for('collections.add_to_collection') }}" method="post">
+            <input type="hidden" name="book_id" value="{{ book_id }}">
+            <label for="status">Status:</label>
+            <select name="status" id="status">
+                <option value="read">Read</option>
+                <option value="want to read">Want to Read</option>
+                <option value="currently reading">Currently Reading</option>
+            </select>
+            <button type="submit">Add to Collection</button>
+        </form>
 </body>
 </html>
 
