@@ -299,7 +299,7 @@ def edit_book(id):
                     
                     # Open and resize the image
                     img = Image.open(image)
-                    max_size = (800, 800)  # Maximum dimensions (width, height)
+                    max_size = (500, 1000)  # Maximum dimensions (width, height)
                     img.thumbnail(max_size)  # Resize while maintaining aspect ratio
                     img = ImageOps.exif_transpose(img)
 
