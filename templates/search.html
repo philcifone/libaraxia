@@ -9,7 +9,7 @@
 
     <!-- Add a search form above or below the book list -->
     <div class="form-container">
-        <form method="GET" action="{{ url_for('search') }}" class="search-bar">
+        <form method="GET" action="{{ url_for('books.search') }}" class="search-bar">
             <input
                 type="text"
                 id="search_term"
@@ -22,7 +22,7 @@
 
         <div class="button-group">
             <a href="/add" class="add-book-link">Add Book</a>
-            <a href="{{ url_for('index') }}" class="back-to-list-link">Back to Catalog</a>
+            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
         </div>   
     </div>
 

@@ -5,12 +5,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <a href="/logout" class="logout-button">Logout</a>
+    <a href="/auth/logout" class="logout-button">Logout</a>
     <h1 style="color: white">L I B A R A X I A</h1>
     <!-- Single Form for Both Search and Sort --> 
     <div class="form-container">
 	    <!-- Search Section -->
-            <form method="GET" action="{{ url_for('search') }}" enctype="multipart/form-data" class="search-bar">
+            <form method="GET" action="{{ url_for('books.search') }}" enctype="multipart/form-data" class="search-bar">
                 <!--<div class="search-bar">-->
                     <input 
                             type="text" 
@@ -20,7 +20,7 @@
                             value="{{ request.args.get('search_term', '') }}">
                         <button class="form-button" type="submit">Search</button>
             </form>              
-            <form method="GET" action="/index" class="sort-bar" id="sort-form">
+            <form method="GET" action="{{ url_for('base.index') }}" class="sort-bar" id="sort-form">
                 <label for="sort_by" class="sort-buttons">Sort:</label>
                 <select name="sort_by" id="sort_by" onchange="submitSortForm()">
                     <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title</option>
@@ -41,7 +41,7 @@
                     document.getElementById('sort-form').submit();
                 }
             </script>
-            <a href="/add" class="add-book-link">Add Book<a/>
+            <a href="/books/add" class="add-book-link">Add Book<a/>
 	    </div>
     </div>
 
@@ -51,7 +51,7 @@
         {% for book in books %}
         <div class="book-tile">
             <!-- Make the entire tile clickable -->
-            <a href="/book/{{ book[0] }}" style="text-decoration: none; color: inherit;">
+            <a href="/books/book/{{ book[0] }}" style="text-decoration: none; color: inherit;">
                 <div>
                     {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" />

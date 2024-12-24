@@ -6,13 +6,13 @@
 </head>
 <body>
 <!-- templates/register.html -->
-    <form method="POST" action="/register" class="form-container auth-form-container">
+    <form method="POST" action="{{ url_for('auth.register') }}" class="form-container auth-form-container">
         <input placeholder="username" type="text" name="username" required>
         <input placeholder="email" type="email" name="email" required>
         <input placeholder="password" type="password" name="password" required>
         <button type="submit">Register</button>
     </form>
-    <a href="/login">Already have an account? Login here.</a>
+    <a href="/auth/login">Already have an account? Login here.</a>
 </body>
 </html>
 
