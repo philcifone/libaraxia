@@ -1,5 +1,5 @@
-from flask import Flask, render_template, redirect, url_for, request, Blueprint
-from flask_login import login_required
+from flask import render_template, redirect, url_for, request, Blueprint
+from flask_login import login_required, current_user
 from utils.database import get_db_connection
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
@@ -7,7 +7,9 @@ base_blueprint = Blueprint('base', __name__, template_folder='templates')
 # WEBSITE BASE
 @base_blueprint.route("/")
 def home():
-    return redirect(url_for('auth.login'))
+    if current_user.is_authenticated:
+        return redirect(url_for('base.index'))  # Redirect to index if the user is already logged in
+    return redirect(url_for('auth.login'))  # Redirect to login if the user is not logged in
 
 @base_blueprint.route("/index")
 @login_required
