@@ -1,25 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Your Collections</title>
+    <title>L I B A R A X I A</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <div id="hamburger" class="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-buttons">
+            <h2> Welcome!</h2>
+            <a href="/base/index" class="logout-button">Library</a>
+            <a href="/collections/collections" class="logout-button">Collections</a>
+            <a href="/auth/logout" class="logout-button">Logout</a>
+        </div>
+    </div>
+
     <h1>Your Collections</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for collection in collections %}
-            <tr>
-                <td>{{ collection['title'] }}</td>
-                <td>{{ collection['status'] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</body>
+    <div class="collection-links">
+        <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a> 
+        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"class="add-book-link">Currently Reading</a> 
+        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to Read</a>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </html>

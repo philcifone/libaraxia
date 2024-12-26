@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, current_app
-from flask_login import login_required
+from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import sqlite3
 import os
@@ -189,7 +189,7 @@ def show_book(id):
     book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
     conn.close()
     return render_template("book_detail.html", book=book)
-
+    
 ## DELETE BOOK
 @books_blueprint.route("/delete/<int:id>")
 @login_required

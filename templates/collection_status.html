@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ status.capitalize() }} Collection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div id="hamburger" class="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-buttons">
+            <h2> Welcome!</h2>
+            <a href="/base/index" class="logout-button">Library</a>
+            <a href="/collections/collections" class="logout-button">Collections</a>
+            <a href="/auth/logout" class="logout-button">Logout</a>
+        </div>
+    </div>
+    <h1>{{ status.capitalize() }} Collection</h1>
+    <div class="book-grid">
+        {% for book in books %}
+        <div class="book-tile">
+            <a href="{{ url_for('books.show_book', id=book[0]) }}" style="text-decoration: none; color: inherit;">
+                <div>
+                    {% if book[3] %}
+                        <img src="{{ url_for('static', filename=book[3]) }}" alt="Book Cover" />
+                    {% else %}
+                        <p>No Image Available</p>
+                    {% endif %}
+                    <h3>{{ book[1] }}</h3> <!-- Book title -->
+                    <p>by {{ book[2] }}</p> <!-- Author -->
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

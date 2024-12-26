@@ -5,17 +5,30 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <div id="hamburger" class="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-buttons">
+            <h2> Welcome!</h2>
+            <a href="/base/index" class="logout-button">Library</a>
+            <a href="/collections/collections" class="logout-button">Collections</a>
+            <a href="/auth/logout" class="logout-button">Logout</a>
+        </div>
+    </div>
     <h1 style="color: white">L I B A R A X I A</h1>
 
     <!-- ISBN Lookup Form -->
     <div class="form-container">
+        <div class="back-to-list">
+            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
+        </div>
         <form method="POST" enctype="multipart/form-data" class="search-bar">
             <input type="text" id="isbn_lookup" name="isbn" placeholder="Enter ISBN to fetch book info" value="{{ book_details.isbn if book_details }}">
             <button type="submit" name="isbn_lookup">Fetch Details</button>
         </form>
-        <div class="back-to-list">
-            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-        </div>
     </div>
 
     <!-- Edit Book Form -->
@@ -42,6 +55,7 @@
         <button type="submit">Save Changes</button>
         </form>
     </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <br>
 </body>
 </html>

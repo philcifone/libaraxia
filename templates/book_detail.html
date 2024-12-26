@@ -5,6 +5,19 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <div id="hamburger" class="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-buttons">
+            <h2> Welcome!</h2>
+            <a href="/base/index" class="logout-button">Library</a>
+            <a href="/collections/collections" class="logout-button">Collections</a>
+            <a href="/auth/logout" class="logout-button">Logout</a>
+        </div>
+    </div>
     <h1 style="color: white">L I B A R A X I A</h1>
     <div class="action-links">
         <a href="{{ url_for('base.index') }}" class="details-back-to-list-link">Back to Catalog</a>   
@@ -23,28 +36,34 @@
         
             <!-- Book Details -->
             <div class="book-info">
-                <p><strong>Author:</strong> {{ book[2] }}</p>
-                <p><strong>Publisher:</strong> {{ book[3] }}</p>
-                <p><strong>Year:</strong> {{ book[4] }}</p>
-                <p><strong>Pages:</strong> {{ book[8] }}</p>
-                <p><strong>ISBN:</strong> {{ book[5] }}</p>
-                <p><strong>Read:</strong> {{ "Yes" if book[7] else "No" }}</p>
-		<p><strong>Book Description:</strong> {{ book[10] }}</p><br>
+                <p><strong>Author:</strong> {{ book['author'] }}</p>
+                <p><strong>Publisher:</strong> {{ book['publisher'] }}</p>
+                <p><strong>Year:</strong> {{ book['publish_year'] }}</p>
+                <p><strong>Pages:</strong> {{ book['page_count'] }}</p>
+                <p><strong>ISBN:</strong> {{ book['isbn'] }}</p>
+                <p><strong>Book Description:</strong></p>
+                <div class="description-container">
+                    <span class="description-text" id="description">{{ book['description'] }}</span>
+                    <button type="button" class="toggle-button" onclick="toggleDescription()">View More</button>
+                </div>
             </div>
         </div>
     </div>
         <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
         <a href="/books/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
         <form action="{{ url_for('collections.add_to_collection') }}" method="post">
-            <input type="hidden" name="book_id" value="{{ book_id }}">
+            <input type="hidden" name="id" value="{{ book.id }}">
             <label for="status">Status:</label>
-            <select name="status" id="status">
-                <option value="read">Read</option>
-                <option value="want to read">Want to Read</option>
-                <option value="currently reading">Currently Reading</option>
-            </select>
+            <select name="status" id="status" class="select-collection">
+                {% set current_status = book['status'] if book['status'] else 'untracked' %}
+                <option value="untracked" {% if current_status == 'untracked' %}selected{% endif %}>Untracked</option>
+                <option value="read" {% if current_status == 'read' %}selected{% endif %}>Read</option>
+                <option value="want to read" {% if current_status == 'want to read' %}selected{% endif %}>Want to Read</option>
+                <option value="currently reading" {% if current_status == 'currently reading' %}selected{% endif %}>Currently Reading</option>
+            </select>                              
             <button type="submit">Add to Collection</button>
         </form>
+        <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
 
