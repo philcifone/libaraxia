@@ -189,7 +189,7 @@ def show_book(id):
     book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
     conn.close()
     return render_template("book_detail.html", book=book)
-    
+
 ## DELETE BOOK
 @books_blueprint.route("/delete/<int:id>")
 @login_required
