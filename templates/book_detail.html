@@ -37,26 +37,25 @@
                 </div>
             </div>
         </div>
-
-        <!-- Collection Selection -->
-        <form action="{{ url_for('collections.add_to_collection') }}" method="post">
-            <input type="hidden" name="id" value="{{ book.id }}">
-            <label for="status">Status:</label>
-            <select name="status" id="status" class="select-collection">
-                {% set current_status = book['status'] if book['status'] else 'untracked' %}
-                <option value="untracked" {% if current_status == 'untracked' %}selected{% endif %}>Untracked</option>
-                <option value="read" {% if current_status == 'read' %}selected{% endif %}>Read</option>
-                <option value="want to read" {% if current_status == 'want to read' %}selected{% endif %}>Want to Read</option>
-                <option value="currently reading" {% if current_status == 'currently reading' %}selected{% endif %}>Currently Reading</option>
-            </select>                              
-            <button type="submit">Add to Collection</button>
-        </form>
     </div>
 
     <!-- Section for Rating and Review -->
     <div class="container rate-review-section book-info">
+                <!-- Collection Selection -->
+                <form action="{{ url_for('collections.add_to_collection') }}" method="post">
+                    <input type="hidden" name="id" value="{{ book.id }}">
+                    <label for="status">Status:</label>
+                    <select name="status" id="status" class="select-collection">
+                        {% set current_status = book['status'] if book['status'] else 'untracked' %}
+                        <option value="untracked" {% if current_status == 'untracked' %}selected{% endif %}>Untracked</option>
+                        <option value="read" {% if current_status == 'read' %}selected{% endif %}>Read</option>
+                        <option value="want to read" {% if current_status == 'want to read' %}selected{% endif %}>Want to Read</option>
+                        <option value="currently reading" {% if current_status == 'currently reading' %}selected{% endif %}>Currently Reading</option>
+                    </select>                              
+                    <button type="submit">Add to Collection</button>
+                </form>
         <h2>Rate and Review</h2>
-        {% if read_data %}
+        {% if book[1].read_data %}
             <p><strong>Date Read:</strong> {{ read_data.date_read }}</p>
             <p><strong>Rating:</strong> {{ read_data.rating }} / 5</p>
             <p><strong>Review:</strong> {{ read_data.comment }}</p>

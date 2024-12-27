@@ -604,6 +604,11 @@ a:hover {
     color: white;
 }
 
+#add-book-link {
+    border: 1px solid #424242;
+    margin-top: 35px;
+}
+
 .back-to-list {
     text-align: center;
     display: flex;
