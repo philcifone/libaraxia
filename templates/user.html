@@ -9,9 +9,11 @@
 <body>
     {% include '_sidebar.html' %}
     <h1>Welcome, {{ user['username'].capitalize() }}!</h1>
-    <p>Email: {{ user['email'] }}</p>
-    <p>Active: {{ 'Yes' if user['is_active'] else 'No' }}</p>
-    <p>Admin: {{ 'Yes' if user['is_admin'] else 'No' }}</p>
+    <div class="container">
+        <p>Email: {{ user['email'] }}</p>
+        <p>Username: {{user['username'] }}</p>
+        <p>Admin: {{ 'Yes' if user['is_admin'] else 'No' }}</p>
+    </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
