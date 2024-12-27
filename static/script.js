@@ -27,3 +27,30 @@ function toggleDescription() {
         button.textContent = 'View Less';
     }
 }
+
+// toast for collections
+function updateStatus(selectElement) {
+    const form = document.getElementById("status-form");
+    const toast = document.getElementById("toast");
+
+    // Send the form data via POST
+    fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+    })
+    .then((response) => {
+        if (response.ok) {
+            // Show a toast notification
+            toast.style.display = "block";
+            setTimeout(() => {
+                toast.style.display = "none";
+            }, 2000); // Hide toast after 2 seconds
+        } else {
+            alert("Failed to update status.");
+        }
+    })
+    .catch((error) => {
+        console.error("Error updating status:", error);
+        alert("An error occurred.");
+    });
+}

@@ -91,14 +91,15 @@ def add_book():
             conn = sqlite3.connect("library.db")
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO books (title, author, publisher, publish_year, isbn, page_count, read, cover_image_url, description)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, author, publisher, year, isbn, page_count, read, cover_image_url, description))
+                INSERT INTO books (title, author, publisher, publish_year, isbn, page_count, cover_image_url, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (title, author, publisher, year, isbn, page_count, cover_image_url, description))
             conn.commit()
             conn.close()
             return redirect(url_for("base.index"))
 
     return render_template("add_book.html", book_details=book_details)
+
 
 ## EDIT BOOK
 @books_blueprint.route("/edit/<int:id>", methods=["GET", "POST"])
@@ -137,8 +138,6 @@ def edit_book(id):
             year = request.form.get("year")
             page_count = request.form.get("page_count", 0)
             description = request.form.get("description", "")
-            read = 1 if "read" in request.form else 0
-
             # Handle the image upload
             cover_image_url = None  # Default to None if no image is uploaded
             if "image" in request.files:
@@ -168,9 +167,9 @@ def edit_book(id):
             # Update the book record, including the new image path (if uploaded)
             conn.execute("""
                 UPDATE books
-                SET title = ?, author = ?, publisher = ?, publish_year = ?, page_count = ?, read = ?, cover_image_url = ?, description = ?
+                SET title = ?, author = ?, publisher = ?, publish_year = ?, page_count = ?, cover_image_url = ?, description = ?
                 WHERE id = ?
-            """, (title, author, publisher, year, page_count, read, cover_image_url, description, id))
+            """, (title, author, publisher, year, page_count, cover_image_url, description, id))
             conn.commit()
             conn.close()
 
@@ -199,7 +198,7 @@ def delete_book(id):
     conn.execute("DELETE FROM books WHERE id = ?", (id,))
     conn.commit()
     conn.close()
-    return redirect("base.index")
+    return redirect(url_for('base.index'))
 
 # SEARCH BOOKS
 @books_blueprint.route("/search", methods=["GET"])

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    {% include '_sidebar.html' %}
+    <h1>Welcome, {{ user['username'].capitalize() }}!</h1>
+    <p>Email: {{ user['email'] }}</p>
+    <p>Active: {{ 'Yes' if user['is_active'] else 'No' }}</p>
+    <p>Admin: {{ 'Yes' if user['is_admin'] else 'No' }}</p>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

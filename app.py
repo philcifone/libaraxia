@@ -12,6 +12,8 @@ from blueprints.auth import auth_blueprint
 from blueprints.base import base_blueprint
 from blueprints.books import books_blueprint
 from blueprints.collections import collections_blueprint
+from blueprints.user import user_blueprint
+from blueprints.read import read_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User
 
@@ -71,6 +73,8 @@ def create_app():
     app.register_blueprint(base_blueprint, url_prefix='/base')
     app.register_blueprint(books_blueprint, url_prefix='/books')
     app.register_blueprint(collections_blueprint, url_prefix='/collections')
+    app.register_blueprint(user_blueprint, url_prefix='/user')
+    app.register_blueprint(read_blueprint, url_prefix='/read')
     
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)

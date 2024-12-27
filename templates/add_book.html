@@ -5,20 +5,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div id="hamburger" class="hamburger">
-        <span></span>
-        <span></span>
-        <span></span>
-    </div>
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-buttons">
-            <h2> Welcome!</h2>
-            <a href="/base/index" class="logout-button">Library</a>
-            <a href="/collections/collections" class="logout-button">Collections</a>
-            <a href="/auth/logout" class="logout-button">Logout</a>
-        </div>
-    </div>
-    <h1 style="color: white">L I B A R A X I A</h1>
+    {% include '_sidebar.html' %}
 
     <!-- ISBN Lookup Form -->
     <div class="form-container">
@@ -62,7 +49,7 @@
         <!--   <label for="read">Have you read this book?</label>
         <input type="checkbox" id="read" name="read" {% if book_details.read %}checked{% endif %}-->
 
-        <label for="image">Upload Book Cover</label>
+        <label for="image">Upload Book</label>
         <input type="file" id="image" name="image" accept="image/*"><br><br>
 
             <button type="submit" name="submit_book" class="add-book-link">Add Book</button>

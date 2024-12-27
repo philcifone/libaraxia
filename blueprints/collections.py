@@ -57,6 +57,11 @@ def add_to_collection():
             flash('Book added to your collection!', 'success')
 
         conn.commit()
+
+        # Redirect to review page if status is 'read'
+        if status == 'read':
+            return redirect(url_for('read.rate_review', book_id=book_id))
+
     except Exception as e:
         flash(f'Failed to update collection: {e}', 'danger')
     finally:
@@ -80,3 +85,5 @@ def view_by_status(status):
 
     return render_template('collection_status.html', books=books, status=status)
 
+from flask import request, jsonify
+from utils.database import get_db_connection

@@ -5,34 +5,7 @@ import sqlite3
 from utils.database import get_db_connection  # Replace with your actual import for the `get_db_connection` function
 from models import admin_required, User  # Replace with your actual import for `admin_required`
 
-# # Initialize the LoginManager
-# login_manager = LoginManager()
-# login_manager.login_view = 'auth.login'
-
-# # Define the login view to redirect unauthenticated users
-# login_manager.login_view = 'auth.login'  # 'auth.login' is the login route name
-
-
-# Create the Blueprint
 auth_blueprint = Blueprint('auth', __name__, template_folder='templates')
-
-# @login_manager.user_loader
-# def load_user(user_id):
-#     logging.debug(f"Loading user with ID: {user_id}") 
-#     conn = get_db_connection()
-#     logging.debug("Database connections successful")
-#     user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-#     conn.close()
-#     if user:
-#         user_dict = dict(user)
-#         return User(
-#             id=user_dict['id'],
-#             username=user_dict['username'],
-#             email=user_dict['email'],
-#             is_active=user_dict.get('is_active', 0) == 1,
-#             is_admin=user_dict.get('is_admin', 0) == 1
-#         )
-#     return None
 
 @auth_blueprint.route('/register', methods=['GET', 'POST'])
 @admin_required

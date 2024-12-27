@@ -7,19 +7,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div id="hamburger" class="hamburger">
-        <span></span>
-        <span></span>
-        <span></span>
-    </div>
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-buttons">
-            <h2> Welcome!</h2>
-            <a href="/base/index" class="logout-button">Library</a>
-            <a href="/collections/collections" class="logout-button">Collections</a>
-            <a href="/auth/logout" class="logout-button">Logout</a>
-        </div>
-    </div>
+    {% include '_sidebar.html' %}
+    
     <h1>{{ status.capitalize() }} Collection</h1>
     <div class="book-grid">
         {% for book in books %}
