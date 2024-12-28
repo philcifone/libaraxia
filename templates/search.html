@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>libaraxia</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     {% include '_sidebar.html' %}
+
+    <a href="/books/add" class="floating-button">
+        <span class="plus-sign">+</span>
+    </a>
 
     <!-- Add a search form above or below the book list -->
     <div class="form-container">
