@@ -180,14 +180,48 @@ def edit_book(id):
     conn.close()
     return render_template("edit_book.html", book=book, book_details=book_details)
 
+
+
 ## VIEW BOOK
 @books_blueprint.route("/book/<int:id>")
 @login_required
 def show_book(id):
     conn = get_db_connection()
+    
+    # Fetch book details
     book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
+    
+    # Fetch the user's read data for this book
+    read_data = conn.execute(
+        """
+        SELECT date_read, rating, comment 
+        FROM read_data 
+        WHERE user_id = ? AND book_id = ?
+        """, 
+        (current_user.id, id)
+    ).fetchone()
+    
+    # Fetch the user's collection status for this book
+    collection_status = conn.execute(
+        """
+        SELECT status 
+        FROM collections 
+        WHERE user_id = ? AND book_id = ?
+        """, 
+        (current_user.id, id)
+    ).fetchone()
+    
     conn.close()
-    return render_template("book_detail.html", book=book)
+    
+    # Pass collection_status as a dictionary to avoid NoneType issues
+    collection_status = collection_status['status'] if collection_status else 'untracked'
+    
+    return render_template(
+        "book_detail.html", 
+        book=book, 
+        read_data=read_data, 
+        collection_status=collection_status
+    )
 
 ## DELETE BOOK
 @books_blueprint.route("/delete/<int:id>")

@@ -9,6 +9,9 @@
 
     <!-- Add a search form above or below the book list -->
     <div class="form-container">
+        <div class="back-to-list">
+            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
+        </div>
         <form method="GET" action="{{ url_for('books.search') }}" class="search-bar">
             <input
                 type="text"
@@ -18,11 +21,7 @@
                 value="{{ request.args.get('search_term', '') }}"
             >
             <button type="submit">Search</button>
-        </form>
-
-        <div class="button-group">
-            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-        </div>   
+        </form>  
     </div>
 
     <a></a> <!-- Had to put this here or else there was a missing tile on the grid-->

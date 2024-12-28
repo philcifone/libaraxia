@@ -37,50 +37,38 @@
                 </div>
             </div>
         </div>
+            <!---edit/delete buttons-->
+    <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
+    <a href="/books/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
     </div>
 
     <!-- Section for Rating and Review -->
-    <div class="container rate-review-section book-info">
-                <!-- Collection Selection -->
-                <form action="{{ url_for('collections.add_to_collection') }}" method="post">
-                    <input type="hidden" name="id" value="{{ book.id }}">
-                    <label for="status">Status:</label>
-                    <select name="status" id="status" class="select-collection">
-                        {% set current_status = book['status'] if book['status'] else 'untracked' %}
-                        <option value="untracked" {% if current_status == 'untracked' %}selected{% endif %}>Untracked</option>
-                        <option value="read" {% if current_status == 'read' %}selected{% endif %}>Read</option>
-                        <option value="want to read" {% if current_status == 'want to read' %}selected{% endif %}>Want to Read</option>
-                        <option value="currently reading" {% if current_status == 'currently reading' %}selected{% endif %}>Currently Reading</option>
-                    </select>                              
-                    <button type="submit">Add to Collection</button>
-                </form>
-        <h2>Rate and Review</h2>
-        {% if book[1].read_data %}
-            <p><strong>Date Read:</strong> {{ read_data.date_read }}</p>
-            <p><strong>Rating:</strong> {{ read_data.rating }} / 5</p>
-            <p><strong>Review:</strong> {{ read_data.comment }}</p>
+    <div class="container">
+        <!-- Collection Selection -->
+        <h2>{{ current_user.username.capitalize() }}'s Book Stats</h2>
+        <form action="{{ url_for('collections.add_to_collection') }}" method="post">
+            <input type="hidden" name="id" value="{{ book['id'] }}">
+            <label for="status">Status:</label>
+            <select name="status" id="status" class="select-collection">
+                <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
+                <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
+                <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
+                <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
+            </select>            
+            <button type="submit">Add to Collection</button>
+        </form>
+
+        {% if read_data %}
+            <p><strong>Date Read:</strong> {{ read_data['date_read'] }}</p>
+            <p><strong>Rating:</strong> {{ read_data['rating'] }} / 5</p>
+            <p><strong>Review:</strong> {{ read_data['comment'] }}</p>
         {% else %}
             <p>No review added yet.</p>
-        {% endif %}
-        
-        <form action="{{ url_for('read.rate_review', book_id=book.id) }}" method="post" class="rate-review-group">
-            <div class="form-group">
-                <label for="date_read">Date Read:</label>
-                <input type="date" id="date_read" name="date_read" required>
-            </div>
-            <div class="form-group">
-                <label for="rating">Rating (1-5):</label>
-                <input type="number" id="rating" name="rating" min="1" max="5" required>
-            </div>
-            <div class="comment">
-                <input id="comment" name="comment" placeholder="Write any book comments here...">
-            </div>
-            <button type="submit" class="btn btn-primary">Save Review</button>
-        </form>
+        {% endif %}    
+
+        <a href="{{ url_for('read.rate_review', book_id=book.id) }}" id="review-link">Edit or Leave a Review</a>
     </div>
-    
-    <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
-    <a href="/books/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

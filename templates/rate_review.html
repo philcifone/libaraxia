@@ -3,45 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rate and Review</title>
+    <title>{{ book.title }} - Rate & Review</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
+    {% include '_sidebar.html' %}
+
+    <div class="back-to-list">
+        <a href="{{ url_for('base.index') }}" class="back-to-list-link" id="ratepagelistlink">Back to Catalog</a>
+    </div>
+
+    <div class="form-container">
         <h1>Rate and Review</h1>
-        <p><strong>Book ID:</strong> {{ book_id }}</p>
-        <form action="{{ url_for('read.rate_review', book_id=book_id) }}" method="POST">
-            <div class="form-group">
-                <label for="date_read">Date Read:</label>
-                <input 
-                    type="text" 
-                    id="date_read" 
-                    name="date_read" 
-                    value="{{ read_data.date_read if read_data else current_date() }}" 
-                    readonly>
-            </div>
-            <div class="form-group">
-                <label for="rating">Rating (1-5):</label>
-                <input 
-                    type="number" 
-                    id="rating" 
-                    name="rating" 
-                    min="1" 
-                    max="5" 
-                    value="{{ read_data.rating if read_data else '' }}" 
-                    required>
-            </div>
-            <div class="form-group">
-                <label for="comment">Review:</label>
-                <textarea 
-                    id="comment" 
-                    name="comment" 
-                    rows="4" 
-                    placeholder="Write your review here...">{{ read_data.comment if read_data else '' }}</textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Save Review</button>
-            <a href="{{ url_for('collections.view_collection', collection_type='read') }}" class="btn btn-secondary">Cancel</a>
+            <p><strong>{{ book.title }}</strong></p>
+            <p>by {{ book.author }}</p>
+            
+        <!-- Book Cover Image -->
+        <div class="book-cover">
+            {% if book.cover_image_url %}
+            <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
+            {% else %}
+                <p>No Image Available</p>
+            {% endif %}
+        </div>
+
+        <form action="" method="post" class="form-container">
+            <label for="date_read">Date Read:</label>
+            <input type="date" id="date_read" name="date_read" value="{{ read_data.date_read if read_data else '' }}">
+        
+            <label for="rating">Rating:</label>
+            <input 
+                type="number" 
+                id="rating" 
+                name="rating" 
+                min="1" max="5" 
+                value="{{ read_data.rating if read_data else '' }}"
+                class="rating-box"
+                >
+        
+            <label for="comment">Review:</label>
+            <textarea id="comment" name="comment">{{ read_data.comment if read_data else '' }}</textarea>
+        
+            <button type="submit">Submit</button>
         </form>
     </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

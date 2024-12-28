@@ -32,6 +32,7 @@ form input[type="number"],
 form input[type="file"],
 form input[type="email"],
 form input[type="password"],
+form input[type="date"],
 textarea {
     font-family: 'Roboto' sans-serif;
     display: flex;
@@ -54,6 +55,9 @@ textarea {
 form input[type="file"],
 textarea {
     height: auto;
+}
+form input[type="rating"] {
+    width: 50%;
 }
 
 textarea:focus {
@@ -108,7 +112,7 @@ form input[type="checkbox"] {
     justify-content: center;
     align-items: center;
     border-radius: 24px;
-    margin: 4px;
+    margin: -8px;
     margin-bottom: 25px;
     padding: 8px;
 }
@@ -616,6 +620,10 @@ a:hover {
     width: 100%;
 }
 
+#ratepagelistlink {
+    margin-bottom: 25px
+}
+
 .back-to-list-link {
     background-color: #007bff;
     transition: background-color 0.3s ease-in-out;
@@ -853,7 +861,7 @@ a:hover {
     background-color: #d32f2f;
 }
 
-.rate-review-section {
+/* .rate-review-section {
     display: flex;
     flex-direction: column;
     max-width: 900px;
@@ -873,7 +881,7 @@ a:hover {
     width: 50%;
     margin: 8px;
     padding: 8px;
-}
+} */
 
 .form-group {
     width: 50%;
@@ -884,8 +892,9 @@ a:hover {
     padding: 8px;
 }
 
-.comment {
-    width: 75%;
+#comment {
+    width: 600px;
+    height: 60px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -895,4 +904,48 @@ a:hover {
 
 .comment:focus {
     box-shadow: 0 0 8px #28a745;
+}
+
+.rating-box#rating {
+    width: 15%;
+}
+
+#date_read {
+    background-color: #424242;
+    color: white;
+    width: 25%;
+}
+
+.review-card {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+#review-link {
+    width: 200px;
+    /* Set width to auto for better flexibility */
+    text-decoration: none;
+    font-size: 18px;
+    background-color: #218838;
+    color: white;
+    height: 30px;
+    align-items: center;
+    padding: 5px;
+    margin-top: 14px;
+    margin: 8px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    transition: background-color 0.3s ease-in-out;
+    text-align: center;
+}
+
+#review-link:hover {
+    background-color: #2c2c2c;
+    color: white;
+    border: 1px solid #424242;
 }

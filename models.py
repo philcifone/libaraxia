@@ -29,4 +29,3 @@ def admin_required(f):
             return abort(403)  # Return 403 Forbidden
         return f(*args, **kwargs)
     return decorated_function
-
