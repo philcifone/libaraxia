@@ -1,0 +1,50 @@
+/* pages.css */
+/* Book details page */
+.book-detail-container {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+.book-detail-header {
+    gap: 20px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.book-info {
+    flex: 1;
+    color: #EEEEEE;
+    font-size: 1.1em;
+    line-height: 1.5;
+}
+
+.book-detail-content {
+    flex: 2;
+    font-size: 1.1em;
+}
+
+.action-links {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.edit-link, .delete-link {
+    font-size: 1.1em;
+    text-decoration: none;
+    margin: 0 10px;
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+
+.edit-link {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.delete-link {
+    background-color: #f44336;
+    color: white;
+}

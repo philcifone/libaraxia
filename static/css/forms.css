@@ -1,0 +1,51 @@
+/* forms.css */
+/* Form container */
+form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 25px;
+    padding: 0px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* Input fields */
+.input-field {
+    font-family: 'Roboto', sans-serif;
+    width: 75%;
+    font-size: 18px;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #555;
+    background-color: #424242;
+    color: #EEEEEE;
+    border-radius: 8px;
+}
+
+textarea {
+    height: auto;
+    resize: vertical;
+    border: 1px solid #555;
+}
+
+textarea:focus {
+    box-shadow: 0 0 8px #28a745;
+}
+
+/* Buttons */
+.button-primary {
+    width: auto;
+    font-size: 16px;
+    background-color: #28a745;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.button-primary:hover {
+    background-color: #218838;
+}

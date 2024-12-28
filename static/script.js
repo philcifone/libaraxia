@@ -54,3 +54,12 @@ function updateStatus(selectElement) {
         alert("An error occurred.");
     });
 }
+
+// rating slide styles
+
+function updateRatingValue(value) {
+    const output = document.getElementById('rating-value');
+    output.textContent = value;
+}
+
+

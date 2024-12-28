@@ -95,6 +95,7 @@ form label {
     align-items: center;
     color: white;
     margin-top: 5px;
+    justify-content: center;
 }
 
 form input[type="checkbox"] {
@@ -893,14 +894,19 @@ a:hover {
 }
 
 #comment {
+    width: 100%;
     width: 600px;
-    height: 60px;
+    height: 150px;
+    max-height: 300px;
+    resize: vertical;
     display: flex;
     justify-content: center;
     align-items: center;
     margin: 8px;
     padding: 8px;
 }
+
+
 
 .comment:focus {
     box-shadow: 0 0 8px #28a745;
@@ -949,3 +955,41 @@ a:hover {
     color: white;
     border: 1px solid #424242;
 }
+/* slider rating */
+
+.rating-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    max-width: 300px;
+    height: 8px;
+    background: #ddd;
+    border-radius: 5px;
+    outline: none;
+    margin: 10px 0;
+    transition: background 0.3s;
+}
+
+.rating-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.rating-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.2);
+}
+
+#rating-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+  
+  
+  
+  

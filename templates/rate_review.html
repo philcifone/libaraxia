@@ -30,17 +30,21 @@
         <form action="" method="post" class="form-container">
             <label for="date_read">Date Read:</label>
             <input type="date" id="date_read" name="date_read" value="{{ read_data.date_read if read_data else '' }}">
-        
+            
             <label for="rating">Rating:</label>
             <input 
-                type="number" 
+                type="range" 
                 id="rating" 
                 name="rating" 
-                min="1" max="5" 
-                value="{{ read_data.rating if read_data else '' }}"
-                class="rating-box"
-                >
-        
+                min="1" 
+                max="5" 
+                step="1" 
+                value="{{ read_data.rating if read_data else '3' }}" 
+                class="rating-slider"
+                oninput="updateRatingValue(this.value)"
+            >
+            <output id="rating-value">{{ read_data.rating if read_data else '3' }}</output>            
+              
             <label for="comment">Review:</label>
             <textarea id="comment" name="comment">{{ read_data.comment if read_data else '' }}</textarea>
         
