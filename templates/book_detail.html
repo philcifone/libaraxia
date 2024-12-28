@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.5">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>{{ book[1] }} - Details</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
@@ -57,7 +57,7 @@
                 <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
                 <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
             </select>            
-            <button type="submit">Add to Collection</button>
+            <button type="submit" id="add-to-collection">Add to Collection</button>
         </form>
 
         {% if read_data %}

@@ -1,0 +1,35 @@
+/* Responsive.css */
+
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    .book-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+    }
+
+    .book-tile img {
+        height: 200px;
+    }
+
+    form input[type="text"],
+    form input[type="number"],
+    form input[type="file"],
+    form input[type="email"],
+    form input[type="password"],
+    form input[type="date"],
+    textarea {
+        width: 90%;
+    }
+
+    form button {
+        width: 50%;
+    }
+}

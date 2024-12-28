@@ -84,6 +84,10 @@ form button,
     align-items: center;
 }
 
+#add-to-collection {
+    width: 20%
+}
+
 form button:hover {
     background-color: #424242;
 }
@@ -456,13 +460,13 @@ a:hover {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 60px;
-    height: 60px;
+    width: 75px;
+    height: 75px;
     background-color: #28a745;
     color: white;
     border-radius: 50%;
     text-align: center;
-    line-height: 60px;
+    line-height: 75px;
     font-size: 36px;
     font-weight: bold;
     text-decoration: none;
@@ -478,6 +482,7 @@ a:hover {
 
 .plus.sign {
     display: inline-block;
+    align-items: center;
     margin-top: -5px;
 }
 
@@ -895,7 +900,7 @@ a:hover {
 
 #comment {
     width: 100%;
-    width: 600px;
+    max-width: 450px;
     height: 150px;
     max-height: 300px;
     resize: vertical;
