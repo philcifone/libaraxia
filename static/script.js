@@ -28,10 +28,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let lastScrollTop = 0; // Variable to store the last scroll position
 
-    // Add click event to hamburger menu
-    hamburger.addEventListener("click", () => {
+    // Toggle sidebar on hamburger click
+    hamburger.addEventListener("click", (event) => {
         sidebar.classList.toggle("active");
         content.classList.toggle("sidebar-active");
+        event.stopPropagation(); // Prevent the click from propagating to the document
+    });
+
+    // Close sidebar when clicking outside of it
+    document.addEventListener("click", (event) => {
+        if (!sidebar.contains(event.target) && !hamburger.contains(event.target)) {
+            sidebar.classList.remove("active");
+            content.classList.remove("sidebar-active");
+        }
     });
 
     // Scroll event listener to hide/show the top toolbar

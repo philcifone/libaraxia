@@ -569,7 +569,8 @@ a:hover {
     height: 100%;
     background: #2c2c2c;
     color: #fff;
-    padding: 20px;
+    padding-top: 20px;
+    padding-left: 10px;
     transition: left 0.3s ease-in-out;
     z-index: 1101;
     overflow: hidden;
@@ -607,7 +608,7 @@ a:hover {
 }
 
 .logout-button {
-    width: 90%;
+    width: 95%;
     margin-bottom: 5px;
     text-decoration: none;
     font-size: 16px;
