@@ -71,7 +71,7 @@ textarea:focus {
 /* Button Styling */
 form button,
 #isbn-fetch {
-    width: 15%;
+    width: auto;
     margin-bottom: 5px;
     text-decoration: none;
     font-size: 16px;
@@ -135,7 +135,7 @@ form input[type="checkbox"] {
     background-color: #2c2c2c;
     gap: 0rem;
     max-width: 600px;
-    width: 50%;
+    width: auto;
     justify-content: center;
     align-items: center;
     border-radius: 24px;
@@ -203,7 +203,7 @@ form input[type="checkbox"] {
     padding: 4px;
     gap: 0.5rem;
     /* Space between elements in the group */
-    width: 65%;
+    width: 85%;
     align-items: center;
     justify-content: center;
     height: 50px;
