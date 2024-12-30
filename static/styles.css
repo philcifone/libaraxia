@@ -203,7 +203,7 @@ form input[type="checkbox"] {
     padding: 4px;
     gap: 0.5rem;
     /* Space between elements in the group */
-    width: 85%;
+    width: 100%;
     align-items: center;
     justify-content: center;
     height: 50px;
