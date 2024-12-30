@@ -16,6 +16,14 @@
         <p>Admin: {{ 'Yes' if user['is_admin'] else 'No' }}</p>
     </div>
 
+
+    <div class="collection-links container">
+        <h1>Reading Lists</h1>
+        <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a> 
+        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"class="add-book-link">Currently Reading</a> 
+        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to Read</a>
+    </div>
+
     <div class="back-to-list">
         <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
     </div>

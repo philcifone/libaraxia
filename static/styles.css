@@ -657,6 +657,7 @@ a:hover {
     justify-content: center;
     transition: background-color 0.3s ease-in-out;
     text-align: center;
+    border: 1px solid #424242;
 }
 
 .add-book-link i {
@@ -670,7 +671,6 @@ a:hover {
 }
 
 #add-book-link {
-    border: 1px solid #424242;
     margin-top: 35px;
 }
 
