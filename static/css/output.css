@@ -654,6 +654,7 @@ textarea {
 form input[type="file"],
 textarea {
   height: auto;
+  width: 50%
 }
 
 form input[type="rating"] {
@@ -752,7 +753,7 @@ form input[type="checkbox"] {
   justify-content: center;
   align-items: center;
   border-radius: 24px;
-  margin: -8px;
+  margin: 0px;
   margin-bottom: 25px;
   padding: 8px;
 }
