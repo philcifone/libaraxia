@@ -738,7 +738,7 @@ form input[type="checkbox"] {
   /* Set a background color (adjust as needed) */
   padding: 10px 20px;
   /* Add some spacing inside the container */
-  z-index: 1100;
+  z-index: 1102;
   /* Keeps it above other elements */
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
   /* Adds a shadow for separation */
