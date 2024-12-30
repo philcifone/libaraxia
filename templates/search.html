@@ -13,10 +13,6 @@
         <span class="plus-sign">+</span>
     </a>
 
-    <div class="back-to-list">
-        <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-    </div>
-
     <!-- Add a search form above or below the book list -->
     <div class="search-form-container">
         <form method="GET" action="{{ url_for('books.search') }}" class="search-bar">
@@ -24,7 +20,7 @@
                 type="text"
                 id="search_term"
                 name="search_term"
-                placeholder="Search by title, author, year..."
+                placeholder="Search Catalog by title, author, year..."
                 value="{{ request.args.get('search_term', '') }}"
             >
             <button type="submit">Search</button>
@@ -44,7 +40,12 @@
                 <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>Descending</option>
             </select>
         </form>
+        <div class="back-to-list">
+            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
+        </div>
     </div>
+
+
 
     <a></a> <!-- Had to put this here or else there was a missing tile on the grid-->
 

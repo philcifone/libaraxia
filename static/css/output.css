@@ -725,6 +725,30 @@ form input[type="checkbox"] {
   margin-right: 8px;
 }
 
+.fixed-container {
+  position: fixed;
+  /* Keeps it in place during scrolling */
+  top: 0;
+  /* Aligns it to the top of the viewport */
+  left: 0;
+  /* Aligns it to the left edge */
+  width: 100%;
+  /* Spans the full width of the viewport */
+  background-color: #2c2c2c;
+  /* Set a background color (adjust as needed) */
+  padding: 10px 20px;
+  /* Add some spacing inside the container */
+  z-index: 1100;
+  /* Keeps it above other elements */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  /* Adds a shadow for separation */
+  max-height: 60px;
+  transition: transform 0.3s ease;
+  /* Smooth sliding effect */
+  transform: translateY(0);
+  /* Initially in place */
+}
+
 /* index main bar styling */
 
 /* Container for the form */
@@ -756,6 +780,7 @@ form input[type="checkbox"] {
   margin: 0px;
   margin-bottom: 25px;
   padding: 8px;
+  margin-top: 65px;
 }
 
 .auth-form-container {
@@ -1148,7 +1173,7 @@ a:hover {
   flex-direction: column;
   justify-content: space-around;
   cursor: pointer;
-  z-index: 1000;
+  z-index: 1201;
 }
 
 .hamburger span {
@@ -1169,7 +1194,8 @@ a:hover {
   color: #fff;
   padding: 20px;
   transition: left 0.3s ease-in-out;
-  z-index: 999;
+  z-index: 1101;
+  overflow: hidden;
 }
 
 .sidebar a {
@@ -1292,14 +1318,13 @@ a:hover {
   height: 50px;
   align-items: center;
   padding: 5px;
-  margin-top: 14px;
+  margin-top: auto;
   margin: 8px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   justify-content: space-evenly;
-  margin-bottom: 25px
 }
 
 .back-to-list-link:hover {
@@ -1333,6 +1358,17 @@ a:hover {
   background-color: #2c2c2c;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
+  margin-top: 65px;
+}
+
+.review-container {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #2c2c2c;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  margin-top: 20px;
 }
 
 .container form {

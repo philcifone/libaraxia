@@ -9,10 +9,6 @@
 <body>
     {% include '_sidebar.html' %}
 
-    <div class="back-to-list">
-        <a href="{{ url_for('base.index') }}" class="back-to-list-link" id="ratepagelistlink">Back to Catalog</a>
-    </div>
-
     <div class="container">
         <h1>{{ book[1] }}</h1> <!-- Book Title -->
         <div class="book-detail-header">
@@ -48,7 +44,7 @@
     </div>
 
     <!-- Section for Rating and Review -->
-    <div class="container">
+    <div class="review-container">
         <!-- Collection Selection -->
         <h1>{{ current_user.username.capitalize() }}'s Book Stats</h1>
         <form action="{{ url_for('collections.add_to_collection') }}" method="post" id="review-section">
@@ -74,6 +70,10 @@
         <div class="review-link">
             <a href="{{ url_for('read.rate_review', book_id=book.id) }}" id="review-link">Edit or Leave a Review</a>
         </div>   
+    </div>
+
+    <div class="back-to-list">
+        <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
