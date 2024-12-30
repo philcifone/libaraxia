@@ -10,7 +10,7 @@
     {% include '_sidebar.html' %}
 
     <div class="container">
-        <h1>Welcome, {{ user['username'].capitalize() }}!</h1>
+        <h1>{{ user['username'].capitalize() }}'s Profile Info</h1>
         <p>Email: {{ user['email'] }}</p>
         <p>Username: {{user['username'] }}</p>
         <p>Admin: {{ 'Yes' if user['is_admin'] else 'No' }}</p>
@@ -19,7 +19,7 @@
     <div class="back-to-list">
         <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
     </div>
-    
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
