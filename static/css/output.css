@@ -1,0 +1,1694 @@
+/* styles.css */
+
+*, ::before, ::after {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+
+::backdrop {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+
+/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */
+
+/*
+1. Prevent padding and border from affecting element width. (https://github.com/mozdevs/cssremedy/issues/4)
+2. Allow adding a border to an element by just adding a border-width. (https://github.com/tailwindcss/tailwindcss/pull/116)
+*/
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  /* 1 */
+  border-width: 0;
+  /* 2 */
+  border-style: solid;
+  /* 2 */
+  border-color: #e5e7eb;
+  /* 2 */
+}
+
+::before,
+::after {
+  --tw-content: '';
+}
+
+/*
+1. Use a consistent sensible line-height in all browsers.
+2. Prevent adjustments of font size after orientation changes in iOS.
+3. Use a more readable tab size.
+4. Use the user's configured `sans` font-family by default.
+5. Use the user's configured `sans` font-feature-settings by default.
+6. Use the user's configured `sans` font-variation-settings by default.
+7. Disable tap highlights on iOS
+*/
+
+html,
+:host {
+  line-height: 1.5;
+  /* 1 */
+  -webkit-text-size-adjust: 100%;
+  /* 2 */
+  -moz-tab-size: 4;
+  /* 3 */
+  -o-tab-size: 4;
+     tab-size: 4;
+  /* 3 */
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* 4 */
+  font-feature-settings: normal;
+  /* 5 */
+  font-variation-settings: normal;
+  /* 6 */
+  -webkit-tap-highlight-color: transparent;
+  /* 7 */
+}
+
+/*
+1. Remove the margin in all browsers.
+2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
+*/
+
+body {
+  margin: 0;
+  /* 1 */
+  line-height: inherit;
+  /* 2 */
+}
+
+/*
+1. Add the correct height in Firefox.
+2. Correct the inheritance of border color in Firefox. (https://bugzilla.mozilla.org/show_bug.cgi?id=190655)
+3. Ensure horizontal rules are visible by default.
+*/
+
+hr {
+  height: 0;
+  /* 1 */
+  color: inherit;
+  /* 2 */
+  border-top-width: 1px;
+  /* 3 */
+}
+
+/*
+Add the correct text decoration in Chrome, Edge, and Safari.
+*/
+
+abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+          text-decoration: underline dotted;
+}
+
+/*
+Remove the default font size and weight for headings.
+*/
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/*
+Reset links to optimize for opt-in styling instead of opt-out.
+*/
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/*
+Add the correct font weight in Edge and Safari.
+*/
+
+b,
+strong {
+  font-weight: bolder;
+}
+
+/*
+1. Use the user's configured `mono` font-family by default.
+2. Use the user's configured `mono` font-feature-settings by default.
+3. Use the user's configured `mono` font-variation-settings by default.
+4. Correct the odd `em` font sizing in all browsers.
+*/
+
+code,
+kbd,
+samp,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* 1 */
+  font-feature-settings: normal;
+  /* 2 */
+  font-variation-settings: normal;
+  /* 3 */
+  font-size: 1em;
+  /* 4 */
+}
+
+/*
+Add the correct font size in all browsers.
+*/
+
+small {
+  font-size: 80%;
+}
+
+/*
+Prevent `sub` and `sup` elements from affecting the line height in all browsers.
+*/
+
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.5em;
+}
+
+/*
+1. Remove text indentation from table contents in Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=999088, https://bugs.webkit.org/show_bug.cgi?id=201297)
+2. Correct table border color inheritance in all Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=935729, https://bugs.webkit.org/show_bug.cgi?id=195016)
+3. Remove gaps between table borders by default.
+*/
+
+table {
+  text-indent: 0;
+  /* 1 */
+  border-color: inherit;
+  /* 2 */
+  border-collapse: collapse;
+  /* 3 */
+}
+
+/*
+1. Change the font styles in all browsers.
+2. Remove the margin in Firefox and Safari.
+3. Remove default padding in all browsers.
+*/
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  /* 1 */
+  font-feature-settings: inherit;
+  /* 1 */
+  font-variation-settings: inherit;
+  /* 1 */
+  font-size: 100%;
+  /* 1 */
+  font-weight: inherit;
+  /* 1 */
+  line-height: inherit;
+  /* 1 */
+  letter-spacing: inherit;
+  /* 1 */
+  color: inherit;
+  /* 1 */
+  margin: 0;
+  /* 2 */
+  padding: 0;
+  /* 3 */
+}
+
+/*
+Remove the inheritance of text transform in Edge and Firefox.
+*/
+
+button,
+select {
+  text-transform: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Remove default button styles.
+*/
+
+button,
+input:where([type='button']),
+input:where([type='reset']),
+input:where([type='submit']) {
+  -webkit-appearance: button;
+  /* 1 */
+  background-color: transparent;
+  /* 2 */
+  background-image: none;
+  /* 2 */
+}
+
+/*
+Use the modern Firefox focus style for all focusable elements.
+*/
+
+:-moz-focusring {
+  outline: auto;
+}
+
+/*
+Remove the additional `:invalid` styles in Firefox. (https://github.com/mozilla/gecko-dev/blob/2f9eacd9d3d995c937b4251a5557d95d494c9be1/layout/style/res/forms.css#L728-L737)
+*/
+
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+
+/*
+Add the correct vertical alignment in Chrome and Firefox.
+*/
+
+progress {
+  vertical-align: baseline;
+}
+
+/*
+Correct the cursor style of increment and decrement buttons in Safari.
+*/
+
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+  height: auto;
+}
+
+/*
+1. Correct the odd appearance in Chrome and Safari.
+2. Correct the outline style in Safari.
+*/
+
+[type='search'] {
+  -webkit-appearance: textfield;
+  /* 1 */
+  outline-offset: -2px;
+  /* 2 */
+}
+
+/*
+Remove the inner padding in Chrome and Safari on macOS.
+*/
+
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Change font properties to `inherit` in Safari.
+*/
+
+::-webkit-file-upload-button {
+  -webkit-appearance: button;
+  /* 1 */
+  font: inherit;
+  /* 2 */
+}
+
+/*
+Add the correct display in Chrome and Safari.
+*/
+
+summary {
+  display: list-item;
+}
+
+/*
+Removes the default spacing and border for appropriate elements.
+*/
+
+blockquote,
+dl,
+dd,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+figure,
+p,
+pre {
+  margin: 0;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+ol,
+ul,
+menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+Reset default styling for dialogs.
+*/
+
+dialog {
+  padding: 0;
+}
+
+/*
+Prevent resizing textareas horizontally by default.
+*/
+
+textarea {
+  resize: vertical;
+}
+
+/*
+1. Reset the default placeholder opacity in Firefox. (https://github.com/tailwindlabs/tailwindcss/issues/3300)
+2. Set the default placeholder color to the user's configured gray 400 color.
+*/
+
+input::-moz-placeholder, textarea::-moz-placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+/*
+Set the default cursor for buttons.
+*/
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+/*
+Make sure disabled buttons don't get the pointer cursor.
+*/
+
+:disabled {
+  cursor: default;
+}
+
+/*
+1. Make replaced elements `display: block` by default. (https://github.com/mozdevs/cssremedy/issues/14)
+2. Add `vertical-align: middle` to align replaced elements more sensibly by default. (https://github.com/jensimmons/cssremedy/issues/14#issuecomment-634934210)
+   This can trigger a poorly considered lint error in some tools but is included by design.
+*/
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  /* 1 */
+  vertical-align: middle;
+  /* 2 */
+}
+
+/*
+Constrain images and videos to the parent width and preserve their intrinsic aspect ratio. (https://github.com/mozdevs/cssremedy/issues/14)
+*/
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Make elements with the HTML hidden attribute stay hidden by default */
+
+[hidden]:where(:not([hidden="until-found"])) {
+  display: none;
+}
+
+.container {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+}
+
+.static {
+  position: static;
+}
+
+.hidden {
+  display: none;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  /*background-color: #424242;*/
+  color: white;
+  padding: 20px;
+}
+
+/* Center the form */
+
+form {
+  display: flex;
+  flex-direction: column;
+  /*max-width: 100%;*/
+  justify-content: center;
+  margin: 0px;
+  padding: 0px;
+  border-radius: 8px;
+  font-family: 'Roboto', sans-serif;
+  text-align: center;
+  align-items: space-evenly;
+}
+
+/* Input Field Styling */
+
+form input[type="text"],
+form input[type="number"],
+form input[type="file"],
+form input[type="email"],
+form input[type="password"],
+form input[type="date"],
+textarea {
+  font-family: 'Roboto' sans-serif;
+  display: flex;
+  width: 75%;
+  font-size: 16px;
+  padding: 10px;
+  text-align: left;
+  align-items: center;
+  justify-content: center;
+  margin: 8px;
+  max-height: 42px;
+  border: 1px solid #555;
+  background-color: #424242;
+  /* Lighter gray */
+  color: #EEEEEE;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+form input[type="file"],
+textarea {
+  height: auto;
+}
+
+form input[type="rating"] {
+  width: 50%;
+}
+
+textarea:focus {
+  box-shadow: 0 0 8px #28a745;
+}
+
+/* Button Styling */
+
+form button,
+#isbn-fetch {
+  width: 15%;
+  margin-bottom: 5px;
+  text-decoration: none;
+  font-size: 16px;
+  background-color: #28a745;
+  color: white;
+  padding: 10px;
+  /* Added more padding for space */
+  margin: 0px;
+  /* Added margin around the button */
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  align-items: center;
+}
+
+#add-to-collection {
+  width: 20%;
+  display: flex;
+  justify-content: center;
+  width: 225px;
+  /* Set width to auto for better flexibility */
+  text-decoration: none;
+  font-size: 18px;
+  background-color: #218838;
+  color: white;
+  height: 30px;
+  align-items: center;
+  padding: 5px;
+  margin: 8px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+form button:hover {
+  background-color: #424242;
+}
+
+/* Checkbox label alignment */
+
+form label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  color: white;
+  margin-top: 5px;
+  justify-content: center;
+}
+
+form input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* index main bar styling */
+
+/* Container for the form */
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  background-color: #2c2c2c;
+  gap: 0rem;
+  max-width: 600px;
+  width: 50%;
+  justify-content: center;
+  align-items: center;
+  border-radius: 24px;
+  margin: -8px;
+  margin-bottom: 25px;
+  padding: 8px;
+}
+
+.search-form-container {
+  display: flex;
+  flex-direction: column;
+  background-color: #2c2c2c;
+  gap: 0rem;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  border-radius: 24px;
+  margin: -8px;
+  margin-bottom: 25px;
+  padding: 8px;
+}
+
+.auth-form-container {
+  padding-top: 24px;
+  padding-bottom: 18px
+}
+
+/*.index-bar {
+    display: flex;
+    justify-content: space-around;
+    margin: 8px;
+    align-items: center;
+}*/
+
+.search-sort {
+  margin: 4px;
+  padding: 4px;
+  width: 100%;
+  gap: 1rem;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+/* Styling for each section */
+
+.search-bar {
+  display: flex;
+  /* Align items within the group */
+  flex-direction: row;
+  margin: 4px;
+  padding: 4px;
+  gap: 0.5rem;
+  /* Space between elements in the group */
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.sort-bar {
+  display: flex;
+  /* Align items within the group */
+  flex-direction: row;
+  margin: 4px;
+  padding: 4px;
+  gap: 0.5rem;
+  /* Space between elements in the group */
+  width: 65%;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+}
+
+.searchpage-bar {
+  display: flex;
+  /* Align items within the group */
+  flex-direction: row;
+  margin: 4px;
+  margin-bottom: 22px;
+  padding: 4px;
+  gap: 0.5rem;
+  /* Space between elements in the group */
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  background-color: #2c2c2c;
+}
+
+/* Styling for input and button elements */
+
+select,
+button {
+  padding: 0.5rem;
+  margin: 0px;
+  margin-bottom: 0px;
+  font-size: 1rem;
+  align-items: right;
+  width: 25%;
+  /* Make inputs stretch full width */
+  background-color: #424242;
+  color: #EEEEEE;
+  border-radius: 8px;
+  border: 1px solid #555;
+}
+
+select:hover {
+  cursor: pointer;
+}
+
+select:focus {
+  box-shadow: 0 0 8px #28a745;
+}
+
+.select-collection {
+  margin: 15px;
+  background-color: #2c2c2c;
+}
+
+/* book info form */
+
+.book-info-form {
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0px
+}
+
+.book-info-form input[type="text"] {
+  width: 65%;
+}
+
+.desc-box,
+#desc-box {
+  width: 75%;
+  /* Makes the input stretch across the container */
+  max-width: 500px;
+  /* Optional: Limit the maximum width */
+  height: 150px;
+  /* Defines height for readability */
+  padding: 10px;
+  /* Adds space inside the box */
+  font-size: 16px;
+  /* Ensures text is legible */
+  font-family: Arial, sans-serif;
+  /* Use a readable font */
+  border: 1px solid #555;
+  /* Light border */
+  border-radius: 5px;
+  /* Rounded corners for a softer look */
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+  /* Subtle shadow for depth */
+  resize: vertical;
+  /* Allow vertical resizing only */
+  background-color: #424242;
+  /* Light background for readability */
+  outline: none;
+  /* Removes the default outline when focused */
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  /* Smooth transitions */
+}
+
+.desc-box:focus,
+#desc-box:focus {
+  border-color: #555;
+  /* Highlight border on focus */
+  box-shadow: 0 0 8px #28a745;
+  /* Glow effect */
+  background-color: #424242;
+  /* Brighten background when active */
+}
+
+.collection-links {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  height: auto;
+  width: 100%;
+}
+
+/* Back to Catalog link */
+
+form a {
+  display: block;
+  text-align: center;
+  color: #007BFF;
+  margin-top: 15px;
+  text-decoration: none;
+}
+
+form a:hover {
+  text-decoration: none;
+}
+
+/* Mobile-First Approach */
+
+@media (min-width: 768px) {
+}
+
+/* Desktop Styles */
+
+body {
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  background-color: #424242;
+  /*color: #2c2c2c;*/
+  padding: 20px;
+}
+
+h1 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #ffffff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  background-color: #1e1e1e;
+  color: #f4f4f4;
+}
+
+th,
+td {
+  padding: 12px;
+  text-align: left;
+  border: 1px solid #555;
+}
+
+th {
+  background-color: #333;
+  font-weight: bold;
+}
+
+tr:nth-child(even) {
+  background-color: #1e1e1e;
+}
+
+a {
+  color: #1E90FF;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+.delete-link {
+  color: #dc3545;
+  text-decoration: none;
+}
+
+.delete-link:hover {
+  color: #c82333;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+  /* Adjust layout and typography for smaller screens */
+}
+
+/* Grid layout for the book tiles */
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+/* Individual book tile */
+
+.book-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  text-align: center;
+  background-color: #2c2c2c;
+  /* Light gray background */
+  border: 0px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease-in-out;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-tile:hover {
+  transform: translateY(-5px);
+  box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.1);
+  background-color: #606060;
+}
+
+/* Image styling */
+
+.book-tile img {
+  width: 100%;
+  height: 250px;
+  /* Fixed height to maintain consistency */
+  -o-object-fit: contain;
+     object-fit: contain;
+  /* Ensures the full image is visible without cropping */
+  border-radius: 6px;
+  background-color: none;
+  /* Adds contrast for images with transparency */
+  margin-bottom: 10px;
+}
+
+/* Title styling with single-line ellipsis */
+
+.book-tile h3 {
+  font-size: 1em;
+  font-weight: bold;
+  color: #EEEEEE;
+  margin: 0;
+  /* Space below the title */
+  text-align: center;
+  /* Aligns text to center horizontally */
+  /* white-space: nowrap; /* Prevents wrapping */
+  overflow: hidden;
+  /* Hides the overflowed text */
+  text-overflow: ellipsis;
+  /* Adds an ellipsis at the end */
+  max-width: 100%;
+  /* Ensures the text stays within its container */
+  box-sizing: border-box;
+  padding: 0 5px;
+}
+
+/* Text description with multiline ellipsis */
+
+.book-tile p {
+  font-size: 0.9em;
+  color: #EEEEEE;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  /* Limits to 3 lines */
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  margin: 0;
+  text-align: center;
+}
+
+.button-group {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  gap: 10px;
+  /* Add spacing between the buttons */
+  margin: 4px;
+  /* Add spacing below the group */
+  justify-content: center;
+  align-items: center;
+}
+
+/* add button */
+
+.floating-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 75px;
+  height: 75px;
+  background-color: #28a745;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 75px;
+  font-size: 36px;
+  font-weight: bold;
+  text-decoration: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  z-index: 999;
+}
+
+.floating-button:hover {
+  background-color: #218838;
+  transform: scale(1.1);
+}
+
+.plus.sign {
+  display: inline-block;
+  align-items: center;
+  margin-top: -5px;
+}
+
+/* hamburger menu */
+
+.hamburger {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.hamburger span {
+  display: block;
+  height: 4px;
+  width: 100%;
+  background: #333;
+  border-radius: 2px;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -300px;
+  width: 250px;
+  height: 100%;
+  background: #2c2c2c;
+  color: #fff;
+  padding: 20px;
+  transition: left 0.3s ease-in-out;
+  z-index: 999;
+}
+
+.sidebar a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.sidebar a:hover {
+  background: #218838;
+}
+
+.sidebar.active {
+  left: 0;
+}
+
+.sidebar-buttons {
+  margin-top: 50px;
+}
+
+.content {
+  padding: 20px;
+  transition: margin-left 0.3s ease-in-out;
+}
+
+.sidebar-active {
+  margin-left: 250px;
+}
+
+.logout-button {
+  width: 90%;
+  margin-bottom: 5px;
+  text-decoration: none;
+  font-size: 16px;
+  background-color: #424242;
+  color: #424242;
+  padding: 10px;
+  /* Added more padding for space */
+  margin: 0px;
+  /* Added margin around the button */
+  border: 0px solid #424242;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.logout-button:hover {
+  background-color: #5e5e5e;
+}
+
+.index-action-buttons {
+  display: flex;
+  justify-content: center;
+}
+
+/* ADD BOOK LINK */
+
+.add-book-link {
+  width: 75%;
+  /* Set width to auto for better flexibility */
+  text-decoration: none;
+  font-size: 24px;
+  background-color: #2c2c2c;
+  color: white;
+  height: 45px;
+  align-items: center;
+  padding: 5px;
+  margin-top: 14px;
+  margin: 8px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  transition: background-color 0.3s ease-in-out;
+  text-align: center;
+}
+
+.add-book-link i {
+  margin-right: 8px;
+  font-size: 24px;
+}
+
+.add-book-link:hover {
+  background-color: #218838;
+  color: white;
+}
+
+#add-book-link {
+  border: 1px solid #424242;
+  margin-top: 35px;
+}
+
+.back-to-list {
+  text-align: center;
+  display: flex;
+  justify-content: left;
+  width: 100%;
+}
+
+/*#ratepagelistlink {
+    margin-bottom: 25px
+}*/
+
+.back-to-list-link {
+  background-color: #007bff;
+  transition: background-color 0.3s ease-in-out;
+  width: 15%;
+  /* Set width to auto for better flexibility */
+  text-decoration: none;
+  font-size: 16px;
+  color: white;
+  height: 50px;
+  align-items: center;
+  padding: 5px;
+  margin-top: 14px;
+  margin: 8px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-evenly;
+  margin-bottom: 25px
+}
+
+.back-to-list-link:hover {
+  background-color: #0056b3;
+}
+
+.details-back-to-list-link {
+  background-color: #007bff;
+  transition: background-color 0.3s ease-in-out;
+  width: 25%;
+  /* Set width to auto for better flexibility */
+  text-decoration: none;
+  font-size: 1.1em;
+  color: white;
+  height: 42px;
+  align-items: center;
+  padding: 0px;
+  margin-top: 0px;
+  margin-left: 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.container {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #2c2c2c;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.container form {
+  width: 100%;
+  /* Adjust as needed */
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  /* Ensures form elements are centered */
+}
+
+/* sort buttons*/
+
+/* Internal flexbox for alignment */
+
+.sort-buttons {
+  display: flex;
+  /*justify-content: flex-start;
+    align-items: center;*/
+  gap: 10px;
+  /* Space between elements */
+}
+
+.sort-buttons form {
+  display: flex;
+  /* Align elements horizontally */
+  align-items: center;
+  /* Center elements vertically */
+  gap: 10px;
+  /* Space between elements */
+}
+
+/* Label styling */
+
+.sort-buttons label {
+  margin-right: 5px;
+  color: #fff;
+  /* White text */
+  margin-top: 5px;
+}
+
+/* Select (dropdown) styling */
+
+.sort-buttons select {
+  padding: 5px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* Button styling */
+
+.sort-buttons button {
+  background-color: #28a745;
+  /* Green button */
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.sort-buttons button:hover {
+  background-color: #218838;
+  /* Darker green on hover */
+}
+
+/* BOOK DETAILS PAGE */
+
+.description-container {
+  display: flex;
+  flex-direction: column;
+  /* Stack elements vertically */
+  max-width: 100%;
+  margin-top: 10px;
+  /* Optional spacing */
+}
+
+.description-text {
+  display: block;
+  max-height: 9em;
+  /* Restrict height to show a few lines */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: wrap;
+  /* Initial truncation */
+  transition: max-height 0.3s ease, white-space 0.3s ease;
+}
+
+.description-text.expanded {
+  max-height: none;
+  /* Expand to show all content */
+  white-space: normal;
+  /* Allow wrapping */
+}
+
+.toggle-button {
+  align-self: flex-start;
+  /* Align button to the left */
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 0.9em;
+  text-decoration: underline;
+  margin-top: 5px;
+  /* Optional spacing */
+}
+
+.toggle-button:hover {
+  text-decoration: none;
+}
+
+.book-detail-container {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.book-detail-header {
+  gap: 20px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.rate-review-header {
+  display: flex;
+  justify-content: center;
+}
+
+.book-cover {
+  max-width: 250px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);*/
+}
+
+.no-image {
+  font-style: italic;
+  color: #888;
+}
+
+.book-info {
+  flex: 1;
+  /* Allow the book info to grow and take available space */
+  color: #EEEEEE;
+  /* Match text color with the theme */
+  font-size: 1.1em;
+  line-height: 1.5;
+  /* Improve readability */
+  width: -moz-max-content;
+  width: max-content;
+}
+
+.book-info p {
+  margin: 10px 0;
+  /* Add spacing between paragraphs */
+}
+
+.book-detail-content {
+  flex: 2;
+  font-size: 1.1em;
+}
+
+.book-detail-content p {
+  margin: 10px 0;
+  flex: 1;
+}
+
+.action-links {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  justify-content: baseline;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.edit-link,
+.delete-link {
+  font-size: 1.1em;
+  text-decoration: none;
+  margin: 0 10px;
+  padding: 10px 20px;
+  border-radius: 8px;
+}
+
+.edit-link {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.delete-link {
+  background-color: #f44336;
+  color: white;
+}
+
+.edit-link:hover {
+  background-color: #45a049;
+}
+
+.delete-link:hover {
+  background-color: #d32f2f;
+}
+
+#description-input {
+  width: 100%;
+  max-width: 450px;
+  height: 150px;
+  max-height: 300px;
+  resize: vertical;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 8px;
+  padding: 8px;
+}
+
+/* .rate-review-section {
+    display: flex;
+    flex-direction: column;
+    max-width: 900px;
+    width: 90%;
+}
+
+.rate-review-group {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 4px;
+    padding: 20px;
+}
+
+.btn.btn-primary {
+    width: 50%;
+    margin: 8px;
+    padding: 8px;
+} */
+
+.form-group {
+  width: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 8px;
+  padding: 8px;
+}
+
+#comment {
+  width: 100%;
+  max-width: 450px;
+  height: 150px;
+  max-height: 300px;
+  resize: vertical;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 8px;
+  padding: 8px;
+}
+
+.comment:focus {
+  box-shadow: 0 0 8px #28a745;
+}
+
+.rating-box#rating {
+  width: 15%;
+}
+
+#date_read {
+  background-color: #424242;
+  color: white;
+  width: 25%;
+}
+
+.review-card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.review-link {
+  display: flex;
+  justify-content: center;
+}
+
+#review-link {
+  display: flex;
+  justify-content: center;
+  width: 225px;
+  /* Set width to auto for better flexibility */
+  text-decoration: none;
+  font-size: 18px;
+  background-color: #218838;
+  color: white;
+  height: 30px;
+  align-items: center;
+  padding: 5px;
+  margin: 8px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  text-align: center;
+}
+
+#review-link:hover {
+  background-color: #2c2c2c;
+  color: white;
+  border: 1px solid #424242;
+}
+
+/* slider rating */
+
+.rating-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  max-width: 300px;
+  height: 8px;
+  background: #ddd;
+  border-radius: 5px;
+  outline: none;
+  margin: 10px 0;
+  transition: background 0.3s;
+}
+
+.rating-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  background: #007bff;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-transition: transform 0.2s;
+  transition: transform 0.2s;
+}
+
+.rating-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+#rating-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+#review-section {
+  width: 100%;
+  /* Adjust as needed */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  /* Ensures form elements are centered */
+}

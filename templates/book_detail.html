@@ -4,14 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>{{ book[1] }} - Details</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body>
     {% include '_sidebar.html' %}
-    
-    <div class="action-links">
-        <a href="{{ url_for('base.index') }}" class="details-back-to-list-link">Back to Catalog</a>   
+
+    <div class="back-to-list">
+        <a href="{{ url_for('base.index') }}" class="back-to-list-link" id="ratepagelistlink">Back to Catalog</a>
     </div>
+
     <div class="container">
         <h1>{{ book[1] }}</h1> <!-- Book Title -->
         <div class="book-detail-header">
@@ -25,7 +26,7 @@
             </div>
         
             <!-- Book Details -->
-            <div class="book-info">
+            <article class="book-info">
                 <p><strong>Author:</strong> {{ book['author'] }}</p>
                 <p><strong>Publisher:</strong> {{ book['publisher'] }}</p>
                 <p><strong>Year:</strong> {{ book['publish_year'] }}</p>
@@ -37,27 +38,29 @@
                     <span class="description-text" id="description">{{ book['description'] }}</span>
                     <button type="button" class="toggle-button" onclick="toggleDescription()">View More</button>
                 </div>
-            </div>
+            </article>
         </div>
             <!---edit/delete buttons-->
-    <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
-    <a href="/books/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+            <div class="action-buttons">
+                <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
+                <a href="/books/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+            </div>
     </div>
 
     <!-- Section for Rating and Review -->
     <div class="container">
         <!-- Collection Selection -->
-        <h2>{{ current_user.username.capitalize() }}'s Book Stats</h2>
-        <form action="{{ url_for('collections.add_to_collection') }}" method="post">
+        <h1>{{ current_user.username.capitalize() }}'s Book Stats</h1>
+        <form action="{{ url_for('collections.add_to_collection') }}" method="post" id="review-section">
             <input type="hidden" name="id" value="{{ book['id'] }}">
-            <label for="status">Status:</label>
+            <label for="status">Read Status:</label>
             <select name="status" id="status" class="select-collection">
                 <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
                 <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
                 <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
                 <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
             </select>            
-            <button type="submit" id="add-to-collection">Add to Collection</button>
+            <button type="submit" id="add-to-collection">Update Read Status</button>
         </form>
 
         {% if read_data %}
@@ -66,9 +69,11 @@
             <p><strong>Review:</strong> {{ read_data['comment'] }}</p>
         {% else %}
             <p>No review added yet.</p>
-        {% endif %}    
-
-        <a href="{{ url_for('read.rate_review', book_id=book.id) }}" id="review-link">Edit or Leave a Review</a>
+        {% endif %} 
+        
+        <div class="review-link">
+            <a href="{{ url_for('read.rate_review', book_id=book.id) }}" id="review-link">Edit or Leave a Review</a>
+        </div>   
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

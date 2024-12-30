@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>{{ book.title }} - Rate & Review</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body>
     {% include '_sidebar.html' %}
@@ -13,21 +13,20 @@
         <a href="{{ url_for('base.index') }}" class="back-to-list-link" id="ratepagelistlink">Back to Catalog</a>
     </div>
 
-    <div class="form-container">
-        <h1>Rate and Review</h1>
-            <p><strong>{{ book.title }}</strong></p>
-            <p>by {{ book.author }}</p>
-            
-        <!-- Book Cover Image -->
-        <div class="book-cover">
-            {% if book.cover_image_url %}
-            <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
-            {% else %}
-                <p>No Image Available</p>
-            {% endif %}
+    <div class="container">
+        <h1>{{ book.title }}</h1> <!-- Book Title -->
+        <div class="rate-review-header">
+            <!-- Book Cover Image -->
+            <div class="book-cover">
+                {% if book.cover_image_url %}
+                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
+                {% else %}
+                    <p>No Image Available</p>
+                {% endif %}
+            </div>
         </div>
 
-        <form action="" method="post" class="form-container">
+        <form action="" method="post">
             <label for="date_read">Date Read:</label>
             <input type="date" id="date_read" name="date_read" value="{{ read_data.date_read if read_data else '' }}">
             
@@ -51,6 +50,7 @@
             <button type="submit">Submit</button>
         </form>
     </div>
+</div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

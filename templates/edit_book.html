@@ -1,50 +1,62 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>Edit Book</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
+
 <body>
     {% include '_sidebar.html' %}
 
+    <div class="back-to-list">
+        <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
+    </div>
+
     <!-- ISBN Lookup Form -->
-    <div class="form-container">
-        <div class="back-to-list">
-            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-        </div>
+    <div class="search-form-container">
         <form method="POST" enctype="multipart/form-data" class="search-bar">
-            <input type="text" id="isbn_lookup" name="isbn" placeholder="Enter ISBN to fetch book info" value="{{ book_details.isbn if book_details }}">
+            <input type="text" id="isbn_lookup" name="isbn" placeholder="Enter ISBN to fetch book info"
+                value="{{ book_details.isbn if book_details }}">
             <button type="submit" name="isbn_lookup">Fetch Details</button>
         </form>
     </div>
 
     <!-- Edit Book Form -->
-    <div class="form-container">
+    <div class="container">
         <form method="POST" enctype="multipart/form-data" class="book-info-form">
-        <h1> Edit book info</h1>
-        
-        <input placeholder="Title" type="text" id="title" name="title" value="{{ book_details.title if book.details else book[1] }}" required><br>
+            <h1> Edit book info</h1>
 
-        <input placeholder="Author" type="text" id="author" name="author" value="{{ book_details.author if book_details else book[2] }}" required><br>
+            <input placeholder="Title" type="text" id="title" name="title"
+                value="{{ book_details.title if book.details else book[1] }}" required><br>
 
-        <input placeholder="ISBN" type="text" id="isbn" name="isbn" value="{{ book_details.isbn if book_details else book[5] }}"><br>
+            <input placeholder="Author" type="text" id="author" name="author"
+                value="{{ book_details.author if book_details else book[2] }}" required><br>
 
-        <input placeholder="Publisher" type="text" id="publisher" name="publisher" value="{{ book_details.publisher if book_details else book[3] }}"><br>
+            <input placeholder="ISBN" type="text" id="isbn" name="isbn"
+                value="{{ book_details.isbn if book_details else book[5] }}"><br>
 
-        <input placeholder="Year" type="text" id="year" name="year" value="{{ book_details.year if book_details else book[4] }}"><br>
+            <input placeholder="Publisher" type="text" id="publisher" name="publisher"
+                value="{{ book_details.publisher if book_details else book[3] }}"><br>
 
-        <input placeholder="Page Count" type="text" id="page_count" name="page_count" value="{{ book_details.page_count if book_details else book[7] }}"><br><br>
+            <input placeholder="Year" type="text" id="year" name="year"
+                value="{{ book_details.year if book_details else book[4] }}"><br>
 
-        <input placeholder="Enter description here..." type="text" id="description" name="description" value="{{ book_details.description if book_details else book[10] }}" class="desc-box"><br><br>   
+            <input placeholder="Page Count" type="text" id="page_count" name="page_count"
+                value="{{ book_details.page_count if book_details else book[7] }}"><br><br>
 
-        <input type="file" id="image" name="image" accept="image/*"><br><br>
+            <input placeholder="Enter description here..." type="text" id="description" name="description"
+                value="{{ book_details.description if book_details else book[9] }}">
 
-        <button type="submit">Save Changes</button>
+            <input type="file" id="image" name="image" accept="image/*"><br><br>
+
+            <button type="submit">Save Changes</button>
         </form>
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <br>
 </body>
+
 </html>

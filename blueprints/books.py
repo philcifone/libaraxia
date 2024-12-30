@@ -239,15 +239,28 @@ def delete_book(id):
 @login_required
 def search():
     search_term = request.args.get("search_term", "").lower()  # Get the search term from the form
+    sort_by = request.args.get("sort_by", "title")  # Default sort by title
+    sort_order = request.args.get("sort_order", "asc")  # Default sort order is ascending
 
     conn = get_db_connection()
 
-    # Query the database for books based on the search term
-    books = conn.execute("""
+    # Define allowed sorting columns to prevent SQL injection
+    allowed_sort_columns = {"title", "author", "publish_year", "date_added"}
+    if sort_by not in allowed_sort_columns:
+        sort_by = "title"
+
+    # Set the sorting direction
+    sort_direction = "ASC" if sort_order == "asc" else "DESC"
+
+    # Query the database for books based on the search term and sort order
+    query = f"""
         SELECT * FROM books
         WHERE lower(title) LIKE ? OR lower(author) LIKE ? OR publish_year LIKE ?
-    """, (f"%{search_term}%", f"%{search_term}%", f"%{search_term}%")).fetchall()
+        ORDER BY {sort_by} {sort_direction}
+    """
+    books = conn.execute(query, (f"%{search_term}%", f"%{search_term}%", f"%{search_term}%")).fetchall()
 
     conn.close()
 
-    return render_template("search.html", books=books)
+    return render_template("search.html", books=books, search_term=search_term, sort_by=sort_by, sort_order=sort_order)
+

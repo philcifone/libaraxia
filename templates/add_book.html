@@ -4,17 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>Add Book</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body>
     {% include '_sidebar.html' %}
 
+    <div class="back-to-list">
+        <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
+    </div>
+    
+<div class="search-form-container">
     <!-- ISBN Lookup Form -->
-    <div class="form-container">
-        <div class="back-to-list">
-            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-        </div>
-        <form method="POST" enctype="multipart/form-data" class="search-bar">
+            <form method="POST" enctype="multipart/form-data" class="search-bar">
             <input 
                 type="text" 
                 id="isbn_lookup" 
@@ -25,9 +26,10 @@
             <button type="submit" name="isbn_lookup" id="isbn-fetch">Fetch Details</button>
         </form>
     </div>
+</div>
 
+<div class="container">
     <!-- Add Book Form -->
-    <div class="form-container">
         <form method="POST" enctype="multipart/form-data" class="book-info-form">
             <h3 style="color: white">Book Info</h3><br>
         <input type="text" id="title" name="title" placeholder="Title" value="{{ book_details.title if book_details }}" required><br>
@@ -45,7 +47,7 @@
         <!--<label for="text">Description:</label>
             <input type="text" id="description" name="description" placeholder="Description" value="{{ book_details.description if book_details }}"><br><br>-->
 
-	    <input type="text" placeholder="Enter description here..." id="description" name="description" value="{{ book_details.description if book_details }}" class="desc-box"><br><br>   
+	    <input type="text" placeholder="Enter description here..." id="description" name="description" value="{{ book_details.description if book_details }}"><br><br>   
 
 
         <!--   <label for="read">Have you read this book?</label>
@@ -58,6 +60,7 @@
         </form>
         <script src="{{ url_for('static', filename='script.js') }}"></script>
     </div>
+</div>
 </body>
 </html>
 
