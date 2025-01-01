@@ -5,9 +5,23 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Text:ital@0;1&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+/* CSS Custom Properties (Variables) */
+:root {
+    --primary-bg: #424242;
+    --secondary-bg: #2c2c2c;
+    --accent-color: #28a745;
+    --accent-hover: #218838;
+    --text-primary: #ffffff;
+    --text-secondary: #EEEEEE;
+    --border-color: #555;
+    --font-primary: 'Inter', sans-serif;
+    --font-display: 'DM Serif Display', serif;
+}
 
 body {
-    font-family: 'Roboto', sans-serif;
+    font-family: sans-serif;
     font-size: 16px;
     line-height: 1.5;
     /*background-color: #424242;*/
@@ -24,7 +38,7 @@ form {
     margin: 0px;
     padding: 0px;
     border-radius: 8px;
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Roboto' sans-serif;
     text-align: center;
     align-items: space-evenly;
 }
@@ -61,6 +75,7 @@ textarea {
     height: auto;
     width: 50%
 }
+
 form input[type="rating"] {
     width: 50%;
 }
@@ -129,17 +144,26 @@ form input[type="checkbox"] {
 }
 
 .fixed-container {
-    position: fixed; /* Keeps it in place during scrolling */
-    top: 0; /* Aligns it to the top of the viewport */
-    left: 0; /* Aligns it to the left edge */
-    width: 100%; /* Spans the full width of the viewport */
-    background-color: #2c2c2c; /* Set a background color (adjust as needed) */
-    padding: 10px 20px; /* Add some spacing inside the container */
-    z-index: 1102; /* Keeps it above other elements */
+    position: fixed;
+    /* Keeps it in place during scrolling */
+    top: 0;
+    /* Aligns it to the top of the viewport */
+    left: 0;
+    /* Aligns it to the left edge */
+    width: 100%;
+    /* Spans the full width of the viewport */
+    background-color: #2c2c2c;
+    /* Set a background color (adjust as needed) */
+    padding: 10px 20px;
+    /* Add some spacing inside the container */
+    z-index: 1102;
+    /* Keeps it above other elements */
     /*box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); /* Adds a shadow for separation */
     max-height: 60px;
-    transition: transform 0.3s ease; /* Smooth sliding effect */
-    transform: translateY(0); /* Initially in place */
+    transition: transform 0.3s ease;
+    /* Smooth sliding effect */
+    transform: translateY(0);
+    /* Initially in place */
 }
 
 /* index main bar styling */
@@ -295,7 +319,7 @@ select:focus {
     /* Adds space inside the box */
     font-size: 16px;
     /* Ensures text is legible */
-    font-family: Arial, sans-serif;
+    font-family: 'DM serif';
     /* Use a readable font */
     border: 1px solid #555;
     /* Light border */
@@ -351,7 +375,7 @@ form a:hover {
 /* Desktop Styles */
 
 body {
-    font-family: 'Roboto', sans-serif;
+    /*font-family: sans-serif;*/
     font-size: 16px;
     line-height: 1.5;
     background-color: #424242;
@@ -360,6 +384,7 @@ body {
 }
 
 h1 {
+    font-family: 'DM Serif Text' serif;
     font-size: 24px;
     margin-bottom: 20px;
     text-align: center;
@@ -557,8 +582,8 @@ a:hover {
     display: block;
     height: 4px;
     width: 100%;
-    background: #333;
-    border-radius: 2px;
+    background: #c2c2c2;
+    border-radius: 0px;
 }
 
 .sidebar {
@@ -577,6 +602,7 @@ a:hover {
 }
 
 .sidebar a {
+    font-family: sans-serif;
     display: block;
     color: #fff;
     text-decoration: none;
@@ -629,6 +655,13 @@ a:hover {
 
 .logout-button:hover {
     background-color: #5e5e5e;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    margin-top: 50px;
 }
 
 .index-action-buttons {
@@ -750,11 +783,13 @@ a:hover {
 }
 
 .container form {
-    width: 100%; /* Adjust as needed */
+    width: 100%;
+    /* Adjust as needed */
     display: flex;
     justify-content: center;
     flex-direction: column;
-    align-items: center; /* Ensures form elements are centered */
+    align-items: center;
+    /* Ensures form elements are centered */
 }
 
 /* sort buttons*/
@@ -926,6 +961,7 @@ a:hover {
     margin: 0 10px;
     padding: 10px 20px;
     border-radius: 8px;
+    width: 100%;
 }
 
 .edit-link {
@@ -1059,6 +1095,7 @@ a:hover {
     color: white;
     border: 1px solid #424242;
 }
+
 /* slider rating */
 
 .rating-slider {
@@ -1094,10 +1131,12 @@ a:hover {
 }
 
 #review-section {
-    width: 100%; /* Adjust as needed */
+    width: 100%;
+    /* Adjust as needed */
     display: flex;
     flex-direction: row;
-    align-items: center; /* Ensures form elements are centered */
+    align-items: center;
+    /* Ensures form elements are centered */
 }
 
 /* ADD BOOK SECTION */
@@ -1105,16 +1144,195 @@ a:hover {
     max-width: 200px;
     margin: 20px 0;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 .api-source {
     color: #666;
     font-size: 0.9em;
     margin-bottom: 10px;
 }
+
 .preview-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     margin: 20px 0;
+}
+
+/* Base Styles */
+body {
+    font-family: var(--font-primary);
+    font-size: 16px;
+    line-height: 1.5;
+    background-color: var(--primary-bg);
+    color: var(--text-primary);
+    padding: 20px;
+}
+
+h1,
+h2,
+h3,
+.stats-header {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+}
+
+/* Reading Status Card Styles */
+.reading-status-card {
+    background-color: var(--primary-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.status-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.status-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .status-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+    }
+}
+
+.status-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 120px;
+}
+
+.status-select {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+.status-update-btn {
+    padding: 0.5rem 1rem;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.status-update-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Reading Stats Card Styles */
+.reading-stats-card {
+    background-color: var(--secondary-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.stats-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stats-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.stats-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stats-value {
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+/* Star Rating Display */
+.stars-display {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.star {
+    color: #666;
+    font-size: 1.25rem;
+}
+
+.star.filled {
+    color: #ffc107;
+}
+
+/* Review Section */
+.review-text {
+    background-color: var(--primary-bg);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    line-height: 1.6;
+}
+
+.review-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.review-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--accent-color);
+    color: white;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.review-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.no-review {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 2rem 0;
 }

@@ -39,37 +39,68 @@
             <!---edit/delete buttons-->
             <div class="action-buttons">
                 <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
-                <a href="/books/delete/{{ book[0] }}" onclick="return confirm('Are you sure?')" class="delete-link">Delete</a>
+                <a href="/books/delete/{{ book[0] }}" onclick="return confirm('This will remove the book from the database. Are you sure?')" class="delete-link">Delete</a>
             </div>
     </div>
 
     <!-- Section for Rating and Review -->
     <div class="review-container">
-        <!-- Collection Selection -->
-        <h1>{{ current_user.username.capitalize() }}'s Book Stats</h1>
-        <form action="{{ url_for('collections.add_to_collection') }}" method="post" id="review-section">
-            <input type="hidden" name="id" value="{{ book['id'] }}">
-            <label for="status">Read Status:</label>
-            <select name="status" id="status" class="select-collection">
-                <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
-                <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
-                <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
-                <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
-            </select>            
-            <button type="submit" id="add-to-collection">Update Read Status</button>
-        </form>
-
-        {% if read_data %}
-            <p><strong>Date Read:</strong> {{ read_data['date_read'] }}</p>
-            <p><strong>Rating:</strong> {{ read_data['rating'] }} / 5</p>
-            <p><strong>Review:</strong> {{ read_data['comment'] }}</p>
-        {% else %}
-            <p>No review added yet.</p>
-        {% endif %} 
+        <h2 class="stats-header">{{ current_user.username.capitalize() }}'s Reading Journey for {{ book[1] }}</h2>
         
-        <div class="review-link">
-            <a href="{{ url_for('read.rate_review', book_id=book.id) }}" id="review-link">Edit or Leave a Review</a>
-        </div>   
+        <div class="reading-status-card">
+            <form action="{{ url_for('collections.add_to_collection') }}" method="post" class="status-form">
+                <input type="hidden" name="id" value="{{ book['id'] }}">
+                <div class="status-group">
+                    <label for="status" class="status-label">Reading Status</label>
+                    <select name="status" id="status" class="status-select">
+                        <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
+                        <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
+                        <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
+                        <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
+                    </select>
+                    <button type="submit" class="status-update-btn">Update Status</button>
+                </div>
+            </form>
+        </div>
+    
+        <div class="reading-stats-card">
+            {% if read_data %}
+                <div class="stats-grid">
+                    <div class="stats-item">
+                        <span class="stats-label">Date Read</span>
+                        <span class="stats-value">{{ read_data['date_read'] }}</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-label">Your Rating</span>
+                        <div class="rating-display">
+                            <span class="stats-value">{{ read_data['rating'] }} / 5</span>
+                            <div class="stars-display">
+                                {% for i in range(read_data['rating']|int) %}
+                                    <span class="star filled">★</span>
+                                {% endfor %}
+                                {% for i in range(5 - read_data['rating']|int) %}
+                                    <span class="star">☆</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% if read_data['comment'] %}
+                        <div class="stats-item full-width">
+                            <span class="stats-label">Your Review</span>
+                            <p class="review-text">{{ read_data['comment'] }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <p class="no-review">No review added yet.</p>
+            {% endif %}
+            
+            <div class="review-actions">
+                <a href="{{ url_for('read.rate_review', book_id=book.id) }}" class="review-btn">
+                    {% if read_data %}Edit{% else %}Write a{% endif %} Review
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="back-to-list">
