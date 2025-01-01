@@ -59,18 +59,28 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// view more description book details
+// OLD view more description book details
+//function toggleDescription() {
+//    const description = document.getElementById('description');
+//    const button = document.querySelector('.toggle-button');
+//
+//    if (description.classList.contains('expanded')) {
+//        description.classList.remove('expanded');
+//        button.textContent = 'View More';
+//    } else {
+//        description.classList.add('expanded');
+//        button.textContent = 'View Less';
+//    }
+//}
+
+// view more for toggle description book details
 function toggleDescription() {
     const description = document.getElementById('description');
-    const button = document.querySelector('.toggle-button');
-
-    if (description.classList.contains('expanded')) {
-        description.classList.remove('expanded');
-        button.textContent = 'View More';
-    } else {
-        description.classList.add('expanded');
-        button.textContent = 'View Less';
-    }
+    const button = description.nextElementSibling;
+    const buttonText = button.querySelector('.toggle-text');
+    
+    description.classList.toggle('expanded');
+    buttonText.textContent = description.classList.contains('expanded') ? 'Show Less' : 'Show More';
 }
 
 // toast for collections

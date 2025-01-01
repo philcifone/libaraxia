@@ -10,37 +10,79 @@
     {% include '_sidebar.html' %}
 
     <div class="container">
-        <h1>{{ book[1] }}</h1> <!-- Book Title -->
-        <div class="book-detail-header">
+        <div class="book-header">
+            <h1 class="book-title">{{ book[1] }}</h1>
+            <div class="book-author">by {{ book['author'] }}</div>
+        </div>
+    
+        <div class="book-content">
             <!-- Book Cover Image -->
-            <div class="book-cover">
+            <div class="book-cover-container">
                 {% if book.cover_image_url %}
-                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
+                    <img 
+                        src="{{ url_for('static', filename=book['cover_image_url']) }}" 
+                        alt="{{ book[1] }} Cover"
+                        class="book-cover-image"
+                    >
                 {% else %}
-                    <p>No Image Available</p>
+                    <div class="no-cover">
+                        <span class="no-cover-text">No Cover Available</span>
+                    </div>
                 {% endif %}
             </div>
-        
+            
             <!-- Book Details -->
-            <article class="book-info">
-                <p><strong>Author:</strong> {{ book['author'] }}</p>
-                <p><strong>Publisher:</strong> {{ book['publisher'] }}</p>
-                <p><strong>Year:</strong> {{ book['publish_year'] }}</p>
-                <p><strong>Pages:</strong> {{ book['page_count'] }}</p>
-                <p><strong>ISBN:</strong> {{ book['isbn'] }}</p>
-                <p><strong>Book Description:</strong></p>
-
-                <div class="description-container">
-                    <span class="description-text" id="description">{{ book['description'] }}</span>
-                    <button type="button" class="toggle-button" onclick="toggleDescription()">View More</button>
+            <div class="book-details">
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Publisher</span>
+                        <span class="detail-value">{{ book['publisher'] }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Publication Year</span>
+                        <span class="detail-value">{{ book['publish_year'] }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Page Count</span>
+                        <span class="detail-value">{{ book['page_count'] }} pages</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">ISBN</span>
+                        <span class="detail-value">{{ book['isbn'] }}</span>
+                    </div>
                 </div>
-            </article>
-        </div>
-            <!---edit/delete buttons-->
-            <div class="action-buttons">
-                <a href="/books/edit/{{ book[0] }}" class="edit-link">Edit</a>
-                <a href="/books/delete/{{ book[0] }}" onclick="return confirm('This will remove the book from the database. Are you sure?')" class="delete-link">Delete</a>
+    
+                <div class="book-description">
+                    <h2 class="description-title">About this Book</h2>
+                    <div class="description-container">
+                        <div class="description-text" id="description">{{ book['description'] }}</div>
+                        <button type="button" class="description-toggle" onclick="toggleDescription()">
+                            <span class="toggle-text">Show More</span>
+                            <svg class="toggle-icon" viewBox="0 0 20 20" width="16" height="16">
+                                <path d="M10 13.5l-5-5 1.5-1.5L10 10.5 13.5 7l1.5 1.5-5 5z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+    
+                <div class="action-buttons">
+                    <a href="/books/edit/{{ book[0] }}" class="action-btn edit-btn">
+                        <svg class="btn-icon" viewBox="0 0 20 20" width="16" height="16">
+                            <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
+                        </svg>
+                        Edit Book
+                    </a>
+                    <a href="/books/delete/{{ book[0] }}" 
+                       onclick="return confirm('This will remove the book from the database. Are you sure?')" 
+                       class="action-btn delete-btn">
+                        <svg class="btn-icon" viewBox="0 0 20 20" width="16" height="16">
+                            <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
+                        </svg>
+                        Delete Book
+                    </a>
+                </div>
             </div>
+        </div>
     </div>
 
     <!-- Section for Rating and Review -->
@@ -97,6 +139,9 @@
             
             <div class="review-actions">
                 <a href="{{ url_for('read.rate_review', book_id=book.id) }}" class="review-btn">
+                    <svg class="btn-icon" viewBox="0 0 20 20" width="16" height="16">
+                        <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
+                    </svg>
                     {% if read_data %}Edit{% else %}Write a{% endif %} Review
                 </a>
             </div>

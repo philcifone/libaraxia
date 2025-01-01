@@ -766,7 +766,7 @@ a:hover {
     max-width: 900px;
     margin: 20px auto;
     padding: 20px;
-    background-color: #2c2c2c;
+    background-color: var(--secondary-bg);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     margin-top: 65px;
@@ -1315,6 +1315,7 @@ h3,
 
 .review-btn {
     display: inline-flex;
+    gap: 0.5rem;
     align-items: center;
     justify-content: center;
     padding: 0.75rem 1.5rem;
@@ -1335,4 +1336,205 @@ h3,
     color: var(--text-secondary);
     font-style: italic;
     padding: 2rem 0;
+}
+
+/* book details styles from claude */
+.book-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.book-title {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+}
+
+.book-author {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.book-content {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .book-content {
+        grid-template-columns: 300px 1fr;
+    }
+}
+
+/* Book Cover Styles */
+.book-cover-container {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.book-cover-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+}
+
+.book-cover-image:hover {
+    transform: scale(1.02);
+}
+
+.no-cover {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background-color: var(--primary-bg);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.no-cover-text {
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Book Details Grid */
+.book-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    background-color: var(--primary-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-label {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.detail-value {
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+/* Book Description */
+.book-description {
+    background-color: var(--primary-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.description-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.description-container {
+    position: relative;
+}
+
+.description-text {
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-height: 200px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.description-text.expanded {
+    max-height: none;
+}
+
+.description-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    padding: 0.5rem 0;
+    cursor: pointer;
+    font-weight: 500;
+    margin-top: 1rem;
+}
+
+.description-toggle:hover {
+    color: var(--accent-hover);
+}
+
+.toggle-icon {
+    fill: currentColor;
+    transition: transform 0.3s ease;
+}
+
+.description-text.expanded + .description-toggle .toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    flex: 1;
+    justify-content: center;
+}
+
+.btn-icon {
+    fill: currentColor;
+}
+
+.edit-btn {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.edit-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.delete-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.delete-btn:hover {
+    background-color: #c82333;
 }
