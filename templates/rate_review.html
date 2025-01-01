@@ -9,47 +9,68 @@
 <body>
     {% include '_sidebar.html' %}
 
-    <div class="back-to-list">
-        <a href="{{ url_for('base.index') }}" class="back-to-list-link" id="ratepagelistlink">Back to Catalog</a>
-    </div>
-
     <div class="container">
-        <h1>{{ book.title }}</h1> <!-- Book Title -->
-        <div class="rate-review-header">
-            <!-- Book Cover Image -->
-            <div class="book-cover">
-                {% if book.cover_image_url %}
-                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" width="250">
-                {% else %}
-                    <p>No Image Available</p>
-                {% endif %}
-            </div>
+        <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+            <span class="back-arrow">←</span>
+            <span>Back to Catalog</span>
+        </a>
+        <div class="book-header">
+            <h1>{{ book.title }}</h1>
+            <div class="author">by {{ book.author }}</div>
         </div>
 
-        <form action="" method="post">
-            <label for="date_read">Date Read:</label>
-            <input type="date" id="date_read" name="date_read" value="{{ read_data.date_read if read_data else '' }}">
-            
-            <label for="rating">Rating:</label>
-            <input 
-                type="range" 
-                id="rating" 
-                name="rating" 
-                min="1" 
-                max="5" 
-                step="1" 
-                value="{{ read_data.rating if read_data else '3' }}" 
-                class="rating-slider"
-                oninput="updateRatingValue(this.value)"
-            >
-            <output id="rating-value">{{ read_data.rating if read_data else '3' }}</output>            
-              
-            <label for="comment">Review:</label>
-            <textarea id="comment" name="comment">{{ read_data.comment if read_data else '' }}</textarea>
-            <button type="submit">Submit</button>
-        </form>
+        <div class="content-grid">
+            <div class="book-cover-section">
+                {% if book.cover_image_url %}
+                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image">
+                {% else %}
+                    <div class="no-image">No Image Available</div>
+                {% endif %}
+            </div>
+
+            <div class="review-section">
+                <div class="section-card">
+                    <h2>Rate & Review</h2>
+                    <form action="" method="post" class="review-form">
+                        <div class="form-group">
+                            <label for="date_read">Date Read</label>
+                            <input type="date" id="date_read" name="date_read" 
+                                   value="{{ read_data.date_read if read_data else '' }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="rating">Rating</label>
+                            <div class="star-rating">
+                                <input type="radio" id="star5" name="rating" value="5" {{ 'checked' if read_data and read_data.rating == 5 }}>
+                                <label for="star5" title="5 stars">★</label>
+                                
+                                <input type="radio" id="star4" name="rating" value="4" {{ 'checked' if read_data and read_data.rating == 4 }}>
+                                <label for="star4" title="4 stars">★</label>
+                                
+                                <input type="radio" id="star3" name="rating" value="3" {{ 'checked' if read_data and read_data.rating == 3 }}>
+                                <label for="star3" title="3 stars">★</label>
+                                
+                                <input type="radio" id="star2" name="rating" value="2" {{ 'checked' if read_data and read_data.rating == 2 }}>
+                                <label for="star2" title="2 stars">★</label>
+                                
+                                <input type="radio" id="star1" name="rating" value="1" {{ 'checked' if read_data and read_data.rating == 1 }}>
+                                <label for="star1" title="1 star">★</label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="comment">Review</label>
+                            <textarea id="comment" name="comment">{{ read_data.comment if read_data else '' }}</textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="submit" class="primary-button">Submit Review</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

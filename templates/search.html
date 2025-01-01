@@ -40,12 +40,12 @@
                 <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>Descending</option>
             </select>
         </form>
-        <div class="back-to-list">
-            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-        </div>
     </div>
 
-
+    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+        <span class="back-arrow">←</span>
+        <span>Back to Catalog</span>
+    </a>
 
     <a></a> <!-- Had to put this here or else there was a missing tile on the grid-->
 

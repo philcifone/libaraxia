@@ -18,13 +18,14 @@
                 value="{{ book_details.isbn if book_details }}">
             <button type="submit" name="isbn_lookup">Fetch Details</button>
         </form>
-        <div class="back-to-list">
-            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-        </div>
     </div>
 
     <!-- Edit Book Form -->
     <div class="container">
+        <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+            <span class="back-arrow">←</span>
+            <span>Back to Catalog</span>
+        </a>
         <form method="POST" enctype="multipart/form-data" class="book-info-form">
             <h1> Edit book info</h1>
 

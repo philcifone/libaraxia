@@ -531,6 +531,7 @@ a:hover {
     /* Add spacing below the group */
     justify-content: center;
     align-items: center;
+    margin-top: 1rem;
 }
 
 /* add button */
@@ -676,7 +677,7 @@ a:hover {
     /* Set width to auto for better flexibility */
     text-decoration: none;
     font-size: 24px;
-    background-color: #2c2c2c;
+    background-color: var(--primary-bg);
     color: white;
     height: 45px;
     align-items: center;
@@ -690,7 +691,7 @@ a:hover {
     justify-content: center;
     transition: background-color 0.3s ease-in-out;
     text-align: center;
-    border: 1px solid #424242;
+    /*border: 1px solid #424242;*/
 }
 
 .add-book-link i {
@@ -1018,7 +1019,7 @@ a:hover {
 } */
 
 .form-group {
-    width: 50%;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1052,7 +1053,7 @@ a:hover {
 #date_read {
     background-color: #424242;
     color: white;
-    width: 25%;
+    width: 42%;
 }
 
 .review-card {
@@ -1538,3 +1539,232 @@ h3,
 .delete-btn:hover {
     background-color: #c82333;
 }
+
+
+/* RATE REVIEW PAGE*/
+/* Book Header */
+.book-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.book-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.author {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* Content Grid */
+.content-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+/* Book Cover Section */
+.book-cover-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.book-cover-section img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.no-image {
+    background-color: var(--secondary-bg);
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: var(--text-secondary);
+}
+
+/* Navigation Link */
+.nav-link {
+    display: block;
+    padding: 0.75rem;
+    text-align: center;
+    background-color: var(--secondary-bg);
+    color: var(--text-primary);
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.nav-link:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Review Section */
+.section-card {
+    background-color: var(--secondary-bg);
+    padding: 2rem;
+    border-radius: 4px;
+}
+
+.section-card h2 {
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+/* Form Styles */
+.review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+input[type="date"] {
+    background-color: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem;
+    border-radius: 4px;
+    color: var(--text-primary);
+    width: 200px;
+}
+
+/*.rating-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}*/
+
+/*.rating-slider {
+    flex: 1;
+    max-width: 300px;
+    accent-color: var(--accent-color);
+}
+
+#rating-value {
+    min-width: 2rem;
+    text-align: center;
+    color: var(--text-primary);
+}*/
+
+/* Star Rating */
+.star-rating {
+    scale: 3;
+    display: inline-flex;
+    flex-direction: row-reverse;
+    font-size: 3.5em; /* Increased from 2em */
+    justify-content: flex-end;
+    padding: 1rem 0; /* Increased padding for better spacing */
+}
+
+.star-rating input {
+    display: none;
+}
+
+.star-rating label {
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 0.15em; /* Slightly reduced padding between stars */
+    transition: all 0.2s ease-in-out;
+    line-height: 1; /* Ensures proper vertical alignment */
+}
+
+/* Hover effect */
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label {
+    color: #FFD700;
+    transform: scale(1.1); /* Slight scale on hover for interactivity */
+}
+
+/* Animation for stars */
+.star-rating label {
+    transform-origin: center;
+}
+
+.star-rating input:checked + label {
+    animation: star-bounce 0.3s ease-in-out;
+}
+
+@keyframes star-bounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Optional tooltip for accessibility */
+.star-rating label:hover::after {
+    content: attr(title);
+    position: absolute;
+    transform: translateY(2.5em);
+    font-size: 0.3em; /* Adjusted for new base size */
+    background: var(--secondary-bg);
+    color: var(--text-primary);
+    padding: 0.3em 0.6em;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+textarea {
+    background-color: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    padding: 0.75rem;
+    border-radius: 4px;
+    color: var(--text-primary);
+    min-height: 150px;
+    resize: vertical;
+}
+
+
+.primary-button {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.primary-button:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Responsive Layout */
+@media (max-width: 768px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .book-cover-section {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+}
+
+.back-nav {
+    display: flex;
+    justify-content: flex-start;
+    gap: .5rem;
+    margin-bottom: 2rem;
+}
+

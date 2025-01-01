@@ -21,12 +21,13 @@
             >
             <button type="submit" name="isbn_lookup" id="isbn-fetch">Fetch Details</button>
         </form>
-        <div class="back-to-list">
-            <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-        </div>
     </div>
 
     <div class="container">
+        <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+            <span class="back-arrow">←</span>
+            <span>Back to Catalog</span>
+        </a>
         <!-- Add Book Form -->
         <form method="POST" enctype="multipart/form-data" class="book-info-form">
             <h3 style="color: white">Book Info</h3>
