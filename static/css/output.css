@@ -2210,9 +2210,14 @@ h3,
 /* Book Cover Section */
 
 .book-cover-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  transition: transform 0.3s ease;
+}
+
+.book-cover-section:hover {
+  transform: scale(1.02);
 }
 
 .book-cover-section img {
