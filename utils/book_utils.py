@@ -10,6 +10,10 @@ from typing import Optional, Dict, Any
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 MAX_IMAGE_SIZE = (500, 1000)
 
+from typing import Optional, Dict, Any
+from flask import current_app
+import requests
+
 def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
     """Fetch book details from Google Books API."""
     api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
@@ -21,6 +25,7 @@ def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
         book_data = response["items"][0]["volumeInfo"]
         return {
             "title": book_data.get("title", ""),
+            "subtitle": book_data.get("subtitle", ""),  # Added subtitle field
             "author": ", ".join(book_data.get("authors", [])),
             "publisher": book_data.get("publisher", ""),
             "year": book_data.get("publishedDate", "").split("-")[0],
@@ -28,6 +33,7 @@ def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
             "page_count": book_data.get("pageCount", 0),
             "description": book_data.get("description", ""),
             "cover_image_url": book_data.get("imageLinks", {}).get("thumbnail", None),
+            "genre": ", ".join(book_data.get("categories", [])),  # Added genre field
             "source": "Google Books"
         }
     except Exception as e:
@@ -45,8 +51,14 @@ def fetch_open_library(isbn: str) -> Optional[Dict[str, Any]]:
             return None
             
         book_data = response[book_key]
+        
+        # Extract subjects/genres from Open Library data
+        subjects = book_data.get("subjects", [])
+        genres = [subject for subject in subjects if isinstance(subject, str)]
+        
         return {
             "title": book_data.get("title", ""),
+            "subtitle": book_data.get("subtitle", ""),  # Added subtitle field
             "author": ", ".join(author.get("name", "") for author in book_data.get("authors", [])),
             "publisher": ", ".join(book_data.get("publishers", [""])),
             "year": book_data.get("publish_date", "").split()[-1],
@@ -54,6 +66,7 @@ def fetch_open_library(isbn: str) -> Optional[Dict[str, Any]]:
             "page_count": book_data.get("number_of_pages", 0),
             "description": book_data.get("notes", ""),
             "cover_image_url": book_data.get("cover", {}).get("large", "").replace("http:", "https:"),
+            "genre": ", ".join(genres[:3]),  # Added genre field (limited to first 3 for brevity)
             "source": "Open Library"
         }
     except Exception as e:

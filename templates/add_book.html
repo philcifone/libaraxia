@@ -44,11 +44,15 @@
 
             <input type="text" id="title" name="title" placeholder="Title" value="{{ book_details.title if book_details }}" required><br>
 
+            <input type="text" id="subtitle" name="subtitle" placeholder="Subtitle" value="{{book_details.subtitle if book_details}}"><br>
+
             <input type="text" id="author" name="author" placeholder="Author" value="{{ book_details.author if book_details }}" required><br>
 
             <input type="text" id="isbn" name="isbn" placeholder="ISBN" value="{{ book_details.isbn if book_details }}"><br>
 
             <input type="text" id="publisher" name="publisher" placeholder="Publisher" value="{{ book_details.publisher if book_details }}"><br>
+
+            <input type="text" id="genre" name="genre" placeholder="Genre" value="{{ book_details.genre if book_details }}"><br>
 
             <input type="text" id="year" name="year" placeholder="Year" value="{{ book_details.year if book_details }}"><br>
 

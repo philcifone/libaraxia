@@ -51,8 +51,8 @@ def add_book():
             with get_db_connection() as conn:
                 conn.execute("""
                     INSERT INTO books (title, author, publisher, publish_year, isbn, 
-                                     page_count, cover_image_url, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                     page_count, cover_image_url, description, subtitle, genre)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     request.form["title"],
                     request.form["author"],
@@ -61,7 +61,9 @@ def add_book():
                     request.form["isbn"],
                     request.form["page_count"],
                     cover_image_url,
-                    request.form.get("description")
+                    request.form.get("description"),
+                    request.form["subtitle"],
+                    request.form["genre"]
                 ))
             
             return redirect(url_for("base.index"))
@@ -90,7 +92,7 @@ def edit_book(id):
                 conn.execute("""
                     UPDATE books
                     SET title = ?, author = ?, publisher = ?, publish_year = ?, 
-                        page_count = ?, cover_image_url = ?, description = ?
+                        page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?,
                     WHERE id = ?
                 """, (
                     request.form["title"],
@@ -100,6 +102,8 @@ def edit_book(id):
                     request.form.get("page_count", 0),
                     cover_image_url,
                     request.form.get("description", ""),
+                    request.form["subtitle"],
+                    request.form["genre"],
                     id
                 ))
                 

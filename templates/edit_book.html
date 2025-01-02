@@ -32,6 +32,9 @@
             <input placeholder="Title" type="text" id="title" name="title"
                 value="{{ book_details.title if book.details else book[1] }}" required><br>
 
+            <input placeholder="Subtitle" type="text" id="subtitle" name="subtitle"
+                value="{{ book_details.subtitle if book.details else book[11] }}" required><br>
+
             <input placeholder="Author" type="text" id="author" name="author"
                 value="{{ book_details.author if book_details else book[2] }}" required><br>
 
@@ -40,6 +43,9 @@
 
             <input placeholder="Publisher" type="text" id="publisher" name="publisher"
                 value="{{ book_details.publisher if book_details else book[3] }}"><br>
+
+            <input placeholder="Genre" type="text" id="genre" name="genre"
+                value="{{ book_details.genre if book.details else book[12] }}" required><br>
 
             <input placeholder="Year" type="text" id="year" name="year"
                 value="{{ book_details.year if book_details else book[4] }}"><br>

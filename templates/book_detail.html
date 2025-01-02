@@ -15,7 +15,12 @@
             <span>Back to Catalog</span>
         </a>
         <div class="book-header">
-            <h1 class="book-title">{{ book[1] }}</h1>
+            <h1 class="book-title">
+                {{ book[1] }}{% if book['subtitle'] %}: {% endif %}
+                {% if book['subtitle'] %}
+                    <span class="book-subtitle">{{ book['subtitle'] }}</span>
+                {% endif %}
+            </h1>
             <div class="book-author">by {{ book['author'] }}</div>
         </div>
     
@@ -53,6 +58,10 @@
                     <div class="detail-item">
                         <span class="detail-label">ISBN</span>
                         <span class="detail-value">{{ book['isbn'] }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Genre</span>
+                        <span class="detail-value">{{ book['genre'] }}</span>
                     </div>
                 </div>
     

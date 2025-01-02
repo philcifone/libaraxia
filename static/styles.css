@@ -1476,6 +1476,14 @@ h3,
     line-height: 1.2;
 }
 
+.book-subtitle {
+    display: block;
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #666;
+    margin-top: 0.3rem;
+}
+
 .book-author {
     font-size: 1.25rem;
     color: var(--text-secondary);
