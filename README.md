@@ -1,9 +1,11 @@
 # Libaraxia
 
 
-![Libaraxia](static/git/libaraxiaAlpha.jpg)
-![Book Details](static/git/IMG_7682.jpg)
-![Book Details](static/git/IMG_7683.jpg)
+![Libaraxia](static/git/libaraxiaAlpha.png)
+![Sidebar](static/git/libaraxiaSidebar.png)
+![Book Details](static/git/libaraxiaDetails.png)
+![Rate & Review](static/git/libaraxiaRateReview.png)
+![Book Details](static/git/libaraxiaProfile.png)
 
 # Project scope:
 
@@ -13,24 +15,20 @@ This is a beginner project I'm developing to achieve the goal of cataloging my p
 
 ## Usage & Installation
 
-Anyone stumbling across this is absolutely welcome to use or fork this under the GPL license I guess? I strongly recommend against it in it's current form. While I am currently handling much of the security concerns I had, I am still learning and do not feel comfortable deploying it as any sort of full fledged self hosted application for public use just yet.
-
-I guess all you would need to do is setup the users and books tables in a sqlite3 library.db and downloading all the flask packages but that's on you.
-
-### Known Issues
-I'm learning how to clean up the HTML and CSS, so bear with me. I'm working on [[#Future Refactoring]] for flask blueprints as well. 
+Anyone stumbling across this is absolutely welcome to use or fork this under the GPL license I guess? I **strongly recommend against it** in it's current form. I guess all you would need to do is setup the users and books tables (listed below) in a sqlite3 library.db and downloading all the flask packages (I havent set up requirements.txt yet) but you are on your own.
 
 ### Existing features:
 - Tiled homepage
 - Add book
 - Edit entry
 - Delete entry
-- ISBN lookup
+- ISBN fetch
 - Search
 - Cover upload
 - Catalog sort
 - Account register
 - Multi-user login & authentication
+- Email and Password update
 
 ### Future features:
 - Rating system
@@ -40,95 +38,117 @@ I'm learning how to clean up the HTML and CSS, so bear with me. I'm working on [
 - Share shelf
 - Barcode scanner
 - Better mobile UI
-- React
-- Tailwind css
+- General add book search?
 
 ### To Do:
 
 - [ ] Backup project files!!
-- [ ] Have fun!!!!!!
+- [ ] Have fun!!!!!
 #### Frontend
 - [x] Fix tile text alignment
 - [x] Add Author to tile
 - [x] Add better back to list on search page inside search container
 - [x] Fix add book button
 - [x] Style main page search bar add sort
-- [x] Make add & edit book pages prettier
-- [ ] Make book details page prettier
+- [x] Heading on Add Book page
 - [x] Update book details style to match
-- [ ] Light & dark mode toggle (tailwind css?)
+- [x] Hamburger menu and side bar
+- [x] Add book button
+- [x] View more button for description 
+- [x] Fix collections toolbar (show read state)
+- [x] Added tailwind css
+- [ ] Refactor styles.css
+- [ ] Make add & edit book pages prettier!!
+- [ ] Light & dark mode toggle/color themes
+- [ ] Better fonts
 
 #### Backend
+- [x] Fetch book descriptions
+- [x] Multi-user creation & login authentication
+- [x] Sort catalog feature
+- [x] Admin only access to CRUD functions
 - [x] Search function
 - [x] Version Control
 - [x] Fix image upload in add_image route
-- [ ] Image resize/optimize during upload
-- [ ] Cover image fetch script/button (auto fetch during add but user can replace in add and edit) - revisit
+- [x] Image resize/optimize during upload
+- [x] Refactor code, add blueprints
+- [x] secret key to server/dev env instead of codebase
+- [x] Remove books table read column (will be a future user table column)
+- [x] Add rating & comments
+- [x] Improve & fix bookshelves (collections, now reading lists)
+- [x] auto image download
+- [x] Cover image fetch script/button (auto fetch during add but user can replace in add and edit) - revisit
+- [x] User book details
+- [x] User profile
+- [ ] User created catalogs
+- [ ] Replace image on edit?
+- [ ] Setup email in flask
 - [ ] Genre & subtitle add to book details
-- [x] Remove read status (will be a future user feature)
-- [x] Fetch book descriptions
-- [x] Multi-user creation & login authentication
-- [ ] User "bookshelves" (collections)
-- [x] Sort catalog feature
-- [x] Admin only access to CRUD functions
+- [ ] Filter options (year read, year published, page count, genre, is_read, )
 - [ ] Admin dashboard
+- [ ] Update to better SQL? SQLalchemy?
+- [ ] Export to spreadsheet/csv
 
-### Future Planning:
+### 2024-12-30
+
+#### Updated a lot of frontend
+ - tailwind css
+ - vanishing header bar
+ - hamburger menu and sidebar
+ - moved "collections" to "user profile", switching name to "reading list"
+ - need to create ability for users to create their own collections for collections page
+
+### 2025-1-1
+#### Switched to Claude AI for troubleshooting
+- Layouts are much cleaner and polished
+- More symbols
+- Better sidebar
+- Better refactoring of add books to book_utils
 
 #### Tables Layout
 
-1. Users
+##### Users
 
-    user_id (Primary Key)
-    username
-    password_hash
-    email
-    is_admin (Boolean, for admin tools)
+user_id (Primary Key)
+username
+password_hash
+email
+is_admin (Boolean, for admin tools)
 
-2. User Collections
+###### Collections (Reading Lists)
 
-    collection_id (Primary Key)
-    user_id (Foreign Key to Users)
-    book_id (Foreign Key to Books)
-    status (Enum: 'read', 'want to read', 'currently reading')
+collection_id (Primary Key)
+user_id (Foreign Key to Users)
+book_id (Foreign Key to Books)
+status (Enum: 'read', 'want to read', 'currently reading')
 
-3. Read Data
+###### Read Data
 
-    read_data_id (Primary Key)
-    user_id (Foreign Key to Users)
-    book_id (Foreign Key to Books)
-    date_read
-    rating
-    comment
+read_data_id (Primary Key)
+user_id (Foreign Key to Users)
+book_id (Foreign Key to Books)
+date_read
+rating
+comment
 
-#### Future Refactoring
+---
+#### To Implement:
+###### User Book Details
+user_book_id (primary key?)
+user_id(Foreign Key to Users)
+book_id (Foreign Key to Books)
+tags
+date_purchased
+price
+condition
+location
 
-libaraxia/
-├── app.py                    # The main entry point for your app
-├── config.py                 # App configuration (e.g., secret keys, database URI)
-├── instance/                 # Contains your SQLite database
-│   └── library.db
-├── libaraxia/                # Application package
-│   ├── __init__.py           # Initializes the app and extensions
-│   ├── routes/               # Directory for blueprints
-│   │   ├── __init__.py       # Registers blueprints
-│   │   ├── main.py           # Core app routes (homepage, index, etc.)
-│   │   ├── admin.py          # Admin tools routes
-│   │   └── user.py           # User-specific features routes
-│   ├── models.py             # Database models
-│   ├── services.py           # Business logic functions
-│   └── utils.py              # Helper functions (e.g., format dates)
-├── static/
-│   ├── css/
-│   │   └── styles.css        # Your stylesheet (break into smaller files if needed)
-│   ├── js/
-│   │   └── scripts.js        # JavaScript for interactivity
-│   └── images/
-│       └── logo.png          # Static images
-├── templates/
-│   ├── base.html             # Base template
-│   ├── home.html             # Home page template
-│   └── admin/
-│       ├── dashboard.html    # Admin dashboard template
-│       └── tools.html        # Admin tools template
-└── README.md                 # Project documentation
+###### User Collections
+user_collection_id (primary key)
+user_id
+collection_name
+book_id (list, '1', '2', '3' ?)
+
+(new custom user database, empty)
+button "Create new collection" > input "Name of collection" > add bok
+
