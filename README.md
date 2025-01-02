@@ -99,56 +99,59 @@ Anyone stumbling across this is absolutely welcome to use or fork this under the
  - need to create ability for users to create their own collections for collections page
 
 ### 2025-1-1
-#### Switched to Claude AI for troubleshooting
-- Layouts are much cleaner and polished
-- More symbols
-- Better sidebar
-- Better refactoring of add books to book_utils
+#### Switched to Claude AI for troubleshooting, more frontend updates, some backend
+- Better refactoring of blueprints.books.py to utils.book_utils.py
+- Fixed cover fetch (bug: only fetching low res)
+- Layouts for book details and rate & review are much cleaner and polished
+- More symbols/icons in use for UX/UI
+- Better sidebar features
+- User profile password and email update
 
-#### Tables Layout
+#### Current Tables Layout
 
 ##### Users
 
-user_id (Primary Key)
-username
-password_hash
-email
-is_admin (Boolean, for admin tools)
+- user_id (Primary Key)
+- username
+- password_hash
+- email
+- is_admin (Boolean, for admin tools)
 
 ###### Collections (Reading Lists)
 
-collection_id (Primary Key)
-user_id (Foreign Key to Users)
-book_id (Foreign Key to Books)
-status (Enum: 'read', 'want to read', 'currently reading')
+- collection_id (Primary Key)
+- user_id (Foreign Key to Users)
+- book_id (Foreign Key to Books)
+- status (Enum: 'read', 'want to read', 'currently reading')
 
 ###### Read Data
 
-read_data_id (Primary Key)
-user_id (Foreign Key to Users)
-book_id (Foreign Key to Books)
-date_read
-rating
-comment
+- read_data_id (Primary Key)
+- user_id (Foreign Key to Users)
+- book_id (Foreign Key to Books)
+- date_read
+- rating
+- comment
 
 ---
 #### To Implement:
 ###### User Book Details
-user_book_id (primary key?)
-user_id(Foreign Key to Users)
-book_id (Foreign Key to Books)
-tags
-date_purchased
-price
-condition
-location
+- user_book_id (primary key?)
+- user_id(Foreign Key to Users)
+- book_id (Foreign Key to Books)
+- tags
+- date_purchased
+- price
+- condition
+- location
 
-###### User Collections
-user_collection_id (primary key)
-user_id
-collection_name
-book_id (list, '1', '2', '3' ?)
+###### User Bookshelves
+- user_shelf_id (primary key)
+- user_id
+- shelf_name
+- book_id (list, '1', '2', '3' ?)
 
 (new custom user database, empty)
-button "Create new collection" > input "Name of collection" > add bok
+In "Bookshelves"
+button "Create new bookshelf" > input "Name of collection" > add book
 
