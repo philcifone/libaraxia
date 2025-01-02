@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=.8">
-    <title>{{ status.capitalize() }} Collection</title>
+    <title>{{ status.capitalize() }} Bookshelf</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body>
     {% include '_sidebar.html' %}
     
-    <h1 style="margin-top: 75px;">{{ status.capitalize() }} Collection</h1>
-    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+    <h1 style="margin-top: 75px;">{{ status.capitalize() }} Bookshelf</h1>
+    <a href="{{ url_for('collections.view_collections') }}" class="back-nav" id="ratepagelistlink">
         <span class="back-arrow">←</span>
-        <span>Back to Catalog</span>
+        <span>Back to Bookshelves</span>
     </a>
     <div class="book-grid">
         {% for book in books %}

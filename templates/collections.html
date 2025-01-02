@@ -9,12 +9,13 @@
 <body>
     {% include '_sidebar.html' %}
 
-    <h1 style="margin-top: 75px;">Your Collections</h1>
-    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink" style="margin-top: 75px;">
         <span class="back-arrow">←</span>
         <span>Back to Catalog</span>
     </a>
-    <div class="collection-links">
+
+    <div class="collection-links" style="margin-top: 75px;">
+        <h1>Libaraxia Shelves</h1>
         <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a> 
         <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"class="add-book-link">Currently Reading</a> 
         <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to Read</a>
