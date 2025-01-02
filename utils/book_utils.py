@@ -62,12 +62,12 @@ def fetch_open_library(isbn: str) -> Optional[Dict[str, Any]]:
 
 def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
     """Try multiple APIs to fetch book details."""
-    # Try Open Library first
-    book_details = fetch_open_library(isbn)
+    # Try Google first
+    book_details = fetch_google_books(isbn)
     
-    # If Open Library fails, try Google Books
+    # If Google fails, try Open Library
     if not book_details:
-        book_details = fetch_google_books(isbn)
+        book_details = fetch_open_library(isbn)
     
     if book_details and book_details.get("cover_image_url"):
         local_cover_url = download_and_save_cover(book_details["cover_image_url"])
