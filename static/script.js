@@ -1,5 +1,6 @@
 // Function to automatically submit the form
 function submitSortForm() {
+    document.body.style.cursor = 'wait';
     document.getElementById('sort-form').submit();
 };
 

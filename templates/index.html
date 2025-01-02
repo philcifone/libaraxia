@@ -11,7 +11,6 @@
 <body>
     {% include '_sidebar.html' %}
 
-
     <a href="/books/add" class="floating-button">
         <span class="plus-sign">+</span>
     </a>
@@ -60,8 +59,7 @@
                     {% endif %}
                     <h3>{{ book[1] }}</h3> <!-- Book title -->
                     <p>by {{ book[2] }}</p> <!-- Author and Publisher -->
-                    <!-- <p>Year: {{ book[4] }} | Pages: {{ book[5] }}</p>-->
-                    <!-- <p>Read: {{ "Yes" if book[7] else "No" }}</p> <!-- Read Status -->
+
                 </div>
             </a>
         </div>

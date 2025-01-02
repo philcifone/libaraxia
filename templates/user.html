@@ -1,33 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=.8">
     <title>User Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
+
 <body>
     {% include '_sidebar.html' %}
 
     <div class="container">
-        <h1>{{ user['username'].capitalize() }}'s Profile Info</h1>
-        <p>Email: {{ user['email'] }}</p>
-        <p>Username: {{user['username'] }}</p>
-        <p>Admin: {{ 'Yes' if user['is_admin'] else 'No' }}</p>
+        <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+            <span class="back-arrow">←</span>
+            <span>Back to Catalog</span>
+        </a>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="profile-section">
+            <h1>{{ user['username'].capitalize() }}'s Profile Info</h1>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Email</span>
+                    <span class="detail-value">{{ user['email'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Username</span>
+                    <span class="detail-value">{{user['username'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Admin</span>
+                    <span class="detail-value">{{ 'Yes' if user['is_admin'] else 'No' }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <div class="container">    
+        {% if current_user.id == user['id'] %}
+        <div class="update-section">
+            <h1>Update Profile</h1>
+            <form method="POST" action="{{ url_for('user.update_profile') }}" class="update-form">
+                <div class="form-group">
+                    <label for="email">Update Email:</label>
+                    <input type="email" id="email" name="email" value="{{ user['email'] }}">
+                </div>
+    
+                <div class="form-group">
+                    <label for="current_password">Current Password:</label>
+                    <input type="password" id="current_password" name="current_password" required>
+                </div>
+    
+                <div class="form-group">
+                    <label for="new_password">New Password:</label>
+                    <input type="password" id="new_password" name="new_password" placeholder="Leave blank if you don't want to change it!">
+                </div>
+    
+                <div class="form-group">
+                    <label for="confirm_password">Confirm New Password:</label>
+                    <input type="password" id="confirm_password" name="confirm_password">
+                </div>
+    
+                <button type="submit" class="update-button">Update Profile</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
 
     <div class="collection-links container">
         <h1>Reading Lists</h1>
-        <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a> 
-        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"class="add-book-link">Currently Reading</a> 
-        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to Read</a>
-    </div>
-
-    <div class="back-to-list">
-        <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
+        <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a>
+        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"
+            class="add-book-link">Currently Reading</a>
+        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to
+            Read</a>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
+
 </html>

@@ -10,6 +10,10 @@
     {% include '_sidebar.html' %}
     
     <h1 style="margin-top: 75px;">{{ status.capitalize() }} Collection</h1>
+    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+        <span class="back-arrow">←</span>
+        <span>Back to Catalog</span>
+    </a>
     <div class="book-grid">
         {% for book in books %}
         <div class="book-tile">

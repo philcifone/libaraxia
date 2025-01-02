@@ -10,9 +10,10 @@
     {% include '_sidebar.html' %}
 
     <h1>Your Collections</h1>
-    <div class="back-to-list">
-        <a href="{{ url_for('base.index') }}" class="back-to-list-link">Back to Catalog</a>
-    </div>
+    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
+        <span class="back-arrow">←</span>
+        <span>Back to Catalog</span>
+    </a>
     <div class="collection-links">
         <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a> 
         <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"class="add-book-link">Currently Reading</a> 
