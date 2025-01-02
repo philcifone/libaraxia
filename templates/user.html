@@ -78,10 +78,9 @@
     <div class="collection-links container">
         <h1>Reading Lists</h1>
         <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a>
-        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"
-            class="add-book-link">Currently Reading</a>
-        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to
-            Read</a>
+        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"class="add-book-link">Currently Reading</a>
+        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to Read</a>
+        <a href="{{ url_for('collections.view_by_status', status='did not finish') }}" class="add-book-link">Did Not Finish</a>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

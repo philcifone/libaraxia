@@ -112,6 +112,7 @@
                         <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
                         <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
                         <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
+                        <option value="did not finish" {% if collection_status == "did not finish" %}selected{% endif %}>Did Not Finish</option>
                     </select>
                     <button type="submit" class="status-update-btn">Update Status</button>
                 </div>
