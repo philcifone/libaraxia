@@ -92,7 +92,7 @@ def edit_book(id):
                 conn.execute("""
                     UPDATE books
                     SET title = ?, author = ?, publisher = ?, publish_year = ?, 
-                        page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?,
+                        page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?
                     WHERE id = ?
                 """, (
                     request.form["title"],
