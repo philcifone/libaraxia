@@ -121,14 +121,14 @@
     
         <div class="reading-stats-card">
             {% if read_data %}
-                <div class="stats-grid">
-                    <div class="stats-item" id="date-rating">
+                <div class="stats-grid"  id="date-rating">
+                    <div class="stats-item">
                         <div class="stats-item">
                             <span class="stats-label">Date Read</span>
                             <span class="stats-value">{{ read_data['date_read'] }}</span>
-                    </div>
+                        </div>
                         <div class="stats-item">
-                            <span class="stats-label">Your Rating</span>
+                            <span class="stats-label" style="margin-top: 25px;">Your Rating</span>
                             <div class="rating-display">
                                 <span class="stats-value">{{ read_data['rating'] }} / 5</span>
                                 <div class="stars-display">

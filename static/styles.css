@@ -1365,6 +1365,8 @@ h3,
 
 /* Reading Stats Card Styles */
 .reading-stats-card {
+    display: flex;
+    flex-direction: column;
     background-color: var(--secondary-bg);
     border-radius: 12px;
     padding: 1.5rem;
@@ -1386,7 +1388,8 @@ h3,
 #date-rating {
     display: flex;
     flex-direction: row;
-    justify-content: space-around;
+    justify-content: center;
+    gap: 4.2rem;
 }
 
 .stats-item.full-width {
