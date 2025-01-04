@@ -155,23 +155,43 @@ def search():
     sort_by = request.args.get("sort_by", "title")
     sort_order = request.args.get("sort_order", "asc")
     
-    allowed_sort_columns = {"title", "author", "publish_year", "date_added"}
+    # Allowed sorting columns
+    allowed_sort_columns = {"title", "author", "publish_year", "date_added", "genre"}
     if sort_by not in allowed_sort_columns:
         sort_by = "title"
     
+    # Sorting direction
     sort_direction = "ASC" if sort_order == "asc" else "DESC"
     
+    # Build the query
+    query = f"""
+        SELECT books.*, 
+               GROUP_CONCAT(DISTINCT book_tags.tag_name) AS tags
+        FROM books
+        LEFT JOIN book_tags ON books.id = book_tags.book_id
+        WHERE 
+            lower(books.title) LIKE ? OR 
+            lower(books.author) LIKE ? OR 
+            books.publish_year LIKE ? OR
+            lower(books.genre) LIKE ? OR
+            lower(books.description) LIKE ? OR
+            lower(books.subtitle) LIKE ? OR
+            lower(books.publisher) LIKE ? OR
+            lower(book_tags.tag_name) LIKE ?
+        GROUP BY books.id
+        ORDER BY {sort_by} {sort_direction}
+    """
+    params = [f"%{search_term}%"] * 8  # Reuse the search term for all fields
+
+    # Execute the query
     with get_db_connection() as conn:
-        books = conn.execute("""
-            SELECT * FROM books
-            WHERE lower(title) LIKE ? OR lower(author) LIKE ? OR publish_year LIKE ?
-            ORDER BY {} {}
-        """.format(sort_by, sort_direction),
-            (f"%{search_term}%", f"%{search_term}%", f"%{search_term}%")
-        ).fetchall()
+        books = conn.execute(query, params).fetchall()
     
-    return render_template("search.html", 
-                         books=books, 
-                         search_term=search_term, 
-                         sort_by=sort_by, 
-                         sort_order=sort_order)
+    return render_template(
+        "search.html",
+        books=books,
+        search_term=search_term,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+
