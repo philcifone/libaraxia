@@ -100,7 +100,7 @@
 
     <!-- Section for Rating and Review -->
     <div class="review-container">
-        <h1 class="stats-header">{{ current_user.username.capitalize() }}'s Reading Journey for {{ book[1] }}</h1>
+        <h1 class="stats-header">{{ current_user.username.capitalize() }}'s Reading Info for {{ book[1] }}</h1>
         
         <div class="reading-status-card">
             <form action="{{ url_for('collections.add_to_collection') }}" method="post" class="status-form">
