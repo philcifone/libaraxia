@@ -118,4 +118,95 @@ function updateRatingValue(value) {
     output.textContent = value;
 }
 
-
+// Keywording/Tag Javascript
+document.addEventListener('DOMContentLoaded', function() {
+    const tagInput = document.getElementById('tagInput');
+    const tagsList = document.getElementById('tagsList');
+    const addTagBtn = document.querySelector('.add-tag-btn');
+    
+    // Get book ID from a data attribute we'll add to the HTML
+    const bookId = document.querySelector('[data-book-id]').dataset.bookId;
+    
+    // Load existing tags
+    fetchTags();
+    
+    // Add tag on button click
+    addTagBtn.addEventListener('click', () => {
+        addTags();
+    });
+    
+    // Add tag on Enter key
+    tagInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addTags();
+        }
+    });
+    
+    function addTags() {
+        const tags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+        if (tags.length === 0) return;
+        
+        fetch('/tags/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                book_id: bookId,
+                tags: tags
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                tagInput.value = '';
+                updateTagsList(data.tags);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    function removeTag(tagName) {
+        fetch('/tags/remove', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                book_id: bookId,
+                tag: tagName
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTagsList(data.tags);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    function fetchTags() {
+        fetch(`/tags/get/${bookId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateTagsList(data.tags);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    function updateTagsList(tags) {
+        tagsList.innerHTML = tags.map(tag => `
+            <span class="tag">
+                ${tag}
+                <button class="tag-remove" onclick="event.preventDefault(); window.tagOperations.removeTag('${tag}')">×</button>
+            </span>
+        `).join('');
+    }
+    
+    // Make removeTag function available globally in a safer way
+    window.tagOperations = {
+        removeTag: removeTag
+    };
+});

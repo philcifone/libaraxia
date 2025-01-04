@@ -33,7 +33,7 @@
                 value="{{ book_details.title if book.details else book[1] }}" required><br>
 
             <input placeholder="Subtitle" type="text" id="subtitle" name="subtitle"
-                value="{{ book_details.subtitle if book.details else book[11] }}" required><br>
+                value="{{ book_details.subtitle if book.details else book[11] }}"><br>
 
             <input placeholder="Author" type="text" id="author" name="author"
                 value="{{ book_details.author if book_details else book[2] }}" required><br>

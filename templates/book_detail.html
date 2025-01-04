@@ -162,6 +162,14 @@
                 </a>
             </div>
         </div>
+        <div class="tags-container" data-book-id="{{ book.id }}">
+            <h2 class="tags-header">Tags</h2>
+            <div class="tags-input-container">
+                <input type="text" id="tagInput" class="tag-input" placeholder="Add tags (separate by comma or press Enter)">
+                <button type="button" class="add-tag-btn">Add</button>
+            </div>
+            <div id="tagsList" class="tags-list"></div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
