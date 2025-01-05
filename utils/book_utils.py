@@ -104,13 +104,19 @@ def process_image(image_file, existing_url: Optional[str] = None) -> Optional[st
         filename = secure_filename(image_file.filename)
         timestamp = int(time.time())
         unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
+        
+        # Use absolute path for saving but return relative path for database
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
+        
+        # Ensure upload directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         
         img = Image.open(image_file)
         img.thumbnail(MAX_IMAGE_SIZE)
         img = ImageOps.exif_transpose(img)
         img.save(save_path)
         
+        # Return relative path for database storage
         return os.path.join('uploads', unique_filename)
     return existing_url
 
@@ -126,12 +132,18 @@ def download_and_save_cover(url: str) -> Optional[str]:
             
         timestamp = int(time.time())
         filename = f"cover_{timestamp}.jpg"
+        
+        # Use absolute path for saving but return relative path for database
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        
+        # Ensure upload directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         
         img = Image.open(requests.get(url, stream=True).raw)
         img.thumbnail(MAX_IMAGE_SIZE)
         img.save(save_path)
         
+        # Return relative path for database storage
         return os.path.join('uploads', filename)
     except Exception as e:
         current_app.logger.error(f"Error downloading cover: {str(e)}")
