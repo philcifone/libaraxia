@@ -7,6 +7,20 @@ import bcrypt
 # Initialize Blueprint
 user_blueprint = Blueprint('user', __name__)
 
+def calculate_user_stats(conn, user_id):
+    """Calculate user reading statistics"""
+    query = '''
+        SELECT 
+            COUNT(DISTINCT r.book_id) as books_read,
+            SUM(b.page_count) as pages_read,
+            AVG(r.rating) as avg_rating
+        FROM read_data r
+        JOIN books b ON r.book_id = b.id
+        WHERE r.user_id = ?
+    '''
+    stats = conn.execute(query, [user_id]).fetchone()
+    return dict(stats) if stats else None
+
 @user_blueprint.route('/<username>')
 @login_required
 def profile(username):
@@ -16,16 +30,21 @@ def profile(username):
 
     # Fetch the user details from the database
     conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-    conn.close()
+    try:
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        
+        if not user:
+            return "User not found!", 404
 
-    if not user:
-        return "User not found!", 404
+        # Convert user data to dictionary format
+        user = dict(user)
+        
+        # Get user's reading stats
+        stats = calculate_user_stats(conn, user['id'])
 
-    # Convert user data to dictionary format for easier use
-    user = dict(user)
-
-    return render_template('user.html', user=user)
+        return render_template('user.html', user=user, stats=stats)
+    finally:
+        conn.close()
 
 @user_blueprint.route('/update_profile', methods=['POST'])
 @login_required

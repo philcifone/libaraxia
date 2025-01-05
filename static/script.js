@@ -210,3 +210,67 @@ document.addEventListener('DOMContentLoaded', function() {
         removeTag: removeTag
     };
 });
+
+// index.html javascript for filter functions
+
+// On page load, check if filters should be shown
+document.addEventListener('DOMContentLoaded', function () {
+    // Show filters if any filter parameters are present
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString() && urlParams.toString() !== '') {
+        const filterPanel = document.getElementById('filter-panel');
+        filterPanel.classList.add('active');
+
+        // Update the toggle button arrow
+        const filterToggle = document.getElementById('filterToggle');
+        filterToggle.innerHTML = 'Filters ▲';
+    }
+});
+
+function toggleFilters() {
+    const panel = document.getElementById('filter-panel');
+    const toggle = document.getElementById('filterToggle');
+    panel.classList.toggle('active');
+
+    // Update the arrow direction
+    if (panel.classList.contains('active')) {
+        toggle.innerHTML = 'Filters ▲';
+    } else {
+        toggle.innerHTML = 'Filters ▼';
+    }
+}
+
+function clearFilters() {
+    const form = document.getElementById('filter-form');
+    const inputs = form.getElementsByTagName('input');
+    const selects = form.getElementsByTagName('select');
+
+    // Preserve the show_filters value
+    const showFilters = document.getElementById('show_filters');
+
+    for (let input of inputs) {
+        if (input.type === 'checkbox' || (input.type === 'hidden' && input.id !== 'show_filters')) {
+            input.checked = false;
+        }
+    }
+
+    for (let select of selects) {
+        select.value = '';
+    }
+
+    form.submit();
+}
+
+function submitSortForm() {
+    // Preserve filter state when sorting
+    const filterPanel = document.getElementById('filter-panel');
+    if (filterPanel.classList.contains('active')) {
+        const sortForm = document.getElementById('sort-form');
+        const showFiltersInput = document.createElement('input');
+        showFiltersInput.type = 'hidden';
+        showFiltersInput.name = 'show_filters';
+        showFiltersInput.value = '1';
+        sortForm.appendChild(showFiltersInput);
+    }
+    document.getElementById('sort-form').submit();
+}

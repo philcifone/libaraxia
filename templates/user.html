@@ -40,6 +40,25 @@
                     <span class="detail-label">Admin</span>
                     <span class="detail-value">{{ 'Yes' if user['is_admin'] else 'No' }}</span>
                 </div>
+            </div><br>
+            <div class="stats-container">
+                <h1>{{ user['username'].capitalize() }}'s Book Stats</h1>
+                {% if stats %}
+                <div class="stats-content">
+                    <div class="stat-item">
+                        <span class="stat-label">Books Read:</span>
+                        <span class="stat-value">{{ stats.books_read }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Pages Read:</span>
+                        <span class="stat-value">{{ stats.pages_read or 0 }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Average Rating:</span>
+                        <span class="stat-value">{{ "%.1f"|format(stats.avg_rating or 0) }}★</span>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

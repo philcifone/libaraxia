@@ -15,7 +15,6 @@ from blueprints.collections import collections_blueprint
 from blueprints.user import user_blueprint
 from blueprints.read import read_blueprint
 from blueprints.tags import tags_blueprint
-#from blueprints.filter import filter_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User
 
@@ -78,7 +77,6 @@ def create_app():
     app.register_blueprint(user_blueprint, url_prefix='/user')
     app.register_blueprint(read_blueprint, url_prefix='/read')
     app.register_blueprint(tags_blueprint, url_prefix='/tags')
-    #app.register_blueprint(filter_blueprint, url_prefix='/filter')
     
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)

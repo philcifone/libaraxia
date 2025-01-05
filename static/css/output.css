@@ -1218,14 +1218,14 @@ a:hover {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 75px;
-  height: 75px;
-  background-color: #28a745;
+  width: 175px;
+  height: 60px;
+  background-color:var(--accent-color);
   color: white;
-  border-radius: 50%;
+  border-radius: 42px;
   text-align: center;
-  line-height: 75px;
-  font-size: 36px;
+  line-height: 60px;
+  font-size: 20px;
   font-weight: bold;
   text-decoration: none;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
@@ -1234,7 +1234,7 @@ a:hover {
 }
 
 .floating-button:hover {
-  background-color: #218838;
+  background-color: var(--accent-hover);
   transform: scale(1.1);
 }
 
@@ -2016,16 +2016,15 @@ h3,
 }
 
 .stats-item {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 0.5rem;
 }
 
 #date-rating {
-  display: flex;
-  flex-direction: row;
+  display: grid;
   justify-content: center;
   gap: 4.2rem;
+  margin-bottom: 24px;
 }
 
 .stats-item.full-width {
@@ -2051,6 +2050,8 @@ h3,
   display: flex;
   gap: 0.25rem;
   margin-top: 0.25rem;
+  scale: 1.2;
+  margin-left: 30px;
 }
 
 .star {
@@ -2660,10 +2661,11 @@ textarea {
 /* tags styles */
 
 .tags-container {
-  background: var(--secondary-bg);
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
   border-radius: 8px;
-  padding: 1.5rem;
-  margin: 1rem 0;
+  margin-top: 20px;
 }
 
 .tags-header {
@@ -2728,112 +2730,104 @@ textarea {
   opacity: 1;
 }
 
-/* filter styles */
+/* Update existing filter styles */
 
-.filter-container {
-  background: var(--secondary-bg);
-  border-radius: 8px;
-  padding: 1rem;
+.filter-section {
   margin: 1rem 0;
+  width: 100%;
+  /* Changed from 42% to full width */
 }
 
 .filter-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: center;
+}
+
+.filter-groups-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1rem;
-  color: var(--text-primary);
 }
 
-.filter-toggle {
-  background: var(--accent-color);
-  color: var(--text-primary);
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.filter-group {
+  flex: 1;
+  min-width: 150px;
+  /* Minimum width for each filter */
+  max-width: 200px;
+  /* Maximum width for each filter */
 }
 
-.filter-toggle:hover {
-  background: var(--accent-hover);
+.tags-group {
+  flex: 2;
+  /* Give tags more space */
+  max-width: 400px;
+  /* Larger max-width for tags */
 }
 
 .filter-content {
   display: none;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  padding: 1rem 0;
+  background: var(--secondary-bg);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.5rem;
 }
 
 .filter-content.active {
   display: grid;
+  justify-content: center;
 }
 
-.filter-group {
+.filter-actions {
   display: flex;
-  flex-direction: column;
   gap: 0.5rem;
-}
-
-.filter-group label {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
+  margin-top: 1rem;
 }
 
 .filter-select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
   background: var(--primary-bg);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  padding: 0.5rem;
-  border-radius: 4px;
-  width: 100%;
 }
 
-.filter-tags {
+.tag-container {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  width: 725px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: var(--primary-bg);
+  border-radius: 4px;
 }
 
-.filter-tag {
+.tag-checkbox {
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--secondary-bg);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.apply-filters, .clear-filters {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.apply-filters {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+}
+
+.clear-filters {
   background: var(--primary-bg);
   color: var(--text-primary);
-  padding: 0.25rem 0.75rem;
-  border-radius: 16px;
-  font-size: 0.9rem;
-}
-
-.filter-tag.active {
-  background: var(--accent-color);
-}
-
-.stats-container {
-  background: var(--secondary-bg);
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem 0;
-  color: var(--text-primary);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: var(--accent-color);
-}
-
-.stat-label {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
