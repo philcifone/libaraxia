@@ -2099,6 +2099,7 @@ textarea {
 
 .filter-groups-container {
     display: flex;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1rem;
@@ -2111,8 +2112,8 @@ textarea {
 }
 
 .tags-group {
-    flex: 2; /* Give tags more space */
-    max-width: 400px; /* Larger max-width for tags */
+    flex: 4; /* Give tags more space */
+    max-width: 900px; /* Larger max-width for tags */
 }
 
 .filter-content {
