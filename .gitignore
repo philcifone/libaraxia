@@ -7,4 +7,6 @@ __pycache__/
 *.pyo
 instance/
 *.bak
+styles.css.bak
 *.mermaid
+css_audit*

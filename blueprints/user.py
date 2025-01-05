@@ -1,8 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response
 from flask_login import current_user, login_required
 from utils.database import get_db_connection
 from models import User
 import bcrypt
+import csv
+from io import StringIO
 
 # Initialize Blueprint
 user_blueprint = Blueprint('user', __name__)
@@ -113,3 +115,66 @@ def update_profile():
     
     conn.close()
     return redirect(url_for('user.profile', username=current_user.username))
+
+@user_blueprint.route('/export_library')
+@login_required
+def export_library():
+    conn = get_db_connection()
+    try:
+        # Get all books with their statuses and ratings for the current user
+        query = '''
+            SELECT 
+                b.title,
+                b.author,
+                b.publisher,
+                b.publish_year,
+                b.isbn,
+                b.page_count,
+                b.genre,
+                c.status as reading_status,
+                r.rating,
+                r.date_read,
+                r.comment as review,
+                GROUP_CONCAT(t.tag_name) as tags
+            FROM books b
+            LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
+            LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
+            LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
+            GROUP BY b.id
+            ORDER BY b.title
+        '''
+        books = conn.execute(query, (current_user.id, current_user.id, current_user.id)).fetchall()
+
+        # Create CSV in memory
+        si = StringIO()
+        writer = csv.writer(si)
+        
+        # Write headers
+        writer.writerow(['Title', 'Author', 'Publisher', 'Year', 'ISBN', 'Pages', 
+                        'Genre', 'Reading Status', 'Rating', 'Date Read', 'Review', 'Tags'])
+        
+        # Write data
+        for book in books:
+            writer.writerow([
+                book['title'],
+                book['author'],
+                book['publisher'],
+                book['publish_year'],
+                book['isbn'],
+                book['page_count'],
+                book['genre'],
+                book['reading_status'] or 'Untracked',
+                book['rating'],
+                book['date_read'],
+                book['review'],
+                book['tags']
+            ])
+
+        # Create the response
+        output = make_response(si.getvalue())
+        output.headers["Content-Disposition"] = f"attachment; filename=library_export_{current_user.username}.csv"
+        output.headers["Content-type"] = "text/csv"
+        return output
+
+    finally:
+        conn.close()
