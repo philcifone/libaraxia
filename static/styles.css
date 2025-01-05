@@ -2363,7 +2363,7 @@ textarea {
 /* Responsive Adjustments */
 @media (max-width: 768px) {
     .search-methods {
-        flex-direction: column;
+        flex-direction: row;
         align-items: stretch;
     }
 
