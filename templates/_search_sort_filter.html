@@ -1,0 +1,104 @@
+    <!-- Combined Search, Sort, and Filter Container -->
+    <div class="search-form-container">
+        <!-- Search Section -->
+        <form method="GET" action="{{ url_for('books.search') }}" class="search-bar">
+            <input type="text" id="search_term" name="search_term"
+                placeholder="Search Catalog by title, author, year..."
+                value="{{ request.args.get('search_term', '') }}">
+            <button class="form-button" type="submit">Search</button>
+        </form>
+        <!-- Sort Section -->
+        <form method="GET" action="{{ url_for('base.index') }}" class="sort-bar" id="sort-form">
+            <label for="sort_by" class="sort-buttons">Sort:</label>
+            <select name="sort_by" id="sort_by" onchange="submitSortForm()">
+                <option value="title" {% if sort_by=="title" %}selected{% endif %}>Title</option>
+                <option value="author" {% if sort_by=="author" %}selected{% endif %}>Author</option>
+                <option value="publish_year" {% if sort_by=="publish_year" %}selected{% endif %}>Year Published</option>
+                <option value="date_added" {% if sort_by=="date_added" %}selected{% endif %}>Date Added</option>
+            </select>
+
+            <select name="sort_order" id="sort_order" onchange="submitSortForm()">
+                <option value="asc" {% if sort_order=="asc" %}selected{% endif %}>Ascending</option>
+                <option value="desc" {% if sort_order=="desc" %}selected{% endif %}>Descending</option>
+            </select>
+        </form>
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="filter-header">
+                <button onclick="toggleFilters()" class="filter-toggle">Filters ▼</button>
+            </div>
+            
+            <div class="filter-content {% if request.args|length > 1 %}active{% endif %}" id="filter-panel">
+                <form id="filter-form" method="GET" action="{{ url_for('base.index') }}">
+                    <div class="filter-groups-container">
+                        <div class="filter-group">
+                            <label for="genre">Genre</label>
+                            <select name="genre" id="genre" class="filter-select">
+                                <option value="">All</option>
+                                {% for genre in filter_options.genres %}
+                                <option value="{{ genre }}" {% if request.args.get('genre')==genre %}selected{% endif %}>
+                                    {{ genre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="read_status">Status</label>
+                            <select name="read_status" id="read_status" class="filter-select">
+                                <option value="">All</option>
+                                {% for status in filter_options.read_statuses %}
+                                <option value="{{ status }}" {% if request.args.get('read_status')==status %}selected{% endif %}>
+                                    {{ status }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="date_range">Date</label>
+                            <select name="date_range" id="date_range" class="filter-select">
+                                {% for range in filter_options.date_ranges %}
+                                <option value="{{ range.value }}" {% if request.args.get('date_range')==range.value %}selected{% endif %}>
+                                    {{ range.label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="rating">Rating</label>
+                            <select name="rating" id="rating" class="filter-select">
+                                <option value="">All</option>
+                                {% for rating in range(1, 6) %}
+                                <option value="{{ rating }}" {% if request.args.get('rating')|int == rating %}selected{% endif %}>
+                                    {{ "★" * rating }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-group tags-group">
+                        <label>Tags</label>
+                        <div class="tag-container">
+                            {% for tag in filter_options.tags %}
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags[]" value="{{ tag }}"
+                                    {% if tag in request.args.getlist('tags[]') %}checked{% endif %}>
+                                {{ tag }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Add a hidden input to track filter panel state -->
+                    <input type="hidden" name="show_filters" id="show_filters" value="1">
+
+                    <div class="filter-actions">
+                        <button type="submit" class="apply-filters">Apply</button>
+                        <button type="button" onclick="clearFilters()" class="clear-filters">Clear</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>

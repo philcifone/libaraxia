@@ -13,34 +13,7 @@
         <span class="plus-sign">+</span>
     </a>
 
-    <!-- Add a search form above or below the book list -->
-    <div class="search-form-container">
-        <form method="GET" action="{{ url_for('books.search') }}" class="search-bar">
-            <input
-                type="text"
-                id="search_term"
-                name="search_term"
-                placeholder="Search Catalog by title, author, year..."
-                value="{{ request.args.get('search_term', '') }}"
-            >
-            <button type="submit">Search</button>
-        </form>  
-        <form method="GET" action="{{ url_for('books.search') }}" class="sort-bar" id="sort-form">
-            <input type="hidden" name="search_term" value="{{ request.args.get('search_term', '') }}">
-            <label for="sort_by" class="sort-buttons">Sort:</label>
-            <select name="sort_by" id="sort_by" onchange="submitSortForm()">
-                <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title</option>
-                <option value="author" {% if sort_by == "author" %}selected{% endif %}>Author</option>
-                <option value="publish_year" {% if sort_by == "publish_year" %}selected{% endif %}>Year Published</option>
-                <option value="date_added" {% if sort_by == "date_added" %}selected{% endif %}>Date Added</option>
-            </select>
-        
-            <select name="sort_order" id="sort_order" onchange="submitSortForm()">
-                <option value="asc" {% if sort_order == "asc" %}selected{% endif %}>Ascending</option>
-                <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>Descending</option>
-            </select>
-        </form>
-    </div>
+    {% include '_search_sort_filter.html' %}
 
     <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
         <span class="back-arrow">←</span>

@@ -5,6 +5,8 @@ import requests
 import os
 import time
 from typing import Optional, Dict, Any
+from utils.database import get_db_connection
+from flask_login import current_user
 
 # Constants
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -134,3 +136,30 @@ def download_and_save_cover(url: str) -> Optional[str]:
     except Exception as e:
         current_app.logger.error(f"Error downloading cover: {str(e)}")
         return None
+
+# filter options
+def get_filter_options():
+    """Fetch available filter options from the database."""
+    conn = get_db_connection()
+    try:
+        # Fetch genres
+        genres = [row['genre'] for row in conn.execute("SELECT DISTINCT genre FROM books").fetchall()]
+
+        # Fetch read statuses
+        read_statuses = [row['status'] for row in conn.execute("SELECT DISTINCT status FROM collections WHERE user_id = ?", (current_user.id,)).fetchall()]
+
+        # Fetch ratings
+        ratings = [row['rating'] for row in conn.execute("SELECT DISTINCT rating FROM read_data WHERE user_id = ?", (current_user.id,)).fetchall()]
+
+        # Fetch tags
+        tags = [row['tag_name'] for row in conn.execute("SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?", (current_user.id,)).fetchall()]
+
+        # Return filter options as a dictionary
+        return {
+            'genres': genres,
+            'read_statuses': read_statuses,
+            'ratings': ratings,
+            'tags': tags
+        }
+    finally:
+        conn.close()

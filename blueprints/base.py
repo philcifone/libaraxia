@@ -2,6 +2,7 @@ from flask import render_template, redirect, url_for, request, Blueprint
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
 from datetime import datetime
+from utils.book_utils import get_filter_options
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
 
@@ -97,9 +98,20 @@ def index():
     
     tags = request.args.getlist('tags[]')
     if tags:
-        placeholders = ','.join(['?' for _ in tags])
-        conditions.append(f"t.tag_name IN ({placeholders})")
-        params.extend(tags)
+        # Only use tags from the database
+        valid_tags_query = '''
+            SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?
+        '''
+        conn = get_db_connection()
+        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
+        conn.close()
+
+        # Filter to only include valid tags
+        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
+        if valid_tags_in_request:
+            placeholders = ','.join(['?' for _ in valid_tags_in_request])
+            conditions.append(f"t.tag_name IN ({placeholders})")
+            params.extend(valid_tags_in_request)
     
     if request.args.get('date_range'):
         date_range = request.args.get('date_range')

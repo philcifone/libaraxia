@@ -9,6 +9,7 @@ from PIL import Image, ImageOps
 from functools import wraps
 from typing import Optional, Dict, Any
 from utils.database import get_db_connection
+from utils.book_utils import get_filter_options
 from models import admin_required
 from utils.book_utils import (
     fetch_book_details_from_isbn,
@@ -151,47 +152,79 @@ def delete_book(id):
 @books_blueprint.route("/search", methods=["GET"])
 @login_required
 def search():
+    # Get search term
     search_term = request.args.get("search_term", "").lower()
+    
+    # Get sort parameters with validation
     sort_by = request.args.get("sort_by", "title")
     sort_order = request.args.get("sort_order", "asc")
-    
-    # Allowed sorting columns
-    allowed_sort_columns = {"title", "author", "publish_year", "date_added", "genre"}
-    if sort_by not in allowed_sort_columns:
+
+    valid_columns = {"title", "author", "publish_year", "created_at"}
+    valid_orders = {"asc", "desc"}
+
+    if sort_by not in valid_columns:
         sort_by = "title"
-    
-    # Sorting direction
-    sort_direction = "ASC" if sort_order == "asc" else "DESC"
-    
-    # Build the query
-    query = f"""
-        SELECT books.*, 
-               GROUP_CONCAT(DISTINCT book_tags.tag_name) AS tags
-        FROM books
-        LEFT JOIN book_tags ON books.id = book_tags.book_id
-        WHERE 
-            lower(books.title) LIKE ? OR 
-            lower(books.author) LIKE ? OR 
-            books.publish_year LIKE ? OR
-            lower(books.genre) LIKE ? OR
-            lower(books.description) LIKE ? OR
-            lower(books.subtitle) LIKE ? OR
-            lower(books.publisher) LIKE ? OR
-            lower(book_tags.tag_name) LIKE ?
-        GROUP BY books.id
-        ORDER BY {sort_by} {sort_direction}
-    """
-    params = [f"%{search_term}%"] * 8  # Reuse the search term for all fields
+    if sort_order not in valid_orders:
+        sort_order = "asc"
 
-    # Execute the query
-    with get_db_connection() as conn:
+    # Build the base query
+    query = '''
+        SELECT DISTINCT b.* FROM books b
+        LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
+        LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
+        LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
+        WHERE (b.title LIKE ? OR b.author LIKE ? OR b.publish_year LIKE ?)
+    '''
+    params = [current_user.id, current_user.id, current_user.id]
+    search_like = f"%{search_term}%"
+    params.extend([search_like, search_like, search_like])
+    
+    # Apply filters if they exist
+    if request.args.get('genre'):
+        query += " AND b.genre = ?"
+        params.append(request.args.get('genre'))
+    
+    if request.args.get('read_status'):
+        query += " AND c.status = ?"
+        params.append(request.args.get('read_status'))
+    
+    if request.args.get('rating'):
+        query += " AND r.rating = ?"
+        params.append(request.args.get('rating'))
+    
+    tags = request.args.getlist('tags[]')
+    if tags:
+        # Only use tags from the database
+        valid_tags_query = '''
+            SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?
+        '''
+        conn = get_db_connection()
+        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
+        conn.close()
+
+        # Filter to only include valid tags
+        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
+        if valid_tags_in_request:
+            placeholders = ','.join(['?' for _ in valid_tags_in_request])
+            query += f" AND t.tag_name IN ({placeholders})"
+            params.extend(valid_tags_in_request)
+    
+    # Add sorting
+    query += f" ORDER BY {sort_by} {sort_order}"
+
+    # Execute query
+    conn = get_db_connection()
+    try:
         books = conn.execute(query, params).fetchall()
-    
-    return render_template(
-        "search.html",
-        books=books,
-        search_term=search_term,
-        sort_by=sort_by,
-        sort_order=sort_order
-    )
-
+        
+        # Get filter options for the template
+        filter_options = get_filter_options()
+        
+        return render_template("search.html",
+                             books=books,
+                             filter_options=filter_options,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             search_term=search_term)
+    finally:
+        conn.close()
