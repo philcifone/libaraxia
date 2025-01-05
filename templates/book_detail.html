@@ -161,7 +161,7 @@
                 </a>
             </div>
         <div class="tags-container" data-book-id="{{ book.id }}">
-            <h2 class="tags-header">User Book Tags</h2>
+            <h2 class="tags-header">{{ current_user.username.capitalize() }}'s Book Tags</h2>
             <div class="tags-input-container">
                 <input type="text" id="tagInput" class="tag-input" placeholder="Add tags (separate by comma)">
                 <button type="button" class="add-tag-btn">Add</button>

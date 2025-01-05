@@ -274,3 +274,171 @@ function submitSortForm() {
     }
     document.getElementById('sort-form').submit();
 }
+// light/dark toggle
+const themeToggle = document.getElementById('theme-toggle');
+const root = document.documentElement;
+
+// Check for saved theme preference
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+    root.classList.toggle('light-mode', savedTheme === 'light');
+}
+
+themeToggle.addEventListener('click', () => {
+    const isLightMode = root.classList.toggle('light-mode');
+    localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
+});
+
+// add book 
+// Handle tab switching
+document.addEventListener('DOMContentLoaded', function() {
+    const methodButtons = document.querySelectorAll('.search-method-btn');
+    const methodSections = document.querySelectorAll('.search-method-content');
+
+    methodButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons and sections
+            methodButtons.forEach(btn => btn.classList.remove('active'));
+            methodSections.forEach(section => section.classList.remove('active'));
+
+            // Add active class to clicked button and corresponding section
+            button.classList.add('active');
+            const method = button.dataset.method;
+            document.getElementById(`${method}-section`).classList.add('active');
+
+            // Stop scanner if switching away from barcode tab
+            if (method !== 'barcode' && Quagga.initialized) {
+                Quagga.stop();
+            }
+        });
+    });
+
+    // Handle title/author search
+    const searchInput = document.getElementById('book-search');
+    const searchBtn = document.getElementById('search-btn');
+    const resultsContainer = document.getElementById('search-results');
+    let searchTimeout;
+
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (query.length < 2) return;
+
+        fetch(`/books/search_books?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                resultsContainer.innerHTML = '';
+                data.items.forEach(book => {
+                    const bookCard = createBookCard(book);
+                    resultsContainer.appendChild(bookCard);
+                });
+            })
+            .catch(error => console.error('Error searching books:', error));
+    }
+
+    // Debounce search input
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 500);
+    });
+
+    searchBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        performSearch();
+    });
+
+    // Handle barcode scanning
+    const scannerBtn = document.getElementById('toggle-scanner');
+    let isScanning = false;
+
+    scannerBtn.addEventListener('click', () => {
+        if (!isScanning) {
+            startScanner();
+            scannerBtn.textContent = 'Stop Scanner';
+        } else {
+            stopScanner();
+            scannerBtn.textContent = 'Start Scanner';
+        }
+        isScanning = !isScanning;
+    });
+});
+
+function createBookCard(book) {
+    const card = document.createElement('div');
+    card.className = 'book-search-result';
+    
+    const thumbnail = book.volumeInfo.imageLinks?.thumbnail || '/static/images/no-cover.png';
+    const title = book.volumeInfo.title;
+    const authors = book.volumeInfo.authors?.join(', ') || 'Unknown Author';
+    const year = book.volumeInfo.publishedDate?.split('-')[0] || 'Unknown Year';
+
+    card.innerHTML = `
+        <img src="${thumbnail}" alt="${title} cover" class="result-thumbnail">
+        <div class="result-info">
+            <h3>${title}</h3>
+            <p>${authors}</p>
+            <p>${year}</p>
+        </div>
+        <button class="select-book-btn">Select</button>
+    `;
+
+    card.querySelector('.select-book-btn').addEventListener('click', () => {
+        fillBookForm(book);
+    });
+
+    return card;
+}
+
+function fillBookForm(book) {
+    const info = book.volumeInfo;
+    document.getElementById('title').value = info.title || '';
+    document.getElementById('subtitle').value = info.subtitle || '';
+    document.getElementById('author').value = info.authors?.join(', ') || '';
+    document.getElementById('isbn').value = info.industryIdentifiers?.[0]?.identifier || '';
+    document.getElementById('publisher').value = info.publisher || '';
+    document.getElementById('genre').value = info.categories?.[0] || '';
+    document.getElementById('year').value = info.publishedDate?.split('-')[0] || '';
+    document.getElementById('page_count').value = info.pageCount || '';
+    document.getElementById('description').value = info.description || '';
+
+    const coverPreview = document.getElementById('cover-preview');
+    if (info.imageLinks?.thumbnail) {
+        coverPreview.innerHTML = `<img src="${info.imageLinks.thumbnail}" alt="Book cover" class="thumbnail-preview">`;
+    }
+}
+
+// Barcode scanning setup
+function startScanner() {
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector("#interactive"),
+            constraints: {
+                facingMode: "environment"
+            },
+        },
+        decoder: {
+            readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader"]
+        }
+    }, function(err) {
+        if (err) {
+            console.error(err);
+            alert("Error starting scanner: " + err);
+            return;
+        }
+        Quagga.start();
+    });
+
+    Quagga.onDetected(function(result) {
+        const code = result.codeResult.code;
+        document.getElementById('isbn_lookup').value = code;
+        // Automatically trigger ISBN lookup
+        document.getElementById('isbn-fetch').click();
+        stopScanner();
+    });
+}
+
+function stopScanner() {
+    Quagga.stop();
+    document.getElementById('toggle-scanner').textContent = 'Start Scanner';
+}
