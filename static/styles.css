@@ -2660,3 +2660,73 @@ textarea {
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
+.custom-collections-card {
+    background-color: var(--secondary-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.collections-header {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.create-collection-form {
+    margin-bottom: 1.5rem;
+}
+
+.inline-form-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.collection-input {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--primary-bg);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.create-collection-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.create-collection-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.collections-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.book-count {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+}
+
+.no-collections {
+    color: var(--text-secondary);
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}

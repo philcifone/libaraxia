@@ -489,3 +489,45 @@ function stopScanner() {
     Quagga.stop();
     document.getElementById('toggle-scanner').textContent = 'Start Scanner';
 }
+
+// book details
+
+// Add this to your book_detail.html, replacing any existing toggleCollection function
+
+function toggleCollection(checkbox, bookId, collectionId) {
+    const action = checkbox.checked ? 'add' : 'remove';
+    console.log(`Toggling collection: ${action} book ${bookId} to collection ${collectionId}`);
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('book_id', bookId);
+    
+    // Make the request
+    fetch(`/collections/${collectionId}/${action}`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('Error response:', text);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Success:', data);
+        if (!data.success) {
+            checkbox.checked = !checkbox.checked;
+            alert('Failed to update collection: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        checkbox.checked = !checkbox.checked;
+        alert('Error updating collection. Please try again.');
+    });
+}

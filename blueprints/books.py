@@ -211,9 +211,12 @@ def edit_book(id):
 @books_blueprint.route("/book/<int:id>")
 @login_required
 def show_book(id):
-    with get_db_connection() as conn:
+    conn = get_db_connection()
+    try:
+        # Get book details
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
         
+        # Get reading status
         read_data = conn.execute("""
             SELECT date_read, rating, comment 
             FROM read_data 
@@ -226,14 +229,32 @@ def show_book(id):
             WHERE user_id = ? AND book_id = ?
         """, (current_user.id, id)).fetchone()
         
-    collection_status = collection_status['status'] if collection_status else 'untracked'
-    
-    return render_template(
-        "book_detail.html", 
-        book=book, 
-        read_data=read_data, 
-        collection_status=collection_status
-    )
+        # Get custom collections with book membership status
+        custom_collections = conn.execute("""
+            SELECT 
+                uc.collection_id,
+                uc.name,
+                COUNT(cb2.book_id) as book_count,
+                CASE WHEN cb.book_id IS NOT NULL THEN 1 ELSE 0 END as has_book
+            FROM user_collections uc
+            LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id 
+                AND cb.book_id = ?
+            LEFT JOIN collection_books cb2 ON uc.collection_id = cb2.collection_id
+            WHERE uc.user_id = ?
+            GROUP BY uc.collection_id, uc.name
+        """, (id, current_user.id)).fetchall()
+        
+        collection_status = collection_status['status'] if collection_status else 'untracked'
+        
+        return render_template(
+            "book_detail.html",
+            book=book,
+            read_data=read_data,
+            collection_status=collection_status,
+            custom_collections=custom_collections
+        )
+    finally:
+        conn.close()
 
 @books_blueprint.route("/delete/<int:id>")
 @login_required

@@ -3,23 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>L I B A R A X I A</title>
+    <title>Libaraxia - Collections</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body>
     {% include '_sidebar.html' %}
 
-    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink" style="margin-top: 75px;">
+    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
         <span class="back-arrow">←</span>
         <span>Back to Catalog</span>
     </a>
 
-    <div class="collection-links" style="margin-top: 75px;">
-        <h1>Libaraxia Shelves</h1>
-        <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">Read</a> 
-        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}"class="add-book-link">Currently Reading</a> 
-        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">Want to Read</a>
-        <a href="{{ url_for('collections.view_by_status', status='did not finish') }}" class="add-book-link">Did Not Finish</a>
+    <div class="collection-links">
+        <h1>Reading Lists</h1>
+        <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">
+            Read {% if reading_lists %}
+            {% for list in reading_lists %}
+                {% if list['status'] == 'read' %}
+                    ({{ list['book_count'] }})
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+        </a>
+        <a href="{{ url_for('collections.view_by_status', status='currently reading') }}" class="add-book-link">
+            Currently Reading {% if reading_lists %}
+            {% for list in reading_lists %}
+                {% if list['status'] == 'currently reading' %}
+                    ({{ list['book_count'] }})
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+        </a>
+        <a href="{{ url_for('collections.view_by_status', status='want to read') }}" class="add-book-link">
+            Want to Read {% if reading_lists %}
+            {% for list in reading_lists %}
+                {% if list['status'] == 'want to read' %}
+                    ({{ list['book_count'] }})
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+        </a>
+        <a href="{{ url_for('collections.view_by_status', status='did not finish') }}" class="add-book-link">
+            Did Not Finish {% if reading_lists %}
+            {% for list in reading_lists %}
+                {% if list['status'] == 'did not finish' %}
+                    ({{ list['book_count'] }})
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+        </a>
     </div>
+
+    <div class="collection-links custom-collections">
+        <h1>Custom Collections</h1>
+        
+        <!-- Create New Collection Form -->
+        <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="create-collection-form">
+            <input type="text" name="name" placeholder="Collection Name" required>
+            <button type="submit" class="add-book-link">Create Collection</button>
+        </form>
+
+        <!-- List of Custom Collections -->
+        {% if custom_collections %}
+            {% for collection in custom_collections %}
+                <a href="{{ url_for('collections.view_custom_collection', collection_id=collection['collection_id']) }}" class="add-book-link">
+                    {{ collection['name'] }} ({{ collection['book_count'] }})
+                </a>
+            {% endfor %}
+        {% else %}
+            <p class="no-collections">No custom collections yet</p>
+        {% endif %}
+    </div>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
 </html>

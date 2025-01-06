@@ -3,17 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=.8">
-    <title>{{ status.capitalize() }} Bookshelf</title>
+    <title>
+        {% if is_custom %}
+            {{ collection.name }} Collection
+        {% else %}
+            {{ status.capitalize() }} Bookshelf
+        {% endif %}
+    </title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body>
     {% include '_sidebar.html' %}
     
-    <h1 style="margin-top: 75px;">{{ status.capitalize() }} Bookshelf</h1>
+    <h1 style="margin-top: 75px;">
+        {% if is_custom %}
+            {{ collection.name }} Collection
+        {% else %}
+            {{ status.capitalize() }} Bookshelf
+        {% endif %}
+    </h1>
+
     <a href="{{ url_for('collections.view_collections') }}" class="back-nav" id="ratepagelistlink">
         <span class="back-arrow">←</span>
         <span>Back to Bookshelves</span>
     </a>
+
     <div class="book-grid">
         {% for book in books %}
         <div class="book-tile">
@@ -30,7 +44,24 @@
             </a>
         </div>
         {% endfor %}
+
+        {% if not books %}
+        <div class="empty-collection">
+            <p>No books in this collection yet.</p>
+        </div>
+        {% endif %}
     </div>
+
+    <style>
+    .empty-collection {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+    </style>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
