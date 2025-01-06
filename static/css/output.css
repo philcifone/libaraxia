@@ -600,10 +600,6 @@ video {
   display: block;
 }
 
-.inline {
-  display: inline;
-}
-
 .hidden {
   display: none;
 }
@@ -3365,6 +3361,8 @@ textarea {
 
 .create-collection-form {
   margin-bottom: 1.5rem;
+  width: 75%;
+  display: flex;
 }
 
 .inline-form-group {
@@ -3417,4 +3415,38 @@ textarea {
   font-style: italic;
   text-align: center;
   padding: 1rem;
+}
+
+.collection-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 60%;
+  justify-content: end;
+}
+
+.delete-collection-btn {
+  background: none;
+  border: none;
+  color: #ff4444;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.delete-collection-btn:hover {
+  color: #ff0000;
+}
+
+.delete-collection-form {
+  margin: 0;
+}
+
+#create-collection-btn {
+  width: 100%;
+}
+
+#collection-input {
+  width: 100%;
 }

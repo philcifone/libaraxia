@@ -232,3 +232,71 @@ def view_by_status(status):
                              collection=None)  # Include collection but set to None for status-based collections
     finally:
         conn.close()
+
+@collections_blueprint.route('/manage_book_collections', methods=['POST'])
+@login_required
+def manage_book_collections():
+    book_id = request.form.get('book_id')
+    collection_id = request.form.get('collection_id')
+    
+    if not book_id or not collection_id:
+        flash('Missing required information', 'error')
+        return redirect(request.referrer)
+
+    conn = get_db_connection()
+    try:
+        # Check if book is already in collection
+        existing = conn.execute('''
+            SELECT 1 FROM collection_books 
+            WHERE collection_id = ? AND book_id = ?
+        ''', (collection_id, book_id)).fetchone()
+
+        if existing:
+            # Remove from collection if already exists
+            conn.execute('''
+                DELETE FROM collection_books 
+                WHERE collection_id = ? AND book_id = ?
+            ''', (collection_id, book_id))
+            flash('Book removed from collection', 'success')
+        else:
+            # Add to collection
+            conn.execute('''
+                INSERT INTO collection_books (collection_id, book_id)
+                VALUES (?, ?)
+            ''', (collection_id, book_id))
+            flash('Book added to collection', 'success')
+        
+        conn.commit()
+    except Exception as e:
+        flash(f'Error managing collection: {str(e)}', 'error')
+    finally:
+        conn.close()
+
+    return redirect(request.referrer)
+
+@collections_blueprint.route('/delete_collection/<int:collection_id>', methods=['POST'])
+@login_required
+def delete_collection(collection_id):
+    conn = get_db_connection()
+    try:
+        # Verify ownership and delete
+        cursor = conn.execute('''
+            DELETE FROM user_collections 
+            WHERE collection_id = ? AND user_id = ? 
+            RETURNING 1
+        ''', (collection_id, current_user.id))
+        
+        if cursor.fetchone():
+            # Also delete associated books
+            conn.execute('DELETE FROM collection_books WHERE collection_id = ?', (collection_id,))
+            conn.commit()
+            flash('Collection deleted successfully', 'success')
+        else:
+            flash('Collection not found', 'error')
+            
+    except Exception as e:
+        flash(f'Error deleting collection: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('collections.view_collections'))

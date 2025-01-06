@@ -119,45 +119,37 @@
             </form>
         </div>
 
-        <div class="custom-collections-card">
-            <h2 class="collections-header">{{ current_user.username.capitalize() }}'s Collections</h2>
-            
-            <!-- Create new collection inline form -->
+        <!-- Replace the custom-collections-card div with this -->
+        <div class="reading-status-card">
+            <!-- Add Collection Form -->
             <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="create-collection-form">
-                <div class="inline-form-group">
+                <div class="status-group">
                     <input type="text" 
-                           name="name" 
-                           placeholder="Create new collection" 
-                           class="collection-input"
-                           required>
-                    <button type="submit" class="create-collection-btn">
-                        <svg class="btn-icon" viewBox="0 0 20 20" width="16" height="16">
-                            <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
-                        </svg>
-                    </button>
+                        name="name" 
+                        placeholder="Create new collection" 
+                        class="status-select"
+                        required>
+                    <button type="submit" class="status-update-btn">Create</button>
                 </div>
             </form>
-        
-            <!-- List of existing collections -->
-            <div class="collections-list">
-                {% for collection in custom_collections %}
-                <div class="collection-item">
-                    <input type="checkbox" 
-                           id="collection_{{ collection['collection_id'] }}" 
-                           name="collections[]" 
-                           value="{{ collection['collection_id'] }}"
-                           {% if collection['has_book'] %}checked{% endif %}
-                           onchange="toggleCollection(this, {{ book['id'] }}, {{ collection['collection_id'] }})">
-                    <label for="collection_{{ collection['collection_id'] }}">
-                        {{ collection['name'] }}
-                        <span class="book-count">({{ collection['book_count'] }})</span>
-                    </label>
+
+            <!-- Collection Management Form -->
+            <form action="{{ url_for('collections.manage_book_collections') }}" method="POST" class="status-form">
+                <input type="hidden" name="book_id" value="{{ book['id'] }}">
+                <div class="status-group">
+                    <label for="collections" class="status-label">Add to Collection</label>
+                    <select name="collection_id" id="collections" class="status-select">
+                        <option value="">Select Collection</option>
+                        {% for collection in custom_collections %}
+                        <option value="{{ collection['collection_id'] }}"
+                            {% if collection['has_book'] %}selected{% endif %}>
+                            {{ collection['name'] }} ({{ collection['book_count'] }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="status-update-btn">Update Collection</button>
                 </div>
-                {% endfor %}
-                {% if not custom_collections %}
-                <p class="no-collections">No custom collections yet. Create one above!</p>
-                {% endif %}
-            </div>
+            </form>
         </div>
     
         <div class="reading-stats-card">

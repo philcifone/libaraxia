@@ -15,7 +15,7 @@
     </a>
 
     <div class="collection-links">
-        <h1>Reading Lists</h1>
+        <h1>Reading Shelves</h1>
         <a href="{{ url_for('collections.view_by_status', status='read') }}" class="add-book-link">
             Read {% if reading_lists %}
             {% for list in reading_lists %}
@@ -55,25 +55,33 @@
     </div>
 
     <div class="collection-links custom-collections">
-        <h1>Custom Collections</h1>
+        <h1>Custom Shelves</h1>
         
         <!-- Create New Collection Form -->
         <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="create-collection-form">
-            <input type="text" name="name" placeholder="Collection Name" required>
-            <button type="submit" class="add-book-link">Create Collection</button>
+            <input type="text" name="name" placeholder="Collection Name" id="collection-input" required>
+            <button type="submit" class="add-book-link"  id="create-collection-btn">Create Collection</button>
         </form>
 
         <!-- List of Custom Collections -->
         {% if custom_collections %}
             {% for collection in custom_collections %}
-                <a href="{{ url_for('collections.view_custom_collection', collection_id=collection['collection_id']) }}" class="add-book-link">
-                    {{ collection['name'] }} ({{ collection['book_count'] }})
-                </a>
+                <div class="collection-item">
+                    <a href="{{ url_for('collections.view_custom_collection', collection_id=collection['collection_id']) }}" 
+                    class="add-book-link">
+                        {{ collection['name'] }} ({{ collection['book_count'] }})
+                    </a>
+                    <form action="{{ url_for('collections.delete_collection', collection_id=collection['collection_id']) }}" 
+                        method="POST" 
+                        class="delete-collection-form"
+                        onsubmit="return confirm('Are you sure you want to delete this collection?');">
+                        <button type="submit" class="delete-collection-btn">×</button>
+                    </form>
+                </div>
             {% endfor %}
         {% else %}
             <p class="no-collections">No custom collections yet</p>
         {% endif %}
-    </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
