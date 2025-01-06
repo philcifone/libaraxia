@@ -249,7 +249,7 @@ form input[type="checkbox"] {
     padding: 8px;
     border-radius: 8px;
     width: auto;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease-in-out;
     color: var(--text-primary);
     display: flex;
     justify-content: right;
@@ -2245,7 +2245,7 @@ textarea {
     border-radius: 0.5rem;
     color: var(--text-primary);
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s ease-in-out;
 }
 
 .search-method-btn.active {
