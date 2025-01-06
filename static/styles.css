@@ -217,18 +217,51 @@ form input[type="checkbox"] {
 }
 
 .search-form-container {
-    display: flex;
-    flex-direction: column;
-    background-color: var(--secondary-bg);
-    gap: 0rem;
+    position: fixed;
+    top: 60px;  /* Align with header height */
+    left: 0;
     width: 100%;
-    justify-content: center;
-    align-items: center;
-    border-radius: 24px;
-    margin: 0px;
-    margin-bottom: 25px;
+    background-color: var(--secondary-bg);
+    padding: 1rem;
+    z-index: 1101;
+    transform: translateY(-150%);  /* Start hidden above the viewport */
+    transition: transform 0.3s ease-in-out;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    visibility: hidden;
+    opacity: 0;
+}
+
+.search-form-container.active {
+    transform: translateY(0);  /* Show in position */
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Search toggle button styles */
+.search-toggle, #search-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
     padding: 8px;
-    margin-top: 65px;
+    border-radius: 8px;
+    width: auto;
+    transition: background-color 0.3s ease;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: right;
+}
+
+#search-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.search-icon {
+    width: 24px;
+    height: 24px;
 }
 
 .auth-form-container {
@@ -509,6 +542,7 @@ a:hover {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 20px;
     padding: 20px;
+    margin-top: 50px;
 }
 
 /* Individual book tile */
@@ -2095,12 +2129,12 @@ textarea {
 }
 
 .filter-toggle {
-    background-color: var(--accent-color2);
+    background-color: var(--primary-bg);
     transition: background-color 0.3s ease-in-out;
 }
 
 .filter-toggle:hover {
-    background-color: var(--primary-bg);
+    background-color: var(--secondary-bg);
 }
 
 .filter-header {
@@ -2174,6 +2208,7 @@ textarea {
     background: var(--secondary-bg);
     border-radius: 16px;
     white-space: nowrap;
+    padding: 10px;
 }
 
 .apply-filters, .clear-filters {
@@ -2539,4 +2574,89 @@ textarea {
 .export-button .nav-icon {
     width: 20px;
     height: 20px;
+}
+
+/* Admin Section Styles */
+.admin-section {
+    margin-top: 2rem;
+    padding: 2rem;
+    background-color: var(--secondary-bg);
+    border-radius: 8px;
+}
+
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.user-card {
+    background-color: var(--primary-bg);
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.user-info h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.user-info p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.user-status {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.status-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.inline-form {
+    margin: 0;
+    padding: 0;
+}
+
+.toggle-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.toggle-btn.active {
+    background-color: #28a745;
+    color: white;
+}
+
+.toggle-btn.admin {
+    background-color: #007bff;
+    color: white;
+}
+
+.toggle-btn:not(.active):not(.admin) {
+    background-color: var(--secondary-bg);
+    color: var(--text-secondary);
+}
+
+.toggle-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }

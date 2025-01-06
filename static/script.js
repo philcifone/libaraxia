@@ -1,8 +1,63 @@
-// Function to automatically submit the form
+// Sort form submission
 function submitSortForm() {
+    // Preserve filter state when sorting
+    const filterPanel = document.getElementById('filter-panel');
+    if (filterPanel.classList.contains('active')) {
+        const sortForm = document.getElementById('sort-form');
+        const showFiltersInput = document.createElement('input');
+        showFiltersInput.type = 'hidden';
+        showFiltersInput.name = 'show_filters';
+        showFiltersInput.value = '1';
+        sortForm.appendChild(showFiltersInput);
+    }
     document.body.style.cursor = 'wait';
     document.getElementById('sort-form').submit();
-};
+}
+
+// Filter toggle
+function toggleFilters() {
+    const panel = document.getElementById('filter-panel');
+    const toggle = document.querySelector('.filter-toggle');
+    panel.classList.toggle('active');
+    
+    // Update the arrow direction
+    toggle.textContent = panel.classList.contains('active') ? 'Filters ▲' : 'Filters ▼';
+}
+
+// Clear filters
+function clearFilters() {
+    const form = document.getElementById('filter-form');
+    const inputs = form.getElementsByTagName('input');
+    const selects = form.getElementsByTagName('select');
+
+    // Clear all inputs except show_filters
+    for (let input of inputs) {
+        if (input.type === 'checkbox' || (input.type === 'hidden' && input.id !== 'show_filters')) {
+            input.checked = false;
+        }
+    }
+
+    // Clear all selects
+    for (let select of selects) {
+        select.value = '';
+    }
+
+    form.submit();
+}
+
+// On page load, check if filters should be shown
+document.addEventListener('DOMContentLoaded', function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterPanel = document.getElementById('filter-panel');
+    const filterToggle = document.querySelector('.filter-toggle');
+
+    // Show filters if any filter parameters are present
+    if (urlParams.toString() && urlParams.toString() !== '') {
+        filterPanel.classList.add('active');
+        filterToggle.textContent = 'Filters ▲';
+    }
+});
+
 
 // sidebar function
 //document.addEventListener("DOMContentLoaded", () => {
@@ -20,12 +75,27 @@ function submitSortForm() {
 //    });
 //});
 
-// sidebar scrolling function
+// sidebar & search scrolling function
 document.addEventListener("DOMContentLoaded", () => {
     const hamburger = document.getElementById("hamburger");
     const sidebar = document.getElementById("sidebar");
     const content = document.querySelector(".content");
-    const fixedContainer = document.getElementById("fixed-container"); // The top toolbar
+    const fixedContainer = document.getElementById("fixed-container");
+    const searchToggle = document.getElementById("search-toggle");
+    const searchContainer = document.querySelector(".search-form-container");
+
+    // Toggle search dropdown
+    searchToggle.addEventListener("click", (event) => {
+        searchContainer.classList.toggle("active");
+        event.stopPropagation();
+    });
+
+    // Close search dropdown when clicking outside
+    document.addEventListener("click", (event) => {
+        if (!searchContainer.contains(event.target) && !searchToggle.contains(event.target)) {
+            searchContainer.classList.remove("active");
+        }
+    });
 
     let lastScrollTop = 0; // Variable to store the last scroll position
 
@@ -47,14 +117,25 @@ document.addEventListener("DOMContentLoaded", () => {
     // Scroll event listener to hide/show the top toolbar
     window.addEventListener("scroll", () => {
         let currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-
-        // If scrolling down, hide the top toolbar
-        if (currentScroll > lastScrollTop) {
-            fixedContainer.style.transform = "translateY(-100%)"; // Hide the top toolbar
+        const searchContainer = document.querySelector(".search-form-container");
+        const filterPanel = document.getElementById("filter-panel");
+        
+        // Check if search or filters are active
+        const isSearchActive = searchContainer.classList.contains("active");
+        const isFilterActive = filterPanel.classList.contains("active");
+    
+        // Only hide header if neither search nor filters are active
+        if (!isSearchActive && !isFilterActive) {
+            if (currentScroll > lastScrollTop) {
+                fixedContainer.style.transform = "translateY(-100%)"; // Hide the top toolbar
+            } else {
+                fixedContainer.style.transform = "translateY(0)"; // Show the top toolbar
+            }
         } else {
-            fixedContainer.style.transform = "translateY(0)"; // Show the top toolbar
+            // Keep header visible when search/filters are active
+            fixedContainer.style.transform = "translateY(0)";
         }
-
+    
         lastScrollTop = currentScroll <= 0 ? 0 : currentScroll; // Reset for edge cases
     });
 });
@@ -226,40 +307,6 @@ document.addEventListener('DOMContentLoaded', function () {
         filterToggle.innerHTML = 'Filters ▲';
     }
 });
-
-function toggleFilters() {
-    const panel = document.getElementById('filter-panel');
-    const toggle = document.getElementById('filterToggle');
-    panel.classList.toggle('active');
-
-    // Update the arrow direction
-    if (panel.classList.contains('active')) {
-        toggle.innerHTML = 'Filters ▲';
-    } else {
-        toggle.innerHTML = 'Filters ▼';
-    }
-}
-
-function clearFilters() {
-    const form = document.getElementById('filter-form');
-    const inputs = form.getElementsByTagName('input');
-    const selects = form.getElementsByTagName('select');
-
-    // Preserve the show_filters value
-    const showFilters = document.getElementById('show_filters');
-
-    for (let input of inputs) {
-        if (input.type === 'checkbox' || (input.type === 'hidden' && input.id !== 'show_filters')) {
-            input.checked = false;
-        }
-    }
-
-    for (let select of selects) {
-        select.value = '';
-    }
-
-    form.submit();
-}
 
 function submitSortForm() {
     // Preserve filter state when sorting
