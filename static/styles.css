@@ -75,7 +75,7 @@ textarea {
     margin: 8px;
     max-height: 42px;
     border: 1px solid #555;
-    background-color: #424242;
+    background-color: var(--secondary-bg);
     /* Lighter gray */
     color: #EEEEEE;
     border-radius: 8px;
@@ -1377,6 +1377,7 @@ h3,
     min-width: 120px;
 }
 
+#status-select,
 .status-select {
     flex: 1;
     padding: 0.5rem;
@@ -1460,7 +1461,7 @@ h3,
     gap: 0.25rem;
     margin-top: 0.25rem;
     scale: 1.2;
-    margin-left: 30px;
+    margin-left: 42px;
 }
 
 .star {
@@ -2765,4 +2766,45 @@ textarea {
 
 #collection-input {
     width: 100%;
+}
+
+.collection-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.collection-tag {
+    background: var(--primary-bg);
+    color: var(--text-primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.collection-select-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+#create-collection-grp {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+#create-collection {
+    background-color: var(--secondary-bg);
+}
+
+.collection-inputs {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+    margin-bottom: 1.5rem;
 }

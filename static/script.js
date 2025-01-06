@@ -531,3 +531,51 @@ function toggleCollection(checkbox, bookId, collectionId) {
         alert('Error updating collection. Please try again.');
     });
 }
+
+// Collection Tags
+function updateCollectionTags() {
+    const selectedCollection = document.getElementById('collections');
+    const tagsContainer = document.getElementById('collection-tags');
+    const bookId = document.querySelector('input[name="book_id"]').value;
+
+    fetch(`/collections/get_book_collections/${bookId}`)
+        .then(response => response.json())
+        .then(data => {
+            tagsContainer.innerHTML = data.collections.map(collection => `
+                <span class="collection-tag">
+                    ${collection.name}
+                    <button onclick="removeFromCollection(${collection.id}, ${bookId})" class="tag-remove">×</button>
+                </span>
+            `).join('');
+        });
+}
+
+function removeFromCollection(collectionId, bookId) {
+    fetch(`/collections/${collectionId}/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ book_id: bookId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) updateCollectionTags();
+    });
+}
+
+function createCollection() {
+    const input = document.querySelector('.collection-input');
+    const name = input.value;
+    if (!name) return;
+
+    fetch('/collections/create_custom_collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}

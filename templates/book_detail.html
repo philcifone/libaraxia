@@ -121,15 +121,19 @@
 
         <!-- Replace the custom-collections-card div with this -->
         <div class="reading-status-card">
-            <!-- Add Collection Form -->
-            <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="create-collection-form">
+            <!-- Create Collection Form -->
+            <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="status-form">
                 <div class="status-group">
-                    <input type="text" 
-                        name="name" 
-                        placeholder="Create new collection" 
-                        class="status-select"
-                        required>
-                    <button type="submit" class="status-update-btn">Create</button>
+                    <label for="create-collection" class="status-label">Create Collection</label>
+                    <div class="collection-inputs">
+                        <input type="text"
+                            id="create-collection"
+                            name="name"
+                            placeholder="Create new collection"
+                            class="status-select"
+                            required>
+                        <button type="submit" class="status-update-btn">Create</button>
+                    </div>
                 </div>
             </form>
 

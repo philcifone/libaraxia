@@ -300,3 +300,16 @@ def delete_collection(collection_id):
         conn.close()
     
     return redirect(url_for('collections.view_collections'))
+
+@collections_blueprint.route('/get_book_collections/<int:book_id>')
+@login_required
+def get_book_collections(book_id):
+    conn = get_db_connection()
+    collections = conn.execute('''
+        SELECT uc.collection_id as id, uc.name 
+        FROM user_collections uc
+        JOIN collection_books cb ON uc.collection_id = cb.collection_id
+        WHERE uc.user_id = ? AND cb.book_id = ?
+    ''', (current_user.id, book_id)).fetchall()
+    conn.close()
+    return jsonify({'collections': [dict(c) for c in collections]})
