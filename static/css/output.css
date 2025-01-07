@@ -781,6 +781,7 @@ form input[type="checkbox"] {
 }*/
 
 #site-heading {
+  width: 20%;
   display: flex;
   text-align: left;
   color: var(--text-primary);
@@ -2008,7 +2009,7 @@ h3,
 
 @media (min-width: 768px) {
   .status-group {
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
     gap: 1rem;
   }
@@ -2106,7 +2107,7 @@ h3,
   gap: 0.25rem;
   margin-top: 0.25rem;
   scale: 1.2;
-  margin-left: 42px;
+  margin-left: 25px;
 }
 
 .star {
