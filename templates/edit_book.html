@@ -1,68 +1,140 @@
 <!DOCTYPE html>
-<html>
-
+<html class="h-full bg-primary-bg">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>Edit Book</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
-
-<body>
+<body class="h-full">
     {% include '_sidebar.html' %}
 
-    <!-- ISBN Lookup Form -->
-    <div class="search-form-container">
-        <form method="POST" enctype="multipart/form-data" class="search-bar">
-            <input type="text" id="isbn_lookup" name="isbn" placeholder="Enter ISBN to fetch book info"
-                value="{{ book_details.isbn if book_details }}">
-            <button type="submit" name="isbn_lookup">Fetch Details</button>
-        </form>
-    </div>
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+        <div class="flex items-center mb-8">
+            <a href="{{ url_for('base.index') }}" 
+               class="flex items-center text-content-secondary hover:text-accent transition-colors duration-200">
+                <span class="mr-2">←</span>
+                <span>Back to Catalog</span>
+            </a>
+        </div>
 
-    <!-- Edit Book Form -->
-    <div class="container">
-        <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
-            <span class="back-arrow">←</span>
-            <span>Back to Catalog</span>
-        </a>
-        <form method="POST" enctype="multipart/form-data" class="book-info-form">
-            <h1> Edit book info</h1>
+        <div class="bg-secondary-bg rounded-xl shadow-lg p-8">
+            <h1 class="text-3xl font-display text-content-primary mb-8 text-center">Edit Book Information</h1>
 
-            <input placeholder="Title" type="text" id="title" name="title"
-                value="{{ book_details.title if book.details else book[1] }}" required><br>
+            <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-8">
+                <!-- Left Column -->
+                <div class="space-y-6">
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">Title</label>
+                        <input type="text" 
+                               id="title" 
+                               name="title"
+                               value="{{ book_details.title if book.details else book[1] }}"
+                               required
+                               class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                    </div>
 
-            <input placeholder="Subtitle" type="text" id="subtitle" name="subtitle"
-                value="{{ book_details.subtitle if book.details }}"><br>
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">Subtitle</label>
+                        <input type="text" 
+                               id="subtitle" 
+                               name="subtitle"
+                               value="{{ book_details.subtitle if book.details }}"
+                               class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                    </div>
 
-            <input placeholder="Author" type="text" id="author" name="author"
-                value="{{ book_details.author if book_details else book[2] }}" required><br>
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">Author</label>
+                        <input type="text" 
+                               id="author" 
+                               name="author"
+                               value="{{ book_details.author if book_details else book[2] }}"
+                               required
+                               class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                    </div>
 
-            <input placeholder="ISBN" type="text" id="isbn" name="isbn"
-                value="{{ book_details.isbn if book_details else book[5] }}"><br>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-4">
+                            <label class="block text-sm font-medium text-content-secondary">Year</label>
+                            <input type="text" 
+                                   id="year" 
+                                   name="year"
+                                   value="{{ book_details.year if book_details else book[4] }}"
+                                   class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                        </div>
 
-            <input placeholder="Publisher" type="text" id="publisher" name="publisher"
-                value="{{ book_details.publisher if book_details else book[3] }}"><br>
+                        <div class="space-y-4">
+                            <label class="block text-sm font-medium text-content-secondary">Pages</label>
+                            <input type="text" 
+                                   id="page_count" 
+                                   name="page_count"
+                                   value="{{ book_details.page_count if book_details else book[7] }}"
+                                   class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                        </div>
+                    </div>
+                </div>
 
-            <input placeholder="Genre" type="text" id="genre" name="genre"
-                value="{{ book_details.genre if book.details else book[12] }}" required><br>
+                <!-- Right Column -->
+                <div class="space-y-6">
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">ISBN</label>
+                        <input type="text" 
+                               id="isbn" 
+                               name="isbn"
+                               value="{{ book_details.isbn if book_details else book[5] }}"
+                               class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                    </div>
 
-            <input placeholder="Year" type="text" id="year" name="year"
-                value="{{ book_details.year if book_details else book[4] }}"><br>
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">Publisher</label>
+                        <input type="text" 
+                               id="publisher" 
+                               name="publisher"
+                               value="{{ book_details.publisher if book_details else book[3] }}"
+                               class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                    </div>
 
-            <input placeholder="Page Count" type="text" id="page_count" name="page_count"
-                value="{{ book_details.page_count if book_details else book[7] }}"><br><br>
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">Genre</label>
+                        <input type="text" 
+                               id="genre" 
+                               name="genre"
+                               value="{{ book_details.genre if book.details else book[12] }}"
+                               required
+                               class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                    </div>
 
-            <input placeholder="Enter description here..." type="text" id="description" name="description"
-                value="{{ book_details.description if book_details else book[9] }}">
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">Book Cover</label>
+                        <input type="file" 
+                               id="image" 
+                               name="image" 
+                               accept="image/*"
+                               class="w-full text-content-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-accent file:text-white hover:file:bg-accent-hover">
+                    </div>
+                </div>
 
-            <input type="file" id="image" name="image" accept="image/*"><br><br>
+                <!-- Full Width Description -->
+                <div class="md:col-span-2 space-y-4">
+                    <label class="block text-sm font-medium text-content-secondary">Description</label>
+                    <textarea id="description" 
+                              name="description"
+                              rows="6"
+                              class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none">{{ book_details.description if book_details else book[9] }}</textarea>
+                </div>
 
-            <button type="submit">Save Changes</button>
-        </form>
-    </div>
+                <!-- Submit Button -->
+                <div class="md:col-span-2 flex justify-center mt-6">
+                    <button type="submit"
+                            class="bg-accent hover:bg-accent-hover text-white px-8 py-3 rounded-lg transition-colors duration-200 font-medium">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <br>
 </body>
-
 </html>

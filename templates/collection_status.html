@@ -7,60 +7,45 @@
         {% if is_custom %}
             {{ collection.name }} Collection
         {% else %}
-            {{ status.capitalize() }} Bookshelf
+            {% if status %}{{ status.capitalize() }}{% else %}Bookshelf{% endif %}
         {% endif %}
     </title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
-<body>
+<body class="bg-primary-bg min-h-screen">
     {% include '_sidebar.html' %}
     
-    <h1 style="margin-top: 75px;">
-        {% if is_custom %}
-            {{ collection.name }} Collection
-        {% else %}
-            {{ status.capitalize() }} Bookshelf
-        {% endif %}
-    </h1>
+    <main class="container mx-auto px-4 pt-20">
+        <!-- Header Section -->
+        <div class="flex flex-col items-center space-y-6 mb-8">
+            <h1 class="text-4xl font-display text-content-primary">
+                {% if is_custom %}
+                    {{ collection.name }} Collection
+                {% else %}
+                    {{ status.capitalize() }} Bookshelf
+                {% endif %}
+            </h1>
 
-    <a href="{{ url_for('collections.view_collections') }}" class="back-nav" id="ratepagelistlink">
-        <span class="back-arrow">←</span>
-        <span>Back to Bookshelves</span>
-    </a>
-
-    <div class="book-grid">
-        {% for book in books %}
-        <div class="book-tile">
-            <a href="{{ url_for('books.show_book', id=book[0]) }}" style="text-decoration: none; color: inherit;">
-                <div>
-                    {% if book[3] %}
-                        <img src="{{ url_for('static', filename=book[3]) }}" alt="Book Cover" />
-                    {% else %}
-                        <p>No Image Available</p>
-                    {% endif %}
-                    <h3>{{ book[1] }}</h3> <!-- Book title -->
-                    <p>by {{ book[2] }}</p> <!-- Author -->
-                </div>
+            <a href="{{ url_for('collections.view_collections') }}" 
+               class="flex items-center space-x-2 text-content-secondary hover:text-accent transition-colors duration-200">
+                <span class="text-xl">←</span>
+                <span>Back to Bookshelves</span>
             </a>
         </div>
-        {% endfor %}
 
-        {% if not books %}
-        <div class="empty-collection">
-            <p>No books in this collection yet.</p>
+            {% include '_book_grid.html' %}
+
+            {% if not books %}
+            <div class="col-span-full py-16 text-center">
+                <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto">
+                    <p class="text-content-secondary text-lg italic">
+                        No books in this collection yet.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
-    </div>
-
-    <style>
-    .empty-collection {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 2rem;
-        color: var(--text-secondary);
-        font-style: italic;
-    }
-    </style>
+    </main>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

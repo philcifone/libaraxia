@@ -54,12 +54,12 @@ def add_book():
             query = request.form["search_query"]
             try:
                 # Use Google Books API for searching
-                api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}"
+                api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
                 response = requests.get(api_url).json()
                 
                 if "items" in response:
                     search_results = []
-                    for item in response["items"][:10]:  # Limit to first 10 results
+                    for item in response["items"][:15]:  # Limit to first 15 results
                         volume_info = item["volumeInfo"]
                         result = {
                             "title": volume_info.get("title", ""),
@@ -348,14 +348,14 @@ def search():
 @login_required
 @admin_required
 def search_books():
-    query = request.args.get("query", "")
+    query = request.args.get("q", "")
     if not query:
-        return jsonify({"results": []})
+        return jsonify({"items": []})
         
     try:
-        # Use Google Books API for searching
-        api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}"
-        response = requests.get(api_url).json()
+        api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
+        response = requests.get(api_url)
+        return response.json()
         
         results = []
         if "items" in response:

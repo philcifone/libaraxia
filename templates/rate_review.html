@@ -1,76 +1,109 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="bg-primary-bg">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>{{ book.title }} - Rate & Review</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
-<body>
+<body class="min-h-screen bg-primary-bg text-content-primary">
     {% include '_sidebar.html' %}
 
-    <div class="container">
-        <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
-            <span class="back-arrow">←</span>
+    <main class="max-w-6xl mx-auto px-4 pt-20 pb-12">
+        <!-- Back Navigation -->
+        <a href="{{ url_for('base.index') }}" 
+           class="inline-flex items-center gap-2 text-content-secondary hover:text-accent transition-colors mb-8">
+            <span class="text-xl">←</span>
             <span>Back to Catalog</span>
         </a>
-        <div class="book-header">
-            <h1>{{ book.title }}</h1>
-            <div class="author">by {{ book.author }}</div>
+
+        <!-- Book Header -->
+        <div class="text-center mb-12">
+            <h1 class="font-display text-3xl md:text-4xl mb-2">{{ book.title }}</h1>
+            <p class="text-content-secondary italic text-lg">by {{ book.author }}</p>
         </div>
 
-        <div class="content-grid">
-            <div class="book-cover-section">
+        <!-- Content Grid -->
+        <div class="grid md:grid-cols-[300px,1fr] gap-8">
+            <!-- Book Cover -->
+            <div class="w-full max-w-[300px] mx-auto">
                 {% if book.cover_image_url %}
-                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image">
+                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" 
+                         alt="Book Cover"
+                         class="w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]">
                 {% else %}
-                    <div class="no-image">No Image Available</div>
+                    <div class="aspect-[2/3] bg-secondary-bg rounded-lg flex items-center justify-center">
+                        <span class="text-content-secondary italic">No Image Available</span>
+                    </div>
                 {% endif %}
             </div>
 
-            <div class="review-section">
-                <div class="section-card">
-                    <h2>Rate & Review</h2>
-                    <form action="" method="post" class="review-form">
-                        <div class="form-group">
-                            <label for="date_read">Date Read</label>
-                            <input type="date" id="date_read" name="date_read" 
-                                   value="{{ read_data.date_read if read_data else '' }}">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="rating">Rating</label>
-                            <div class="star-rating">
-                                <input type="radio" id="star5" name="rating" value="5" {{ 'checked' if read_data and read_data.rating == 5 }}>
-                                <label for="star5" title="5 stars">★</label>
-                                
-                                <input type="radio" id="star4" name="rating" value="4" {{ 'checked' if read_data and read_data.rating == 4 }}>
-                                <label for="star4" title="4 stars">★</label>
-                                
-                                <input type="radio" id="star3" name="rating" value="3" {{ 'checked' if read_data and read_data.rating == 3 }}>
-                                <label for="star3" title="3 stars">★</label>
-                                
-                                <input type="radio" id="star2" name="rating" value="2" {{ 'checked' if read_data and read_data.rating == 2 }}>
-                                <label for="star2" title="2 stars">★</label>
-                                
-                                <input type="radio" id="star1" name="rating" value="1" {{ 'checked' if read_data and read_data.rating == 1 }}>
-                                <label for="star1" title="1 star">★</label>
+            <!-- Review Form -->
+            <div class="bg-secondary-bg rounded-lg p-6 md:p-8">
+                <h2 class="font-display text-2xl mb-8 text-center">Rate & Review</h2>
+                
+                <form method="post" class="space-y-8">
+                    <!-- Date Read -->
+                    <div class="space-y-2">
+                        <label for="date_read" class="block text-sm font-medium text-content-secondary">
+                            Date Read
+                        </label>
+                        <input type="date" 
+                               id="date_read" 
+                               name="date_read"
+                               value="{{ read_data.date_read if read_data else '' }}"
+                               required
+                               class="w-full max-w-xs bg-primary-bg border border-gray-600 rounded-md px-4 py-2 
+                                      focus:outline-none focus:ring-2 focus:ring-accent invalid:border-red-500">
+                        <span id="date-error" class="hidden text-sm text-red-500">Please select a date</span>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-content-secondary">Rating</label>
+                        <div class="flex justify-center">
+                            <div class="star-rating scale-150 py-4">
+                                {% for i in range(1, 6) %}
+                                <input type="radio" 
+                                       id="star{{ i }}" 
+                                       name="rating" 
+                                       value="{{ i }}" 
+                                       class="hidden peer"
+                                       {{ 'checked' if read_data and read_data.rating == i }}>
+                                <label for="star{{ i }}" 
+                                       title="{{ i }} star{% if i != 1 %}s{% endif %}"
+                                       class="text-gray-400 text-2xl cursor-pointer hover:text-yellow-400 hover:scale-110
+                                              transition-all duration-200 peer-checked:text-yellow-400 peer-checked:scale-110">★</label>
+                                {% endfor %}
                             </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="comment">Review</label>
-                            <textarea id="comment" name="comment">{{ read_data.comment if read_data else '' }}</textarea>
-                        </div>
+                    </div>
 
-                        <div class="button-group">
-                            <button type="submit" class="primary-button">Submit Review</button>
-                        </div>
-                    </form>
-                </div>
+                    <!-- Review -->
+                    <div class="space-y-2">
+                        <label for="comment" class="block text-sm font-medium text-content-secondary">
+                            Review
+                        </label>
+                        <textarea id="comment" 
+                                  name="comment"
+                                  rows="6"
+                                  class="w-full bg-primary-bg border border-gray-600 rounded-md px-4 py-2
+                                         focus:outline-none focus:ring-2 focus:ring-accent resize-y"
+                        >{{ read_data.comment if read_data else '' }}</textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex justify-center pt-4">
+                        <button type="submit"
+                                class="bg-accent hover:bg-accent-hover text-white px-8 py-3 rounded-md
+                                       transition-colors duration-200 font-medium text-lg">
+                            Submit Review
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-    </div>
+    </main>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

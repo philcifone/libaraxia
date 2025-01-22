@@ -1,21 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html class="h-full bg-primary-bg">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Register - Libaraxia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
-<body>
-<!-- templates/register.html -->
-    <form method="POST" action="{{ url_for('auth.register') }}" class="form-container auth-form-container">
-        <input placeholder="username" type="text" name="username" required>
-        <input placeholder="email" type="email" name="email" required>
-        <input placeholder="password" type="password" name="password" required>
-        <button type="submit">Register</button>
-        <a href="/auth/login">Already have an account? Login here.</a>
-    </form>
+<body class="h-full">
+    <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+            <h1 class="text-center text-3xl font-display text-content-primary">
+                Libaraxia
+            </h1>
+            <h2 class="mt-6 text-center text-2xl font-medium text-content-secondary">
+                Create your account
+            </h2>
+        </div>
+
+        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+            <div class="bg-secondary-bg py-8 px-4 shadow-xl rounded-lg sm:px-10">
+                <form method="POST" action="{{ url_for('auth.register') }}" class="space-y-6">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-content-secondary">
+                            Username
+                        </label>
+                        <div class="mt-1">
+                            <input id="username" name="username" type="text" required 
+                                class="appearance-none block w-full px-3 py-2 border border-gray-600 rounded-md 
+                                shadow-sm bg-primary-bg text-content-primary placeholder-gray-400 
+                                focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-content-secondary">
+                            Email
+                        </label>
+                        <div class="mt-1">
+                            <input id="email" name="email" type="email" required 
+                                class="appearance-none block w-full px-3 py-2 border border-gray-600 rounded-md 
+                                shadow-sm bg-primary-bg text-content-primary placeholder-gray-400 
+                                focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-content-secondary">
+                            Password
+                        </label>
+                        <div class="mt-1">
+                            <input id="password" name="password" type="password" required 
+                                class="appearance-none block w-full px-3 py-2 border border-gray-600 rounded-md 
+                                shadow-sm bg-primary-bg text-content-primary placeholder-gray-400 
+                                focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" 
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md 
+                            shadow-sm text-sm font-medium text-white bg-accent hover:bg-accent-hover 
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent 
+                            transition-colors duration-200">
+                            Create account
+                        </button>
+                    </div>
+
+                    <div class="text-center">
+                        <a href="{{ url_for('auth.login') }}" 
+                            class="text-accent hover:text-accent-hover text-sm transition-colors duration-200">
+                            Already have an account? Sign in
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
-
-

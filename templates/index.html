@@ -7,35 +7,23 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 
-<body>
+<body class="bg-primary text-content-primary p-6">
     {% include '_sidebar.html' %}
 
-    <a href="/books/add" class="floating-button">
-        <span class="plus-sign">+ Add Book</span>
+    <!-- Floating Add Button -->
+    <a href="/books/add" 
+       class="fixed bottom-6 right-6 px-6 py-4 bg-accent hover:bg-accent-hover
+              text-white rounded-full font-bold shadow-lg 
+              hover:scale-105 transition-all duration-300 z-50
+              flex items-center gap-2">
+        <span class="text-lg">+ Add Book</span>
     </a>
 
     {% include '_search_sort_filter.html' %}
 
-    <!-- Book Grid -->
-    <div class="book-grid">
-        {% for book in books %}
-        <div class="book-tile">
-            <a href="/books/book/{{ book[0] }}" style="text-decoration: none; color: inherit;">
-                <div>
-                    {% if book.cover_image_url %}
-                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" />
-                    {% else %}
-                    <p>No Image</p>
-                    {% endif %}
-                    <h3>{{ book[1] }}</h3>
-                    <p>by {{ book[2] }}</p>
-                </div>
-            </a>
-        </div>
-        {% endfor %}
-    </div>
+    {% include '_book_grid.html' %}
+
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </body>
 </html>

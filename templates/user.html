@@ -1,111 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=.8">
     <title>User Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
-
-<body>
+<body class="bg-primary min-h-screen">
     {% include '_sidebar.html' %}
 
-    <div class="container">
-        <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
-            <span class="back-arrow">←</span>
+    <!-- Back Navigation -->
+        <a href="{{ url_for('base.index') }}" 
+           class="inline-flex items-center mt-24 text-content-secondary hover:text-accent transition-colors">
+            <span class="mr-2">←</span>
             <span>Back to Catalog</span>
         </a>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="fixed top-20 right-4 z-50">
         {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
+        <div class="mb-2 px-4 py-2 rounded-lg {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }} text-white">
+            {{ message }}
+        </div>
         {% endfor %}
-        {% endif %}
-        {% endwith %}
-
-        <div class="profile-section">
-            <h1>{{ user['username'].capitalize() }}'s Profile Info</h1>
-            <div class="details-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Email</span>
-                    <span class="detail-value">{{ user['email'] }}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Username</span>
-                    <span class="detail-value">{{user['username'] }}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Admin</span>
-                    <span class="detail-value">{{ 'Yes' if user['is_admin'] else 'No' }}</span>
-                </div>
-            </div>
-        </div>
     </div>
+    {% endif %}
+    {% endwith %}
 
-    <div class="container">
-        <div class="stats-container">
-            <h1>{{ user['username'].capitalize() }}'s Book Stats</h1>
-            {% if stats %}
-            <div class="details-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Books Read:</span>
-                    <span class="detail-value">{{ stats.books_read }}</span>
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto pt-12 pb-12 px-4 space-y-6">
+        <!-- Profile Info -->
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-2xl font-bold text-white">
+                    {{ user['username'][0].upper() }}
                 </div>
-                <div class="detail-item">
-                    <span class="detail-label">Pages Read:</span>
-                    <span class="detail-value">{{ stats.pages_read or 0 }}</span>
+                <h1 class="text-3xl font-display text-content-primary">
+                    {{ user['username'].capitalize() }}'s Profile
+                </h1>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Email</p>
+                    <p class="text-content-primary">{{ user['email'] }}</p>
                 </div>
-                <div class="detail-item">
-                    <span class="detail-label">Average Rating:</span>
-                    <span class="detail-value">{{ "%.1f"|format(stats.avg_rating or 0) }}★</span>
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Username</p>
+                    <p class="text-content-primary">{{ user['username'] }}</p>
+                </div>
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Admin Status</p>
+                    <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
                 </div>
             </div>
-            {% endif %}
-        </div>
-        <div class="section-header">
-            <a href="{{ url_for('user.export_library') }}" class="export-button">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        </section>
+
+        <!-- Stats Section -->
+        {% if stats %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-display text-content-primary mb-6">Reading Statistics</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Books Read</p>
+                    <p class="text-3xl font-bold text-content-primary">{{ stats.books_read }}</p>
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Pages Read</p>
+                    <p class="text-3xl font-bold text-content-primary">{{ stats.pages_read or 0 }}</p>
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Average Rating</p>
+                    <p class="text-3xl font-bold text-content-primary">
+                        {{ "%.1f"|format(stats.avg_rating or 0) }}
+                        <span class="text-yellow-400">★</span>
+                    </p>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Export Button -->
+        <div class="flex justify-center">
+            <a href="{{ url_for('user.export_library') }}" 
+               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-white transition-colors hover:bg-accent-hover">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                 </svg>
                 Export Library to CSV
             </a>
         </div>
-    </div>
 
-    <div class="container">    
+        <!-- Update Profile Form -->
         {% if current_user.id == user['id'] %}
-        <div class="update-section">
-            <h1>Update Profile</h1>
-            <form method="POST" action="{{ url_for('user.update_profile') }}" class="update-form">
-                <div class="form-group">
-                    <label for="email">Update Email:</label>
-                    <input type="email" id="email" name="email" value="{{ user['email'] }}">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-display text-content-primary mb-6">Update Profile</h2>
+            <form method="POST" action="{{ url_for('user.update_profile') }}" class="space-y-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="email" class="block text-sm text-content-secondary mb-1">Update Email</label>
+                        <input type="email" id="email" name="email" value="{{ user['email'] }}"
+                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    </div>
+                    
+                    <div>
+                        <label for="current_password" class="block text-sm text-content-secondary mb-1">Current Password</label>
+                        <input type="password" id="current_password" name="current_password" required
+                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    </div>
+                    
+                    <div>
+                        <label for="new_password" class="block text-sm text-content-secondary mb-1">New Password</label>
+                        <input type="password" id="new_password" name="new_password" 
+                               placeholder="Leave blank if you don't want to change it!"
+                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    </div>
+                    
+                    <div>
+                        <label for="confirm_password" class="block text-sm text-content-secondary mb-1">Confirm New Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password"
+                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    </div>
                 </div>
-    
-                <div class="form-group">
-                    <label for="current_password">Current Password:</label>
-                    <input type="password" id="current_password" name="current_password" required>
-                </div>
-    
-                <div class="form-group">
-                    <label for="new_password">New Password:</label>
-                    <input type="password" id="new_password" name="new_password" placeholder="Leave blank if you don't want to change it!">
-                </div>
-    
-                <div class="form-group">
-                    <label for="confirm_password">Confirm New Password:</label>
-                    <input type="password" id="confirm_password" name="confirm_password">
-                </div>
-    
-                <button type="submit" class="update-button">Update Profile</button>
+
+                <button type="submit" 
+                        class="w-full py-3 bg-accent text-white rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
+                    Update Profile
+                </button>
             </form>
-        </div>
+        </section>
         {% endif %}
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
-
 </html>

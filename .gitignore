@@ -10,3 +10,4 @@ instance/
 styles.css.bak
 *.mermaid
 css_audit*
+schema.txt

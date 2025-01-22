@@ -18,7 +18,7 @@ import requests
 
 def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
     """Fetch book details from Google Books API."""
-    api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+    api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
     try:
         response = requests.get(api_url).json()
         if "items" not in response:

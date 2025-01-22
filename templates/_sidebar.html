@@ -1,51 +1,82 @@
-<div id="fixed-container" class="fixed-container">
-    <button id="search-toggle" class="search-toggle" aria-label="Toggle Search">
-        <svg class="search-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+<!-- Fixed Header -->
+<div class="fixed top-0 left-0 w-full h-16 bg-secondary z-50 px-5 flex items-center justify-between">
+    <!-- Search Toggle -->
+    <button id="search-toggle" class="absolute right-4 p-2 hover:bg-primary/20 rounded-lg transition-colors" aria-label="Toggle Search">
+        <svg class="w-6 h-6 stroke-content-primary" viewBox="0 0 24 24" stroke-width="2" fill="none">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
     </button>
-    <h1><a href="/base/index" id="site-heading">Libaraxia</a></h1>
-    <!--<button id="theme-toggle">Toggle Theme</button>-->
+    
+    <!-- Site Title -->
+    <h1>
+        <a href="/base/index" class="text-2xl font-display text-content-primary font-semibold tracking-wide ml-16">
+            Libaraxia
+        </a>
+    </h1>
 </div>
 
-<!-- Improved hamburger button -->
-<button id="hamburger" class="hamburger" aria-label="Menu">
-    <div class="hamburger-inner">
-        <span></span>
-        <span></span>
-        <span></span>
+<!-- Hamburger Menu -->
+<button id="hamburger" 
+        class="fixed top-4 left-4 w-10 h-10 z-50 p-2 hover:bg-primary/20 rounded-lg transition-colors" 
+        aria-label="Menu">
+    <div class="flex flex-col gap-1.5 justify-center h-full">
+        <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
+        <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
+        <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
     </div>
 </button>
 
-<div id="sidebar" class="sidebar">
-    <div class="sidebar-content">
-        <div class="user-section">
-            <div class="user-avatar">{{ current_user.username[0].upper() }}</div>
-            <h2>Welcome, {{ current_user.username.capitalize() }}!</h2>
+<!-- Sidebar -->
+<div id="sidebar" 
+     class="fixed top-0 left-0 w-64 h-full bg-secondary transform -translate-x-full 
+            transition-transform duration-300 ease-in-out z-40 shadow-xl">
+    <div class="flex flex-col h-full p-6">
+        <!-- User Section -->
+        <div class="py-6 text-center border-b border-content-primary/10">
+            <div class="w-16 h-16 mx-auto mb-4 mt-10 rounded-full bg-accent flex items-center justify-center
+                        text-2xl font-semibold text-white">
+                {{ current_user.username[0].upper() }}
+            </div>
+            <h2 class="text-xl text-content-primary">
+                Welcome, {{ current_user.username.capitalize() }}!
+            </h2>
         </div>
         
-        <nav class="sidebar-nav">
-            <a href="/base/index" class="nav-item">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <!-- Navigation -->
+        <nav class="flex flex-col gap-2 mt-6 z-40">
+            <a href="/base/index" 
+               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      rounded-lg hover:bg-accent/10 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                 </svg>
                 Library
             </a>
-            <a href="/user/{{ current_user.username }}" class="nav-item">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            
+            <a href="/user/{{ current_user.username }}" 
+               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      rounded-lg hover:bg-accent/10 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                 </svg>
                 Profile
             </a>
-            <a href="/collections/collections" class="nav-item">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            
+            <a href="/collections/collections" 
+               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      rounded-lg hover:bg-accent/10 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                 </svg>
                 Bookshelves
             </a>
-            <a href="/auth/logout" class="nav-item logout">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            
+            <!-- Logout at the bottom -->
+            <a href="/auth/logout" 
+               class="mt-auto flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-500
+                      rounded-lg hover:bg-red-500/10 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                 </svg>
                 Logout

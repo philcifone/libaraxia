@@ -1,48 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html class="min-h-screen bg-primary-bg">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>libaraxia</title>
+    <title>libaraxia | Search Results</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
-<body>
+<body class="min-h-screen text-content-primary">
     {% include '_sidebar.html' %}
 
-    <a href="/books/add" class="floating-button">
-        <span class="plus-sign">+</span>
+    <!-- Add Book Button -->
+    <a href="/books/add" 
+       class="fixed bottom-6 right-6 flex items-center justify-center w-44 h-14 bg-accent hover:bg-accent-hover text-white rounded-full shadow-lg transform hover:scale-105 transition-all duration-200 z-50">
+        <span class="text-xl font-semibold">+ Add Book</span>
     </a>
 
     {% include '_search_sort_filter.html' %}
 
-    <a href="{{ url_for('base.index') }}" class="back-nav" id="ratepagelistlink">
-        <span class="back-arrow">←</span>
-        <span>Back to Catalog</span>
-    </a>
-
-    <a></a> <!-- Had to put this here or else there was a missing tile on the grid-->
-
-    <!-- Grid for displaying books -->
-    <div class="book-grid">
-        {% for book in books %}
-        <div class="book-tile">
-            <!-- Make the entire tile clickable -->
-            <a href="/books/book/{{ book[0] }}" style="text-decoration: none; color: inherit;">
-                <div>
-                    {% if book.cover_image_url %}
-                        <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="Book Image" />
-                    {% else %}
-                        <p>No Image</p>
-                    {% endif %}
-                    <h3>{{ book[1] }}</h3> <!-- Book title -->
-		    <p>by {{ book[2] }}</p> <!-- Author and Publisher -->
-		    <!-- <p>Year: {{ book[4] }} | Pages: {{ book[5] }}</p>-->
-		    <!-- <p>Read: {{ "Yes" if book[7] else "No" }}</p> <!-- Read Status -->
-                </div>
-            </a>
-        </div>
-        {% endfor %}
+    <!-- Back Navigation -->
+    <div class="container mx-auto px-4 mt-6">
+        <a href="{{ url_for('base.index') }}" 
+           class="inline-flex items-center space-x-2 text-content-secondary hover:text-content-primary transition-colors duration-200">
+            <span class="text-xl">←</span>
+            <span class="text-lg">Back to Catalog</span>
+        </a>
     </div>
+
+    {% include '_book_grid.html' %}
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

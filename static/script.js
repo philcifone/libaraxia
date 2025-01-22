@@ -1,8 +1,182 @@
+// // NEW JAVASCRIPT FOR BETTER SEARCH BAR NOT WORKING ROLLED BACK
+//
+// // Initialize everything on page load
+// document.addEventListener("DOMContentLoaded", () => {
+//     // Panel controls
+//     const hamburger = document.getElementById("hamburger");
+//     const sidebar = document.getElementById("sidebar");
+//     const filterPanel = document.getElementById("filter-panel");
+//     const searchToggle = document.getElementById("search-toggle");
+//     const filterToggle = document.getElementById("filter-toggle");
+//     const closeFilterBtn = document.getElementById("close-filter-panel");
+
+//     // Sidebar toggle
+//     hamburger?.addEventListener("click", (e) => {
+//         sidebar.classList.toggle("-translate-x-full");
+//         e.stopPropagation();
+//     });
+
+//     // Filter panel toggle
+//     filterToggle?.addEventListener("click", (e) => {
+//         filterPanel.classList.toggle("translate-x-full");
+//         e.stopPropagation();
+//     });
+
+//     // Close filter panel
+//     closeFilterBtn?.addEventListener("click", () => {
+//         filterPanel.classList.add("translate-x-full");
+//     });
+
+//     // Close panels when clicking outside
+//     document.addEventListener("click", (e) => {
+//         if (!sidebar?.contains(e.target) && !hamburger?.contains(e.target)) {
+//             sidebar?.classList.add("-translate-x-full");
+//         }
+//         if (!filterPanel?.contains(e.target) && !filterToggle?.contains(e.target)) {
+//             filterPanel?.classList.add("translate-x-full");
+//         }
+//     });
+
+//     // New search functionality
+//     searchToggle?.addEventListener("click", (e) => {
+//         searchContainer.classList.toggle("invisible");
+//         searchContainer.classList.toggle("opacity-0");
+//         searchContainer.classList.toggle("-translate-y-full");
+//         e.stopPropagation();
+            
+//         if (!searchContainer.classList.contains("invisible")) {
+//             setTimeout(() => {
+//                 searchContainer.querySelector("#search_term")?.focus();
+//             }, 100);
+//         }
+//     });
+
+//     // Escape key handler
+//     document.addEventListener("keydown", (e) => {
+//         if (e.key === "Escape") {
+//             sidebar?.classList.add("-translate-x-full");
+//             filterPanel?.classList.add("translate-x-full");
+//         }
+//     });
+
+//     // Set up search and filter handlers
+//     const searchInput = document.getElementById('search_term');
+//     searchInput?.addEventListener('input', (e) => handleSearch(e.target.value));
+    
+//     document.querySelectorAll('.sort-select').forEach(select => {
+//         select.addEventListener('change', handleSort);
+//     });
+    
+//     document.querySelectorAll('[data-filter]').forEach(filter => {
+//         filter.addEventListener('change', handleSort);
+//     });
+// });
+
+// // Utility functions
+// function debounce(func, wait) {
+//     let timeout;
+//     return function executedFunction(...args) {
+//         const later = () => {
+//             clearTimeout(timeout);
+//             func(...args);
+//         };
+//         clearTimeout(timeout);
+//         timeout = setTimeout(later, wait);
+//     };
+// }
+
+// // Event handlers
+// const handleSearch = debounce((searchTerm) => {
+//     const form = document.getElementById('search-form');
+//     if (searchTerm.length === 0 || searchTerm.length >= 2) {
+//         form.submit();
+//     }
+// }, 500);
+
+// function handleSort() {
+//     const sortBy = document.getElementById('sort_by').value;
+//     const sortOrder = document.getElementById('sort_order').value;
+//     const activeFilters = getActiveFilters();
+    
+//     const params = new URLSearchParams(window.location.search);
+//     params.set('sort_by', sortBy);
+//     params.set('sort_order', sortOrder);
+    
+//     Object.entries(activeFilters).forEach(([key, value]) => {
+//         if (value) params.set(key, value);
+//     });
+    
+//     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+//     fetchResults(params);
+// }
+
+// function getActiveFilters() {
+//     const filters = {};
+//     document.querySelectorAll('[data-filter]').forEach(filter => {
+//         const value = filter.type === 'checkbox' ? filter.checked : filter.value;
+//         if (value) {
+//             filters[filter.name] = value;
+//         }
+//     });
+//     return filters;
+// }
+
+// async function fetchResults(params) {
+//     try {
+//         const response = await fetch(`/api/books?${params.toString()}`);
+//         const data = await response.json();
+//         updateBookGrid(data.books);
+//         updateFilterIndicators(getActiveFilters());
+//     } catch (error) {
+//         console.error('Error fetching results:', error);
+//         document.getElementById('error-message')?.classList.remove('hidden');
+//     }
+// }
+
+// function updateFilterIndicators(activeFilters) {
+//     const container = document.getElementById('active-filters');
+//     if (!container) return;
+    
+//     container.innerHTML = '';
+//     Object.entries(activeFilters).forEach(([key, value]) => {
+//         const pill = document.createElement('span');
+//         pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-sm bg-accent/10 text-accent';
+//         pill.innerHTML = `
+//             ${key}: ${value}
+//             <button onclick="removeFilter('${key}')" class="ml-1 hover:text-accent-hover">×</button>
+//         `;
+//         container.appendChild(pill);
+//     });
+// }
+
+// function removeFilter(filterName) {
+//     const element = document.querySelector(`[name="${filterName}"]`);
+//     if (element) {
+//         if (element.type === 'checkbox') {
+//             element.checked = false;
+//         } else {
+//             element.value = '';
+//         }
+//         handleSort();
+//     }
+// }
+
+// function clearFilters() {
+//     document.querySelectorAll('[data-filter]').forEach(filter => {
+//         if (filter.type === 'checkbox') {
+//             filter.checked = false;
+//         } else {
+//             filter.value = '';
+//         }
+//     });
+//     handleSort();
+// }
+
 // Sort form submission
 function submitSortForm() {
     // Preserve filter state when sorting
     const filterPanel = document.getElementById('filter-panel');
-    if (filterPanel.classList.contains('active')) {
+    if (!filterPanel.classList.contains('hidden')) {
         const sortForm = document.getElementById('sort-form');
         const showFiltersInput = document.createElement('input');
         showFiltersInput.type = 'hidden';
@@ -13,154 +187,127 @@ function submitSortForm() {
     document.body.style.cursor = 'wait';
     document.getElementById('sort-form').submit();
 }
-
 // Filter toggle
 function toggleFilters() {
     const panel = document.getElementById('filter-panel');
-    const toggle = document.querySelector('.filter-toggle');
-    panel.classList.toggle('active');
-    
-    // Update the arrow direction
-    toggle.textContent = panel.classList.contains('active') ? 'Filters ▲' : 'Filters ▼';
-}
+    const arrow = document.getElementById('filterArrow');
 
+    // Toggle visibility
+    panel.classList.toggle('hidden');
+
+    // Rotate arrow - using transform rotate classes
+    if (panel.classList.contains('hidden')) {
+        arrow.classList.remove('rotate-180');
+    } else {
+        arrow.classList.add('rotate-180');
+    }
+}
 // Clear filters
 function clearFilters() {
     const form = document.getElementById('filter-form');
     const inputs = form.getElementsByTagName('input');
     const selects = form.getElementsByTagName('select');
-
     // Clear all inputs except show_filters
     for (let input of inputs) {
         if (input.type === 'checkbox' || (input.type === 'hidden' && input.id !== 'show_filters')) {
             input.checked = false;
         }
     }
-
     // Clear all selects
     for (let select of selects) {
         select.value = '';
     }
-
     form.submit();
 }
-
 // On page load, check if filters should be shown
 document.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
     const filterPanel = document.getElementById('filter-panel');
-    const filterToggle = document.querySelector('.filter-toggle');
+    const arrow = document.getElementById('filterArrow');
 
     // Show filters if any filter parameters are present
     if (urlParams.toString() && urlParams.toString() !== '') {
-        filterPanel.classList.add('active');
-        filterToggle.textContent = 'Filters ▲';
+        filterPanel.classList.remove('hidden');
+        arrow.classList.add('rotate-180');
     }
 });
-
-
-// sidebar function
-//document.addEventListener("DOMContentLoaded", () => {
-//    const hamburger = document.getElementById("hamburger"); // Select the hamburger menu
-//    const sidebar = document.getElementById("sidebar"); // Select the sidebar
-//    const content = document.querySelector(".content"); // Select the content area
-//
-//    // Add click event to hamburger menu
-//    hamburger.addEventListener("click", () => {
-//        // Toggle the 'active' class on sidebar to slide it in and out
-//        sidebar.classList.toggle("active");
-//        
-//        // Toggle the 'sidebar-active' class on content to shift it when sidebar is visible
-//        content.classList.toggle("sidebar-active");
-//    });
-//});
-
-// sidebar & search scrolling function
 document.addEventListener("DOMContentLoaded", () => {
     const hamburger = document.getElementById("hamburger");
     const sidebar = document.getElementById("sidebar");
     const content = document.querySelector(".content");
-    const fixedContainer = document.getElementById("fixed-container");
     const searchToggle = document.getElementById("search-toggle");
     const searchContainer = document.querySelector(".search-form-container");
-
-    // Toggle search dropdown
+    // Toggle search dropdown with animation
     searchToggle.addEventListener("click", (event) => {
-        searchContainer.classList.toggle("active");
+        // Toggle visibility and transform classes
+        searchContainer.classList.toggle("invisible");
+        searchContainer.classList.toggle("opacity-0");
+        searchContainer.classList.toggle("-translate-y-full");
         event.stopPropagation();
-    });
 
+        // Focus search input when opening
+        if (!searchContainer.classList.contains("invisible")) {
+            setTimeout(() => {
+                searchContainer.querySelector("#search_term").focus();
+            }, 100);
+        }
+    });
     // Close search dropdown when clicking outside
     document.addEventListener("click", (event) => {
         if (!searchContainer.contains(event.target) && !searchToggle.contains(event.target)) {
-            searchContainer.classList.remove("active");
+            searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
         }
     });
-
-    let lastScrollTop = 0; // Variable to store the last scroll position
-
-    // Toggle sidebar on hamburger click
+    // Toggle sidebar
     hamburger.addEventListener("click", (event) => {
-        sidebar.classList.toggle("active");
-        content.classList.toggle("sidebar-active");
-        event.stopPropagation(); // Prevent the click from propagating to the document
-    });
+        sidebar.classList.toggle("-translate-x-full");
 
-    // Close sidebar when clicking outside of it
+        // Animate hamburger icon
+        const spans = hamburger.querySelectorAll("span");
+        spans[0].classList.toggle("rotate-45");
+        spans[0].classList.toggle("translate-y-2");
+        spans[1].classList.toggle("opacity-0");
+        spans[2].classList.toggle("-rotate-45");
+        spans[2].classList.toggle("-translate-y-2");
+
+        event.stopPropagation();
+    });
+    // Close sidebar when clicking outside
     document.addEventListener("click", (event) => {
         if (!sidebar.contains(event.target) && !hamburger.contains(event.target)) {
-            sidebar.classList.remove("active");
-            content.classList.remove("sidebar-active");
+            sidebar.classList.add("-translate-x-full");
+
+            // Reset hamburger icon
+            const spans = hamburger.querySelectorAll("span");
+            spans[0].classList.remove("rotate-45", "translate-y-2");
+            spans[1].classList.remove("opacity-0");
+            spans[2].classList.remove("-rotate-45", "-translate-y-2");
         }
     });
+    // Handle escape key
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            // Close search
+            searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
 
-    // Scroll event listener to hide/show the top toolbar
-    window.addEventListener("scroll", () => {
-        let currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-        const searchContainer = document.querySelector(".search-form-container");
-        const filterPanel = document.getElementById("filter-panel");
-        
-        // Check if search or filters are active
-        const isSearchActive = searchContainer.classList.contains("active");
-        const isFilterActive = filterPanel.classList.contains("active");
-    
-        // Only hide header if neither search nor filters are active
-        if (!isSearchActive && !isFilterActive) {
-            if (currentScroll > lastScrollTop) {
-                fixedContainer.style.transform = "translateY(-100%)"; // Hide the top toolbar
-            } else {
-                fixedContainer.style.transform = "translateY(0)"; // Show the top toolbar
-            }
-        } else {
-            // Keep header visible when search/filters are active
-            fixedContainer.style.transform = "translateY(0)";
+            // Close sidebar
+            sidebar.classList.add("-translate-x-full");
+
+            // Reset hamburger
+            const spans = hamburger.querySelectorAll("span");
+            spans[0].classList.remove("rotate-45", "translate-y-2");
+            spans[1].classList.remove("opacity-0");
+            spans[2].classList.remove("-rotate-45", "-translate-y-2");
         }
-    
-        lastScrollTop = currentScroll <= 0 ? 0 : currentScroll; // Reset for edge cases
     });
 });
-
-
-// OLD view more description book details
-//function toggleDescription() {
-//    const description = document.getElementById('description');
-//    const button = document.querySelector('.toggle-button');
-//
-//    if (description.classList.contains('expanded')) {
-//        description.classList.remove('expanded');
-//        button.textContent = 'View More';
-//    } else {
-//        description.classList.add('expanded');
-//        button.textContent = 'View Less';
-//    }
-//}
 
 // view more for toggle description book details
 function toggleDescription() {
     const description = document.getElementById('description');
     const button = description.nextElementSibling;
     const buttonText = button.querySelector('.toggle-text');
-    
+
     description.classList.toggle('expanded');
     buttonText.textContent = description.classList.contains('expanded') ? 'Show Less' : 'Show More';
 }
@@ -192,105 +339,27 @@ function updateStatus(selectElement) {
     });
 }
 
-// rating slide styles
+// rating
 
-function updateRatingValue(value) {
-    const output = document.getElementById('rating-value');
-    output.textContent = value;
-}
+function initRatingSystem() {
+    const container = document.getElementById('rating-container');
+    const input = document.getElementById('rating-input');
+    const stars = container.getElementsByClassName('rating-star');
 
-// Keywording/Tag Javascript
-document.addEventListener('DOMContentLoaded', function() {
-    const tagInput = document.getElementById('tagInput');
-    const tagsList = document.getElementById('tagsList');
-    const addTagBtn = document.querySelector('.add-tag-btn');
-    
-    // Get book ID from a data attribute we'll add to the HTML
-    const bookId = document.querySelector('[data-book-id]').dataset.bookId;
-    
-    // Load existing tags
-    fetchTags();
-    
-    // Add tag on button click
-    addTagBtn.addEventListener('click', () => {
-        addTags();
-    });
-    
-    // Add tag on Enter key
-    tagInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addTags();
+    container.addEventListener('click', (e) => {
+        if (e.target.matches('.rating-star')) {
+            const rating = e.target.dataset.rating;
+            input.value = rating;
+            
+            Array.from(stars).forEach((star, index) => {
+                star.classList.toggle('text-yellow-400', index < rating);
+                star.classList.toggle('text-gray-400', index >= rating);
+            });
         }
     });
-    
-    function addTags() {
-        const tags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-        if (tags.length === 0) return;
-        
-        fetch('/tags/add', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                book_id: bookId,
-                tags: tags
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                tagInput.value = '';
-                updateTagsList(data.tags);
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-    
-    function removeTag(tagName) {
-        fetch('/tags/remove', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                book_id: bookId,
-                tag: tagName
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateTagsList(data.tags);
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-    
-    function fetchTags() {
-        fetch(`/tags/get/${bookId}`)
-        .then(response => response.json())
-        .then(data => {
-            updateTagsList(data.tags);
-        })
-        .catch(error => console.error('Error:', error));
-    }
-    
-    function updateTagsList(tags) {
-        tagsList.innerHTML = tags.map(tag => `
-            <span class="tag">
-                ${tag}
-                <button class="tag-remove" onclick="event.preventDefault(); window.tagOperations.removeTag('${tag}')">×</button>
-            </span>
-        `).join('');
-    }
-    
-    // Make removeTag function available globally in a safer way
-    window.tagOperations = {
-        removeTag: removeTag
-    };
-});
+}
+
+document.addEventListener('DOMContentLoaded', initRatingSystem);
 
 // index.html javascript for filter functions
 
@@ -321,20 +390,6 @@ function submitSortForm() {
     }
     document.getElementById('sort-form').submit();
 }
-// light/dark toggle
-const themeToggle = document.getElementById('theme-toggle');
-const root = document.documentElement;
-
-// Check for saved theme preference
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme) {
-    root.classList.toggle('light-mode', savedTheme === 'light');
-}
-
-themeToggle.addEventListener('click', () => {
-    const isLightMode = root.classList.toggle('light-mode');
-    localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
-});
 
 // add book 
 // Handle tab switching
