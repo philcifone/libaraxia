@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
-    const methodButtons = document.querySelectorAll('.search-method-btn');  // Changed from [data-method]
+    const methodButtons = document.querySelectorAll('.search-method-btn');
     const methodSections = document.querySelectorAll('.search-method-content');
     const searchInput = document.getElementById('book-search');
     const searchBtn = document.getElementById('search-btn');
@@ -29,107 +29,239 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-// Search Functionality
-function performSearch() {
-    const query = searchInput.value.trim();
-    if (query.length < 2) return;
-
-    // Show loading state
-    resultsContainer.innerHTML = `
-        <div class="col-span-full text-center py-8 text-content-secondary">
-            <svg class="animate-spin h-8 w-8 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Searching...
-        </div>
-    `;
-
-    fetch(`/books/search_books?q=${encodeURIComponent(query)}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            displaySearchResults(data.items);
-        })
-        .catch(error => {
-            console.error('Error searching books:', error);
-            resultsContainer.innerHTML = `
-                <div class="col-span-full text-center py-8 text-content-secondary">
-                    An error occurred while searching. Please try again.
-                </div>
-            `;
-        });
-}
-
-function displaySearchResults(books) {
-    resultsContainer.innerHTML = '';
-
-    if (!books || books.length === 0) {
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (query.length < 2) return;
+    
+        // Show loading state
         resultsContainer.innerHTML = `
             <div class="col-span-full text-center py-8 text-content-secondary">
-                No books found matching your search.
+                <svg class="animate-spin h-8 w-8 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Searching...
             </div>
         `;
-        return;
+    
+        console.log('Starting search for:', query);
+    
+        fetch(`/books/search_books?q=${encodeURIComponent(query)}`)
+            .then(response => {
+                console.log('Search response status:', response.status);
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || `HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                if (!data.items) {
+                    throw new Error('No items array in response');
+                }
+                displaySearchResults(data.items); 
+            })
+            .catch(error => {
+                console.error('Error searching books:', error);
+                resultsContainer.innerHTML = `
+                    <div class="col-span-full text-center py-8 text-content-secondary">
+                        Error: ${error.message || 'An unexpected error occurred'}.<br>
+                        Please try again or contact support if the problem persists.
+                    </div>
+                `;
+            });
     }
 
-    const template = document.getElementById('search-result-template');
-    books.forEach(book => {
-        const resultElement = template.content.cloneNode(true);
-        const bookResult = resultElement.querySelector('.book-result');
-
-        // Populate data
-        const coverImg = bookResult.querySelector('img');
-        coverImg.src = book.volumeInfo.imageLinks?.thumbnail || '/static/images/no-cover.png';
-        coverImg.onerror = () => coverImg.src = '/static/images/no-cover.png';
-
-        bookResult.querySelector('.book-title').textContent = book.volumeInfo.title;
-        bookResult.querySelector('.book-author').textContent = `by ${book.volumeInfo.authors?.join(', ') || 'Unknown Author'}`;
-        bookResult.querySelector('.book-year').textContent = book.volumeInfo.publishedDate?.split('-')[0] || '';
-        bookResult.querySelector('.book-isbn').textContent = `ISBN: ${book.volumeInfo.industryIdentifiers?.[0]?.identifier || 'N/A'}`;
-        bookResult.querySelector('.book-description').textContent = book.volumeInfo.description || 'No description available';
-
-        // Add click handler to select button
-        bookResult.querySelector('.select-book-btn').addEventListener('click', () => {
-            fillBookForm(book);
-        });
-
-        resultsContainer.appendChild(resultElement);
-    });
-}
-
-    function fillBookForm(book) {
-        const info = book.volumeInfo;
-        const fields = {
-            'title': info.title || '',
-            'subtitle': info.subtitle || '',
-            'author': info.authors?.join(', ') || '',
-            'isbn': info.industryIdentifiers?.[0]?.identifier || '',
-            'publisher': info.publisher || '',
-            'genre': info.categories?.[0] || '',
-            'year': info.publishedDate?.split('-')[0] || '',
-            'page_count': info.pageCount || '',
-            'description': info.description || ''
-        };
-
-        // Populate all fields
-        Object.keys(fields).forEach(field => {
-            const element = document.getElementById(field);
-            if (element) element.value = fields[field];
-        });
-
-        // Handle cover preview
-        const coverPreview = document.getElementById('cover-preview');
-        if (info.imageLinks?.thumbnail) {
-            coverPreview.innerHTML = `<img src="${info.imageLinks.thumbnail}" alt="Book cover" class="max-w-xs rounded-lg shadow-lg">`;
+    function displaySearchResults(books) {
+        console.log('Displaying search results:', books);
+        resultsContainer.innerHTML = '';
+    
+        if (!books || books.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="col-span-full text-center py-8 text-content-secondary">
+                    No books found matching your search.
+                </div>
+            `;
+            return;
         }
-
-        // Scroll form into view
-        document.querySelector('.book-info-form').scrollIntoView({ behavior: 'smooth' });
+    
+        books.forEach(book => {
+            console.log('Processing book:', book);
+            const template = document.getElementById('search-result-template');
+            if (!template) {
+                console.error('Template not found!');
+                return;
+            }
+    
+            const resultElement = template.content.cloneNode(true);
+            const bookResult = resultElement.querySelector('.book-result');
+            if (!bookResult) {
+                console.error('Book result element not found in template!');
+                return;
+            }
+    
+            const volumeInfo = book.volumeInfo || book;
+            const coverImg = bookResult.querySelector('img');
+            
+            if (volumeInfo.imageLinks && volumeInfo.imageLinks.thumbnail) {
+                let thumbnailUrl = volumeInfo.imageLinks.thumbnail;
+                thumbnailUrl = thumbnailUrl.replace('http:', 'https:')
+                                         .replace('&zoom=1', '')
+                                         .replace('&edge=curl', '');
+                coverImg.src = thumbnailUrl;
+            } else {
+                coverImg.src = '/static/uploads/no-cover.png';
+            }
+            coverImg.onerror = () => coverImg.src = '/static/uploads/no-cover.png';
+    
+            const elements = {
+                title: bookResult.querySelector('.book-title'),
+                author: bookResult.querySelector('.book-author'),
+                year: bookResult.querySelector('.book-year'),
+                isbn: bookResult.querySelector('.book-isbn'),
+                description: bookResult.querySelector('.book-description')
+            };
+    
+            if (elements.title) elements.title.textContent = volumeInfo.title || 'Unknown Title';
+            if (elements.author) elements.author.textContent = 
+                `by ${volumeInfo.authors ? volumeInfo.authors.join(', ') : 'Unknown Author'}`;
+            if (elements.year) elements.year.textContent = 
+                volumeInfo.publishedDate ? volumeInfo.publishedDate.split('-')[0] : '';
+            
+            const isbn = volumeInfo.industryIdentifiers ? 
+                volumeInfo.industryIdentifiers.find(id => 
+                    id.type === 'ISBN_13' || id.type === 'ISBN_10'
+                )?.identifier : '';
+            if (elements.isbn) elements.isbn.textContent = `ISBN: ${isbn || 'N/A'}`;
+            
+            if (elements.description) elements.description.textContent = 
+                volumeInfo.description || 'No description available';
+    
+            // Add click handler to select button
+            const selectButton = bookResult.querySelector('.select-book-btn');
+            if (selectButton) {
+                selectButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const bookData = {
+                        title: volumeInfo.title,
+                        subtitle: volumeInfo.subtitle || '',
+                        author: volumeInfo.authors ? volumeInfo.authors.join(', ') : '',
+                        publisher: volumeInfo.publisher || '',
+                        publishedDate: volumeInfo.publishedDate ? volumeInfo.publishedDate.split('-')[0] : '',
+                        pageCount: volumeInfo.pageCount || '',
+                        description: volumeInfo.description || '',
+                        genre: volumeInfo.categories ? volumeInfo.categories.join(', ') : '',
+                        isbn: isbn,
+                        thumbnail: volumeInfo.imageLinks?.thumbnail || null
+                    };
+                    console.log('Selected book data:', bookData);
+                    selectBook(bookData);
+                });
+            }
+    
+            resultsContainer.appendChild(resultElement);
+        });
+    }
+    
+    async function selectBook(bookData) {
+        try {
+            console.log('Sending book data to backend:', bookData);
+            const response = await fetch('/books/select_search_result', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    bookData: bookData
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                console.log('Received book details from backend:', data.book_details);
+                fillBookForm(data.book_details);
+            } else {
+                console.error('Error selecting book:', data.error);
+                alert('Error selecting book. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error selecting book. Please try again.');
+        }
+    }
+    
+    function fillBookForm(bookDetails) {
+        console.log('Filling form with book details:', bookDetails);
+        
+        const fields = {
+            'title': bookDetails.title || '',
+            'subtitle': bookDetails.subtitle || '',
+            'author': bookDetails.author || '',
+            'isbn': bookDetails.isbn || '',
+            'publisher': bookDetails.publisher || '',
+            'genre': bookDetails.genre || '',
+            'year': bookDetails.publishedDate || bookDetails.year || '',
+            'page_count': bookDetails.pageCount || bookDetails.page_count || '',
+            'description': bookDetails.description || ''
+        };
+    
+        Object.entries(fields).forEach(([fieldId, value]) => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                console.log(`Setting ${fieldId} to:`, value);
+                element.value = value;
+            } else {
+                console.warn(`Element not found for field: ${fieldId}`);
+            }
+        });
+    
+        const coverPreview = document.getElementById('cover-preview');
+        if (!coverPreview) {
+            console.error('Cover preview element not found!');
+            return;
+        }
+    
+        if (bookDetails.local_cover_url) {
+            console.log('Setting local cover URL:', bookDetails.local_cover_url);
+            coverPreview.innerHTML = `
+                <img src="/static/${bookDetails.local_cover_url}" 
+                     alt="Book cover" 
+                     class="max-w-xs rounded-lg shadow-lg">
+            `;
+            
+            let coverUrlInput = document.querySelector('input[name="existing_cover_url"]');
+            if (!coverUrlInput) {
+                coverUrlInput = document.createElement('input');
+                coverUrlInput.type = 'hidden';
+                coverUrlInput.name = 'existing_cover_url';
+                const form = document.querySelector('form');
+                if (form) {
+                    form.appendChild(coverUrlInput);
+                } else {
+                    console.error('Form element not found!');
+                }
+            }
+            coverUrlInput.value = bookDetails.local_cover_url;
+            console.log('Set hidden input value:', bookDetails.local_cover_url);
+        } else {
+            console.log('No local cover URL provided');
+            coverPreview.innerHTML = '';
+        }
+    
+        const form = document.querySelector('form');
+        if (form) {
+            form.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            console.error('Form element not found for scrolling!');
+        }
     }
 
     // Search event listeners

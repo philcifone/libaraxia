@@ -29,221 +29,226 @@
             <p class="text-xl text-content-secondary italic">by {{ book['author'] }}</p>
         </header>
 
-        <!-- Book Content Grid -->
-        <div class="grid md:grid-cols-[300px_1fr] gap-8">
-            <!-- Book Cover Section -->
-            <div class="space-y-4">
-                {% if book.cover_image_url %}
-                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
-                         alt="{{ book[1] }} Cover"
-                         class="w-full rounded-lg shadow-lg transition-transform duration-300 hover:scale-105">
-                {% else %}
-                    <div class="w-full aspect-[2/3] bg-secondary flex items-center justify-center rounded-lg">
-                        <span class="text-content-secondary italic">No Cover Available</span>
+        <!-- Main Book Content Section -->
+        <div class="bg-secondary rounded-xl p-4 md:p-8 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
+                <!-- Book Cover Section -->
+                <div class="space-y-4">
+                    <div class="w-32 sm:w-48 md:w-full max-w-[300px] mx-auto">
+                        {% if book.cover_image_url %}
+                            <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
+                                alt="{{ book[1] }} Cover"
+                                class="w-full rounded-lg shadow-lg transition-transform duration-300">
+                        {% else %}
+                            <div class="w-full aspect-[2/3] bg-primary flex items-center justify-center rounded-lg">
+                                <span class="text-content-secondary italic">No Cover Available</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Book Details Section -->
+                <div class="space-y-6">
+                    <!-- Details Grid -->
+                    <div class="p-4 bg-primary rounded-lg">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                            {% for item in [
+                                ('Publisher', book['publisher']),
+                                ('Publication Year', book['publish_year']),
+                                ('Page Count', book['page_count']|string + ' pages'),
+                                ('ISBN', book['isbn']),
+                                ('Genre', book['genre'])
+                            ] %}
+                            <div class="space-y-1">
+                                <span class="text-sm uppercase tracking-wider text-content-secondary">{{ item[0] }}</span>
+                                <p class="text-content-primary font-medium break-words">{{ item[1] }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Description Section -->
+                    <div class="bg-primary rounded-lg p-4">
+                        <h2 class="text-xl font-display text-content-primary mb-4">About this Book</h2>
+                        <div class="relative">
+                            <div class="text-content-secondary prose prose-invert max-h-48 overflow-hidden transition-all duration-300" id="description">
+                                {{ book['description'] }}
+                            </div>
+                            <button type="button" 
+                                    class="mt-2 text-accent hover:text-accent-hover flex items-center gap-1 transition-colors"
+                                    onclick="toggleDescription()">
+                                <span class="toggle-text">Show More</span>
+                                <svg class="w-4 h-4 transform transition-transform duration-300" viewBox="0 0 20 20">
+                                    <path fill="currentColor" d="M10 13.5l-5-5 1.5-1.5L10 10.5 13.5 7l1.5 1.5-5 5z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                                        <!-- Action Buttons -->
+                    <div class="flex flex-row md:flex-col gap-4">
+                        <a href="/books/edit/{{ book[0] }}" 
+                           class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors">
+                            <svg class="w42 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
+                            </svg>
+                            Edit Book
+                        </a>
+                        <a href="/books/delete/{{ book[0] }}"
+                           onclick="return confirm('This will remove the book from the database. Are you sure?')"
+                           class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">
+                            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
+                            </svg>
+                            Delete Book
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reading Info Section -->
+        <div class="space-y-6">
+            <h2 class="text-2xl font-display text-content-primary text-center">
+                {{ current_user.username.capitalize() }}'s Reading Info
+            </h2>
+            
+            <!-- Reading Status Form -->
+            <div class="bg-secondary rounded-lg p-6">
+                <form action="{{ url_for('collections.add_to_status_collection') }}" method="post" class="space-y-4">
+                    <input type="hidden" name="id" value="{{ book['id'] }}">
+                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                        <label for="status" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
+                            Reading Status
+                        </label>
+                        <select name="status" id="status" 
+                                class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
+                            <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
+                            <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
+                            <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
+                            <option value="did not finish" {% if collection_status == "did not finish" %}selected{% endif %}>Did Not Finish</option>
+                        </select>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                            Update Status
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Collections Management -->
+            <div class="bg-secondary rounded-lg p-6 space-y-6">
+                <!-- Create Collection Form -->
+                <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="space-y-4">
+                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                        <label for="create-collection" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
+                            Create Collection
+                        </label>
+                        <div class="flex-1 flex gap-4">
+                            <input type="text"
+                                   id="create-collection"
+                                   name="name"
+                                   placeholder="Create new collection"
+                                   class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                                   required>
+                            <button type="submit" 
+                                    class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Collection Management Form -->
+                <form action="{{ url_for('collections.manage_book_collections') }}" method="POST" class="space-y-4">
+                    <input type="hidden" name="book_id" value="{{ book['id'] }}">
+                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                        <label for="collections" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
+                            Add to Collection
+                        </label>
+                        <select name="collection_id" id="collections" 
+                                class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <option value="">Select Collection</option>
+                            {% for collection in custom_collections %}
+                            <option value="{{ collection['collection_id'] }}"
+                                {% if collection['has_book'] %}selected{% endif %}>
+                                {{ collection['name'] }} ({{ collection['book_count'] }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                            Update Collection
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Reading Stats -->
+            <div class="bg-secondary rounded-lg p-6">
+                {% if read_data %}
+                <div class="grid sm:grid-cols-2 gap-8 mb-6">
+                    <div class="space-y-2">
+                        <span class="text-sm uppercase tracking-wider text-content-secondary">Date Read</span>
+                        <p class="text-lg text-content-primary">{{ read_data['date_read'] }}</p>
+                    </div>
+                    <div class="space-y-2">
+                        <span class="text-sm uppercase tracking-wider text-content-secondary">Your Rating</span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-lg text-content-primary">{{ read_data['rating'] }} / 5</span>
+                            <div class="flex items-center">
+                                {% for i in range(read_data['rating']|int) %}
+                                    <span class="text-yellow-400 text-xl">★</span>
+                                {% endfor %}
+                                {% for i in range(5 - read_data['rating']|int) %}
+                                    <span class="text-gray-600 text-xl">☆</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% if read_data['comment'] %}
+                    <div class="space-y-2">
+                        <span class="text-sm uppercase tracking-wider text-content-secondary">Your Review</span>
+                        <p class="text-content-primary bg-primary rounded-lg p-4">{{ read_data['comment'] }}</p>
                     </div>
                 {% endif %}
+                {% else %}
+                    <p class="text-content-secondary text-center italic py-8">No review added yet.</p>
+                {% endif %}
 
-                <!-- Action Buttons -->
-                <div class="flex flex-col gap-2">
-                    <a href="/books/edit/{{ book[0] }}" 
-                       class="flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors">
+                <div class="flex justify-center mt-6">
+                    <a href="{{ url_for('read.rate_review', book_id=book.id) }}" 
+                       class="inline-flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
                         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
                         </svg>
-                        Edit Book
-                    </a>
-                    <a href="/books/delete/{{ book[0] }}"
-                       onclick="return confirm('This will remove the book from the database. Are you sure?')"
-                       class="flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
-                        </svg>
-                        Delete Book
+                        {% if read_data %}Edit{% else %}Write a{% endif %} Review
                     </a>
                 </div>
             </div>
 
-            <!-- Book Details Section -->
-            <div class="space-y-8">
-                <!-- Details Grid -->
-                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6 bg-secondary rounded-lg">
-                    {% for item in [
-                        ('Publisher', book['publisher']),
-                        ('Publication Year', book['publish_year']),
-                        ('Page Count', book['page_count']|string + ' pages'),
-                        ('ISBN', book['isbn']),
-                        ('Genre', book['genre'])
-                    ] %}
-                    <div class="space-y-1">
-                        <span class="text-sm uppercase tracking-wider text-content-secondary">{{ item[0] }}</span>
-                        <p class="text-content-primary font-medium">{{ item[1] }}</p>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- Description Section -->
-                <div class="p-6 bg-secondary rounded-lg">
-                    <h2 class="text-xl font-display text-content-primary mb-4">About this Book</h2>
-                    <div class="relative">
-                        <div class="text-content-secondary prose prose-invert max-h-48 overflow-hidden transition-all duration-300" id="description">
-                            {{ book['description'] }}
-                        </div>
+            <!-- Tags Section -->
+            <div class="bg-secondary rounded-lg p-6" data-book-id="{{ book.id }}">
+                <h2 class="text-xl font-display text-content-primary mb-4">
+                    {{ current_user.username.capitalize() }}'s Book Tags
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex gap-2">
+                        <input type="text" 
+                               id="tagInput" 
+                               placeholder="Add tags (separate by comma)" 
+                               class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                         <button type="button" 
-                                class="mt-2 text-accent hover:text-accent-hover flex items-center gap-1 transition-colors"
-                                onclick="toggleDescription()">
-                            <span class="toggle-text">Show More</span>
-                            <svg class="w-4 h-4 transform transition-transform duration-300" viewBox="0 0 20 20">
-                                <path fill="currentColor" d="M10 13.5l-5-5 1.5-1.5L10 10.5 13.5 7l1.5 1.5-5 5z"/>
-                            </svg>
+                                class="add-tag-btn px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                            Add
                         </button>
                     </div>
+                    <div id="tagsList" class="flex flex-wrap gap-2"></div>
                 </div>
             </div>
         </div>
     </div>
-
-<!-- Reading Info Section -->
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 space-y-6">
-    <h1 class="text-2xl font-display text-content-primary text-center">
-        {{ current_user.username.capitalize() }}'s Reading Info for {{ book[1] }}
-    </h1>
-    
-    <!-- Reading Status Form -->
-    <div class="bg-secondary rounded-lg p-6">
-        <form action="{{ url_for('collections.add_to_status_collection') }}" method="post" class="space-y-4">
-            <input type="hidden" name="id" value="{{ book['id'] }}">
-            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <label for="status" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
-                    Reading Status
-                </label>
-                <select name="status" id="status" 
-                        class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
-                    <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
-                    <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
-                    <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
-                    <option value="did not finish" {% if collection_status == "did not finish" %}selected{% endif %}>Did Not Finish</option>
-                </select>
-                <button type="submit" 
-                        class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
-                    Update Status
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Collections Management -->
-    <div class="bg-secondary rounded-lg p-6 space-y-6">
-        <!-- Create Collection Form -->
-        <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="space-y-4">
-            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <label for="create-collection" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
-                    Create Collection
-                </label>
-                <div class="flex-1 flex gap-4">
-                    <input type="text"
-                           id="create-collection"
-                           name="name"
-                           placeholder="Create new collection"
-                           class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                           required>
-                    <button type="submit" 
-                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
-                        Create
-                    </button>
-                </div>
-            </div>
-        </form>
-
-        <!-- Collection Management Form -->
-        <form action="{{ url_for('collections.manage_book_collections') }}" method="POST" class="space-y-4">
-            <input type="hidden" name="book_id" value="{{ book['id'] }}">
-            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <label for="collections" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
-                    Add to Collection
-                </label>
-                <select name="collection_id" id="collections" 
-                        class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    <option value="">Select Collection</option>
-                    {% for collection in custom_collections %}
-                    <option value="{{ collection['collection_id'] }}"
-                        {% if collection['has_book'] %}selected{% endif %}>
-                        {{ collection['name'] }} ({{ collection['book_count'] }})
-                    </option>
-                    {% endfor %}
-                </select>
-                <button type="submit" 
-                        class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
-                    Update Collection
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Reading Stats -->
-    <div class="bg-secondary rounded-lg p-6">
-        {% if read_data %}
-        <div class="grid sm:grid-cols-2 gap-8 mb-6">
-            <div class="space-y-2">
-                <span class="text-sm uppercase tracking-wider text-content-secondary">Date Read</span>
-                <p class="text-lg text-content-primary">{{ read_data['date_read'] }}</p>
-            </div>
-            <div class="space-y-2">
-                <span class="text-sm uppercase tracking-wider text-content-secondary">Your Rating</span>
-                <div class="flex items-center gap-4">
-                    <span class="text-lg text-content-primary">{{ read_data['rating'] }} / 5</span>
-                    <div class="flex items-center">
-                        {% for i in range(read_data['rating']|int) %}
-                            <span class="text-yellow-400 text-xl">★</span>
-                        {% endfor %}
-                        {% for i in range(5 - read_data['rating']|int) %}
-                            <span class="text-gray-600 text-xl">☆</span>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% if read_data['comment'] %}
-            <div class="space-y-2">
-                <span class="text-sm uppercase tracking-wider text-content-secondary">Your Review</span>
-                <p class="text-content-primary bg-primary rounded-lg p-4">{{ read_data['comment'] }}</p>
-            </div>
-        {% endif %}
-        {% else %}
-            <p class="text-content-secondary text-center italic py-8">No review added yet.</p>
-        {% endif %}
-
-        <div class="flex justify-center mt-6">
-            <a href="{{ url_for('read.rate_review', book_id=book.id) }}" 
-               class="inline-flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
-                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
-                </svg>
-                {% if read_data %}Edit{% else %}Write a{% endif %} Review
-            </a>
-        </div>
-    </div>
-
-    <!-- Tags Section -->
-    <div class="bg-secondary rounded-lg p-6" data-book-id="{{ book.id }}">
-        <h2 class="text-xl font-display text-content-primary mb-4">
-            {{ current_user.username.capitalize() }}'s Book Tags
-        </h2>
-        <div class="space-y-4">
-            <div class="flex gap-2">
-                <input type="text" 
-                       id="tagInput" 
-                       placeholder="Add tags (separate by comma)" 
-                       class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                <button type="button" 
-                        class="add-tag-btn px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
-                    Add
-                </button>
-            </div>
-            <div id="tagsList" class="flex flex-wrap gap-2"></div>
-        </div>
-    </div>
-</div>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='tags.js') }}"></script>
 </body>

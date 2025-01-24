@@ -339,26 +339,66 @@ function updateStatus(selectElement) {
     });
 }
 
-// rating
-
 function initRatingSystem() {
-    const container = document.getElementById('rating-container');
-    const input = document.getElementById('rating-input');
-    const stars = container.getElementsByClassName('rating-star');
+    const ratingContainer = document.getElementById('rating-container');
+    const ratingText = document.getElementById('rating-text');
+    if (!ratingContainer) return;
 
-    container.addEventListener('click', (e) => {
-        if (e.target.matches('.rating-star')) {
-            const rating = e.target.dataset.rating;
-            input.value = rating;
-            
-            Array.from(stars).forEach((star, index) => {
-                star.classList.toggle('text-yellow-400', index < rating);
-                star.classList.toggle('text-gray-400', index >= rating);
-            });
+    const stars = ratingContainer.querySelectorAll('.rating-star');
+
+    // Function to update stars appearance
+    function updateStars(hoveredRating = null, isHover = false) {
+        const selectedInput = ratingContainer.querySelector('input[type="radio"]:checked');
+        const rating = hoveredRating || (selectedInput ? selectedInput.value : 0);
+
+        stars.forEach(star => {
+            const starRating = parseInt(star.dataset.rating);
+            if (starRating <= rating) {
+                star.classList.add('text-yellow-400');
+                star.classList.remove('text-gray-400');
+            } else {
+                star.classList.remove('text-yellow-400');
+                star.classList.add('text-gray-400');
+            }
+        });
+
+        // Update rating text
+        if (isHover && rating > 0) {
+            ratingText.textContent = `${rating} star${rating !== 1 ? 's' : ''}?`;
+        } else if (!isHover && rating > 0) {
+            ratingText.textContent = `${rating} star${rating !== 1 ? 's' : ''}!`;
+        } else {
+            ratingText.textContent = '';
         }
+    }
+
+    // Set initial state
+    updateStars();
+
+    // Handle hover events
+    stars.forEach(star => {
+        star.addEventListener('mouseenter', () => {
+            const rating = parseInt(star.dataset.rating);
+            updateStars(rating, true);
+        });
+    });
+
+    ratingContainer.addEventListener('mouseleave', () => {
+        updateStars(null, false);
+    });
+
+    // Handle click events
+    stars.forEach(star => {
+        star.addEventListener('click', (e) => {
+            const rating = parseInt(star.dataset.rating);
+            const input = document.getElementById(`star${rating}`);
+            input.checked = true;
+            updateStars(rating, false);
+        });
     });
 }
 
+// Initialize when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initRatingSystem);
 
 // index.html javascript for filter functions
@@ -389,160 +429,6 @@ function submitSortForm() {
         sortForm.appendChild(showFiltersInput);
     }
     document.getElementById('sort-form').submit();
-}
-
-// add book 
-// Handle tab switching
-document.addEventListener('DOMContentLoaded', function() {
-    const methodButtons = document.querySelectorAll('.search-method-btn');
-    const methodSections = document.querySelectorAll('.search-method-content');
-
-    methodButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            // Remove active class from all buttons and sections
-            methodButtons.forEach(btn => btn.classList.remove('active'));
-            methodSections.forEach(section => section.classList.remove('active'));
-
-            // Add active class to clicked button and corresponding section
-            button.classList.add('active');
-            const method = button.dataset.method;
-            document.getElementById(`${method}-section`).classList.add('active');
-
-            // Stop scanner if switching away from barcode tab
-            if (method !== 'barcode' && Quagga.initialized) {
-                Quagga.stop();
-            }
-        });
-    });
-
-    // Handle title/author search
-    const searchInput = document.getElementById('book-search');
-    const searchBtn = document.getElementById('search-btn');
-    const resultsContainer = document.getElementById('search-results');
-    let searchTimeout;
-
-    function performSearch() {
-        const query = searchInput.value.trim();
-        if (query.length < 2) return;
-
-        fetch(`/books/search_books?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
-            .then(data => {
-                resultsContainer.innerHTML = '';
-                data.items.forEach(book => {
-                    const bookCard = createBookCard(book);
-                    resultsContainer.appendChild(bookCard);
-                });
-            })
-            .catch(error => console.error('Error searching books:', error));
-    }
-
-    // Debounce search input
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(performSearch, 500);
-    });
-
-    searchBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        performSearch();
-    });
-
-    // Handle barcode scanning
-    const scannerBtn = document.getElementById('toggle-scanner');
-    let isScanning = false;
-
-    scannerBtn.addEventListener('click', () => {
-        if (!isScanning) {
-            startScanner();
-            scannerBtn.textContent = 'Stop Scanner';
-        } else {
-            stopScanner();
-            scannerBtn.textContent = 'Start Scanner';
-        }
-        isScanning = !isScanning;
-    });
-});
-
-function createBookCard(book) {
-    const card = document.createElement('div');
-    card.className = 'book-search-result';
-    
-    const thumbnail = book.volumeInfo.imageLinks?.thumbnail || '/static/images/no-cover.png';
-    const title = book.volumeInfo.title;
-    const authors = book.volumeInfo.authors?.join(', ') || 'Unknown Author';
-    const year = book.volumeInfo.publishedDate?.split('-')[0] || 'Unknown Year';
-
-    card.innerHTML = `
-        <img src="${thumbnail}" alt="${title} cover" class="result-thumbnail">
-        <div class="result-info">
-            <h3>${title}</h3>
-            <p>${authors}</p>
-            <p>${year}</p>
-        </div>
-        <button class="select-book-btn">Select</button>
-    `;
-
-    card.querySelector('.select-book-btn').addEventListener('click', () => {
-        fillBookForm(book);
-    });
-
-    return card;
-}
-
-function fillBookForm(book) {
-    const info = book.volumeInfo;
-    document.getElementById('title').value = info.title || '';
-    document.getElementById('subtitle').value = info.subtitle || '';
-    document.getElementById('author').value = info.authors?.join(', ') || '';
-    document.getElementById('isbn').value = info.industryIdentifiers?.[0]?.identifier || '';
-    document.getElementById('publisher').value = info.publisher || '';
-    document.getElementById('genre').value = info.categories?.[0] || '';
-    document.getElementById('year').value = info.publishedDate?.split('-')[0] || '';
-    document.getElementById('page_count').value = info.pageCount || '';
-    document.getElementById('description').value = info.description || '';
-
-    const coverPreview = document.getElementById('cover-preview');
-    if (info.imageLinks?.thumbnail) {
-        coverPreview.innerHTML = `<img src="${info.imageLinks.thumbnail}" alt="Book cover" class="thumbnail-preview">`;
-    }
-}
-
-// Barcode scanning setup
-function startScanner() {
-    Quagga.init({
-        inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector("#interactive"),
-            constraints: {
-                facingMode: "environment"
-            },
-        },
-        decoder: {
-            readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader"]
-        }
-    }, function(err) {
-        if (err) {
-            console.error(err);
-            alert("Error starting scanner: " + err);
-            return;
-        }
-        Quagga.start();
-    });
-
-    Quagga.onDetected(function(result) {
-        const code = result.codeResult.code;
-        document.getElementById('isbn_lookup').value = code;
-        // Automatically trigger ISBN lookup
-        document.getElementById('isbn-fetch').click();
-        stopScanner();
-    });
-}
-
-function stopScanner() {
-    Quagga.stop();
-    document.getElementById('toggle-scanner').textContent = 'Start Scanner';
 }
 
 // book details

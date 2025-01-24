@@ -123,30 +123,75 @@ def process_image(image_file, existing_url: Optional[str] = None) -> Optional[st
 def download_and_save_cover(url: str) -> Optional[str]:
     """Download and save cover image from URL."""
     if not url:
+        current_app.logger.debug("No URL provided for cover download")
         return None
         
     try:
-        response = requests.get(url)
+        current_app.logger.debug(f"Starting download from URL: {url}")
+
+        # Create a session with headers to mimic a browser
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
+        
+        # Try to get the image with a timeout
+        response = session.get(url, stream=True, timeout=10)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
         if response.status_code != 200:
+            current_app.logger.error(f"Failed to download cover. Status code: {response.status_code}")
             return None
-            
+        
+        # Generate unique filename
         timestamp = int(time.time())
         filename = f"cover_{timestamp}.jpg"
         
-        # Use absolute path for saving but return relative path for database
-        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        # Ensure the upload directory exists
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        os.makedirs(upload_folder, exist_ok=True)
         
-        # Ensure upload directory exists
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        save_path = os.path.join(upload_folder, filename)
+        current_app.logger.debug(f"Will save image to: {save_path}")
         
-        img = Image.open(requests.get(url, stream=True).raw)
-        img.thumbnail(MAX_IMAGE_SIZE)
-        img.save(save_path)
+        # Save the raw image data first
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
         
-        # Return relative path for database storage
-        return os.path.join('uploads', filename)
+        # Now process with Pillow
+        try:
+            with Image.open(save_path) as img:
+                # Convert to RGB if necessary
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                
+                # Resize while maintaining aspect ratio
+                img.thumbnail(MAX_IMAGE_SIZE)
+                
+                # Handle EXIF orientation
+                img = ImageOps.exif_transpose(img)
+                
+                # Save with optimal settings
+                img.save(save_path, 'JPEG', quality=85, optimize=True)
+            
+            relative_path = os.path.join('uploads', filename)
+            current_app.logger.info(f"Successfully saved image at: {relative_path}")
+            return relative_path
+            
+        except Exception as e:
+            current_app.logger.error(f"Error processing image with Pillow: {str(e)}")
+            # Try to remove the failed file
+            if os.path.exists(save_path):
+                os.remove(save_path)
+            return None
+            
+    except requests.RequestException as e:
+        current_app.logger.error(f"Request error downloading cover: {str(e)}")
+        return None
     except Exception as e:
-        current_app.logger.error(f"Error downloading cover: {str(e)}")
+        current_app.logger.error(f"Unexpected error downloading/saving cover: {str(e)}")
         return None
 
 # filter options

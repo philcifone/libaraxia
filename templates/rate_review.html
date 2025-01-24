@@ -1,6 +1,24 @@
 <!DOCTYPE html>
 <html lang="en" class="bg-primary-bg">
 <head>
+    <style>
+        .rating-group {
+            isolation: isolate;
+        }
+
+        .rating-star {
+            position: relative;
+            z-index: 1;
+        }
+
+        .rating-star:hover {
+            transform: scale(1.1);
+        }
+
+        .rating-group:hover .rating-star:hover ~ .rating-star {
+            color: #9ca3af;  /* gray-400 */
+        }
+    </style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>{{ book.title }} - Rate & Review</title>
@@ -58,23 +76,27 @@
                         <span id="date-error" class="hidden text-sm text-red-500">Please select a date</span>
                     </div>
                     
+                    <!-- Rating Section -->
                     <div class="space-y-2">
                         <label class="block text-sm font-medium text-content-secondary">Rating</label>
-                        <div class="flex justify-center">
-                            <div class="star-rating scale-150 py-4">
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="rating-group relative flex justify-center items-center" id="rating-container">
                                 {% for i in range(1, 6) %}
-                                <input type="radio" 
-                                       id="star{{ i }}" 
-                                       name="rating" 
-                                       value="{{ i }}" 
-                                       class="hidden peer"
-                                       {{ 'checked' if read_data and read_data.rating == i }}>
-                                <label for="star{{ i }}" 
-                                       title="{{ i }} star{% if i != 1 %}s{% endif %}"
-                                       class="text-gray-400 text-2xl cursor-pointer hover:text-yellow-400 hover:scale-110
-                                              transition-all duration-200 peer-checked:text-yellow-400 peer-checked:scale-110">★</label>
+                                <div class="relative">
+                                    <input type="radio" 
+                                        id="star{{ i }}" 
+                                        name="rating" 
+                                        value="{{ i }}" 
+                                        class="hidden"
+                                        {{ 'checked' if read_data and read_data.rating == i }}>
+                                    <label for="star{{ i }}" 
+                                        class="rating-star cursor-pointer text-3xl text-gray-400 px-1 hover:scale-110 transition-all duration-150"
+                                        data-rating="{{ i }}"
+                                        title="{{ i }} star{% if i != 1 %}s{% endif %}">★</label>
+                                </div>
                                 {% endfor %}
                             </div>
+                            <div id="rating-text" class="h-6 text-content-secondary text-sm"></div>
                         </div>
                     </div>
 

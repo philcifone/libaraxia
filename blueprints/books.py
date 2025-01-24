@@ -125,6 +125,93 @@ def add_book():
         search_results=search_results
     )
 
+@books_blueprint.route("/search_books")
+@login_required
+@admin_required
+def search_books():
+    query = request.args.get("q", "")
+    if not query:
+        return jsonify({"items": []})
+        
+    try:
+        current_app.logger.debug(f"Starting search for query: {query}")
+        api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
+        
+        try:
+            response = requests.get(api_url)
+            current_app.logger.debug(f"Google Books API response status: {response.status_code}")
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            current_app.logger.error(f"Request to Google Books API failed: {str(e)}")
+            return jsonify({"error": "Failed to connect to Google Books API"}), 500
+            
+        try:
+            data = response.json()
+        except ValueError as e:
+            current_app.logger.error(f"Failed to parse JSON response: {str(e)}")
+            current_app.logger.error(f"Response content: {response.text[:500]}")
+            return jsonify({"error": "Invalid response from Google Books API"}), 500
+
+        current_app.logger.debug(f"Raw response data: {data}")  # Add this line for debugging
+        
+        if "items" in data:
+            processed_items = []
+            for item in data["items"][:10]:  # Limit to first 10 results
+                volume_info = item.get("volumeInfo", {})
+                
+                # Get image URL and clean it up
+                image_links = volume_info.get("imageLinks", {})
+                thumbnail_url = (
+                    image_links.get("extraLarge") or
+                    image_links.get("large") or
+                    image_links.get("medium") or
+                    image_links.get("small") or
+                    image_links.get("thumbnail")
+                )
+                
+                if thumbnail_url:
+                    thumbnail_url = thumbnail_url.replace('http:', 'https:')
+                    thumbnail_url = thumbnail_url.split('&zoom=')[0].split('&edge=')[0]
+                
+                # Get ISBN
+                isbn = next((
+                    identifier.get("identifier")
+                    for identifier in volume_info.get("industryIdentifiers", [])
+                    if identifier.get("type") in ["ISBN_13", "ISBN_10"]
+                ), None)
+
+                # Create processed item that matches frontend expectations
+                processed_item = {
+                    "volumeInfo": {
+                        "title": volume_info.get("title", ""),
+                        "subtitle": volume_info.get("subtitle", ""),
+                        "authors": volume_info.get("authors", []),
+                        "publisher": volume_info.get("publisher", ""),
+                        "publishedDate": volume_info.get("publishedDate", ""),
+                        "description": volume_info.get("description", ""),
+                        "pageCount": volume_info.get("pageCount", 0),
+                        "categories": volume_info.get("categories", []),
+                        "industryIdentifiers": [
+                            {"type": "ISBN_13" if isbn else "OTHER", "identifier": isbn or ""}
+                        ] if isbn else [],
+                        "imageLinks": {"thumbnail": thumbnail_url} if thumbnail_url else {}
+                    }
+                }
+                processed_items.append(processed_item)
+            
+            current_app.logger.debug(f"Processed items: {processed_items}")  # Add this line
+            response = jsonify({"items": processed_items})
+            # Add CORS headers if needed
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+            
+        current_app.logger.debug("No items found in response")
+        return jsonify({"items": []})
+        
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error in search_books: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 @books_blueprint.route("/select_search_result", methods=["POST"])
 @login_required
 @admin_required
@@ -132,37 +219,49 @@ def select_search_result():
     """Handle selection of a book from search results"""
     try:
         data = request.get_json()
-        isbn = data.get("isbn")
-        thumbnail_url = data.get("thumbnail")
-        original_data = data.get("bookData", {})  # Get the full book data
+        current_app.logger.debug(f"Received book selection data: {data}")
+        
+        original_data = data.get("bookData", {})
+        isbn = original_data.get("isbn")
+        thumbnail_url = original_data.get("thumbnail")
         
         if not isbn:
+            current_app.logger.warning("No ISBN provided in book selection")
             return jsonify({"success": False, "error": "No ISBN provided"})
         
-        # Download and save cover image if available
+        # Download and save cover image first
         local_cover_url = None
         if thumbnail_url:
+            current_app.logger.info(f"Attempting to download cover from: {thumbnail_url}")
             local_cover_url = download_and_save_cover(thumbnail_url)
+            if not local_cover_url:
+                current_app.logger.warning("Failed to download cover image")
         
-        # Create book details dictionary using the original data
+        # Create book details dictionary
         book_details = {
             "title": original_data.get("title", ""),
             "subtitle": original_data.get("subtitle", ""),
-            "author": original_data.get("authors", ""),
+            "author": original_data.get("author", ""),
             "publisher": original_data.get("publisher", ""),
-            "year": original_data.get("publishedDate", ""),
+            "year": original_data.get("publishedDate", "").split("-")[0] if original_data.get("publishedDate") else "",
             "isbn": isbn,
-            "pageCount": original_data.get("pageCount", 0),
+            "page_count": original_data.get("pageCount", 0),
             "description": original_data.get("description", ""),
-            "genre": original_data.get("categories", ""),
-            "thumbnail_url": thumbnail_url
+            "genre": original_data.get("genre", ""),
+            "cover_image_url": local_cover_url,  # Use local URL for database
+            "local_cover_url": local_cover_url,  # Use for form preview
+            "thumbnail_url": thumbnail_url       # Keep original URL as backup
         }
         
         if local_cover_url:
-            book_details["local_cover_url"] = local_cover_url
+            current_app.logger.info(f"Successfully processed book with local cover: {local_cover_url}")
+        else:
+            current_app.logger.warning("No cover image was saved")
             
         return jsonify({"success": True, "book_details": book_details})
+        
     except Exception as e:
+        current_app.logger.error(f"Error in select_search_result: {str(e)}")
         return jsonify({"success": False, "error": str(e)})
         
 @books_blueprint.route("/edit/<int:id>", methods=["GET", "POST"])
@@ -343,59 +442,3 @@ def search():
                              search_term=search_term)
     finally:
         conn.close()
-
-@books_blueprint.route("/search_books")
-@login_required
-@admin_required
-def search_books():
-    query = request.args.get("q", "")
-    if not query:
-        return jsonify({"items": []})
-        
-    try:
-        api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
-        response = requests.get(api_url)
-        return response.json()
-        
-        results = []
-        if "items" in response:
-            for item in response["items"][:10]:  # Limit to first 10 results
-                volume_info = item["volumeInfo"]
-                
-                # Handle image URLs - get the largest available image
-                image_links = volume_info.get("imageLinks", {})
-                thumbnail_url = (
-                    image_links.get("extraLarge") or
-                    image_links.get("large") or
-                    image_links.get("medium") or
-                    image_links.get("small") or
-                    image_links.get("thumbnail")
-                )
-                
-                # Convert HTTP to HTTPS if necessary
-                if thumbnail_url and thumbnail_url.startswith('http:'):
-                    thumbnail_url = thumbnail_url.replace('http:', 'https:')
-
-                # Remove zoom parameters from Google Books URLs to get full resolution
-                if thumbnail_url:
-                    thumbnail_url = thumbnail_url.replace('&zoom=1', '').replace('&edge=curl', '')
-                
-                result = {
-                    "title": volume_info.get("title", ""),
-                    "subtitle": volume_info.get("subtitle", ""),
-                    "authors": ", ".join(volume_info.get("authors", [])),
-                    "publisher": volume_info.get("publisher", ""),
-                    "publishedDate": volume_info.get("publishedDate", "").split("-")[0],
-                    "isbn": next((id["identifier"] for id in volume_info.get("industryIdentifiers", []) 
-                               if id["type"] in ["ISBN_13", "ISBN_10"]), ""),
-                    "thumbnail": thumbnail_url,
-                    "description": volume_info.get("description", ""),
-                    "pageCount": volume_info.get("pageCount", 0),
-                    "categories": ", ".join(volume_info.get("categories", []))
-                }
-                results.append(result)
-                
-        return jsonify({"results": results})
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
