@@ -1,0 +1,16 @@
+{
+  "name": "libaraxia",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tailwind.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fontsource-variable/crimson-pro": "^5.1.1",
+    "@fontsource-variable/outfit": "^5.1.1"
+  }
+}

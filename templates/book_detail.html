@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>{{ book[1] }} - Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body class="bg-primary min-h-screen">
@@ -18,19 +19,19 @@
             <span>Back to Catalog</span>
         </a>
 
-        <!-- Book Header -->
-        <header class="mb-8 text-center">
-            <h1 class="text-4xl font-display text-content-primary mb-2">
-                {{ book[1] }}
-                {% if book['subtitle'] %}
-                    <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
-                {% endif %}
-            </h1>
-            <p class="text-xl text-content-secondary italic">by {{ book['author'] }}</p>
-        </header>
-
         <!-- Main Book Content Section -->
         <div class="bg-secondary rounded-xl p-4 md:p-8 mb-8">
+            <!-- Book Header -->
+            <header class="mb-8 text-center">
+                <h1 class="text-4xl font-display text-content-primary mb-2">
+                    {{ book[1] }}
+                    {% if book['subtitle'] %}
+                        <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
+                    {% endif %}
+                </h1>
+                <p class="text-xl text-content-secondary italic">by {{ book['author'] }}</p>
+            </header>
+
             <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
                 <!-- Book Cover Section -->
                 <div class="space-y-4">
@@ -84,8 +85,9 @@
                             </button>
                         </div>
                     </div>
-                                        <!-- Action Buttons -->
-                    <div class="flex flex-row md:flex-col gap-4">
+                    
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-4">
                         <a href="/books/edit/{{ book[0] }}" 
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors">
                             <svg class="w42 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -106,20 +108,18 @@
             </div>
         </div>
 
-        <!-- Reading Info Section -->
-        <div class="space-y-6">
-            <h2 class="text-2xl font-display text-content-primary text-center">
-                {{ current_user.username.capitalize() }}'s Reading Info
-            </h2>
+        <div class="max-w-4xl mx-auto px-4 py-8">
+            <div class="bg-secondary rounded-lg p-6 space-y-8">
+                <h2 class="text-2xl font-display text-content-primary text-center">
+                    {{ current_user.username.capitalize() }}'s Reading Info
+                </h2>
             
-            <!-- Reading Status Form -->
-            <div class="bg-secondary rounded-lg p-6">
-                <form action="{{ url_for('collections.add_to_status_collection') }}" method="post" class="space-y-4">
+            <div class="bg-secondary rounded-lg space-y-8">
+                <!-- Reading Status Form -->
+                <form action="{{ url_for('collections.add_to_status_collection') }}" method="post">
                     <input type="hidden" name="id" value="{{ book['id'] }}">
-                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                        <label for="status" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
-                            Reading Status
-                        </label>
+                    <label for="status" class="block text-sm font-medium text-content-secondary pb-4">Reading Status</label>
+                    <div class="flex flex-col sm:flex-row gap-4">
                         <select name="status" id="status" 
                                 class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                             <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
@@ -129,22 +129,19 @@
                             <option value="did not finish" {% if collection_status == "did not finish" %}selected{% endif %}>Did Not Finish</option>
                         </select>
                         <button type="submit" 
-                                class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
                             Update Status
                         </button>
                     </div>
                 </form>
-            </div>
-
-            <!-- Collections Management -->
-            <div class="bg-secondary rounded-lg p-6 space-y-6">
-                <!-- Create Collection Form -->
-                <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="space-y-4">
-                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                        <label for="create-collection" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
-                            Create Collection
-                        </label>
-                        <div class="flex-1 flex gap-4">
+        
+                <hr class="border-gray-700">
+        
+                <!-- Collections Management -->
+                <div class="space-y-6">
+                    <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="space-y-4">
+                        <label for="create-collection" class="block text-sm font-medium text-content-secondary">Create Collection</label>
+                        <div class="flex flex-col sm:flex-row gap-4">
                             <input type="text"
                                    id="create-collection"
                                    name="name"
@@ -152,37 +149,35 @@
                                    class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                    required>
                             <button type="submit" 
-                                    class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
                                 Create
                             </button>
                         </div>
-                    </div>
-                </form>
-
-                <!-- Collection Management Form -->
-                <form action="{{ url_for('collections.manage_book_collections') }}" method="POST" class="space-y-4">
-                    <input type="hidden" name="book_id" value="{{ book['id'] }}">
-                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                        <label for="collections" class="text-sm font-medium text-content-secondary whitespace-nowrap min-w-[120px]">
-                            Add to Collection
-                        </label>
-                        <select name="collection_id" id="collections" 
-                                class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                            <option value="">Select Collection</option>
-                            {% for collection in custom_collections %}
-                            <option value="{{ collection['collection_id'] }}"
-                                {% if collection['has_book'] %}selected{% endif %}>
-                                {{ collection['name'] }} ({{ collection['book_count'] }})
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit" 
-                                class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
-                            Update Collection
-                        </button>
-                    </div>
-                </form>
-            </div>
+                    </form>
+        
+                    <form action="{{ url_for('collections.manage_book_collections') }}" method="POST" class="space-y-4">
+                        <input type="hidden" name="book_id" value="{{ book['id'] }}">
+                        <label for="collections" class="block text-sm font-medium text-content-secondary">Add to Collection</label>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <select name="collection_id" id="collections" 
+                                    class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                <option value="">Select Collection</option>
+                                {% for collection in custom_collections %}
+                                <option value="{{ collection['collection_id'] }}"
+                                    {% if collection['has_book'] %}selected{% endif %}>
+                                    {{ collection['name'] }} ({{ collection['book_count'] }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" 
+                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                Update Collection
+                            </button>
+                        </div>
+                    </form>
+                </div>
+        
+                <hr class="border-gray-700">
 
             <!-- Reading Stats -->
             <div class="bg-secondary rounded-lg p-6">

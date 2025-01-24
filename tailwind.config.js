@@ -28,8 +28,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        primary: ['Inter', 'sans-serif'],
-        display: ['DM Serif Display', 'serif']
+        primary: ['Outfit Variable', 'sans-serif'],
+        display: ['Crimson Pro Variable', 'serif']
       }
     }
   },
