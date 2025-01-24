@@ -7,25 +7,52 @@
 ![Rate & Review](static/git/libaraxiaRateReview.png)
 ![Book Details](static/git/libaraxiaProfile.png)
 
-# 🚀 Project Overview
+# 📚 Project Overview
 
 Libaraxia is a modern web application designed to help you catalog and manage your personal library with style and efficiency. Built with Flask and SQLite, it offers a seamless interface for organizing your book collection, tracking your reading progress, and maintaining your literary life. What started as a hobbyist project has evolved into a feature-rich library management system. While it's still growing and improving, it's already a robust solution for personal library organization.
 
 ## 🛠️ Installation 
 
-Currently, Libaraxia is in active development and not recommended for production use. However, if you're feeling adventurous: 
+Currently, Libaraxia is in active development, not stable, and not recommended for production use. However, if you're feeling adventurous and want to help beta test these instructions should in theory work:
 
-1. Clone the repository 
-2. Set up a virtual environment 
-3. Install required packages (requirements.txt coming soon!) 
-4. Initialize SQLite database with the provided create_database.sql file and run:
+1. git clone the repository 
+
+```shell
+git clone https://github.com/philcifone/libaraxia
+```
+
+2. Install required packages with the requirements.txt
+
+```shell
+pip install -r requirements.txt
+```
+
+3. To initialize SQLite database with the provided create_database.sql file run the following command:
 
 ```shell
 sqlite3 your_database.db < create_database.sql
 ``` 
 
-5. Configure your environment variables 
-6. Run with Flask Detailed installation instructions and proper packaging are on the roadmap!
+4. Configure your environment variables:
+
+```shell
+### EXAMPLE ###
+
+SECRET_KEY='your_secret_key'
+
+DATABASE_URI=sqlite:///library.db
+
+FLASK_APP=app:create_app
+
+GOOGLE_BOOKS_API_KEY='get_yours_at_https://console.cloud.google.com'
+```
+
+5. Run in project root with flask/gunicorn/python, whichever. python3 is easiest for development server:
+
+```shell
+python3 app.py
+```
+
 
 ### ✨ Features
 
@@ -40,17 +67,18 @@ sqlite3 your_database.db < create_database.sql
 - Account register (admin only)
 - Multi-user login & authentication
 - Email and Password update
-- Library & user review csv export
+- Library & user stats
+- csv export
 - Custom book tags per user
 - Custom collections per user
 - Rating & comment system per user
 
 ### 🚧 Future Feature Ideas
 
-- Barcode scanner
+- Barcode scanner - still in development
 - Better mobile focused UI
 - Admin & user settings
-- Shelf/library share
+- Shelf/library share?
 
 ### 💡 Contributing 
 
@@ -79,12 +107,13 @@ Found a bug? Have a feature idea? Contributions are welcome! While this started 
 - [x] Fix collections toolbar (show read state)
 - [x] Added tailwind css
 - [x] Better search bar functionality
-- [ ] Better back to catalog button
-- [ ] Refactor styles.css
-- [ ] Make add & edit book pages prettier!!
-- [ ] Light & dark mode toggle/color themes
+- [x] Better back to catalog button
+- [x] Refactor styles.css
+- [x] Make add & edit book pages prettier!!
 - [ ] Better fonts
-- [ ] Side scroll for collections page
+- [x] better mobile on book details page
+- [ ] Side scroll of books on collections page
+- [ ] separate recent books/reviews feed/list?
 
 #### Backend
 - [x] Fetch book descriptions
@@ -109,21 +138,18 @@ Found a bug? Have a feature idea? Contributions are welcome! While this started 
 - [x] Filter options!!! (year read, year published, page count, genre, is_read, etc.)
 - [x] Export to spreadsheet/csv
 - [x] User created bookshelves/collections
-- [ ] Sort/filter bugs
 - [ ] Admin & user settings
-- [ ] Switch to using SQLalchemy and migrate to different SQL?
-- [ ] React or Swift port?
 
 ### 📅 2024-12-30
 
 #### Updated a lot of frontend
- - tailwind css
+ - tailwind css - added but not used
  - vanishing header bar
  - hamburger menu and sidebar
  - moved "collections" to "user profile", switching name to "reading list"
  - need to create ability for users to create their own collections for collections page
 
-### 📅 2025-1-1
+### 📅 2025-01-01
 #### Switched to Claude AI for troubleshooting, more frontend updates, some backend
 - Better refactoring of blueprints.books.py to utils.book_utils.py
 - Fixed cover fetch
@@ -132,7 +158,7 @@ Found a bug? Have a feature idea? Contributions are welcome! While this started 
 - Better sidebar features
 - User profile password and email update
 
-### 📅 2025-1-5 
+### 📅 2025-01-05 
 
 #### Lots of search and filtering advancements today, plus csv export
 
@@ -147,5 +173,39 @@ Found a bug? Have a feature idea? Contributions are welcome! While this started 
 - Created custom collections
 - Started barcode scanner feature
 
+### 📅 2025-01-22 
+
+#### Been awhile since I updated after starting other projects. I started to rebuild this in React but realized it would be easier to simply add tailwindcss since the backend seems to function quite well here.
+ - Updated tailwindcss for:
+   - search/sort/filter
+   - sidebar
+   - add book
+   - book details
+   - index
+- Added google books api key to book utils and books route - unsure if working!
+
+needs addressed:
+- better mobile style on book details - centered
+- api title search and display on add book, need to test! - javascript??
+- search bar inside top navbar, sort/filter dropdown.
+  - sort reset button instead of on change?
+- untracked read status not resetting? others work, low priority
+
+#### Finished with changing all the templates to tailwind css and fixed the  api!
+- Commited and pulled from repo to prod server and works!
+- Tried updating search/navbar/sidebar into something more modern but couldn't get it.
+- almost forgot to add the google api key :)
+
+### 📅 2025-01-23
+#### Images werent being added from the title/author search selection
+ - mostly fixed after excruciating debugging.
+ - Author and genre info are not fetching from the json data, see console, utils, and books.py.
+ - see diff between old and new add_books.js, and old scripts.js (comment: populate data, fillBookForm)??
+ - need to add "selected" javascript to button once the book data is fetched and populated below
+ - need to add "no-cover.png" to prod server, or just do text placement. JavaScript goes brrrrr looking for it if it isn't there.
+- WOOHOO fixed the search, cover fetch, and info fetch. Updated styles, working on fonts. Cant quite get it.
+   
+
+
 --- 
-Built with 📚 and ☕ and 🥃 by a book lover, for book lovers.
+Built with ☕ and 🥃 by a 📖 lover, for 📚 lovers.
