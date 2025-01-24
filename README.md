@@ -38,13 +38,13 @@ sqlite3 your_database.db < create_database.sql
 ```shell
 ### EXAMPLE ###
 
-SECRET_KEY='your_secret_key'
+SECRET_KEY=your_secret_key
 
 DATABASE_URI=sqlite:///library.db
 
 FLASK_APP=app:create_app
 
-GOOGLE_BOOKS_API_KEY='get_yours_at_https://console.cloud.google.com'
+GOOGLE_BOOKS_API_KEY=get_yours_at_https://console.cloud.google.com
 ```
 
 5. Run in project root with flask/gunicorn/python, whichever. python3 is easiest for development server:
