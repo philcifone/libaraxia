@@ -156,7 +156,7 @@ def search_books():
         
         if "items" in data:
             processed_items = []
-            for item in data["items"][:10]:  # Limit to first 10 results
+            for item in data["items"][:6]:  # Limit to first 10 results
                 volume_info = item.get("volumeInfo", {})
                 
                 # Get image URL and clean it up

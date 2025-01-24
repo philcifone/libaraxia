@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         thumbnail: volumeInfo.imageLinks?.thumbnail || null
                     };
                     console.log('Selected book data:', bookData);
-                    selectBook(bookData);
+                    selectBook(bookData, selectButton);
                 });
             }
     
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    async function selectBook(bookData) {
+    async function selectBook(bookData, button) {
         try {
             console.log('Sending book data to backend:', bookData);
             const response = await fetch('/books/select_search_result', {
@@ -188,6 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 console.log('Received book details from backend:', data.book_details);
                 fillBookForm(data.book_details);
+                button.textContent = "Selected!";
             } else {
                 console.error('Error selecting book:', data.error);
                 alert('Error selecting book. Please try again.');
