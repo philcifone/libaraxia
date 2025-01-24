@@ -35,7 +35,7 @@
             <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
                 <!-- Book Cover Section -->
                 <div class="space-y-4">
-                    <div class="w-32 sm:w-100 md:w-full max-w-[300px] mx-auto">
+                    <div class="w-72 sm:w-100 md:w-full max-w-[300px] mx-auto">
                         {% if book.cover_image_url %}
                             <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                                 alt="{{ book[1] }} Cover"
