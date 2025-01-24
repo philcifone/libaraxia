@@ -554,6 +554,10 @@ video {
   display: none;
 }
 
+body {
+  font-family: Outfit Variable, sans-serif;
+}
+
 .\!container {
   width: 100% !important;
 }
@@ -700,8 +704,16 @@ video {
   z-index: 50;
 }
 
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
+
 .col-span-full {
   grid-column: 1 / -1;
+}
+
+.m-8 {
+  margin: 2rem;
 }
 
 .mx-auto {
@@ -900,10 +912,6 @@ video {
   width: 6rem;
 }
 
-.w-32 {
-  width: 8rem;
-}
-
 .w-4 {
   width: 1rem;
 }
@@ -922,6 +930,10 @@ video {
 
 .w-64 {
   width: 16rem;
+}
+
+.w-72 {
+  width: 18rem;
 }
 
 .w-8 {
@@ -1440,10 +1452,6 @@ video {
   padding-top: 1rem;
 }
 
-.pt-6 {
-  padding-top: 1.5rem;
-}
-
 .text-center {
   text-align: center;
 }
@@ -1682,7 +1690,7 @@ video {
 @font-face {
   font-family: 'Outfit Variable';
 
-  src: url('/static/fonts/outfit-latin-variable-wghtOnly-normal.woff2') format('woff2-variations');
+  src: url('/static/fonts/outfit-latin-wght-normal.woff2') format('woff2-variations');
 
   font-weight: 100 900;
 }
@@ -1690,17 +1698,13 @@ video {
 @font-face {
   font-family: 'Crimson Pro Variable';
 
-  src: url('/static/fonts/crimson-pro-latin-variable-wghtOnly-normal.woff2') format('woff2-variations');
+  src: url('/static/fonts/crimson-pro-latin-wght-normal.woff2') format('woff2-variations');
 
   font-weight: 100 900;
 }
 
 .file\:mr-4::file-selector-button {
   margin-right: 1rem;
-}
-
-.file\:rounded-full::file-selector-button {
-  border-radius: 9999px;
 }
 
 .file\:rounded-lg::file-selector-button {
@@ -1724,15 +1728,6 @@ video {
 .file\:py-2::file-selector-button {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
-}
-
-.file\:text-sm::file-selector-button {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
-
-.file\:font-semibold::file-selector-button {
-  font-weight: 600;
 }
 
 .file\:text-white::file-selector-button {
@@ -1897,10 +1892,6 @@ video {
   .sm\:mx-auto {
     margin-left: auto;
     margin-right: auto;
-  }
-
-  .sm\:w-48 {
-    width: 12rem;
   }
 
   .sm\:w-auto {

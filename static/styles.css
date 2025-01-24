@@ -20,12 +20,18 @@
 
 @font-face {
     font-family: 'Outfit Variable';
-    src: url('/static/fonts/outfit-latin-variable-wghtOnly-normal.woff2') format('woff2-variations');
+    src: url('/static/fonts/outfit-latin-wght-normal.woff2') format('woff2-variations');
     font-weight: 100 900;
 }
   
 @font-face {
     font-family: 'Crimson Pro Variable';
-    src: url('/static/fonts/crimson-pro-latin-variable-wghtOnly-normal.woff2') format('woff2-variations');
+    src: url('/static/fonts/crimson-pro-latin-wght-normal.woff2') format('woff2-variations');
     font-weight: 100 900;
 }
+
+@layer base {
+    body {
+      @apply font-primary;
+    }
+  }
