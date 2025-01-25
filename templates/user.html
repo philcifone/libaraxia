@@ -57,6 +57,39 @@
             </div>
         </section>
 
+        <!-- Library Stats Section -->
+        {% if library_stats %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-display text-content-primary mb-6">Library Statistics</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Total Books</p>
+                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_books }}</p>
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Total Pages</p>
+                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_pages }}</p>
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Unique Authors</p>
+                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.unique_authors }}</p>
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Read Percentage</p>
+                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.read_percentage }}%</p>
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Longest Book</p>
+                    <p class="text-xl font-bold text-content-primary truncate">{{ library_stats.longest_book }}</p>
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <p class="text-sm text-content-secondary mb-1">Most Common Genre</p>
+                    <p class="text-xl font-bold text-content-primary">{{ library_stats.most_common_genre }}</p>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
         <!-- Stats Section -->
         {% if stats %}
         <section class="bg-secondary rounded-xl p-6 shadow-lg">

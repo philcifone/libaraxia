@@ -1179,6 +1179,12 @@ body {
   overflow-y: auto;
 }
 
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .break-words {
   overflow-wrap: break-word;
 }
@@ -1496,6 +1502,11 @@ body {
 .text-xl {
   font-size: 1.25rem;
   line-height: 1.75rem;
+}
+
+.text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
 }
 
 .font-bold {
@@ -1964,6 +1975,10 @@ body {
 
   .md\:grid-cols-\[300px_1fr\] {
     grid-template-columns: 300px 1fr;
+  }
+
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .md\:flex-row {

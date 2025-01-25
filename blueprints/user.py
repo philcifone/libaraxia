@@ -44,7 +44,10 @@ def profile(username):
         # Get user's reading stats
         stats = calculate_user_stats(conn, user['id'])
 
-        return render_template('user.html', user=user, stats=stats)
+        # Library stats
+        library_stats = calculate_library_stats(conn)
+
+        return render_template('user.html', user=user, stats=stats, library_stats=library_stats)
     finally:
         conn.close()
 
@@ -115,6 +118,38 @@ def update_profile():
     
     conn.close()
     return redirect(url_for('user.profile', username=current_user.username))
+
+def calculate_library_stats(conn):
+   query = '''
+       SELECT 
+           COUNT(DISTINCT b.id) as total_books,
+           SUM(b.page_count) as total_pages,
+           COUNT(DISTINCT c.book_id) as read_books,
+           (SELECT COUNT(*) FROM (
+               SELECT DISTINCT author FROM books
+           )) as unique_authors,
+           (SELECT title FROM books WHERE page_count = (SELECT MAX(page_count) FROM books)) as longest_book,
+           (SELECT MAX(page_count) FROM books) as longest_pages,
+           (
+               SELECT genre
+               FROM (
+                   SELECT genre, COUNT(*) as count 
+                   FROM books 
+                   WHERE genre IS NOT NULL 
+                   GROUP BY genre
+                   ORDER BY count DESC 
+                   LIMIT 1
+               )
+           ) as most_common_genre
+       FROM books b
+       LEFT JOIN collections c ON b.id = c.book_id AND c.status = 'read'
+   '''
+   stats = dict(conn.execute(query).fetchone())
+   if stats['total_books']:
+       stats['read_percentage'] = round((stats['read_books'] / stats['total_books']) * 100)
+       stats['total_pages'] = "{:,}".format(int(stats['total_pages'] or 0))
+       stats['longest_pages'] = "{:,}".format(int(stats['longest_pages'] or 0))
+   return stats
 
 @user_blueprint.route('/export_library')
 @login_required
