@@ -17,7 +17,7 @@ from flask import current_app
 import requests
 
 def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
-    """Fetch book details from Google Books API."""
+    """Fetch book details from Google Books API with highest resolution cover."""
     api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
     try:
         response = requests.get(api_url).json()
@@ -25,17 +25,31 @@ def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
             return None
             
         book_data = response["items"][0]["volumeInfo"]
+        
+        # Get highest resolution cover URL
+        cover_url = None
+        if "imageLinks" in book_data:
+            # Try different image sizes in order of preference
+            for size in ["extraLarge", "large", "medium", "small", "thumbnail"]:
+                if size in book_data["imageLinks"]:
+                    cover_url = book_data["imageLinks"][size]
+                    # Clean up URL to get highest resolution
+                    cover_url = (cover_url.replace('http:', 'https:')
+                                        .split('&zoom=')[0]
+                                        .split('&edge=')[0])
+                    break
+
         return {
             "title": book_data.get("title", ""),
-            "subtitle": book_data.get("subtitle", ""),  # Added subtitle field
+            "subtitle": book_data.get("subtitle", ""),
             "author": ", ".join(book_data.get("authors", [])),
             "publisher": book_data.get("publisher", ""),
             "year": book_data.get("publishedDate", "").split("-")[0],
             "isbn": isbn,
             "page_count": book_data.get("pageCount", 0),
             "description": book_data.get("description", ""),
-            "cover_image_url": book_data.get("imageLinks", {}).get("thumbnail", None),
-            "genre": ", ".join(book_data.get("categories", [])),  # Added genre field
+            "cover_image_url": cover_url,
+            "genre": ", ".join(book_data.get("categories", [])),
             "source": "Google Books"
         }
     except Exception as e:
@@ -76,15 +90,26 @@ def fetch_open_library(isbn: str) -> Optional[Dict[str, Any]]:
         return None
 
 def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
-    """Try multiple APIs to fetch book details."""
-    # Try Google first
+    """Try multiple APIs to fetch book details with high-res covers."""
     book_details = fetch_google_books(isbn)
     
-    # If Google fails, try Open Library
     if not book_details:
         book_details = fetch_open_library(isbn)
+        # For Open Library, modify URL to get largest available image
+        if book_details and book_details.get("cover_image_url"):
+            book_details["cover_image_url"] = (
+                book_details["cover_image_url"]
+                .replace("-M", "-L")  # Try for large image
+                .replace("-S", "-L")  # Handle small image URLs
+            )
     
     if book_details and book_details.get("cover_image_url"):
+        # Clean URL parameters that might limit resolution
+        cover_url = book_details["cover_image_url"]
+        if "googleusercontent" in cover_url:
+            cover_url = cover_url.split('&zoom=')[0].split('&edge=')[0]
+            book_details["cover_image_url"] = cover_url
+        
         local_cover_url = download_and_save_cover(book_details["cover_image_url"])
         if local_cover_url:
             book_details["local_cover_url"] = local_cover_url

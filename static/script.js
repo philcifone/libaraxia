@@ -433,8 +433,6 @@ function submitSortForm() {
 
 // book details
 
-// Add this to your book_detail.html, replacing any existing toggleCollection function
-
 function toggleCollection(checkbox, bookId, collectionId) {
     const action = checkbox.checked ? 'add' : 'remove';
     console.log(`Toggling collection: ${action} book ${bookId} to collection ${collectionId}`);
