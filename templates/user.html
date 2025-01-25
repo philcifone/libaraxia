@@ -9,13 +9,6 @@
 <body class="bg-primary min-h-screen">
     {% include '_sidebar.html' %}
 
-    <!-- Back Navigation -->
-        <a href="{{ url_for('base.index') }}" 
-           class="inline-flex items-center mt-24 text-content-secondary hover:text-accent transition-colors">
-            <span class="mr-2">←</span>
-            <span>Back to Catalog</span>
-        </a>
-
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -30,7 +23,13 @@
     {% endwith %}
 
     <!-- Main Content -->
-    <div class="max-w-4xl mx-auto pt-12 pb-12 px-4 space-y-6">
+    <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
+        <!--Back Nav-->
+        <a href="{{ url_for('base.index') }}" 
+        class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
+         <span class="mr-2">←</span>
+         <span>Back to Catalog</span>
+     </a>
         <!-- Profile Info -->
         <section class="bg-secondary rounded-xl p-6 shadow-lg">
             <div class="flex items-center gap-4 mb-6">

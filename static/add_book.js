@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 console.log('Received book details from backend:', data.book_details);
                 fillBookForm(data.book_details);
-                button.textContent = "Selected!";
+                button.textContent = "Book info fetched!";
             } else {
                 console.error('Error selecting book:', data.error);
                 alert('Error selecting book. Please try again.');

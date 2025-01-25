@@ -43,16 +43,17 @@
             </h2>
         </div>
         
-        <!-- Navigation -->
-        <nav class="flex flex-col gap-2 mt-6 z-40">
-            <a href="/base/index" 
-               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
-                      rounded-lg hover:bg-accent/10 transition-colors">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                </svg>
-                Library
-            </a>
+        <a href="/base/index" 
+        class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                rounded-lg hover:bg-accent/10 transition-colors">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m16 6 4 14"/>
+                <path d="M12 6v14"/>
+                <path d="M8 8v12"/>
+                <path d="M4 4v16"/>
+            </svg>
+            Library
+        </a>
             
             <a href="/user/{{ current_user.username }}" 
                class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
