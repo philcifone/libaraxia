@@ -18,8 +18,8 @@ module.exports = {
           DEFAULT: '#2c2c2c'
         },
         accent: {
-          DEFAULT: '#28a745',
-          hover: '#218838',
+          DEFAULT: '#4f7d19',
+          hover: '#6a9839',
           transparent: '#28a74678'
         },
         content: {
