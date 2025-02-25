@@ -91,8 +91,8 @@ Found a bug? Have a feature idea? Contributions are welcome! While this started 
 
 ### 📝 To Do:
 
-- [ ] Backup project files!!
-- [ ] Have fun!!!!!
+- [x] Backup project files!!
+- [x] Have fun!!!!!
 #### Frontend
 - [x] Fix tile text alignment
 - [x] Add Author to tile
@@ -114,6 +114,8 @@ Found a bug? Have a feature idea? Contributions are welcome! While this started 
 - [x] better mobile on book details page
 - [ ] Side scroll of books on collections page
 - [ ] separate recent books/reviews feed/list?
+- [x] Test Docker packaging
+- [ ] Release docker packaging
 
 #### Backend
 - [x] Fetch book descriptions
