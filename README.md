@@ -76,9 +76,9 @@ python3 app.py
 ### 🚧 Future Feature Ideas
 
 - Barcode scanner - still in development
-- Better mobile focused UI
 - Admin & user settings
-- Shelf/library share?
+- Library Activity Feed
+- Docker packaging for self
 
 ### 💡 Contributing 
 
