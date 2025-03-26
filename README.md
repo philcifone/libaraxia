@@ -47,6 +47,15 @@ sudo docker compose up -d
 
 4. Access via the browser at localhost:5000 (local ip can be accessed after it is accessed from local host, no idea why yet.)
 
+If needed (i.e running headless on the same network) you can use the docker container IP
+
+Run:
+
+```shell
+sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' libaraxia-web-1
+```
+and copy and paste the ip address followed by :5000 in your browser.
+
 5. Register admin account upon initial startup.
 
 
