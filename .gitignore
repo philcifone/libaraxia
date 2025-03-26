@@ -12,3 +12,4 @@ styles.css.bak
 css_audit*
 schema.txt
 node_modules/
+docker-compose.yml

@@ -225,9 +225,10 @@ def select_search_result():
         isbn = original_data.get("isbn")
         thumbnail_url = original_data.get("thumbnail")
         
-        if not isbn:
-            current_app.logger.warning("No ISBN provided in book selection")
-            return jsonify({"success": False, "error": "No ISBN provided"})
+        # commented out because some books dont have ISBNs
+        #if not isbn:
+        #    current_app.logger.warning("No ISBN provided in book selection")
+        #    return jsonify({"success": False, "error": "No ISBN provided"})
         
         # Download and save cover image first
         local_cover_url = None

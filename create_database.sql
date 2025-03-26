@@ -1,4 +1,3 @@
--- Create books table
 CREATE TABLE books (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -6,39 +5,35 @@ CREATE TABLE books (
     publisher TEXT,
     publish_year INTEGER,
     isbn TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    page_count INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    page_count INTEGER, 
     cover_image_url TEXT,
     description TEXT,
     local_thumbnail TEXT,
-    subtitle TEXT,
+    subtitle TEXT, 
     genre TEXT
 );
 
--- Create users table
+
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    is_active INTEGER DEFAULT 1,
+    is_active INTEGER DEFAULT 1, 
     is_admin INTEGER DEFAULT 0
 );
 
--- Create read_data table
 CREATE TABLE read_data (
     user_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
     date_read DATE,
     rating INTEGER,
     comment TEXT,
-    PRIMARY KEY (user_id, book_id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (book_id) REFERENCES books(id)
+    PRIMARY KEY (user_id, book_id)
 );
 
--- Create collections table
-CREATE TABLE collections (
+CREATE TABLE IF NOT EXISTS "collections" (
     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
@@ -47,7 +42,6 @@ CREATE TABLE collections (
     FOREIGN KEY (book_id) REFERENCES books(id)
 );
 
--- Create book_tags table
 CREATE TABLE book_tags (
     tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -56,5 +50,27 @@ CREATE TABLE book_tags (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    -- Ensure unique combinations of user, book, and tag
     UNIQUE(user_id, book_id, tag_name)
+);
+
+CREATE INDEX idx_book_tags_user_book 
+ON book_tags(user_id, book_id);
+
+CREATE TABLE user_collections (
+    collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE (user_id, name)
+);
+
+CREATE TABLE collection_books (
+    collection_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (collection_id, book_id),
+    FOREIGN KEY (collection_id) REFERENCES user_collections(collection_id),
+    FOREIGN KEY (book_id) REFERENCES books(id)
 );

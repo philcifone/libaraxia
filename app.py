@@ -63,8 +63,17 @@ def create_app():
     # FOR HOME PAGE LANDING & REDIRECTS
     @app.route("/")
     def root():
+        # Check if any users exist in the database
+        conn = get_db_connection()
+        user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+        conn.close()
+        
+        # If no users exist, redirect to registration page for first-time setup
+        if user_count == 0:
+            return redirect(url_for("auth.register"))
+        
+        # Otherwise, proceed to normal home page
         return redirect(url_for("base.home"))
-
 
     # Image upload configuration
     UPLOAD_FOLDER = os.path.join('static', 'uploads')

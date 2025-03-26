@@ -2,18 +2,17 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import bcrypt
 import sqlite3
-from utils.database import get_db_connection  # Replace with your actual import for the `get_db_connection` function
-from models import admin_required, User  # Replace with your actual import for `admin_required`
+from utils.database import get_db_connection
+from models import admin_required, User
 
 auth_blueprint = Blueprint('auth', __name__, template_folder='templates')
 
 @auth_blueprint.route('/register', methods=['GET', 'POST'])
-@admin_required
 def register():
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
-        password = request.form['password']  # Capture password from the form
+        password = request.form['password']
 
         # Ensure password is hashed using bcrypt
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -21,18 +20,38 @@ def register():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(
-                'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-                (username, email, hashed_password.decode('utf-8'))  # Decode hashed password for storage
-            )
+            # Check if this is the first user being created
+            user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+            is_first_user = user_count == 0
+            
+            # If this is the first user, make them an admin
+            if is_first_user:
+                cursor.execute(
+                    'INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, 1)',
+                    (username, email, hashed_password.decode('utf-8'))
+                )
+                flash('Admin account created successfully!', 'success')
+            else:
+                cursor.execute(
+                    'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+                    (username, email, hashed_password.decode('utf-8'))
+                )
+                flash('Registration successful!', 'success')
+                
             conn.commit()
-            flash('Registration successful!', 'success')
             return redirect(url_for('auth.login'))
         except sqlite3.IntegrityError:
             flash('Email or username already registered!', 'danger')
         finally:
             conn.close()
-    return render_template('register.html')
+            
+    # Check if any users exist - if not, show a special message
+    conn = get_db_connection()
+    user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    conn.close()
+    
+    first_run = user_count == 0
+    return render_template('register.html', first_run=first_run)
 
 @auth_blueprint.route('/login', methods=['GET', 'POST'])
 def login():

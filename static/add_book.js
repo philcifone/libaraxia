@@ -114,9 +114,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                          .replace('&edge=curl', '');
                 coverImg.src = thumbnailUrl;
             } else {
-                coverImg.src = '/static/uploads/no-cover.png';
+                coverImg.src = '/static/no-cover.png';
             }
-            coverImg.onerror = () => coverImg.src = '/static/uploads/no-cover.png';
+            coverImg.onerror = () => coverImg.src = '/static/no-cover.png';
     
             const elements = {
                 title: bookResult.querySelector('.book-title'),
