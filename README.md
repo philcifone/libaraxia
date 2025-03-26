@@ -1,24 +1,66 @@
 # Libaraxia
 
+(New screenshots coming soon!)
 
-![Libaraxia](static/git/libaraxiaAlpha.png)
-![Sidebar](static/git/libaraxiaSidebar.png)
-![Book Details](static/git/libaraxiaDetails.png)
-![Rate & Review](static/git/libaraxiaRateReview.png)
-![Book Details](static/git/libaraxiaProfile.png)
+![Libaraxia](https://github.com/user-attachments/assets/053d99b4-52a8-4028-baf3-47355afe4960)
+![Sidebar](https://github.com/user-attachments/assets/e4f59385-6287-4d0f-b4fe-f9770c441e16)
+![Book Details](https://github.com/user-attachments/assets/a877d0e7-e9cd-4670-b66a-4c4bf4c9ed07)
+![Rate & Review](https://github.com/user-attachments/assets/f60deec5-b7ef-42e6-8114-e10187f1489a)
+![Book Details](https://github.com/user-attachments/assets/94deca5c-70d7-4c87-828f-c563e735e68a)
 
 # 📚 Project Overview
 
-Libaraxia is a modern web application designed to help you catalog and manage your personal library with style and efficiency. Built with Flask and SQLite, it offers a seamless interface for organizing your book collection, tracking your reading progress, and maintaining your literary life. What started as a hobbyist project has evolved into a feature-rich library management system. While it's still growing and improving, it's already a robust solution for personal library organization.
+Libaraxia is a modern web application designed to help you catalog and manage your personal library with style and efficiency. Built with Flask and SQLite, it offers a seamless interface for organizing your book collection, tracking your reading progress, and maintaining your literary life away from the prying eyes of corporations and AI. 
+
+What started as a hobbyist project has evolved into a feature-rich library management system. While it's still growing and improving, it's already a robust and portable solution for personal library organization.
 
 ## 🛠️ Installation 
 
-Currently, Libaraxia is in active development, not stable, and not recommended for production use. However, if you're feeling adventurous and want to help beta test these instructions should in theory work:
+Currently, Libaraxia is in active development, not stable, and not recommended for production use. However, if you're feeling adventurous and want to help me beta test; the below instructions should, in theory, work. You can now install using docker if you know your way around it!
 
-1. git clone the repository 
+### Docker install:
+
+1. git clone the repository and cd into it 
 
 ```shell
 git clone https://github.com/philcifone/libaraxia
+
+cd libaraxia
+```
+
+2. Create a Google Books API Key from https://console.cloud.google.com and add it to the .env.example file (.env.example included) and then run:
+
+```shell
+mv .env.example .env
+
+mv docker-compose.yml.example docker-compose.yml
+```
+
+3. Build
+
+```shell
+sudo docker compose build --no-cache
+
+# -d for detached mode or keep it off to watch the console
+sudo docker compose up -d 
+```
+
+4. Access via the browser at localhost:5000 (local ip can be accessed after it is accessed from local host, no idea why yet.)
+
+5. Register admin account upon initial startup.
+
+
+6. Use the Add Book button in the bottom right to start adding books via search or ISBN (no barcode scanner yet) and start tracking your own digital library!
+
+
+### If you want to build it from the repo directly it should also be pretty easy:
+
+1. git clone the repository and cd into it 
+
+```shell
+git clone https://github.com/philcifone/libaraxia
+
+cd libaraxia
 ```
 
 2. Install required packages with the requirements.txt
@@ -47,12 +89,13 @@ FLASK_APP=app:create_app
 GOOGLE_BOOKS_API_KEY=get_yours_at_https://console.cloud.google.com
 ```
 
-5. Run in project root with flask/gunicorn/python, whichever. python3 is easiest for development server:
+5. Run in project root with flask/gunicorn/python, whichever. python3 is easiest for a development server, for a production server I use gunicorn as a systemd service in an LXC container. So this will depend on your use-case I think. Happy to help if needed.
 
 ```shell
 python3 app.py
 ```
 
+6. Access via the browser at localhost:5000 (local ip can be accessed after it is accessed from local host, no idea why yet.)
 
 ### ✨ Features
 
@@ -78,7 +121,6 @@ python3 app.py
 - Barcode scanner - still in development
 - Admin & user settings
 - Library Activity Feed
-- Docker packaging for self
 
 ### 💡 Contributing 
 
@@ -110,12 +152,12 @@ Found a bug? Have a feature idea? Contributions are welcome! While this started 
 - [x] Better back to catalog button
 - [x] Refactor styles.css
 - [x] Make add & edit book pages prettier!!
-- [ ] Better fonts
+- [x] Better fonts
 - [x] better mobile on book details page
 - [ ] Side scroll of books on collections page
 - [ ] separate recent books/reviews feed/list?
 - [x] Test Docker packaging
-- [ ] Release docker packaging
+- [x] Release docker packaging
 
 #### Backend
 - [x] Fetch book descriptions
@@ -207,7 +249,9 @@ needs addressed:
  - need to add "no-cover.png" to prod server, or just do text placement. JavaScript goes brrrrr looking for it if it isn't there.
 - WOOHOO fixed the search, cover fetch, and info fetch. Updated styles, working on fonts. Cant quite get it.
    
-
+### 📅 2025-03-26
+#### Docker packaging!
+- Been awhile since any meaningful updates! Happy to have docker packaging figured out.
 
 --- 
 Built with ☕ and 🥃 by a 📖 lover, for 📚 lovers.
