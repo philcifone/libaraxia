@@ -252,6 +252,7 @@ needs addressed:
 ### 📅 2025-03-26
 #### Docker packaging!
 - Been awhile since any meaningful updates! Happy to have docker packaging figured out.
+- trying to add github workflows, might be helpful.
 
 --- 
 Built with ☕ and 🥃 by a 📖 lover, for 📚 lovers.
