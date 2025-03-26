@@ -28,12 +28,12 @@ git clone https://github.com/philcifone/libaraxia
 cd libaraxia
 ```
 
-2. Create a Google Books API Key from https://console.cloud.google.com and add it to the .env.example file (.env.example included) and then run:
+2. Create a Google Books API Key from https://console.cloud.google.com and add it to the .env.example file (.env.example included) while you also change SECRET_KEY and then run:
 
 ```shell
 mv .env.example .env
 
-mv docker-compose.yml.example docker-compose.yml
+mv docker-compose.yml.example docker-compose.yml # you shouldn't need to update this
 ```
 
 3. Build
