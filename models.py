@@ -5,12 +5,13 @@ from flask_login import current_user
 from utils.database import get_db_connection
 
 class User(UserMixin):
-    def __init__(self, id, username, email, is_active=True, is_admin=False):
+    def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None):
         self.id = id
         self.username = username
         self.email = email
         self._is_active = is_active
         self.is_admin = is_admin
+        self.avatar_url = avatar_url
 
     def get_id(self):
         return str(self.id)

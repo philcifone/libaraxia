@@ -5,13 +5,15 @@ CREATE TABLE books (
     publisher TEXT,
     publish_year INTEGER,
     isbn TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
-    page_count INTEGER, 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    page_count INTEGER,
     cover_image_url TEXT,
     description TEXT,
     local_thumbnail TEXT,
-    subtitle TEXT, 
-    genre TEXT
+    subtitle TEXT,
+    genre TEXT,
+    added_by INTEGER,
+    FOREIGN KEY (added_by) REFERENCES users(id)
 );
 
 
@@ -74,3 +76,18 @@ CREATE TABLE collection_books (
     FOREIGN KEY (collection_id) REFERENCES user_collections(collection_id),
     FOREIGN KEY (book_id) REFERENCES books(id)
 );
+
+CREATE TABLE wishlist (
+    wishlist_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    purchase_link TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    UNIQUE(user_id, book_id)
+);
+
+CREATE INDEX idx_wishlist_user
+ON wishlist(user_id);
