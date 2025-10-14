@@ -16,3 +16,6 @@ tests/
 .pytest_cache/
 .coverage
 htmlcov/
+certs/
+node_modules/
+*.md
