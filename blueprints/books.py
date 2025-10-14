@@ -19,7 +19,6 @@ books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
 @books_blueprint.route("/add", methods=["GET", "POST"])
 @login_required
-@admin_required
 def add_book():
     book_details = None
     search_results = None
