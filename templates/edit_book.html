@@ -107,11 +107,41 @@
 
                     <div class="space-y-4">
                         <label class="block text-sm font-medium text-content-secondary">Book Cover</label>
-                        <input type="file" 
-                               id="image" 
-                               name="image" 
+
+                        <!-- Current Cover Preview -->
+                        {% if book[8] %}
+                        <div id="currentCoverPreview" class="mb-4">
+                            <p class="text-xs text-content-secondary mb-2">Current Cover:</p>
+                            <img src="{{ url_for('static', filename=book[8]) }}"
+                                 alt="Current cover"
+                                 class="max-w-[200px] rounded-lg shadow-md">
+                        </div>
+                        {% endif %}
+
+                        <!-- New Cover Preview (will show after fetching) -->
+                        <div id="newCoverPreview" class="mb-4 hidden">
+                            <p class="text-xs text-content-secondary mb-2">New Cover (fetched):</p>
+                            <img id="newCoverImage"
+                                 src=""
+                                 alt="New cover"
+                                 class="max-w-[200px] rounded-lg shadow-md">
+                            <input type="hidden" id="fetched_cover_url" name="fetched_cover_url" value="">
+                        </div>
+
+                        <!-- Fetch Cover Button -->
+                        <button type="button"
+                                id="fetchCoverBtn"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm font-medium mb-3 w-full">
+                            <span id="fetchCoverText">Fetch High-Res Cover</span>
+                            <span id="fetchCoverSpinner" class="hidden">Fetching...</span>
+                        </button>
+
+                        <input type="file"
+                               id="image"
+                               name="image"
                                accept="image/*"
                                class="w-full text-content-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-accent file:text-white hover:file:bg-accent-hover">
+                        <p class="text-xs text-content-secondary mt-2">Upload your own cover, or use "Fetch High-Res Cover" to search for one</p>
                     </div>
                 </div>
 
@@ -136,5 +166,6 @@
     </main>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='edit_book.js') }}"></script>
 </body>
 </html>

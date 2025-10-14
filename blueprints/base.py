@@ -79,9 +79,11 @@ def index():
         LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
         LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
         LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
+        LEFT JOIN wishlist w ON b.id = w.book_id AND w.user_id = ?
     '''
-    params = [current_user.id, current_user.id, current_user.id]
-    conditions = []
+    params = [current_user.id, current_user.id, current_user.id, current_user.id]
+    # Always exclude wishlist books from main library
+    conditions = ["w.wishlist_id IS NULL"]
 
     # Apply filters if they exist
     if request.args.get('genre'):

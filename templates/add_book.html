@@ -31,12 +31,12 @@
                         ISBN Lookup
                     </span>
                 </button>
-                <button class="search-method-btn flex-1 px-6 py-4 text-content-primary hover:bg-primary transition-colors duration-200 text-center font-medium border-b-2 border-transparent data-[active=true]:border-accent" data-method="barcode">                    
+                <button class="search-method-btn flex-1 px-6 py-4 text-content-primary hover:bg-primary transition-colors duration-200 text-center font-medium border-b-2 border-transparent data-[active=true]:border-accent" data-method="barcode">
                     <span class="inline-flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
                         </svg>
-                        Scan Barcode <br> Coming Soon!
+                        Scan Barcode
                     </span>
                 </button>
             </div>
@@ -108,8 +108,13 @@
 
                 <!-- Barcode Scanner -->
                 <div id="barcode-section" data-method="barcode" class="search-method-content hidden">
-                    <div class="flex flex-col items-center gap-4">
-                        <div id="interactive" class="viewport w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden"></div>
+                    <div class="flex flex-col items-center gap-4 p-6">
+                        <p class="text-content-secondary text-center mb-2">
+                            📱 Point your camera at a book barcode (ISBN)
+                        </p>
+                        <div id="interactive" class="viewport w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                            <p class="text-white text-center">Camera will appear here after clicking Start Scanner</p>
+                        </div>
                         <button id="toggle-scanner"
                                 class="px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors duration-200 flex items-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,6 +123,9 @@
                             </svg>
                             Start Scanner
                         </button>
+                        <p class="text-content-secondary text-sm text-center">
+                            💡 Tip: Make sure the barcode is well-lit and in focus
+                        </p>
                     </div>
                 </div>
             </div>

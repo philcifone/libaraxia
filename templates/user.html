@@ -33,29 +33,209 @@
         <!-- Profile Info -->
         <section class="bg-secondary rounded-xl p-6 shadow-lg">
             <div class="flex items-center gap-4 mb-6">
-                <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-2xl font-bold text-white">
-                    {{ user['username'][0].upper() }}
+                <!-- Avatar with Upload on Hover -->
+                {% if current_user.id == user['id'] %}
+                <div class="relative flex-shrink-0 group" style="width: 64px; height: 64px;">
+                    <label for="avatar-input" class="block w-full h-full cursor-pointer relative">
+                        {% if user['avatar_url'] %}
+                            <img id="avatar-image" src="{{ url_for('static', filename=user['avatar_url']) }}"
+                                 alt="{{ user['username'] }}"
+                                 class="w-full h-full rounded-full object-cover transition-all duration-200 group-hover:ring-2 group-hover:ring-accent group-hover:ring-offset-2 group-hover:ring-offset-secondary"
+                                 style="width: 64px; height: 64px;">
+                        {% else %}
+                            <div id="avatar-placeholder" class="w-full h-full rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-white transition-all duration-200 group-hover:ring-2 group-hover:ring-accent group-hover:ring-offset-2 group-hover:ring-offset-secondary"
+                                 style="width: 64px; height: 64px;">
+                                {{ user['username'][0].upper() }}
+                            </div>
+                        {% endif %}
+                    </label>
+                    <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" onchange="uploadAvatar(event)">
+                    <!-- Subtle hint text below avatar -->
+                    <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                        <span class="text-xs text-content-secondary"></span>
+                    </div>
                 </div>
+                {% else %}
+                <div class="relative flex-shrink-0" style="width: 64px; height: 64px;">
+                    {% if user['avatar_url'] %}
+                        <img src="{{ url_for('static', filename=user['avatar_url']) }}"
+                             alt="{{ user['username'] }}"
+                             class="rounded-full object-cover"
+                             style="width: 64px; height: 64px; min-width: 64px; min-height: 64px;">
+                    {% else %}
+                        <div class="rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-white"
+                             style="width: 64px; height: 64px;">
+                            {{ user['username'][0].upper() }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <h1 class="text-3xl font-display text-content-primary">
                     {{ user['username'].capitalize() }}'s Profile
                 </h1>
             </div>
-            
-            <div class="grid md:grid-cols-3 gap-6">
+
+            <div class="grid md:grid-cols-2 gap-6">
+                {% if current_user.id == user['id'] %}
+                <!-- Email (Editable) -->
                 <div class="space-y-2">
                     <p class="text-sm uppercase tracking-wider text-content-secondary">Email</p>
-                    <p class="text-content-primary">{{ user['email'] }}</p>
+                    <div class="flex items-center gap-2 group">
+                        <p id="email-display" class="text-content-primary">{{ user['email'] }}</p>
+                        <input type="email" id="email-input" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['email'] }}">
+                        <button id="email-edit-btn" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100" onclick="editField('email')" title="Edit email">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                            </svg>
+                        </button>
+                        <button id="email-save-btn" class="hidden text-green-500 hover:text-green-600 transition-colors" onclick="saveField('email')" title="Save">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                        <button id="email-cancel-btn" class="hidden text-red-500 hover:text-red-600 transition-colors" onclick="cancelEdit('email')" title="Cancel">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Username (Editable) -->
                 <div class="space-y-2">
                     <p class="text-sm uppercase tracking-wider text-content-secondary">Username</p>
-                    <p class="text-content-primary">{{ user['username'] }}</p>
+                    <div class="flex items-center gap-2 group">
+                        <p id="username-display" class="text-content-primary">{{ user['username'] }}</p>
+                        <input type="text" id="username-input" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['username'] }}">
+                        <button id="username-edit-btn" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100" onclick="editField('username')" title="Edit username">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                            </svg>
+                        </button>
+                        <button id="username-save-btn" class="hidden text-green-500 hover:text-green-600 transition-colors" onclick="saveField('username')" title="Save">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                        <button id="username-cancel-btn" class="hidden text-red-500 hover:text-red-600 transition-colors" onclick="cancelEdit('username')" title="Cancel">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Password (Editable) -->
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Password</p>
+                    <div class="flex items-center gap-2 group">
+                        <p id="password-display" class="text-content-primary">••••••••</p>
+                        <div id="password-inputs" class="hidden flex-1 space-y-2">
+                            <input type="password" id="current-password-input" placeholder="Current password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <input type="password" id="new-password-input" placeholder="New password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <input type="password" id="confirm-password-input" placeholder="Confirm new password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                        </div>
+                        <button id="password-edit-btn" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100" onclick="editPassword()" title="Change password">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                            </svg>
+                        </button>
+                        <button id="password-save-btn" class="hidden text-green-500 hover:text-green-600 transition-colors" onclick="savePassword()" title="Save">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                        <button id="password-cancel-btn" class="hidden text-red-500 hover:text-red-600 transition-colors" onclick="cancelPasswordEdit()" title="Cancel">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Admin Status -->
                 <div class="space-y-2">
                     <p class="text-sm uppercase tracking-wider text-content-secondary">Admin Status</p>
                     <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
                 </div>
+                {% else %}
+                <!-- Email (Non-editable for other users) -->
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Email</p>
+                    <p class="text-content-primary">{{ user['email'] }}</p>
+                </div>
+
+                <!-- Username (Non-editable for other users) -->
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Username</p>
+                    <p class="text-content-primary">{{ user['username'] }}</p>
+                </div>
+
+                <!-- Admin Status -->
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Admin Status</p>
+                    <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
+                </div>
+                {% endif %}
             </div>
         </section>
+
+                <!-- Reading Goal Section -->
+        {% if current_user.id == user['id'] %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
+
+            {% if user['reading_goal'] and user['reading_goal'] > 0 %}
+            <div class="space-y-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-4xl font-bold text-content-primary">
+                            {{ stats.books_read_this_year if stats else 0 }} / {{ user['reading_goal'] }}
+                        </p>
+                        <p class="text-sm text-content-secondary mt-1">books read this year</p>
+                    </div>
+                    <div class="text-right">
+                        {% set progress = ((stats.books_read_this_year / user['reading_goal']) * 100) if (stats and user['reading_goal'] > 0) else 0 %}
+                        <p class="text-3xl font-bold text-accent">{{ "%.0f"|format(progress) }}%</p>
+                        <p class="text-sm text-content-secondary">complete</p>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-primary rounded-full h-4 overflow-hidden">
+                    {% set progress_width = progress if progress <= 100 else 100 %}
+                    <div class="h-full bg-accent rounded-full transition-all duration-500"
+                         style="width: {{ progress_width }}%"></div>
+                </div>
+
+                <!-- Encouragement message -->
+                {% if progress >= 100 %}
+                <p class="text-center text-green-400 font-semibold">Congratulations! You've reached your goal!</p>
+                {% elif progress >= 75 %}
+                <p class="text-center text-content-secondary">You're almost there! Keep going!</p>
+                {% elif progress >= 50 %}
+                <p class="text-center text-content-secondary">Halfway to your goal!</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="text-content-secondary mb-4">Set your annual reading goal to track your progress!</p>
+            {% endif %}
+
+            <!-- Update Reading Goal Form -->
+            <form method="POST" action="{{ url_for('user.update_reading_goal') }}" class="flex gap-3">
+                <input type="number" id="reading_goal" name="reading_goal"
+                       value="{{ user['reading_goal'] or 0 }}" min="0"
+                       placeholder="How many books do you want to read this year?"
+                       class="flex-1 px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                <button type="submit"
+                        class="px-6 py-2 bg-accent text-white rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
+                    Update Goal
+                </button>
+            </form>
+            <p class="text-xs text-content-secondary mt-2">Set to 0 to hide the progress tracker</p>
+        </section>
+        {% endif %}
 
         <!-- Library Stats Section -->
         {% if library_stats %}
@@ -116,7 +296,7 @@
 
         <!-- Export Button -->
         <div class="flex justify-center">
-            <a href="{{ url_for('user.export_library') }}" 
+            <a href="{{ url_for('user.export_library') }}"
                class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-white transition-colors hover:bg-accent-hover">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
@@ -124,48 +304,310 @@
                 Export Library to CSV
             </a>
         </div>
-
-        <!-- Update Profile Form -->
-        {% if current_user.id == user['id'] %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
-            <h2 class="text-2xl font-display text-content-primary mb-6">Update Profile</h2>
-            <form method="POST" action="{{ url_for('user.update_profile') }}" class="space-y-6">
-                <div class="space-y-4">
-                    <div>
-                        <label for="email" class="block text-sm text-content-secondary mb-1">Update Email</label>
-                        <input type="email" id="email" name="email" value="{{ user['email'] }}"
-                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    </div>
-                    
-                    <div>
-                        <label for="current_password" class="block text-sm text-content-secondary mb-1">Current Password</label>
-                        <input type="password" id="current_password" name="current_password" required
-                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    </div>
-                    
-                    <div>
-                        <label for="new_password" class="block text-sm text-content-secondary mb-1">New Password</label>
-                        <input type="password" id="new_password" name="new_password" 
-                               placeholder="Leave blank if you don't want to change it!"
-                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    </div>
-                    
-                    <div>
-                        <label for="confirm_password" class="block text-sm text-content-secondary mb-1">Confirm New Password</label>
-                        <input type="password" id="confirm_password" name="confirm_password"
-                               class="w-full px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    </div>
-                </div>
-
-                <button type="submit" 
-                        class="w-full py-3 bg-accent text-white rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
-                    Update Profile
-                </button>
-            </form>
-        </section>
-        {% endif %}
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Inline editing functionality
+        function editField(fieldName) {
+            const display = document.getElementById(`${fieldName}-display`);
+            const input = document.getElementById(`${fieldName}-input`);
+            const editBtn = document.getElementById(`${fieldName}-edit-btn`);
+            const saveBtn = document.getElementById(`${fieldName}-save-btn`);
+            const cancelBtn = document.getElementById(`${fieldName}-cancel-btn`);
+
+            // Hide display and edit button, show input and action buttons
+            display.classList.add('hidden');
+            editBtn.classList.add('hidden');
+            input.classList.remove('hidden');
+            saveBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+
+            // Focus the input
+            input.focus();
+            input.select();
+        }
+
+        function cancelEdit(fieldName) {
+            const display = document.getElementById(`${fieldName}-display`);
+            const input = document.getElementById(`${fieldName}-input`);
+            const editBtn = document.getElementById(`${fieldName}-edit-btn`);
+            const saveBtn = document.getElementById(`${fieldName}-save-btn`);
+            const cancelBtn = document.getElementById(`${fieldName}-cancel-btn`);
+
+            // Reset input to original value
+            input.value = display.textContent;
+
+            // Show display and edit button, hide input and action buttons
+            display.classList.remove('hidden');
+            editBtn.classList.remove('hidden');
+            input.classList.add('hidden');
+            saveBtn.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
+        }
+
+        async function saveField(fieldName) {
+            const input = document.getElementById(`${fieldName}-input`);
+            const newValue = input.value.trim();
+
+            if (!newValue) {
+                alert(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} cannot be empty!`);
+                return;
+            }
+
+            // Basic email validation
+            if (fieldName === 'email') {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(newValue)) {
+                    alert('Please enter a valid email address!');
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch(`/user/update_${fieldName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ [fieldName]: newValue })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Update the display text
+                    const display = document.getElementById(`${fieldName}-display`);
+                    display.textContent = newValue;
+
+                    // Exit edit mode
+                    cancelEdit(fieldName);
+
+                    // Show success message
+                    showFlashMessage('success', data.message || `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} updated successfully!`);
+
+                    // If username was changed, redirect to new profile URL
+                    if (fieldName === 'username') {
+                        setTimeout(() => {
+                            window.location.href = `/user/${newValue}`;
+                        }, 1000);
+                    }
+                } else {
+                    alert(data.message || `Failed to update ${fieldName}`);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`An error occurred while updating ${fieldName}`);
+            }
+        }
+
+        function showFlashMessage(category, message) {
+            const flashContainer = document.querySelector('.fixed.top-20.right-4') || createFlashContainer();
+            const flashDiv = document.createElement('div');
+            flashDiv.className = `mb-2 px-4 py-2 rounded-lg ${category === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
+            flashDiv.textContent = message;
+            flashContainer.appendChild(flashDiv);
+
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                flashDiv.remove();
+            }, 3000);
+        }
+
+        function createFlashContainer() {
+            const container = document.createElement('div');
+            container.className = 'fixed top-20 right-4 z-50';
+            document.body.appendChild(container);
+            return container;
+        }
+
+        // Password editing functions
+        function editPassword() {
+            const display = document.getElementById('password-display');
+            const inputs = document.getElementById('password-inputs');
+            const editBtn = document.getElementById('password-edit-btn');
+            const saveBtn = document.getElementById('password-save-btn');
+            const cancelBtn = document.getElementById('password-cancel-btn');
+
+            // Hide display and edit button, show inputs and action buttons
+            display.classList.add('hidden');
+            editBtn.classList.add('hidden');
+            inputs.classList.remove('hidden');
+            saveBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+
+            // Focus the first input
+            document.getElementById('current-password-input').focus();
+        }
+
+        function cancelPasswordEdit() {
+            const display = document.getElementById('password-display');
+            const inputs = document.getElementById('password-inputs');
+            const editBtn = document.getElementById('password-edit-btn');
+            const saveBtn = document.getElementById('password-save-btn');
+            const cancelBtn = document.getElementById('password-cancel-btn');
+
+            // Clear all password inputs
+            document.getElementById('current-password-input').value = '';
+            document.getElementById('new-password-input').value = '';
+            document.getElementById('confirm-password-input').value = '';
+
+            // Show display and edit button, hide inputs and action buttons
+            display.classList.remove('hidden');
+            editBtn.classList.remove('hidden');
+            inputs.classList.add('hidden');
+            saveBtn.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
+        }
+
+        async function savePassword() {
+            const currentPassword = document.getElementById('current-password-input').value;
+            const newPassword = document.getElementById('new-password-input').value;
+            const confirmPassword = document.getElementById('confirm-password-input').value;
+
+            // Validation
+            if (!currentPassword) {
+                alert('Please enter your current password');
+                return;
+            }
+
+            if (!newPassword) {
+                alert('Please enter a new password');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert('New password must be at least 6 characters long');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                alert('New passwords do not match');
+                return;
+            }
+
+            try {
+                const response = await fetch('/user/update_password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Exit edit mode
+                    cancelPasswordEdit();
+
+                    // Show success message
+                    showFlashMessage('success', data.message || 'Password updated successfully!');
+                } else {
+                    alert(data.message || 'Failed to update password');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while updating password');
+            }
+        }
+
+        // Avatar upload function
+        async function uploadAvatar(event) {
+            const file = event.target.files[0];
+            console.log('uploadAvatar called', file);
+
+            if (!file) {
+                console.log('No file selected');
+                return;
+            }
+
+            console.log('File info:', {
+                name: file.name,
+                size: file.size,
+                type: file.type
+            });
+
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+
+            // Validate file type
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please upload a valid image file (PNG, JPG, GIF, or WebP)');
+                return;
+            }
+
+            // Create FormData and append file
+            const formData = new FormData();
+            formData.append('avatar', file);
+            console.log('FormData created with file');
+
+            try {
+                console.log('Sending upload request to /user/upload_avatar');
+
+                const response = await fetch('/user/upload_avatar', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok && data.success) {
+                    console.log('Upload successful, avatar URL:', data.avatar_url);
+
+                    // Update avatar display
+                    const avatarImage = document.getElementById('avatar-image');
+                    const avatarPlaceholder = document.getElementById('avatar-placeholder');
+
+                    if (avatarImage) {
+                        // Update existing image with cache bust
+                        console.log('Updating existing avatar image');
+                        avatarImage.src = data.avatar_url + '?t=' + new Date().getTime();
+                    } else if (avatarPlaceholder) {
+                        // Replace placeholder with image
+                        console.log('Replacing placeholder with new image');
+                        const newImg = document.createElement('img');
+                        newImg.id = 'avatar-image';
+                        newImg.src = data.avatar_url;
+                        newImg.alt = '{{ user["username"] }}';
+                        newImg.className = 'rounded-full object-cover transition-opacity duration-200 group-hover:opacity-30';
+                        newImg.style.width = '64px';
+                        newImg.style.height = '64px';
+                        newImg.style.minWidth = '64px';
+                        newImg.style.minHeight = '64px';
+                        avatarPlaceholder.replaceWith(newImg);
+                    }
+
+                    // Show success message
+                    showFlashMessage('success', data.message || 'Profile picture updated successfully!');
+
+                    // Reload page after short delay to update all instances
+                    console.log('Reloading page in 1 second');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    console.error('Upload failed:', data.message);
+                    alert(data.message || 'Failed to upload profile picture');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('An error occurred while uploading profile picture: ' + error.message);
+            }
+
+            // Reset file input
+            event.target.value = '';
+        }
+    </script>
 </body>
 </html>

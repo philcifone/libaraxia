@@ -9,7 +9,7 @@ collections_blueprint = Blueprint('collections', __name__, template_folder='temp
 def view_collections():
     conn = get_db_connection()
     try:
-        # Fetch default reading lists (status-based collections)
+        # Fetch default reading lists (status-based collections) with book count
         cursor = conn.execute('''
             SELECT c.status, COUNT(c.book_id) as book_count
             FROM collections c
@@ -17,7 +17,21 @@ def view_collections():
             GROUP BY c.status
         ''', (current_user.id,))
         reading_lists = cursor.fetchall()
-        
+
+        # Fetch cover previews for each reading status (up to 4 covers)
+        reading_list_covers = {}
+        for reading_list in reading_lists:
+            status = reading_list['status']
+            cursor = conn.execute('''
+                SELECT b.cover_image_url
+                FROM collections c
+                JOIN books b ON c.book_id = b.id
+                WHERE c.user_id = ? AND c.status = ?
+                ORDER BY c.collection_id DESC
+                LIMIT 4
+            ''', (current_user.id, status))
+            reading_list_covers[status] = [row['cover_image_url'] for row in cursor.fetchall()]
+
         # Fetch custom collections
         cursor = conn.execute('''
             SELECT uc.collection_id, uc.name, COUNT(cb.book_id) as book_count
@@ -27,10 +41,26 @@ def view_collections():
             GROUP BY uc.collection_id, uc.name
         ''', (current_user.id,))
         custom_collections = cursor.fetchall()
-        
-        return render_template('collections.html', 
+
+        # Fetch cover previews for each custom collection (up to 4 covers)
+        custom_collection_covers = {}
+        for collection in custom_collections:
+            collection_id = collection['collection_id']
+            cursor = conn.execute('''
+                SELECT b.cover_image_url
+                FROM collection_books cb
+                JOIN books b ON cb.book_id = b.id
+                WHERE cb.collection_id = ?
+                ORDER BY cb.added_at DESC
+                LIMIT 4
+            ''', (collection_id,))
+            custom_collection_covers[collection_id] = [row['cover_image_url'] for row in cursor.fetchall()]
+
+        return render_template('collections.html',
                              reading_lists=reading_lists,
-                             custom_collections=custom_collections)
+                             custom_collections=custom_collections,
+                             reading_list_covers=reading_list_covers,
+                             custom_collection_covers=custom_collection_covers)
     finally:
         conn.close()
 

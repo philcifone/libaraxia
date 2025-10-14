@@ -1,34 +1,20 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
+from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
 from flask_login import login_required, current_user
-from werkzeug.utils import secure_filename
-import sqlite3
-import os
-import time
-import requests
-from PIL import Image, ImageOps
-from functools import wraps
 from typing import Optional, Dict, Any
 from utils.database import get_db_connection
 from utils.book_utils import (
     get_filter_options,
     fetch_book_details_from_isbn,
     process_image,
-    fetch_google_books
-)
-from models import admin_required
-from utils.book_utils import (
-    fetch_book_details_from_isbn,
-    process_image,
     download_and_save_cover,
+    search_google_books,
+    search_covers_multiple_sources,
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
+from models import admin_required
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
-
-# Constants
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-MAX_IMAGE_SIZE = (500, 1000)
 
 
 @books_blueprint.route("/add", methods=["GET", "POST"])
@@ -50,35 +36,11 @@ def add_book():
                 flash("Book not found. Please enter details manually.", "error")
                 
         elif "title_search" in request.form:
-            # Title/Author search
+            # Title/Author search - use consolidated function
             query = request.form["search_query"]
-            try:
-                # Use Google Books API for searching
-                api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
-                response = requests.get(api_url).json()
-                
-                if "items" in response:
-                    search_results = []
-                    for item in response["items"][:15]:  # Limit to first 15 results
-                        volume_info = item["volumeInfo"]
-                        result = {
-                            "title": volume_info.get("title", ""),
-                            "subtitle": volume_info.get("subtitle", ""),
-                            "authors": ", ".join(volume_info.get("authors", [])),
-                            "publisher": volume_info.get("publisher", ""),
-                            "publishedDate": volume_info.get("publishedDate", "").split("-")[0],
-                            "isbn": next((id["identifier"] for id in volume_info.get("industryIdentifiers", []) 
-                                       if id["type"] in ["ISBN_13", "ISBN_10"]), ""),
-                            "thumbnail": volume_info.get("imageLinks", {}).get("thumbnail", ""),
-                            "description": volume_info.get("description", ""),
-                            "pageCount": volume_info.get("pageCount", 0),
-                            "categories": ", ".join(volume_info.get("categories", []))
-                        }
-                        search_results.append(result)
-                else:
-                    flash("No results found", "error")
-            except Exception as e:
-                flash(f"Error during search: {str(e)}", "error")
+            search_results = search_google_books(query, max_results=15)
+            if not search_results:
+                flash("No results found", "error")
                 
         elif "barcode_scan" in request.form:
             # Handle barcode scan result
@@ -100,9 +62,9 @@ def add_book():
             
             with get_db_connection() as conn:
                 conn.execute("""
-                    INSERT INTO books (title, author, publisher, publish_year, isbn, 
-                                     page_count, cover_image_url, description, subtitle, genre)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO books (title, author, publisher, publish_year, isbn,
+                                     page_count, cover_image_url, description, subtitle, genre, added_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     request.form["title"],
                     request.form["author"],
@@ -113,7 +75,8 @@ def add_book():
                     cover_image_url,
                     request.form.get("description"),
                     request.form["subtitle"],
-                    request.form["genre"]
+                    request.form["genre"],
+                    current_user.id
                 ))
                 
             flash("Book added successfully!", "success")
@@ -129,88 +92,52 @@ def add_book():
 @login_required
 @admin_required
 def search_books():
+    """AJAX endpoint for book search - returns JSON for frontend"""
     query = request.args.get("q", "")
     if not query:
         return jsonify({"items": []})
-        
+
     try:
         current_app.logger.debug(f"Starting search for query: {query}")
-        api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
-        
-        try:
-            response = requests.get(api_url)
-            current_app.logger.debug(f"Google Books API response status: {response.status_code}")
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            current_app.logger.error(f"Request to Google Books API failed: {str(e)}")
-            return jsonify({"error": "Failed to connect to Google Books API"}), 500
-            
-        try:
-            data = response.json()
-        except ValueError as e:
-            current_app.logger.error(f"Failed to parse JSON response: {str(e)}")
-            current_app.logger.error(f"Response content: {response.text[:500]}")
-            return jsonify({"error": "Invalid response from Google Books API"}), 500
 
-        current_app.logger.debug(f"Raw response data: {data}")  # Add this line for debugging
-        
-        if "items" in data:
-            processed_items = []
-            for item in data["items"][:6]:  # Limit to first 10 results
-                volume_info = item.get("volumeInfo", {})
-                
-                # Get image URL and clean it up
-                image_links = volume_info.get("imageLinks", {})
-                thumbnail_url = (
-                    image_links.get("extraLarge") or
-                    image_links.get("large") or
-                    image_links.get("medium") or
-                    image_links.get("small") or
-                    image_links.get("thumbnail")
-                )
-                
-                if thumbnail_url:
-                    thumbnail_url = thumbnail_url.replace('http:', 'https:')
-                    thumbnail_url = thumbnail_url.split('&zoom=')[0].split('&edge=')[0]
-                
-                # Get ISBN
-                isbn = next((
-                    identifier.get("identifier")
-                    for identifier in volume_info.get("industryIdentifiers", [])
-                    if identifier.get("type") in ["ISBN_13", "ISBN_10"]
-                ), None)
+        # Use consolidated search function (limits to 6 results for AJAX)
+        processed_items = search_google_books(query, max_results=6)
 
-                # Create processed item that matches frontend expectations
-                processed_item = {
-                    "volumeInfo": {
-                        "title": volume_info.get("title", ""),
-                        "subtitle": volume_info.get("subtitle", ""),
-                        "authors": volume_info.get("authors", []),
-                        "publisher": volume_info.get("publisher", ""),
-                        "publishedDate": volume_info.get("publishedDate", ""),
-                        "description": volume_info.get("description", ""),
-                        "pageCount": volume_info.get("pageCount", 0),
-                        "categories": volume_info.get("categories", []),
-                        "industryIdentifiers": [
-                            {"type": "ISBN_13" if isbn else "OTHER", "identifier": isbn or ""}
-                        ] if isbn else [],
-                        "imageLinks": {"thumbnail": thumbnail_url} if thumbnail_url else {}
-                    }
-                }
-                processed_items.append(processed_item)
-            
-            current_app.logger.debug(f"Processed items: {processed_items}")  # Add this line
-            response = jsonify({"items": processed_items})
-            # Add CORS headers if needed
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response
-            
-        current_app.logger.debug("No items found in response")
-        return jsonify({"items": []})
-        
+        current_app.logger.debug(f"Found {len(processed_items)} results")
+
+        response = jsonify({"items": processed_items})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+
     except Exception as e:
         current_app.logger.error(f"Unexpected error in search_books: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+@books_blueprint.route("/fetch_isbn_details")
+@login_required
+@admin_required
+def fetch_isbn_details():
+    """AJAX endpoint for barcode scanner - fetches book by ISBN"""
+    isbn = request.args.get("isbn", "")
+    if not isbn:
+        return jsonify({"success": False, "error": "No ISBN provided"})
+
+    try:
+        current_app.logger.debug(f"Fetching book details for ISBN: {isbn}")
+
+        # Use existing ISBN fetch function
+        book_details = fetch_book_details_from_isbn(isbn)
+
+        if book_details:
+            current_app.logger.info(f"Successfully fetched book: {book_details.get('title')}")
+            return jsonify({"success": True, "book_details": book_details})
+        else:
+            current_app.logger.warning(f"No book found for ISBN: {isbn}")
+            return jsonify({"success": False, "error": "Book not found"})
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching ISBN details: {str(e)}")
+        return jsonify({"success": False, "error": str(e)})
 
 @books_blueprint.route("/select_search_result", methods=["POST"])
 @login_required
@@ -220,16 +147,16 @@ def select_search_result():
     try:
         data = request.get_json()
         current_app.logger.debug(f"Received book selection data: {data}")
-        
+
         original_data = data.get("bookData", {})
         isbn = original_data.get("isbn")
         thumbnail_url = original_data.get("thumbnail")
-        
+
         # commented out because some books dont have ISBNs
         #if not isbn:
         #    current_app.logger.warning("No ISBN provided in book selection")
         #    return jsonify({"success": False, "error": "No ISBN provided"})
-        
+
         # Download and save cover image first
         local_cover_url = None
         if thumbnail_url:
@@ -237,7 +164,7 @@ def select_search_result():
             local_cover_url = download_and_save_cover(thumbnail_url)
             if not local_cover_url:
                 current_app.logger.warning("Failed to download cover image")
-        
+
         # Create book details dictionary
         book_details = {
             "title": original_data.get("title", ""),
@@ -253,16 +180,70 @@ def select_search_result():
             "local_cover_url": local_cover_url,  # Use for form preview
             "thumbnail_url": thumbnail_url       # Keep original URL as backup
         }
-        
+
         if local_cover_url:
             current_app.logger.info(f"Successfully processed book with local cover: {local_cover_url}")
         else:
             current_app.logger.warning("No cover image was saved")
-            
+
         return jsonify({"success": True, "book_details": book_details})
-        
+
     except Exception as e:
         current_app.logger.error(f"Error in select_search_result: {str(e)}")
+        return jsonify({"success": False, "error": str(e)})
+
+@books_blueprint.route("/fetch_cover", methods=["POST"])
+@login_required
+@admin_required
+def fetch_cover():
+    """Fetch high-resolution cover image for a book by ISBN or title/author.
+
+    Searches multiple sources and tries to download the best quality cover available.
+    """
+    try:
+        data = request.get_json()
+        isbn = data.get("isbn", "").strip()
+        title = data.get("title", "").strip()
+        author = data.get("author", "").strip()
+
+        current_app.logger.debug(f"Fetching cover - ISBN: {isbn}, Title: {title}, Author: {author}")
+
+        # Search multiple sources for covers
+        cover_candidates = search_covers_multiple_sources(isbn=isbn, title=title, author=author)
+
+        if not cover_candidates:
+            return jsonify({
+                "success": False,
+                "error": "No covers found from any source"
+            })
+
+        current_app.logger.info(f"Found {len(cover_candidates)} cover candidates from various sources")
+
+        # Try to download covers in priority order
+        for cover_url, source, priority in cover_candidates:
+            current_app.logger.info(f"Attempting to download from {source} (priority {priority}): {cover_url}")
+
+            local_cover_url = download_and_save_cover(cover_url)
+
+            if local_cover_url:
+                current_app.logger.info(f"Successfully downloaded cover from {source}")
+                return jsonify({
+                    "success": True,
+                    "cover_url": local_cover_url,
+                    "source": source,
+                    "tried_sources": len(cover_candidates)
+                })
+            else:
+                current_app.logger.warning(f"Failed to download from {source}, trying next source...")
+
+        # All attempts failed
+        return jsonify({
+            "success": False,
+            "error": f"Failed to download covers from {len(cover_candidates)} sources"
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching cover: {str(e)}")
         return jsonify({"success": False, "error": str(e)})
         
 @books_blueprint.route("/edit/<int:id>", methods=["GET", "POST"])
@@ -271,7 +252,7 @@ def select_search_result():
 def edit_book(id):
     with get_db_connection() as conn:
         book_details = None
-        
+
         if request.method == "POST":
             if "isbn_lookup" in request.form:
                 isbn = request.form["isbn"]
@@ -279,14 +260,26 @@ def edit_book(id):
                 if not book_details:
                     flash("Book not found. Please enter details manually.", "error")
             else:
-                cover_image_url = process_image(
-                    request.files.get("image"),
-                    conn.execute("SELECT cover_image_url FROM books WHERE id = ?", (id,)).fetchone()[0]
-                )
-                
+                # Get current cover
+                current_cover = conn.execute("SELECT cover_image_url FROM books WHERE id = ?", (id,)).fetchone()[0]
+
+                # Check if a cover was fetched via the fetch cover button
+                fetched_cover = request.form.get("fetched_cover_url")
+
+                # Priority: uploaded image > fetched cover > existing cover
+                if request.files.get("image") and request.files.get("image").filename != '':
+                    # User uploaded a new image
+                    cover_image_url = process_image(request.files.get("image"), current_cover)
+                elif fetched_cover:
+                    # User fetched a new cover
+                    cover_image_url = fetched_cover
+                else:
+                    # Keep existing cover
+                    cover_image_url = current_cover
+
                 conn.execute("""
                     UPDATE books
-                    SET title = ?, author = ?, publisher = ?, publish_year = ?, 
+                    SET title = ?, author = ?, publisher = ?, publish_year = ?,
                         page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?
                     WHERE id = ?
                 """, (
@@ -301,11 +294,12 @@ def edit_book(id):
                     request.form["genre"],
                     id
                 ))
-                
+
+                flash("Book updated successfully!", "success")
                 return redirect(url_for("base.index"))
-        
+
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
-        
+
     return render_template("edit_book.html", book=book, book_details=book_details)
 
 @books_blueprint.route("/book/<int:id>")
@@ -315,43 +309,52 @@ def show_book(id):
     try:
         # Get book details
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
-        
+
         # Get reading status
         read_data = conn.execute("""
-            SELECT date_read, rating, comment 
-            FROM read_data 
+            SELECT date_read, rating, comment
+            FROM read_data
             WHERE user_id = ? AND book_id = ?
         """, (current_user.id, id)).fetchone()
-        
+
         collection_status = conn.execute("""
-            SELECT status 
-            FROM collections 
+            SELECT status
+            FROM collections
             WHERE user_id = ? AND book_id = ?
         """, (current_user.id, id)).fetchone()
-        
+
         # Get custom collections with book membership status
         custom_collections = conn.execute("""
-            SELECT 
+            SELECT
                 uc.collection_id,
                 uc.name,
                 COUNT(cb2.book_id) as book_count,
                 CASE WHEN cb.book_id IS NOT NULL THEN 1 ELSE 0 END as has_book
             FROM user_collections uc
-            LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id 
+            LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
                 AND cb.book_id = ?
             LEFT JOIN collection_books cb2 ON uc.collection_id = cb2.collection_id
             WHERE uc.user_id = ?
             GROUP BY uc.collection_id, uc.name
         """, (id, current_user.id)).fetchall()
-        
+
+        # Check if book is in user's wishlist
+        wishlist_entry = conn.execute("""
+            SELECT wishlist_id, notes, added_at
+            FROM wishlist
+            WHERE user_id = ? AND book_id = ?
+        """, (current_user.id, id)).fetchone()
+
         collection_status = collection_status['status'] if collection_status else 'untracked'
-        
+
         return render_template(
             "book_detail.html",
             book=book,
             read_data=read_data,
             collection_status=collection_status,
-            custom_collections=custom_collections
+            custom_collections=custom_collections,
+            wishlist_entry=wishlist_entry,
+            in_wishlist=wishlist_entry is not None
         )
     finally:
         conn.close()
@@ -388,9 +391,11 @@ def search():
         LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
         LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
         LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
+        LEFT JOIN wishlist w ON b.id = w.book_id AND w.user_id = ?
         WHERE (b.title LIKE ? OR b.author LIKE ? OR b.publish_year LIKE ?)
+        AND w.wishlist_id IS NULL
     '''
-    params = [current_user.id, current_user.id, current_user.id]
+    params = [current_user.id, current_user.id, current_user.id, current_user.id]
     search_like = f"%{search_term}%"
     params.extend([search_like, search_like, search_like])
     

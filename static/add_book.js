@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const scannerBtn = document.getElementById('toggle-scanner');
     let searchTimeout;
     let isScanning = false;
+    let isProcessingBarcode = false;  // Flag to prevent multiple detections
 
     // Tab Switching
     methodButtons.forEach(button => {
@@ -201,7 +202,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function fillBookForm(bookDetails) {
         console.log('Filling form with book details:', bookDetails);
-        
+        console.log('Book details structure:', JSON.stringify(bookDetails, null, 2));
+
         const fields = {
             'title': bookDetails.title || '',
             'subtitle': bookDetails.subtitle || '',
@@ -213,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'page_count': bookDetails.pageCount || bookDetails.page_count || '',
             'description': bookDetails.description || ''
         };
-    
+
         Object.entries(fields).forEach(([fieldId, value]) => {
             const element = document.getElementById(fieldId);
             if (element) {
@@ -223,21 +225,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.warn(`Element not found for field: ${fieldId}`);
             }
         });
-    
+
         const coverPreview = document.getElementById('cover-preview');
         if (!coverPreview) {
             console.error('Cover preview element not found!');
             return;
         }
-    
-        if (bookDetails.local_cover_url) {
-            console.log('Setting local cover URL:', bookDetails.local_cover_url);
+
+        // Check multiple possible cover URL keys
+        const coverUrl = bookDetails.local_cover_url || bookDetails.cover_image_url;
+        const thumbnailUrl = bookDetails.thumbnail_url || bookDetails.thumbnail;
+
+        console.log('Cover URL options:', {
+            local_cover_url: bookDetails.local_cover_url,
+            cover_image_url: bookDetails.cover_image_url,
+            thumbnail_url: bookDetails.thumbnail_url,
+            thumbnail: bookDetails.thumbnail,
+            chosen: coverUrl
+        });
+
+        if (coverUrl) {
+            // Construct the correct image path
+            let imagePath = coverUrl;
+
+            // If it's a relative path (uploads/...), prepend /static/
+            if (coverUrl.startsWith('uploads/')) {
+                imagePath = `/static/${coverUrl}`;
+            }
+            // If it's already /static/uploads/..., use as-is
+            else if (coverUrl.startsWith('/static/')) {
+                imagePath = coverUrl;
+            }
+            // If it's an external URL (https://...), use as-is
+            else if (coverUrl.startsWith('http')) {
+                imagePath = coverUrl;
+            }
+
+            console.log('Displaying cover image at:', imagePath);
+
             coverPreview.innerHTML = `
-                <img src="/static/${bookDetails.local_cover_url}" 
-                     alt="Book cover" 
+                <img src="${imagePath}"
+                     alt="Book cover"
+                     onerror="this.onerror=null; this.src='/static/no-cover.png'; console.error('Failed to load cover:', '${imagePath}');"
                      class="max-w-xs rounded-lg shadow-lg">
             `;
-            
+
+            // Update hidden input for form submission
             let coverUrlInput = document.querySelector('input[name="existing_cover_url"]');
             if (!coverUrlInput) {
                 coverUrlInput = document.createElement('input');
@@ -250,13 +283,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Form element not found!');
                 }
             }
-            coverUrlInput.value = bookDetails.local_cover_url;
-            console.log('Set hidden input value:', bookDetails.local_cover_url);
+            // Store the relative path (uploads/...) for database
+            coverUrlInput.value = coverUrl.replace('/static/', '');
+            console.log('Set hidden input value:', coverUrlInput.value);
+        } else if (thumbnailUrl) {
+            // Fallback to thumbnail if no local cover
+            console.log('No local cover, using thumbnail:', thumbnailUrl);
+            coverPreview.innerHTML = `
+                <img src="${thumbnailUrl}"
+                     alt="Book cover"
+                     onerror="this.onerror=null; this.src='/static/no-cover.png';"
+                     class="max-w-xs rounded-lg shadow-lg">
+            `;
         } else {
-            console.log('No local cover URL provided');
-            coverPreview.innerHTML = '';
+            console.warn('No cover image available in book details');
+            coverPreview.innerHTML = '<p class="text-content-secondary">No cover image available</p>';
         }
-    
+
         const form = document.querySelector('form');
         if (form) {
             form.scrollIntoView({ behavior: 'smooth' });
@@ -278,40 +321,143 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Barcode Scanner Functionality
     function startScanner() {
+        console.log('Initializing barcode scanner...');
+
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: document.querySelector("#interactive"),
                 constraints: {
-                    facingMode: "environment"
+                    width: 640,
+                    height: 480,
+                    facingMode: "environment"  // Use back camera on mobile
                 },
             },
             decoder: {
-                readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader"]
-            }
+                readers: [
+                    "ean_reader",       // EAN-13 (most common book barcodes)
+                    "ean_8_reader",     // EAN-8
+                    "upc_reader",       // UPC-A
+                    "upc_e_reader"      // UPC-E
+                ]
+            },
+            locate: true  // Help locate barcode in image
         }, function(err) {
             if (err) {
-                console.error(err);
-                alert("Error starting scanner: " + err);
+                console.error('Scanner initialization error:', err);
+                if (err.name === 'NotAllowedError') {
+                    alert("Camera access denied. Please allow camera access and try again.");
+                } else if (err.name === 'NotFoundError') {
+                    alert("No camera found. Please use a device with a camera.");
+                } else {
+                    alert("Error starting scanner: " + err.message);
+                }
+                scannerBtn.textContent = 'Start Scanner';
+                isScanning = false;
                 return;
             }
+            console.log('Scanner started successfully');
             Quagga.start();
         });
 
         Quagga.onDetected(function(result) {
+            // Prevent multiple detections
+            if (isProcessingBarcode) {
+                console.log('Already processing a barcode, ignoring...');
+                return;
+            }
+
             const code = result.codeResult.code;
-            document.getElementById('isbn_lookup').value = code;
-            document.getElementById('isbn-fetch').click();
-            stopScanner();
+            console.log('Barcode detected:', code);
+
+            // Validate it looks like an ISBN (10 or 13 digits)
+            if (/^\d{10}(\d{3})?$/.test(code)) {
+                // Set flag to prevent more detections
+                isProcessingBarcode = true;
+
+                // Stop scanner immediately
+                stopScanner();
+
+                // Show feedback to user (remove alert, just use visual feedback)
+                console.log(`Valid ISBN detected: ${code}, fetching details...`);
+
+                // Fetch book details using the code
+                fetchBookByISBN(code).finally(() => {
+                    // Reset flag after fetch completes (success or failure)
+                    isProcessingBarcode = false;
+                });
+            } else {
+                console.log('Invalid ISBN format:', code);
+                // Continue scanning for valid ISBN
+            }
         });
     }
 
+    async function fetchBookByISBN(isbn) {
+        try {
+            // Show loading in the scanner area
+            const interactive = document.querySelector('#interactive');
+            interactive.innerHTML = `
+                <div class="flex items-center justify-center h-full">
+                    <div class="text-white text-center">
+                        <svg class="animate-spin h-12 w-12 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p>Fetching book details...</p>
+                    </div>
+                </div>
+            `;
+
+            // Make request to backend
+            const response = await fetch(`/books/fetch_isbn_details?isbn=${isbn}`);
+            const data = await response.json();
+
+            if (data.success && data.book_details) {
+                fillBookForm(data.book_details);
+                interactive.innerHTML = `
+                    <div class="flex items-center justify-center h-full">
+                        <div class="text-white text-center">
+                            <svg class="w-16 h-16 mx-auto mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <p>Book details loaded!</p>
+                        </div>
+                    </div>
+                `;
+                // Scroll to form
+                document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                interactive.innerHTML = `
+                    <div class="flex items-center justify-center h-full">
+                        <div class="text-white text-center">
+                            <p class="text-red-500">Book not found for ISBN: ${isbn}</p>
+                            <p class="mt-2">Try scanning again or use ISBN lookup</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error fetching book:', error);
+            alert('Error fetching book details. Please try again.');
+        }
+    }
+
     function stopScanner() {
-        if (window.Quagga && Quagga.initialized) {
-            Quagga.stop();
+        if (window.Quagga) {
+            // Remove all event listeners
+            Quagga.offDetected();
+            Quagga.offProcessed();
+
+            // Stop the scanner
+            if (Quagga.initialized) {
+                Quagga.stop();
+            }
+
             isScanning = false;
             scannerBtn.textContent = 'Start Scanner';
+            console.log('Scanner stopped');
         }
     }
 

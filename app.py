@@ -15,6 +15,9 @@ from blueprints.collections import collections_blueprint
 from blueprints.user import user_blueprint
 from blueprints.read import read_blueprint
 from blueprints.tags import tags_blueprint
+from blueprints.admin import admin_blueprint
+from blueprints.feed import feed_blueprint
+from blueprints.wishlist import wishlist_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User
 
@@ -50,7 +53,8 @@ def create_app():
                 username=user_dict['username'],
                 email=user_dict['email'],
                 is_active=user_dict.get('is_active', 0) == 1,
-                is_admin=user_dict.get('is_admin', 0) == 1
+                is_admin=user_dict.get('is_admin', 0) == 1,
+                avatar_url=user_dict.get('avatar_url')
             )
         return None
 
@@ -87,6 +91,9 @@ def create_app():
     app.register_blueprint(user_blueprint, url_prefix='/user')
     app.register_blueprint(read_blueprint, url_prefix='/read')
     app.register_blueprint(tags_blueprint, url_prefix='/tags')
+    app.register_blueprint(admin_blueprint, url_prefix='/admin')
+    app.register_blueprint(feed_blueprint, url_prefix='/feed')
+    app.register_blueprint(wishlist_blueprint, url_prefix='/wishlist')
     
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)
@@ -97,5 +104,29 @@ def create_app():
     return app
 
 if __name__ == "__main__":
+    import sys
     app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+
+    # Check for SSL certificate arguments
+    use_ssl = False
+    ssl_context = None
+
+    # Simple command-line SSL support
+    if '--cert' in sys.argv and '--key' in sys.argv:
+        cert_idx = sys.argv.index('--cert')
+        key_idx = sys.argv.index('--key')
+
+        if cert_idx + 1 < len(sys.argv) and key_idx + 1 < len(sys.argv):
+            cert_file = sys.argv[cert_idx + 1]
+            key_file = sys.argv[key_idx + 1]
+            ssl_context = (cert_file, key_file)
+            use_ssl = True
+            print(f"🔒 Running with HTTPS using cert: {cert_file}")
+
+    if use_ssl:
+        app.run(host="0.0.0.0", port=5000, debug=True, ssl_context=ssl_context)
+    else:
+        print("⚠️  Running without HTTPS - camera features may not work on mobile")
+        print("   To enable HTTPS, generate certificates and run:")
+        print("   python3 app.py --cert certs/cert.pem --key certs/key.pem")
+        app.run(host="0.0.0.0", port=5000, debug=True)

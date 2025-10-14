@@ -31,17 +31,38 @@
 
                 {% for status, label in statuses %}
                     <a href="{{ url_for('collections.view_by_status', status=status) }}"
-                       class="group bg-primary hover:bg-primary-hover p-4 rounded-lg transition-all duration-300
-                              flex items-center justify-between">
-                        <span class="text-content-primary text-lg">{{ label }}</span>
-                        {% if reading_lists %}
-                            {% for list in reading_lists %}
-                                {% if list['status'] == status %}
-                                    <span class="bg-accent/20 text-accent px-3 py-1 rounded-full text-sm">
-                                        {{ list['book_count'] }}
-                                    </span>
-                                {% endif %}
-                            {% endfor %}
+                       class="group bg-primary hover:bg-primary-hover p-4 rounded-lg transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-content-primary text-lg">{{ label }}</span>
+                            {% if reading_lists %}
+                                {% for list in reading_lists %}
+                                    {% if list['status'] == status %}
+                                        <span class="bg-accent/20 text-accent px-3 py-1 rounded-full text-sm">
+                                            {{ list['book_count'] }}
+                                        </span>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Book Cover Previews -->
+                        {% if reading_list_covers.get(status) %}
+                            <div class="flex gap-2 mt-2">
+                                {% for cover_url in reading_list_covers[status][:4] %}
+                                    {% if cover_url %}
+                                        <img src="{{ url_for('static', filename=cover_url) }}"
+                                             alt="Book cover"
+                                             class="w-12 h-16 object-cover rounded shadow-sm">
+                                    {% else %}
+                                        <div class="w-12 h-16 bg-accent/20 rounded flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                            </svg>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         {% endif %}
                     </a>
                 {% endfor %}
@@ -77,18 +98,39 @@
                         <div class="flex items-center gap-4 group">
                             <a href="{{ url_for('collections.view_custom_collection', collection_id=collection['collection_id']) }}"
                                class="flex-1 bg-primary hover:bg-primary-hover p-4 rounded-lg
-                                      flex items-center justify-between
                                       transition-all duration-300">
-                                <span class="text-content-primary">{{ collection['name'] }}</span>
-                                <span class="bg-accent/20 text-accent px-3 py-1 rounded-full text-sm">
-                                    {{ collection['book_count'] }}
-                                </span>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-content-primary">{{ collection['name'] }}</span>
+                                    <span class="bg-accent/20 text-accent px-3 py-1 rounded-full text-sm">
+                                        {{ collection['book_count'] }}
+                                    </span>
+                                </div>
+
+                                <!-- Book Cover Previews -->
+                                {% if custom_collection_covers.get(collection['collection_id']) %}
+                                    <div class="flex gap-2 mt-2">
+                                        {% for cover_url in custom_collection_covers[collection['collection_id']][:4] %}
+                                            {% if cover_url %}
+                                                <img src="{{ url_for('static', filename=cover_url) }}"
+                                                     alt="Book cover"
+                                                     class="w-12 h-16 object-cover rounded shadow-sm">
+                                            {% else %}
+                                                <div class="w-12 h-16 bg-accent/20 rounded flex items-center justify-center">
+                                                    <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                                    </svg>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </a>
                             <form action="{{ url_for('collections.delete_collection', collection_id=collection['collection_id']) }}"
                                   method="POST"
                                   onsubmit="return confirm('Are you sure you want to delete this collection?');"
                                   class="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button type="submit" 
+                                <button type="submit"
                                         class="text-red-500 hover:text-red-400 p-2 transition-colors">
                                     <span class="text-xl">×</span>
                                 </button>

@@ -237,27 +237,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const content = document.querySelector(".content");
     const searchToggle = document.getElementById("search-toggle");
     const searchContainer = document.querySelector(".search-form-container");
-    // Toggle search dropdown with animation
-    searchToggle.addEventListener("click", (event) => {
-        // Toggle visibility and transform classes
-        searchContainer.classList.toggle("invisible");
-        searchContainer.classList.toggle("opacity-0");
-        searchContainer.classList.toggle("-translate-y-full");
-        event.stopPropagation();
 
-        // Focus search input when opening
-        if (!searchContainer.classList.contains("invisible")) {
-            setTimeout(() => {
-                searchContainer.querySelector("#search_term").focus();
-            }, 100);
-        }
-    });
-    // Close search dropdown when clicking outside
-    document.addEventListener("click", (event) => {
-        if (!searchContainer.contains(event.target) && !searchToggle.contains(event.target)) {
-            searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
-        }
-    });
+    // Only set up search functionality if elements exist
+    if (searchToggle && searchContainer) {
+        // Toggle search dropdown with animation
+        searchToggle.addEventListener("click", (event) => {
+            // Toggle visibility and transform classes
+            searchContainer.classList.toggle("invisible");
+            searchContainer.classList.toggle("opacity-0");
+            searchContainer.classList.toggle("-translate-y-full");
+            event.stopPropagation();
+
+            // Focus search input when opening
+            if (!searchContainer.classList.contains("invisible")) {
+                setTimeout(() => {
+                    searchContainer.querySelector("#search_term").focus();
+                }, 100);
+            }
+        });
+        // Close search dropdown when clicking outside
+        document.addEventListener("click", (event) => {
+            if (!searchContainer.contains(event.target) && !searchToggle.contains(event.target)) {
+                searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
+            }
+        });
+    }
     // Toggle sidebar
     hamburger.addEventListener("click", (event) => {
         sidebar.classList.toggle("-translate-x-full");
@@ -287,17 +291,25 @@ document.addEventListener("DOMContentLoaded", () => {
     // Handle escape key
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
-            // Close search
-            searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
+            // Close search if it exists
+            if (searchContainer) {
+                searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
+            }
 
-            // Close sidebar
-            sidebar.classList.add("-translate-x-full");
+            // Close sidebar if it exists
+            if (sidebar) {
+                sidebar.classList.add("-translate-x-full");
+            }
 
-            // Reset hamburger
-            const spans = hamburger.querySelectorAll("span");
-            spans[0].classList.remove("rotate-45", "translate-y-2");
-            spans[1].classList.remove("opacity-0");
-            spans[2].classList.remove("-rotate-45", "-translate-y-2");
+            // Reset hamburger if it exists
+            if (hamburger) {
+                const spans = hamburger.querySelectorAll("span");
+                if (spans.length >= 3) {
+                    spans[0].classList.remove("rotate-45", "translate-y-2");
+                    spans[1].classList.remove("opacity-0");
+                    spans[2].classList.remove("-rotate-45", "-translate-y-2");
+                }
+            }
         }
     });
 });
