@@ -82,8 +82,11 @@ def index():
         LEFT JOIN wishlist w ON b.id = w.book_id AND w.user_id = ?
     '''
     params = [current_user.id, current_user.id, current_user.id, current_user.id]
-    # Always exclude wishlist books from main library
-    conditions = ["w.wishlist_id IS NULL"]
+    # Always exclude ALL wishlist books (from any user) from main library
+    conditions = [
+        "w.wishlist_id IS NULL",
+        "NOT EXISTS (SELECT 1 FROM wishlist w2 WHERE w2.book_id = b.id)"
+    ]
 
     # Apply filters if they exist
     if request.args.get('genre'):

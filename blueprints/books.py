@@ -393,6 +393,7 @@ def search():
         LEFT JOIN wishlist w ON b.id = w.book_id AND w.user_id = ?
         WHERE (b.title LIKE ? OR b.author LIKE ? OR b.publish_year LIKE ?)
         AND w.wishlist_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM wishlist w2 WHERE w2.book_id = b.id)
     '''
     params = [current_user.id, current_user.id, current_user.id, current_user.id]
     search_like = f"%{search_term}%"

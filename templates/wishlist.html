@@ -270,9 +270,9 @@
             <div class="container mx-auto px-4 py-8">
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     {% for book in wishlist_books %}
-                    <div class="group relative">
+                    <div class="group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
                         <a href="/books/book/{{ book.id }}"
-                           class="block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                           class="block flex-1">
                             <div class="aspect-w-3 aspect-h-4 relative">
                                 {% if book.cover_image_url %}
                                 <img src="{{ url_for('static', filename=book.cover_image_url) }}"
@@ -286,7 +286,7 @@
 
                             </div>
 
-                            <div class="p-4">
+                            <div class="p-4 pb-2">
                                 <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
                                     {{ book.title }}
                                 </h3>
@@ -302,10 +302,10 @@
                         </a>
 
                         <!-- Quick Action Buttons -->
-                        <div class="absolute bottom-4 left-4 right-4 flex gap-2">
-                            <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
+                        <div class="px-4 pb-4">
+                            <form action="/wishlist/move_to_library/{{ book.id }}" method="POST">
                                 <button type="submit"
-                                        class="mt-4 w-full px-3 py-2 bg-accent text-white text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
+                                        class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-white text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                     </svg>
