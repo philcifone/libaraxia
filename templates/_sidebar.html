@@ -34,16 +34,31 @@
     <div class="flex flex-col h-full p-6">
         <!-- User Section -->
         <div class="py-6 text-center border-b border-content-primary/10">
-            <div class="w-16 h-16 mx-auto mb-4 mt-10 rounded-full bg-accent flex items-center justify-center
-                        text-2xl font-semibold text-white">
-                {{ current_user.username[0].upper() }}
-            </div>
+            {% if current_user.avatar_url %}
+                <img src="{{ url_for('static', filename=current_user.avatar_url) }}"
+                     alt="{{ current_user.username }}"
+                     class="w-16 h-16 mx-auto mb-4 mt-10 rounded-full object-cover">
+            {% else %}
+                <div class="w-16 h-16 mx-auto mb-4 mt-10 rounded-full bg-accent flex items-center justify-center
+                            text-2xl font-semibold text-white">
+                    {{ current_user.username[0].upper() }}
+                </div>
+            {% endif %}
             <h2 class="text-xl text-content-primary">
                 Welcome, {{ current_user.username.capitalize() }}!
             </h2>
         </div>
+
+            <a href="/feed/activity"
+               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      rounded-lg hover:bg-accent/10 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 5a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM14 11a1 1 0 011-1h4a1 1 0 011 1v8a1 1 0 01-1 1h-4a1 1 0 01-1-1v-8z"/>
+                </svg>
+                Activity Feed
+            </a>
         
-        <a href="/base/index" 
+        <a href="/base/index"
         class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
                 rounded-lg hover:bg-accent/10 transition-colors">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -54,8 +69,26 @@
             </svg>
             Library
         </a>
-            
-            <a href="/user/{{ current_user.username }}" 
+
+            <a href="/wishlist/view"
+               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      rounded-lg hover:bg-accent/10 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                </svg>
+                Wishlist
+            </a>
+
+            <a href="/collections/collections"
+               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      rounded-lg hover:bg-accent/10 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+                Collections
+            </a>
+
+            <a href="/user/{{ current_user.username }}"
                class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
                       rounded-lg hover:bg-accent/10 transition-colors">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -63,16 +96,21 @@
                 </svg>
                 Profile
             </a>
-            
-            <a href="/collections/collections" 
-               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+
+            <!-- Admin Settings (Admin Only) -->
+            {% if current_user.is_admin %}
+            <div class="my-2 border-t border-content-primary/10"></div>
+            <a href="/admin/settings"
+               class="flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent-hover
                       rounded-lg hover:bg-accent/10 transition-colors">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
-                Bookshelves
+                Admin Settings
             </a>
-            
+            {% endif %}
+
             <!-- Logout at the bottom -->
             <a href="/auth/logout" 
                class="mt-auto flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-500
