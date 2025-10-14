@@ -12,12 +12,20 @@
 
     <!-- Main Content Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
-        <!-- Back Navigation -->
-        <a href="{{ url_for('base.index') }}" 
+        <!-- Back Navigation (context-aware) -->
+        {% if in_wishlist %}
+        <a href="{{ url_for('wishlist.view_wishlist') }}"
+           class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
+            <span class="mr-2">←</span>
+            <span>Back to Wishlist</span>
+        </a>
+        {% else %}
+        <a href="{{ url_for('base.index') }}"
            class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
             <span class="mr-2">←</span>
             <span>Back to Catalog</span>
         </a>
+        {% endif %}
 
         <!-- Main Book Content Section -->
         <div class="bg-secondary rounded-xl p-4 md:p-8 mb-8">
@@ -85,7 +93,44 @@
                             </button>
                         </div>
                     </div>
-                    
+
+                    <!-- Wishlist Section -->
+                    {% if in_wishlist %}
+                    <div class="bg-primary rounded-lg p-6">
+                        <div class="flex items-start gap-3 mb-4">
+                            <svg class="w-6 h-6 text-accent flex-shrink-0 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                            </svg>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-white mb-1">On Your Wishlist</h3>
+                                <p class="text-sm text-content-secondary">This book is on your wishlist to purchase</p>
+                                {% if wishlist_entry and wishlist_entry['notes'] %}
+                                <p class="text-sm text-content-primary mt-2 italic">"{{ wishlist_entry['notes'] }}"</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
+                                <button type="submit"
+                                        class="w-full px-4 py-3 bg-accent text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium">
+                                    Add to Library
+                                </button>
+                            </form>
+                            <form action="/wishlist/remove/{{ book.id }}" method="POST">
+                                <button type="submit"
+                                        class="w-full px-4 py-3 text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    Remove from Wishlist
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% elif collection_status == 'untracked' %}
+                    {% endif %}
+
                     <!-- Action Buttons -->
                     <div class="grid grid-cols-2 gap-4">
                         <a href="/books/edit/{{ book[0] }}" 
@@ -108,6 +153,8 @@
             </div>
         </div>
 
+        <!-- Reading Info Section (Hidden for wishlist books) -->
+        {% if not in_wishlist %}
         <div class="max-w-4xl mx-auto px-4 py-8">
             <div class="bg-secondary rounded-lg p-6 space-y-8">
                 <h2 class="text-2xl font-display text-content-primary text-center">
@@ -244,6 +291,9 @@
             </div>
         </div>
     </div>
+    {% endif %}
+    <!-- End of Reading Info Section -->
+
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='tags.js') }}"></script>
 </body>

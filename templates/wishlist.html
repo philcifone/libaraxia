@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8">
+    <title>Wishlist - Books to Buy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+</head>
+<body class="bg-primary min-h-screen">
+    {% include '_sidebar.html' %}
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+
+        <!-- Page Header -->
+        <div class="mb-8 text-center">
+            <h1 class="text-4xl font-display text-content-primary mb-2">Wishlist</h1>
+            <p class="text-content-secondary">Books you want to buy and add to your library</p>
+        </div>
+
+        <!-- Search Methods Tabs -->
+        <div class="bg-secondary rounded-lg shadow-lg overflow-hidden mb-8">
+            <div class="flex border-b border-gray-700">
+                <button class="search-method-btn flex-1 px-6 py-4 text-content-primary hover:bg-primary transition-colors duration-200 text-center font-medium border-b-2 border-transparent data-[active=true]:border-accent" data-method="search" data-active="true">
+                    <span class="inline-flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        Search Title/Author
+                    </span>
+                </button>
+                <button class="search-method-btn flex-1 px-6 py-4 text-content-primary hover:bg-primary transition-colors duration-200 text-center font-medium border-b-2 border-transparent data-[active=true]:border-accent" data-method="isbn">
+                    <span class="inline-flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        ISBN Lookup
+                    </span>
+                </button>
+                <button class="search-method-btn flex-1 px-6 py-4 text-content-primary hover:bg-primary transition-colors duration-200 text-center font-medium border-b-2 border-transparent data-[active=true]:border-accent" data-method="barcode">
+                    <span class="inline-flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                        </svg>
+                        Scan Barcode
+                    </span>
+                </button>
+            </div>
+
+            <!-- Search Content -->
+            <div class="">
+                <!-- Title/Author Search -->
+                <div id="search-section" class="search-method-content" data-method="search">
+                    <div class="flex gap-4 p-4">
+                        <input type="text" id="book-search"
+                            class="flex-1 bg-primary text-content-primary rounded-lg px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent"
+                            placeholder="Search by title or author...">
+                        <button id="search-btn"
+                                class="px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors duration-200 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            Search
+                        </button>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6"></div>
+
+                    <!-- Template moved outside results container -->
+                    <template id="search-result-template">
+                        <div class="book-result bg-primary rounded-lg p-4 transition-all duration-200 border border-gray-700 group">
+                            <div class="flex items-start space-x-4">
+                                <div class="flex-shrink-0">
+                                    <img class="w-24 h-32 object-cover rounded-md shadow-md group-hover:shadow-lg transition-shadow duration-200" src="" alt="Book cover">
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-content-primary font-medium line-clamp-2 text-lg book-title"></p>
+                                    <p class="text-content-secondary text-sm mt-1 book-author"></p>
+                                    <p class="text-content-secondary text-sm mt-1 book-year"></p>
+                                    <div class="flex items-center mt-2 space-x-2">
+                                    </div>
+                                    <button class="select-book-btn mt-4 w-full px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-md transition-colors duration-200 flex items-center justify-center shadow-sm hover:shadow-md">
+                                        <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                                        </svg>
+                                        Add to Wishlist
+                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+                <!-- ISBN Lookup -->
+                <div id="isbn-section" data-method="isbn" class="search-method-content hidden">
+                    <form method="POST" enctype="multipart/form-data" class="flex gap-4 p-4">
+                        <input type="text" id="isbn_lookup" name="isbn"
+                            class="flex-1 bg-primary text-content-primary rounded-lg mb-6 px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent"
+                            placeholder="Enter ISBN to fetch book info"
+                            value="{{ book_details.isbn if book_details }}">
+                        <button type="submit" name="isbn_lookup" id="isbn-fetch"
+                                class="px-6 py-3 mb-6 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors duration-200 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Fetch Details
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Barcode Scanner -->
+                <div id="barcode-section" data-method="barcode" class="search-method-content hidden">
+                    <div class="flex flex-col items-center gap-4 p-6">
+                        <p class="text-content-secondary text-center mb-2">
+                            📱 Point your camera at a book barcode (ISBN)
+                        </p>
+                        <div id="interactive" class="viewport w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                            <p class="text-white text-center">Camera will appear here after clicking Start Scanner</p>
+                        </div>
+                        <button id="toggle-scanner"
+                                class="px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors duration-200 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            Start Scanner
+                        </button>
+                        <p class="text-content-secondary text-sm text-center">
+                            💡 Tip: Make sure the barcode is well-lit and in focus
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Book Form (Hidden by default, shown when book details are fetched) -->
+        <div id="book-form-container" class="bg-secondary-bg rounded-xl shadow-lg p-8 m-8 {% if not book_details %}hidden{% endif %}">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-display text-content-primary">Add Book to Wishlist</h2>
+                <button type="button"
+                        onclick="clearAndHideForm()"
+                        class="text-content-secondary hover:text-red-400 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-8">
+                {% if book_details and book_details.source %}
+                <div class="text-sm text-content-secondary italic mb-4 col-span-2">Data source: {{ book_details.source }}</div>
+                {% endif %}
+
+                <!-- Left Column -->
+                <div class="space-y-6">
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">Title</label>
+                        <input type="text" id="title" name="title" required
+                            value="{{ book_details.title if book_details }}"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+
+                        <label class="block text-sm font-medium text-content-secondary">Subtitle</label>
+                        <input type="text" id="subtitle" name="subtitle"
+                            value="{{ book_details.subtitle if book_details }}"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+
+                        <label class="block text-sm font-medium text-content-secondary">Author</label>
+                        <input type="text" id="author" name="author" required
+                            value="{{ book_details.author if book_details }}"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-4">
+                                <label class="block text-sm font-medium text-content-secondary">Year</label>
+                                <input type="text" id="year" name="year"
+                                    value="{{ book_details.year if book_details }}"
+                                    class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                            </div>
+
+                            <div class="space-y-4">
+                                <label class="block text-sm font-medium text-content-secondary">Pages</label>
+                                <input type="text" id="page_count" name="page_count"
+                                    value="{{ book_details.page_count if book_details }}"
+                                    class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-6">
+                    <div class="space-y-4">
+                        <label class="block text-sm font-medium text-content-secondary">ISBN</label>
+                        <input type="text" id="isbn" name="isbn"
+                            value="{{ book_details.isbn if book_details }}"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+
+                        <label class="block text-sm font-medium text-content-secondary">Publisher</label>
+                        <input type="text" id="publisher" name="publisher"
+                            value="{{ book_details.publisher if book_details }}"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+
+                        <label class="block text-sm font-medium text-content-secondary">Genre</label>
+                        <input type="text" id="genre" name="genre"
+                            value="{{ book_details.genre if book_details }}"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+                    </div>
+                </div>
+
+                <!-- Full Width Description -->
+                <div class="md:col-span-2 space-y-4">
+                    <label class="block text-sm font-medium text-content-secondary">Description</label>
+                    <textarea id="description" name="description"
+                            rows="4"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none">{{ book_details.description if book_details }}</textarea>
+                </div>
+
+                <!-- Wishlist Notes -->
+                <div class="md:col-span-2 space-y-4">
+                    <label class="block text-sm font-medium text-content-secondary">
+                        Notes (Optional)
+                        <span class="text-xs font-normal">- Why do you want this book?</span>
+                    </label>
+                    <textarea id="notes" name="notes"
+                            rows="2"
+                            placeholder="e.g., 'Want to read for summer', 'Gift idea', 'Recommended by friend'"
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none"></textarea>
+                </div>
+
+                <!-- Cover Image Section -->
+                <div class="md:col-span-2 flex flex-col items-center space-y-4 max-w-md mx-auto">
+                    <label class="block font-medium text-content-secondary">Book Cover</label>
+                    <div id="cover-preview" class="w-full flex justify-center">
+                        {% if book_details and book_details.thumbnail_url %}
+                        <img src="{{ book_details.thumbnail_url }}"
+                            alt="Book cover"
+                            class="max-w-xs rounded-lg shadow-lg">
+                        {% endif %}
+                    </div>
+                    <input type="hidden" name="existing_cover_url"
+                        value="{{ book_details.local_cover_url if book_details and book_details.local_cover_url else '' }}">
+                    <div class="w-full">
+                        <input type="file" id="image" name="image" accept="image/*"
+                            class="w-full text-content-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg
+                                    file:border-0 file:bg-accent file:text-white hover:file:bg-accent-hover">
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="md:col-span-2 flex justify-center mt-6">
+                    <button type="submit" name="submit_book" id="add-to-wishlist-btn"
+                            class="bg-accent hover:bg-accent-hover text-white px-8 py-3 rounded-lg transition-colors duration-200 font-medium flex items-center">
+                        <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                        </svg>
+                        Add to Wishlist
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Wishlist Books Grid -->
+        {% if wishlist_books %}
+        <div class="mt-12 mb-8">
+            <h2 class="text-3xl font-display text-content-primary mb-6 text-center">Your Wishlist ({{ wishlist_books|length }} books)</h2>
+
+            <div class="container mx-auto px-4 py-8">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    {% for book in wishlist_books %}
+                    <div class="group relative">
+                        <a href="/books/book/{{ book.id }}"
+                           class="block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                            <div class="aspect-w-3 aspect-h-4 relative">
+                                {% if book.cover_image_url %}
+                                <img src="{{ url_for('static', filename=book.cover_image_url) }}"
+                                     alt="{{ book.title }}"
+                                     class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />
+                                {% else %}
+                                <div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
+                                    <span class="text-sm italic">No Image Available</span>
+                                </div>
+                                {% endif %}
+
+                            </div>
+
+                            <div class="p-4">
+                                <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
+                                    {{ book.title }}
+                                </h3>
+                                <p class="text-content-secondary text-sm italic mb-2">
+                                    by {{ book.author }}
+                                </p>
+                                {% if book.notes %}
+                                <p class="text-xs text-content-secondary italic line-clamp-1 mb-2">
+                                    "{{ book.notes }}"
+                                </p>
+                                {% endif %}
+                            </div>
+                        </a>
+
+                        <!-- Quick Action Buttons -->
+                        <div class="absolute bottom-4 left-4 right-4 flex gap-2">
+                            <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
+                                <button type="submit"
+                                        class="mt-4 w-full px-3 py-2 bg-accent text-white text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Add to Library
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-16">
+            <p class="text-content-secondary text-lg">Your wishlist is empty. Search for books above to add them!</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='wishlist.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
