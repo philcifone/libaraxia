@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <title>Activity Feed - Libaraxia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+</head>
+
+<body class="bg-primary text-content-primary p-6">
+    {% include '_sidebar.html' %}
+
+    <div class="max-w-4xl mx-auto mt-20 px-4">
+        <h1 class="text-4xl font-display font-bold text-content-primary mb-8">Activity Feed</h1>
+
+        <!-- Activity Feed -->
+        <div class="space-y-6">
+            {% if activities %}
+                {% for activity in activities %}
+                    <div class="bg-secondary rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow">
+                        <div class="flex gap-4">
+                            <!-- Book Cover -->
+                            <div class="flex-shrink-0">
+                                <a href="/books/book/{{ activity.book_id }}">
+                                    {% if activity.cover_image_url %}
+                                        <img src="{{ url_for('static', filename=activity.cover_image_url) }}"
+                                             alt="{{ activity.title }}"
+                                             class="w-24 h-36 object-cover rounded-lg shadow-md">
+                                    {% else %}
+                                        <div class="w-24 h-36 bg-accent/20 rounded-lg flex items-center justify-center">
+                                            <svg class="w-12 h-12 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                            </svg>
+                                        </div>
+                                    {% endif %}
+                                </a>
+                            </div>
+
+                            <!-- Activity Details -->
+                            <div class="flex-grow">
+                                {% if activity.type == 'book_added' %}
+                                    <!-- New Book Activity -->
+                                    <div class="flex items-start gap-2 mb-2">
+                                        <svg class="w-5 h-5 text-accent mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 5v14m7-7H5"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-content-primary font-semibold">
+                                                {% if activity.username %}
+                                                    <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
+                                                        {{ activity.username }}
+                                                    </a>
+                                                    added a new book
+                                                {% else %}
+                                                    New Book Added
+                                                {% endif %}
+                                            </p>
+                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
+                                        </div>
+                                    </div>
+
+                                    <a href="/books/book/{{ activity.book_id }}"
+                                       class="block hover:text-accent transition-colors">
+                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
+                                            {{ activity.title }}
+                                        </h3>
+                                        <p class="text-content-secondary mb-2">by {{ activity.author }}</p>
+                                    </a>
+
+                                    {% if activity.genre %}
+                                        <span class="inline-block px-3 py-1 bg-accent/20 text-accent rounded-full text-sm">
+                                            {{ activity.genre }}
+                                        </span>
+                                    {% endif %}
+
+                                {% elif activity.type == 'review_added' %}
+                                    <!-- Review Activity -->
+                                    <div class="flex items-start gap-2 mb-2">
+                                        <svg class="w-5 h-5 text-yellow-500 mt-1" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-content-primary font-semibold">
+                                                <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
+                                                    {{ activity.username }}
+                                                </a>
+                                                reviewed a book
+                                            </p>
+                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
+                                        </div>
+                                    </div>
+
+                                    <a href="/books/book/{{ activity.book_id }}"
+                                       class="block hover:text-accent transition-colors mb-3">
+                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
+                                            {{ activity.title }}
+                                        </h3>
+                                        <p class="text-content-secondary">by {{ activity.author }}</p>
+                                    </a>
+
+                                    {% if activity.rating %}
+                                        <div class="flex items-center gap-1 mb-2">
+                                            {% for i in range(5) %}
+                                                {% if i < activity.rating %}
+                                                    <svg class="w-5 h-5 text-yellow-500" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                                    </svg>
+                                                {% else %}
+                                                    <svg class="w-5 h-5 text-content-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                                    </svg>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <span class="ml-2 text-content-secondary">{{ activity.rating }}/5</span>
+                                        </div>
+                                    {% endif %}
+
+                                    {% if activity.comment %}
+                                        <div class="bg-primary/50 rounded-lg p-4 mt-3">
+                                            <p class="text-content-primary italic">"{{ activity.comment }}"</p>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-12">
+                    <svg class="w-24 h-24 mx-auto mb-4 text-content-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                    </svg>
+                    <p class="text-xl text-content-secondary">No activity yet</p>
+                    <p class="text-content-secondary mt-2">Start adding books and reviews to see your activity feed!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
