@@ -10,17 +10,7 @@
     {% include '_sidebar.html' %}
 
     <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="fixed top-20 right-4 z-50">
-        {% for category, message in messages %}
-        <div class="mb-2 px-4 py-2 rounded-lg {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }} text-white">
-            {{ message }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}
+    {% include '_flash_messages.html' %}
 
     <!-- Main Content -->
     <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
@@ -401,25 +391,8 @@
             }
         }
 
-        function showFlashMessage(category, message) {
-            const flashContainer = document.querySelector('.fixed.top-20.right-4') || createFlashContainer();
-            const flashDiv = document.createElement('div');
-            flashDiv.className = `mb-2 px-4 py-2 rounded-lg ${category === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
-            flashDiv.textContent = message;
-            flashContainer.appendChild(flashDiv);
-
-            // Auto-remove after 3 seconds
-            setTimeout(() => {
-                flashDiv.remove();
-            }, 3000);
-        }
-
-        function createFlashContainer() {
-            const container = document.createElement('div');
-            container.className = 'fixed top-20 right-4 z-50';
-            document.body.appendChild(container);
-            return container;
-        }
+        // Note: showFlashMessage is now defined in _flash_messages.html
+        // No need to redefine it here
 
         // Password editing functions
         function editPassword() {

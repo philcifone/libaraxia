@@ -40,9 +40,13 @@ CREATE TABLE IF NOT EXISTS "collections" (
     user_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
     status TEXT CHECK(status IN ('read', 'want to read', 'currently reading', 'did not finish')) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (book_id) REFERENCES books(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_collections_created_at ON collections(created_at);
 
 CREATE TABLE book_tags (
     tag_id INTEGER PRIMARY KEY AUTOINCREMENT,

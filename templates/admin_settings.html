@@ -9,19 +9,11 @@
 <body class="bg-primary min-h-screen">
     {% include '_sidebar.html' %}
 
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
         <h1 class="text-3xl font-display text-content-primary mb-8">Admin Settings</h1>
-
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="mb-6 p-4 rounded-lg {% if category == 'error' %}bg-red-900/50 text-red-200{% else %}bg-green-900/50 text-green-200{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
 
         <!-- System Stats Grid -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

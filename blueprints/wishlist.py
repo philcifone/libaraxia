@@ -125,7 +125,7 @@ def view_wishlist():
 @wishlist_blueprint.route("/select_search_result", methods=["POST"])
 @login_required
 def select_search_result():
-    """Handle selection of a book from search results (for wishlist)"""
+    """Handle selection of a book from search results - directly add to wishlist"""
     try:
         data = request.get_json()
         current_app.logger.debug(f"Received wishlist book selection data: {data}")
@@ -142,28 +142,70 @@ def select_search_result():
             if not local_cover_url:
                 current_app.logger.warning("Failed to download cover image")
 
-        # Create book details dictionary
-        book_details = {
-            "title": original_data.get("title", ""),
-            "subtitle": original_data.get("subtitle", ""),
-            "author": original_data.get("author", ""),
-            "publisher": original_data.get("publisher", ""),
-            "year": original_data.get("publishedDate", "").split("-")[0] if original_data.get("publishedDate") else "",
-            "isbn": isbn,
-            "page_count": original_data.get("pageCount", 0),
-            "description": original_data.get("description", ""),
-            "genre": original_data.get("genre", ""),
-            "cover_image_url": local_cover_url,
-            "local_cover_url": local_cover_url,
-            "thumbnail_url": thumbnail_url
-        }
+        # Add book to database
+        with get_db_connection() as conn:
+            # Check if book already exists by ISBN
+            existing_book = None
+            if isbn:
+                existing_book = conn.execute(
+                    "SELECT id FROM books WHERE isbn = ?", (isbn,)
+                ).fetchone()
 
-        if local_cover_url:
-            current_app.logger.info(f"Successfully processed book with local cover: {local_cover_url}")
-        else:
-            current_app.logger.warning("No cover image was saved")
+            if existing_book:
+                book_id = existing_book['id']
+            else:
+                # Insert new book
+                cursor = conn.execute("""
+                    INSERT INTO books (title, author, publisher, publish_year, isbn,
+                                     page_count, cover_image_url, description, subtitle, genre, added_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    original_data.get("title", ""),
+                    original_data.get("author", ""),
+                    original_data.get("publisher", ""),
+                    original_data.get("publishedDate", "").split("-")[0] if original_data.get("publishedDate") else "",
+                    isbn,
+                    original_data.get("pageCount", 0),
+                    local_cover_url,
+                    original_data.get("description", ""),
+                    original_data.get("subtitle", ""),
+                    original_data.get("genre", ""),
+                    current_user.id
+                ))
+                book_id = cursor.lastrowid
 
-        return jsonify({"success": True, "book_details": book_details})
+            # Add to wishlist
+            try:
+                conn.execute("""
+                    INSERT INTO wishlist (user_id, book_id, notes)
+                    VALUES (?, ?, ?)
+                """, (current_user.id, book_id, ""))
+                conn.commit()
+
+                # Fetch the complete book data to return
+                book = conn.execute("""
+                    SELECT b.*, w.wishlist_id, w.notes, w.added_at as wishlist_added_at
+                    FROM wishlist w
+                    JOIN books b ON w.book_id = b.id
+                    WHERE w.user_id = ? AND b.id = ?
+                """, (current_user.id, book_id)).fetchone()
+
+                if local_cover_url:
+                    current_app.logger.info(f"Successfully added book to wishlist with local cover: {local_cover_url}")
+                else:
+                    current_app.logger.warning("Book added to wishlist but no cover image was saved")
+
+                return jsonify({
+                    "success": True,
+                    "message": "Book added to wishlist!",
+                    "book": dict(book)
+                })
+
+            except Exception as e:
+                if "UNIQUE constraint failed" in str(e):
+                    return jsonify({"success": False, "error": "This book is already in your wishlist!"})
+                else:
+                    raise e
 
     except Exception as e:
         current_app.logger.error(f"Error in select_search_result: {str(e)}")
@@ -240,8 +282,8 @@ def move_to_library(book_id):
 
             if not existing:
                 conn.execute("""
-                    INSERT INTO collections (user_id, book_id, status)
-                    VALUES (?, ?, 'want to read')
+                    INSERT INTO collections (user_id, book_id, status, created_at, updated_at)
+                    VALUES (?, ?, 'want to read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, (current_user.id, book_id))
 
             # Remove from wishlist
@@ -264,16 +306,56 @@ def move_to_library(book_id):
 @wishlist_blueprint.route("/remove/<int:book_id>", methods=["POST"])
 @login_required
 def remove_from_wishlist(book_id):
-    """Remove a book from the wishlist"""
+    """Remove a book from the wishlist and delete the book if it has no other references"""
     with get_db_connection() as conn:
+        # Check if the book has other references
+        in_collections = conn.execute("""
+            SELECT COUNT(*) as count FROM collections WHERE book_id = ?
+        """, (book_id,)).fetchone()['count']
+
+        in_read_data = conn.execute("""
+            SELECT COUNT(*) as count FROM read_data WHERE book_id = ?
+        """, (book_id,)).fetchone()['count']
+
+        in_book_tags = conn.execute("""
+            SELECT COUNT(*) as count FROM book_tags WHERE book_id = ?
+        """, (book_id,)).fetchone()['count']
+
+        in_collection_books = conn.execute("""
+            SELECT COUNT(*) as count FROM collection_books WHERE book_id = ?
+        """, (book_id,)).fetchone()['count']
+
+        # Remove from wishlist
         conn.execute("""
             DELETE FROM wishlist
             WHERE user_id = ? AND book_id = ?
         """, (current_user.id, book_id))
-        conn.commit()
-        flash("Book removed from wishlist.", "success")
 
-    return redirect(request.referrer or url_for("wishlist.view_wishlist"))
+        # If the book has no other references, delete it
+        book_was_deleted = False
+        if in_collections == 0 and in_read_data == 0 and in_book_tags == 0 and in_collection_books == 0:
+            conn.execute("""
+                DELETE FROM books WHERE id = ?
+            """, (book_id,))
+            flash("Book removed from wishlist and deleted.", "success")
+            book_was_deleted = True
+        else:
+            flash("Book removed from wishlist.", "success")
+
+        conn.commit()
+
+    # Determine where to redirect based on context
+    referrer = request.referrer
+
+    # If book was deleted or if we came from wishlist page, go to wishlist
+    if book_was_deleted or (referrer and 'wishlist' in referrer):
+        return redirect(url_for("wishlist.view_wishlist"))
+    # If we came from book detail page or library, go to library
+    elif referrer and ('book' in referrer or 'books' in referrer):
+        return redirect(url_for("base.index"))
+    # Default fallback to wishlist
+    else:
+        return redirect(url_for("wishlist.view_wishlist"))
 
 
 @wishlist_blueprint.route("/update_notes/<int:book_id>", methods=["POST"])

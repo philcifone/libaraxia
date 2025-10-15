@@ -1,0 +1,127 @@
+<!-- Unified Flash Messages Component -->
+<!-- Auto-dismisses after 5 seconds by default, or can be manually closed -->
+<div id="flash-container" class="fixed top-20 right-4 z-50 space-y-2 max-w-md">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message mb-2 px-4 py-3 rounded-lg shadow-lg {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }} text-white flex items-start gap-3 animate-slide-in">
+                    <!-- Message Content -->
+                    <div class="flex-1">
+                        {{ message }}
+                    </div>
+                    <!-- Close Button -->
+                    <button onclick="dismissFlash(this)" class="flex-shrink-0 text-white hover:text-gray-200 transition-colors focus:outline-none" aria-label="Close message">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<style>
+    @keyframes slide-in {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slide-out {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    .animate-slide-in {
+        animation: slide-in 0.3s ease-out;
+    }
+
+    .animate-slide-out {
+        animation: slide-out 0.3s ease-out;
+    }
+</style>
+
+<script>
+    // Auto-dismiss flash messages after 5 seconds (configurable)
+    const FLASH_DISMISS_TIME = 5000; // milliseconds
+
+    // Dismiss a specific flash message
+    function dismissFlash(button) {
+        const flashMessage = button.closest('.flash-message');
+        if (flashMessage) {
+            flashMessage.classList.remove('animate-slide-in');
+            flashMessage.classList.add('animate-slide-out');
+            setTimeout(() => {
+                flashMessage.remove();
+                // Remove container if empty
+                const container = document.getElementById('flash-container');
+                if (container && container.querySelectorAll('.flash-message').length === 0) {
+                    container.remove();
+                }
+            }, 300); // Match animation duration
+        }
+    }
+
+    // Auto-dismiss all flash messages on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(function(message) {
+            setTimeout(() => {
+                const closeButton = message.querySelector('button');
+                if (closeButton) {
+                    dismissFlash(closeButton);
+                }
+            }, FLASH_DISMISS_TIME);
+        });
+    });
+
+    // Function to programmatically show flash messages (for AJAX calls)
+    function showFlashMessage(category, message, autoDismiss = true) {
+        let container = document.getElementById('flash-container');
+
+        // Create container if it doesn't exist
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'flash-container';
+            container.className = 'fixed top-20 right-4 z-50 space-y-2 max-w-md';
+            document.body.appendChild(container);
+        }
+
+        // Create flash message element
+        const flashDiv = document.createElement('div');
+        flashDiv.className = `flash-message mb-2 px-4 py-3 rounded-lg shadow-lg ${category === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-start gap-3 animate-slide-in`;
+
+        flashDiv.innerHTML = `
+            <div class="flex-1">${message}</div>
+            <button onclick="dismissFlash(this)" class="flex-shrink-0 text-white hover:text-gray-200 transition-colors focus:outline-none" aria-label="Close message">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        `;
+
+        container.appendChild(flashDiv);
+
+        // Auto-dismiss if enabled
+        if (autoDismiss) {
+            setTimeout(() => {
+                const closeButton = flashDiv.querySelector('button');
+                if (closeButton && flashDiv.parentNode) {
+                    dismissFlash(closeButton);
+                }
+            }, FLASH_DISMISS_TIME);
+        }
+    }
+</script>

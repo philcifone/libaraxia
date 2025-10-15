@@ -18,7 +18,23 @@
         <div class="space-y-6">
             {% if activities %}
                 {% for activity in activities %}
-                    <div class="bg-secondary rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow">
+                    <div class="bg-secondary rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow relative">
+                        <!-- Dismiss button (only for user's own activities) -->
+                        {% if activity.user_id == current_user.id %}
+                        <div class="absolute top-4 right-4">
+                            <form method="POST" action="/feed/dismiss_activity" class="inline" onsubmit="return confirm('Are you sure you want to dismiss this activity from the feed? This will hide it for all users.');">
+                                <input type="hidden" name="activity_type" value="{{ activity.type }}">
+                                <input type="hidden" name="book_id" value="{{ activity.book_id }}">
+                                <input type="hidden" name="user_id" value="{{ activity.user_id }}">
+                                <button type="submit" class="text-content-secondary hover:text-yellow-500 transition-colors" title="Dismiss from feed">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18.36 6L6 18.36M6 6l12.36 12.36"></path>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+
                         <div class="flex gap-4">
                             <!-- Book Cover -->
                             <div class="flex-shrink-0">
@@ -69,11 +85,62 @@
                                         <p class="text-content-secondary mb-2">by {{ activity.author }}</p>
                                     </a>
 
-                                    {% if activity.genre %}
-                                        <span class="inline-block px-3 py-1 bg-accent/20 text-accent rounded-full text-sm">
-                                            {{ activity.genre }}
-                                        </span>
-                                    {% endif %}
+                                {% elif activity.type == 'wishlist_added' %}
+                                    <!-- Wishlist Activity -->
+                                    <div class="flex items-start gap-2 mb-2">
+                                        <svg class="w-5 h-5 text-purple-500 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-content-primary font-semibold">
+                                                <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
+                                                    {{ activity.username }}
+                                                </a>
+                                                added to wishlist
+                                            </p>
+                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
+                                        </div>
+                                    </div>
+
+                                    <a href="/books/book/{{ activity.book_id }}"
+                                       class="block hover:text-accent transition-colors">
+                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
+                                            {{ activity.title }}
+                                        </h3>
+                                        <p class="text-content-secondary mb-2">by {{ activity.author }}</p>
+                                    </a>
+
+                                {% elif activity.type == 'collection_added' %}
+                                    <!-- Collection Status Activity -->
+                                    <div class="flex items-start gap-2 mb-2">
+                                        <svg class="w-5 h-5 text-blue-500 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-content-primary font-semibold">
+                                                <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
+                                                    {{ activity.username }}
+                                                </a>
+                                                {% if activity.status == 'currently reading' %}
+                                                    started reading
+                                                {% elif activity.status == 'want to read' %}
+                                                    wants to read
+                                                {% else %}
+                                                    added to library
+                                                {% endif %}
+                                            </p>
+                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
+                                        </div>
+                                    </div>
+
+                                    <a href="/books/book/{{ activity.book_id }}"
+                                       class="block hover:text-accent transition-colors">
+                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
+                                            {{ activity.title }}
+                                        </h3>
+                                        <p class="text-content-secondary">by {{ activity.author }}</p>
+                                    </a>
 
                                 {% elif activity.type == 'review_added' %}
                                     <!-- Review Activity -->

@@ -220,13 +220,13 @@ def add_to_status_collection():
         if exists:
             conn.execute('''
                 UPDATE collections
-                SET status = ?
+                SET status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = ? AND book_id = ?
             ''', (status, current_user.id, book_id))
         else:
             conn.execute('''
-                INSERT INTO collections (user_id, book_id, status)
-                VALUES (?, ?, ?)
+                INSERT INTO collections (user_id, book_id, status, created_at, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ''', (current_user.id, book_id, status))
         
         conn.commit()

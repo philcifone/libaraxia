@@ -172,6 +172,18 @@ document.addEventListener('DOMContentLoaded', function() {
     async function selectBook(bookData, button) {
         try {
             console.log('Sending book data to backend:', bookData);
+
+            // Disable button and show loading state
+            button.disabled = true;
+            const originalButtonHTML = button.innerHTML;
+            button.innerHTML = `
+                <svg class="animate-spin w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Adding...
+            `;
+
             // Use wishlist endpoint
             const response = await fetch('/wishlist/select_search_result', {
                 method: 'POST',
@@ -189,23 +201,109 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const data = await response.json();
             if (data.success) {
-                console.log('Received book details from backend:', data.book_details);
-                fillBookForm(data.book_details);
+                console.log('Book added to wishlist:', data.book);
+
+                // Update button to show success
                 button.innerHTML = `
                     <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                     </svg>
-                    Book info fetched!
+                    Added to wishlist!
                 `;
-                button.disabled = true;
+
+                // Add book card to the wishlist grid
+                addBookToWishlistGrid(data.book);
+
             } else {
                 console.error('Error selecting book:', data.error);
-                alert('Error selecting book. Please try again.');
+                alert(data.error || 'Error adding book to wishlist. Please try again.');
+                button.innerHTML = originalButtonHTML;
+                button.disabled = false;
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error selecting book. Please try again.');
+            alert('Error adding book to wishlist. Please try again.');
+            button.disabled = false;
         }
+    }
+
+    function addBookToWishlistGrid(book) {
+        // Find or create the wishlist grid
+        let wishlistGrid = document.querySelector('.grid.grid-cols-2');
+
+        if (!wishlistGrid) {
+            // If no grid exists, we need to create the entire wishlist section
+            const mainContainer = document.querySelector('.max-w-7xl');
+            const emptyMessage = document.querySelector('.text-center.py-16');
+
+            if (emptyMessage) {
+                emptyMessage.remove();
+            }
+
+            const wishlistSection = document.createElement('div');
+            wishlistSection.className = 'mt-12 mb-8';
+            wishlistSection.innerHTML = `
+                <h2 class="text-3xl font-display text-content-primary mb-6 text-center">Your Wishlist (<span id="wishlist-count">1</span> book)</h2>
+                <div class="container mx-auto px-4 py-8">
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    </div>
+                </div>
+            `;
+            mainContainer.appendChild(wishlistSection);
+            wishlistGrid = wishlistSection.querySelector('.grid');
+        } else {
+            // Update count
+            const countElement = document.getElementById('wishlist-count');
+            if (countElement) {
+                const currentCount = parseInt(countElement.textContent) || 0;
+                countElement.textContent = currentCount + 1;
+            }
+        }
+
+        // Create book card
+        const bookCard = document.createElement('div');
+        bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200';
+
+        const coverImageUrl = book.cover_image_url ? `/static/${book.cover_image_url}` : '';
+        const coverHTML = book.cover_image_url
+            ? `<img src="${coverImageUrl}" alt="${book.title}" class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
+            : `<div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
+                   <span class="text-sm italic">No Image Available</span>
+               </div>`;
+
+        bookCard.innerHTML = `
+            <a href="/books/book/${book.id}" class="block flex-1">
+                <div class="aspect-w-3 aspect-h-4 relative">
+                    ${coverHTML}
+                </div>
+                <div class="p-4 pb-2">
+                    <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
+                        ${book.title}
+                    </h3>
+                    <p class="text-content-secondary text-sm italic mb-2">
+                        by ${book.author}
+                    </p>
+                    ${book.notes ? `<p class="text-xs text-content-secondary italic line-clamp-1 mb-2">"${book.notes}"</p>` : ''}
+                </div>
+            </a>
+            <div class="px-4 pb-4">
+                <form action="/wishlist/move_to_library/${book.id}" method="POST">
+                    <button type="submit"
+                            class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-white text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Add to Library
+                    </button>
+                </form>
+            </div>
+        `;
+
+        // Insert at the beginning of the grid
+        wishlistGrid.insertBefore(bookCard, wishlistGrid.firstChild);
+
+        // Scroll to the wishlist section
+        bookCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function fillBookForm(bookDetails) {
