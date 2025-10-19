@@ -11,14 +11,15 @@ def view_collections():
     try:
         # Fetch default reading lists (status-based collections) with book count
         cursor = conn.execute('''
-            SELECT c.status, COUNT(c.book_id) as book_count
+            SELECT c.status, COUNT(b.id) as book_count
             FROM collections c
+            JOIN books b ON c.book_id = b.id
             WHERE c.user_id = ?
             GROUP BY c.status
         ''', (current_user.id,))
         reading_lists = cursor.fetchall()
 
-        # Fetch cover previews for each reading status (up to 4 covers)
+        # Fetch cover previews for each reading status (up to 8 covers)
         reading_list_covers = {}
         for reading_list in reading_lists:
             status = reading_list['status']
@@ -28,21 +29,22 @@ def view_collections():
                 JOIN books b ON c.book_id = b.id
                 WHERE c.user_id = ? AND c.status = ?
                 ORDER BY c.collection_id DESC
-                LIMIT 4
+                LIMIT 8
             ''', (current_user.id, status))
             reading_list_covers[status] = [row['cover_image_url'] for row in cursor.fetchall()]
 
         # Fetch custom collections
         cursor = conn.execute('''
-            SELECT uc.collection_id, uc.name, COUNT(cb.book_id) as book_count
+            SELECT uc.collection_id, uc.name, COUNT(b.id) as book_count
             FROM user_collections uc
             LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
+            LEFT JOIN books b ON cb.book_id = b.id
             WHERE uc.user_id = ?
             GROUP BY uc.collection_id, uc.name
         ''', (current_user.id,))
         custom_collections = cursor.fetchall()
 
-        # Fetch cover previews for each custom collection (up to 4 covers)
+        # Fetch cover previews for each custom collection (up to 8 covers)
         custom_collection_covers = {}
         for collection in custom_collections:
             collection_id = collection['collection_id']
@@ -52,7 +54,7 @@ def view_collections():
                 JOIN books b ON cb.book_id = b.id
                 WHERE cb.collection_id = ?
                 ORDER BY cb.added_at DESC
-                LIMIT 4
+                LIMIT 8
             ''', (collection_id,))
             custom_collection_covers[collection_id] = [row['cover_image_url'] for row in cursor.fetchall()]
 

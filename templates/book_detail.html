@@ -10,6 +10,9 @@
 <body class="bg-primary min-h-screen">
     {% include '_sidebar.html' %}
 
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
     <!-- Main Content Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
         <!-- Back Navigation (context-aware) -->
@@ -112,13 +115,15 @@
 
                         <div class="flex flex-col sm:flex-row gap-3">
                             <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
-                                <button type="submit"
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit"
                                         class="w-full px-4 py-3 bg-accent text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium">
                                     Add to Library
                                 </button>
                             </form>
                             <form action="/wishlist/remove/{{ book.id }}" method="POST">
-                                <button type="submit"
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit"
                                         class="w-full px-4 py-3 text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
                                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -131,9 +136,10 @@
                     {% elif collection_status == 'untracked' %}
                     {% endif %}
 
-                    <!-- Action Buttons -->
+                    <!-- Action Buttons (only show if user is admin or added the book, and book is NOT in wishlist) -->
+                    {% if not in_wishlist and (current_user.is_admin or book['added_by'] == current_user.id) %}
                     <div class="grid grid-cols-2 gap-4">
-                        <a href="/books/edit/{{ book[0] }}" 
+                        <a href="/books/edit/{{ book[0] }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors">
                             <svg class="w42 h-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
@@ -149,6 +155,7 @@
                             Delete Book
                         </a>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -164,6 +171,7 @@
             <div class="bg-secondary rounded-lg space-y-8">
                 <!-- Reading Status Form -->
                 <form action="{{ url_for('collections.add_to_status_collection') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="id" value="{{ book['id'] }}">
                     <label for="status" class="block text-sm font-medium text-content-secondary pb-4">Reading Status</label>
                     <div class="flex flex-col sm:flex-row gap-4">
@@ -187,7 +195,8 @@
                 <!-- Collections Management -->
                 <div class="space-y-6">
                     <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="space-y-4">
-                        <label for="create-collection" class="block text-sm font-medium text-content-secondary">Create Collection</label>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <label for="create-collection" class="block text-sm font-medium text-content-secondary">Create Collection</label>
                         <div class="flex flex-col sm:flex-row gap-4">
                             <input type="text"
                                    id="create-collection"
@@ -203,7 +212,8 @@
                     </form>
         
                     <form action="{{ url_for('collections.manage_book_collections') }}" method="POST" class="space-y-4">
-                        <input type="hidden" name="book_id" value="{{ book['id'] }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="book_id" value="{{ book['id'] }}">
                         <label for="collections" class="block text-sm font-medium text-content-secondary">Add to Collection</label>
                         <div class="flex flex-col sm:flex-row gap-4">
                             <select name="collection_id" id="collections" 
@@ -229,11 +239,43 @@
             <!-- Reading Stats -->
             <div class="bg-secondary rounded-lg p-6">
                 {% if read_data %}
-                <div class="grid sm:grid-cols-2 gap-8 mb-6">
-                    <div class="space-y-2">
-                        <span class="text-sm uppercase tracking-wider text-content-secondary">Date Read</span>
-                        <p class="text-lg text-content-primary">{{ read_data['date_read'] }}</p>
+
+                <!-- Reading History -->
+                {% if reading_sessions %}
+                <div class="mb-6">
+                    <h3 class="text-sm uppercase tracking-wider text-content-secondary mb-3">Reading History</h3>
+                    <div class="bg-primary rounded-lg p-4 space-y-3">
+                        {% for session in reading_sessions %}
+                        <div class="flex items-center justify-between text-sm py-2 border-b border-gray-700 last:border-b-0">
+                            <div class="flex items-center gap-3">
+                                <span class="text-accent font-medium">
+                                    {% if loop.index == 1 %}First time read
+                                    {% elif loop.index == 2 %}Second time read
+                                    {% elif loop.index == 3 %}Third time read
+                                    {% else %}{{ loop.index }}th time read
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                {% if session.date_started %}
+                                    <span class="text-content-secondary text-xs">Started:</span>
+                                    <span class="text-content-primary">{{ session.date_started }}</span>
+                                    <span class="mx-1 text-content-secondary">→</span>
+                                {% endif %}
+                                {% if session.date_completed %}
+                                    <span class="text-content-secondary text-xs">Completed:</span>
+                                    <span class="text-content-primary">{{ session.date_completed }}</span>
+                                {% else %}
+                                    <span class="text-yellow-500 italic">Currently Reading</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
+                </div>
+                {% endif %}
+
+                <div class="grid sm:grid-cols-2 gap-8 mb-6">
                     <div class="space-y-2">
                         <span class="text-sm uppercase tracking-wider text-content-secondary">Your Rating</span>
                         <div class="flex items-center gap-4">

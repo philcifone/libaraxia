@@ -1,16 +1,20 @@
 <!-- Unified Flash Messages Component -->
 <!-- Auto-dismisses after 5 seconds by default, or can be manually closed -->
-<div id="flash-container" class="fixed top-20 right-4 z-50 space-y-2 max-w-md">
+<div id="flash-container" class="fixed bottom-4 right-4 z-50 space-y-2 max-w-md">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="flash-message mb-2 px-4 py-3 rounded-lg shadow-lg {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }} text-white flex items-start gap-3 animate-slide-in">
+                <div class="flash-message mb-2 px-4 py-3 rounded-lg shadow-lg text-white flex items-start gap-3 animate-slide-in
+                    {% if category == 'success' %}bg-green-500
+                    {% elif category in ['danger', 'error', 'warning'] %}bg-red-500
+                    {% else %}bg-primary
+                    {% endif %}">
                     <!-- Message Content -->
                     <div class="flex-1">
                         {{ message }}
                     </div>
                     <!-- Close Button -->
-                    <button onclick="dismissFlash(this)" class="flex-shrink-0 text-white hover:text-gray-200 transition-colors focus:outline-none" aria-label="Close message">
+                    <button onclick="dismissFlash(this)" class="flex-shrink-0 text-white hover:text-content-secondary transition-colors focus:outline-none" aria-label="Close message">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -95,17 +99,24 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'flash-container';
-            container.className = 'fixed top-20 right-4 z-50 space-y-2 max-w-md';
+            container.className = 'fixed bottom-4 right-4 z-50 space-y-2 max-w-md';
             document.body.appendChild(container);
         }
 
-        // Create flash message element
+        // Create flash message element with background color based on category
+        let bgClass = 'bg-primary'; // default for info/neutral
+        if (category === 'success') {
+            bgClass = 'bg-green-500';
+        } else if (['danger', 'error', 'warning'].includes(category)) {
+            bgClass = 'bg-red-500';
+        }
+
         const flashDiv = document.createElement('div');
-        flashDiv.className = `flash-message mb-2 px-4 py-3 rounded-lg shadow-lg ${category === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-start gap-3 animate-slide-in`;
+        flashDiv.className = `flash-message mb-2 px-4 py-3 rounded-lg shadow-lg text-white flex items-start gap-3 animate-slide-in ${bgClass}`;
 
         flashDiv.innerHTML = `
             <div class="flex-1">${message}</div>
-            <button onclick="dismissFlash(this)" class="flex-shrink-0 text-white hover:text-gray-200 transition-colors focus:outline-none" aria-label="Close message">
+            <button onclick="dismissFlash(this)" class="flex-shrink-0 text-white hover:text-content-secondary transition-colors focus:outline-none" aria-label="Close message">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>

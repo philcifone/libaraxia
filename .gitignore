@@ -2,6 +2,7 @@
 library.db
 static/uploads/
 *.db
+*.db.backup*
 __pycache__/
 *.pyc
 *.pyo

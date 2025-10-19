@@ -13,15 +13,33 @@ def rate_review(book_id):
 
     if request.method == 'POST':
         # Get form data
-        date_read = request.form.get('date_read')
+        date_started = request.form.get('date_started')
+        date_completed = request.form.get('date_completed')
         rating = request.form.get('rating')
         comment = request.form.get('comment')
+        session_id = request.form.get('session_id')  # For editing existing session
 
-        # Validate date format
-        try:
-            date_read = datetime.strptime(date_read, '%Y-%m-%d').date()
-        except ValueError:
-            flash("Invalid date format.", 'error')
+        # Validate dates
+        date_started_obj = None
+        date_completed_obj = None
+
+        if date_started:
+            try:
+                date_started_obj = datetime.strptime(date_started, '%Y-%m-%d').date()
+            except ValueError:
+                flash("Invalid start date format.", 'error')
+                return redirect(request.url)
+
+        if date_completed:
+            try:
+                date_completed_obj = datetime.strptime(date_completed, '%Y-%m-%d').date()
+            except ValueError:
+                flash("Invalid completion date format.", 'error')
+                return redirect(request.url)
+
+        # Validate that start date is before completion date
+        if date_started_obj and date_completed_obj and date_started_obj > date_completed_obj:
+            flash("Start date cannot be after completion date.", 'error')
             return redirect(request.url)
 
         # Validate rating
@@ -29,15 +47,30 @@ def rate_review(book_id):
             flash("Invalid rating. Please enter a number between 1 and 5.", 'error')
             return redirect(request.url)
 
-        # Insert or update the read data
+        # Update or insert reading session
+        if session_id:
+            # Update existing session
+            conn.execute('''
+                UPDATE reading_sessions
+                SET date_started = ?, date_completed = ?
+                WHERE session_id = ? AND user_id = ?
+            ''', (date_started_obj, date_completed_obj, session_id, current_user.id))
+        else:
+            # Insert new reading session
+            conn.execute('''
+                INSERT INTO reading_sessions (user_id, book_id, date_started, date_completed)
+                VALUES (?, ?, ?, ?)
+            ''', (current_user.id, book_id, date_started_obj, date_completed_obj))
+
+        # Insert or update the review/rating (separate from sessions)
         conn.execute('''
-            INSERT INTO read_data (user_id, book_id, date_read, rating, comment)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO read_data (user_id, book_id, rating, comment)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(user_id, book_id) DO UPDATE SET
-                date_read = excluded.date_read,
                 rating = excluded.rating,
                 comment = excluded.comment
-        ''', (current_user.id, book_id, date_read, int(rating), comment))
+        ''', (current_user.id, book_id, int(rating), comment))
+
         conn.commit()
 
         flash("Your rating and review have been saved!", 'success')
@@ -49,11 +82,24 @@ def rate_review(book_id):
     '''
     book = conn.execute(book_query, (book_id,)).fetchone()
 
+    # Fetch existing review/rating
     read_data_query = '''
-        SELECT date_read, rating, comment FROM read_data
+        SELECT rating, comment FROM read_data
         WHERE user_id = ? AND book_id = ?
     '''
     read_data = conn.execute(read_data_query, (current_user.id, book_id)).fetchone()
+
+    # Fetch all reading sessions for this book (oldest first for proper labeling)
+    sessions_query = '''
+        SELECT session_id, date_started, date_completed, created_at
+        FROM reading_sessions
+        WHERE user_id = ? AND book_id = ?
+        ORDER BY
+            CASE WHEN date_completed IS NULL THEN 1 ELSE 0 END,
+            COALESCE(date_completed, date_started, created_at) ASC,
+            created_at ASC
+    '''
+    sessions = conn.execute(sessions_query, (current_user.id, book_id)).fetchall()
 
     conn.close()
 
@@ -63,8 +109,42 @@ def rate_review(book_id):
     return render_template(
         'rate_review.html',
         book=books.get(1),  # Matches book[1] format
-        read_data=read_data
+        read_data=read_data,
+        sessions=sessions
     )
+
+
+@read_blueprint.route('/delete_reading_session/<int:session_id>', methods=['POST'])
+@login_required
+def delete_reading_session(session_id):
+    conn = get_db_connection()
+
+    # Get book_id for redirect
+    book_id = request.form.get('book_id')
+
+    # Verify the session belongs to the current user before deleting
+    session = conn.execute('''
+        SELECT user_id, book_id FROM reading_sessions
+        WHERE session_id = ?
+    ''', (session_id,)).fetchone()
+
+    if session and session['user_id'] == current_user.id:
+        conn.execute('DELETE FROM reading_sessions WHERE session_id = ?', (session_id,))
+        conn.commit()
+        flash("Reading session deleted successfully!", 'success')
+
+        # Use book_id from session if not provided in form
+        if not book_id:
+            book_id = session['book_id']
+    else:
+        flash("Session not found or you don't have permission to delete it.", 'error')
+
+    conn.close()
+
+    if book_id:
+        return redirect(url_for('read.rate_review', book_id=book_id))
+    else:
+        return redirect(url_for('base.index'))
 
 
 # Example redirect in collections.py

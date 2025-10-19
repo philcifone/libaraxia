@@ -2,6 +2,7 @@ from flask import Flask, redirect, url_for
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+from flask_wtf.csrf import CSRFProtect
 import os, logging, bcrypt
 from dotenv import load_dotenv
 
@@ -24,13 +25,25 @@ from models import User
 def create_app():
     # Create the Flask app instance
     app = Flask(__name__)
-    
+
+    # Load environment variables first
+    load_dotenv()
+
     # App Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback-secret-key')
     env = os.getenv('FLASK_ENV', 'development')
 
-    # Load environment variables
-    load_dotenv()
+    # Initialize CSRF Protection
+    csrf = CSRFProtect(app)
+
+    # Configure CSRF to accept tokens from headers (for AJAX requests)
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = True
+    app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
+
+    @app.after_request
+    def set_csrf_cookie(response):
+        """Make CSRF token available for JavaScript"""
+        return response
 
     # Initialize Flask-Login
     login_manager = LoginManager()
@@ -41,7 +54,7 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        logging.debug(f"Loading user with ID: {user_id}") 
+        logging.debug(f"Loading user with ID: {user_id}")
         conn = get_db_connection()
         logging.debug("Database connections successful")
         user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()

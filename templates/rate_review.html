@@ -27,6 +27,9 @@
 <body class="min-h-screen bg-primary-bg text-content-primary">
     {% include '_sidebar.html' %}
 
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
     <main class="max-w-6xl mx-auto px-4 pt-20 pb-12">
         <!-- Back Navigation -->
         <a href="{{ url_for('base.index') }}" 
@@ -59,21 +62,94 @@
             <!-- Review Form -->
             <div class="bg-secondary-bg rounded-lg p-6 md:p-8">
                 <h2 class="font-display text-2xl mb-8 text-center">Rate & Review</h2>
-                
-                <form method="post" class="space-y-8">
-                    <!-- Date Read -->
-                    <div class="space-y-2">
-                        <label for="date_read" class="block text-sm font-medium text-content-secondary">
-                            Date Read
-                        </label>
-                        <input type="date" 
-                               id="date_read" 
-                               name="date_read"
-                               value="{{ read_data.date_read if read_data else '' }}"
-                               required
-                               class="w-full max-w-xs bg-primary-bg border border-gray-600 rounded-md px-4 py-2 
-                                      focus:outline-none focus:ring-2 focus:ring-accent invalid:border-red-500">
-                        <span id="date-error" class="hidden text-sm text-red-500">Please select a date</span>
+
+                <form method="post" class="space-y-8" id="review-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="session_id" id="session_id" value=""/>
+
+                    <!-- Reading Sessions Section -->
+                    {% if sessions %}
+                    <div class="bg-primary-bg rounded-lg p-4 mb-6">
+                        <h3 class="font-medium text-content-secondary mb-3">Reading History</h3>
+                        <div class="space-y-3" id="reading-sessions-list">
+                            {% for session in sessions %}
+                            <div class="py-3 border-b border-gray-700 last:border-b-0" id="session-{{ session.session_id }}">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-accent font-medium text-sm">
+                                        {% if loop.index == 1 %}First time read
+                                        {% elif loop.index == 2 %}Second time read
+                                        {% elif loop.index == 3 %}Third time read
+                                        {% else %}{{ loop.index }}th time read
+                                        {% endif %}
+                                    </span>
+                                    <div class="flex gap-2">
+                                        <button type="button"
+                                                onclick="editSession({{ session.session_id }}, '{{ session.date_started or '' }}', '{{ session.date_completed or '' }}')"
+                                                class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                                            Edit
+                                        </button>
+                                        <button type="button"
+                                                onclick="deleteSession({{ session.session_id }}, {{ book.id }})"
+                                                class="text-xs text-red-400 hover:text-red-300 transition-colors">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 text-sm">
+                                    {% if session.date_started %}
+                                        <span class="text-content-secondary text-xs">Started:</span>
+                                        <span class="text-content-primary">{{ session.date_started }}</span>
+                                        <span class="mx-1 text-content-secondary">→</span>
+                                    {% endif %}
+                                    {% if session.date_completed %}
+                                        <span class="text-content-secondary text-xs">Completed:</span>
+                                        <span class="text-content-primary">{{ session.date_completed }}</span>
+                                    {% else %}
+                                        <span class="text-yellow-500 italic">Currently Reading</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- New/Edit Reading Session -->
+                    <div class="bg-primary-bg rounded-lg p-4">
+                        <h3 class="font-medium text-content-secondary mb-4" id="session-form-title">Add New Reading Session</h3>
+
+                        <!-- Date Started -->
+                        <div class="space-y-2 mb-4">
+                            <label for="date_started" class="block text-sm font-medium text-content-secondary">
+                                Date Started <span class="text-xs italic">(optional)</span>
+                            </label>
+                            <input type="date"
+                                   id="date_started"
+                                   name="date_started"
+                                   class="w-full max-w-xs bg-secondary-bg border border-gray-600 rounded-md px-4 py-2
+                                          focus:outline-none focus:ring-2 focus:ring-accent">
+                        </div>
+
+                        <!-- Date Completed -->
+                        <div class="space-y-2">
+                            <label for="date_completed" class="block text-sm font-medium text-content-secondary">
+                                Date Completed <span class="text-xs italic">(optional)</span>
+                            </label>
+                            <input type="date"
+                                   id="date_completed"
+                                   name="date_completed"
+                                   class="w-full max-w-xs bg-secondary-bg border border-gray-600 rounded-md px-4 py-2
+                                          focus:outline-none focus:ring-2 focus:ring-accent">
+                            <p class="text-xs text-content-secondary italic">Leave both dates empty if you haven't started reading yet</p>
+                        </div>
+
+                        <!-- Cancel Edit Button (hidden by default) -->
+                        <button type="button"
+                                id="cancel-edit-btn"
+                                onclick="cancelEditSession()"
+                                class="hidden mt-3 text-sm text-gray-400 hover:text-gray-300 transition-colors">
+                            Cancel Edit
+                        </button>
                     </div>
                     
                     <!-- Rating Section -->
@@ -127,5 +203,68 @@
     </main>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        function editSession(sessionId, dateStarted, dateCompleted) {
+            // Set the session ID in hidden field
+            document.getElementById('session_id').value = sessionId;
+
+            // Populate the date fields
+            document.getElementById('date_started').value = dateStarted;
+            document.getElementById('date_completed').value = dateCompleted;
+
+            // Change the form title
+            document.getElementById('session-form-title').textContent = 'Edit Reading Session';
+
+            // Show cancel button
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+            // Scroll to the form
+            document.getElementById('session-form-title').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelEditSession() {
+            // Clear the session ID
+            document.getElementById('session_id').value = '';
+
+            // Clear the date fields
+            document.getElementById('date_started').value = '';
+            document.getElementById('date_completed').value = '';
+
+            // Reset the form title
+            document.getElementById('session-form-title').textContent = 'Add New Reading Session';
+
+            // Hide cancel button
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+        }
+
+        function deleteSession(sessionId, bookId) {
+            if (!confirm('Are you sure you want to delete this reading session?')) {
+                return;
+            }
+
+            // Create a form and submit it
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/read/delete_reading_session/' + sessionId;
+
+            // Add CSRF token
+            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+
+            // Add book_id for redirect
+            const bookInput = document.createElement('input');
+            bookInput.type = 'hidden';
+            bookInput.name = 'book_id';
+            bookInput.value = bookId;
+            form.appendChild(bookInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
 </body>
 </html>

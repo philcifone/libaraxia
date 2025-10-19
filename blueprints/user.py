@@ -24,7 +24,7 @@ def calculate_user_stats(conn, user_id):
     query = '''
         SELECT
             COUNT(DISTINCT r.book_id) as books_read,
-            SUM(b.page_count) as pages_read,
+            SUM(CAST(b.page_count AS INTEGER)) as pages_read,
             AVG(r.rating) as avg_rating
         FROM read_data r
         JOIN books b ON r.book_id = b.id
@@ -36,10 +36,11 @@ def calculate_user_stats(conn, user_id):
     from datetime import datetime
     current_year = datetime.now().year
     ytd_query = '''
-        SELECT COUNT(DISTINCT r.book_id) as books_read_this_year
-        FROM read_data r
-        WHERE r.user_id = ?
-        AND strftime('%Y', r.date_read) = ?
+        SELECT COUNT(DISTINCT rs.book_id) as books_read_this_year
+        FROM reading_sessions rs
+        WHERE rs.user_id = ?
+        AND rs.date_completed IS NOT NULL
+        AND strftime('%Y', rs.date_completed) = ?
     '''
     ytd_stats = conn.execute(ytd_query, [user_id, str(current_year)]).fetchone()
 
@@ -48,6 +49,100 @@ def calculate_user_stats(conn, user_id):
         result['books_read_this_year'] = ytd_stats['books_read_this_year']
     else:
         result['books_read_this_year'] = 0
+
+    # Calculate user-specific read percentage (books user has read vs total books in library)
+    library_query = '''
+        SELECT COUNT(DISTINCT id) as total_books
+        FROM books
+    '''
+    library_total = conn.execute(library_query).fetchone()
+
+    books_read = result.get('books_read', 0) or 0
+    total_books = library_total['total_books'] if library_total else 0
+
+    if total_books > 0:
+        result['read_percentage'] = round((books_read / total_books) * 100, 1)
+    else:
+        result['read_percentage'] = 0
+
+    # Reading by month (last 12 months)
+    reading_by_month_query = '''
+        SELECT
+            strftime('%Y-%m', rs.date_completed) as month,
+            COUNT(DISTINCT rs.book_id) as books_count
+        FROM reading_sessions rs
+        WHERE rs.user_id = ?
+        AND rs.date_completed IS NOT NULL
+        AND rs.date_completed >= date('now', '-12 months')
+        GROUP BY month
+        ORDER BY month
+    '''
+    result['reading_by_month'] = [dict(row) for row in conn.execute(reading_by_month_query, [user_id]).fetchall()]
+
+    # Top genres
+    top_genres_query = '''
+        SELECT
+            b.genre,
+            COUNT(DISTINCT r.book_id) as count
+        FROM read_data r
+        JOIN books b ON r.book_id = b.id
+        WHERE r.user_id = ? AND b.genre IS NOT NULL AND b.genre != ''
+        GROUP BY b.genre
+        ORDER BY count DESC
+        LIMIT 5
+    '''
+    result['top_genres'] = [dict(row) for row in conn.execute(top_genres_query, [user_id]).fetchall()]
+
+    # Rating distribution
+    rating_dist_query = '''
+        SELECT
+            r.rating,
+            COUNT(*) as count
+        FROM read_data r
+        WHERE r.user_id = ? AND r.rating IS NOT NULL
+        GROUP BY r.rating
+        ORDER BY r.rating
+    '''
+    result['rating_distribution'] = [dict(row) for row in conn.execute(rating_dist_query, [user_id]).fetchall()]
+
+    # Collection status breakdown
+    collection_status_query = '''
+        SELECT
+            c.status,
+            COUNT(DISTINCT c.book_id) as count
+        FROM collections c
+        WHERE c.user_id = ?
+        GROUP BY c.status
+    '''
+    result['collection_status'] = [dict(row) for row in conn.execute(collection_status_query, [user_id]).fetchall()]
+
+    # Top authors
+    top_authors_query = '''
+        SELECT
+            b.author,
+            COUNT(DISTINCT r.book_id) as books_count,
+            ROUND(AVG(r.rating), 1) as avg_rating
+        FROM read_data r
+        JOIN books b ON r.book_id = b.id
+        WHERE r.user_id = ?
+        GROUP BY b.author
+        ORDER BY books_count DESC, avg_rating DESC
+        LIMIT 5
+    '''
+    result['top_authors'] = [dict(row) for row in conn.execute(top_authors_query, [user_id]).fetchall()]
+
+    # Reading streak stats
+    streak_query = '''
+        SELECT
+            MIN(date_completed) as first_read,
+            MAX(date_completed) as last_read,
+            COUNT(DISTINCT date(date_completed)) as unique_days
+        FROM reading_sessions
+        WHERE user_id = ? AND date_completed IS NOT NULL
+    '''
+    streak_stats = conn.execute(streak_query, [user_id]).fetchone()
+    if streak_stats:
+        result.update(dict(streak_stats))
 
     return result
 
@@ -345,23 +440,26 @@ def upload_avatar():
 
 def calculate_library_stats(conn):
    query = '''
-       SELECT 
+       SELECT
            COUNT(DISTINCT b.id) as total_books,
-           SUM(b.page_count) as total_pages,
+           SUM(CAST(b.page_count AS INTEGER)) as total_pages,
            COUNT(DISTINCT c.book_id) as read_books,
            (SELECT COUNT(*) FROM (
                SELECT DISTINCT author FROM books
            )) as unique_authors,
-           (SELECT title FROM books WHERE page_count = (SELECT MAX(page_count) FROM books)) as longest_book,
-           (SELECT MAX(page_count) FROM books) as longest_pages,
+           (SELECT title FROM books
+            WHERE CAST(page_count AS INTEGER) = (
+                SELECT MAX(CAST(page_count AS INTEGER)) FROM books
+            )) as longest_book,
+           (SELECT MAX(CAST(page_count AS INTEGER)) FROM books) as longest_pages,
            (
                SELECT genre
                FROM (
-                   SELECT genre, COUNT(*) as count 
-                   FROM books 
-                   WHERE genre IS NOT NULL 
+                   SELECT genre, COUNT(*) as count
+                   FROM books
+                   WHERE genre IS NOT NULL
                    GROUP BY genre
-                   ORDER BY count DESC 
+                   ORDER BY count DESC
                    LIMIT 1
                )
            ) as most_common_genre
@@ -382,8 +480,10 @@ def export_library():
     try:
         # Get all books with their statuses and ratings for the current user
         query = '''
-            SELECT 
+            SELECT
+                b.id as book_id,
                 b.title,
+                b.subtitle,
                 b.author,
                 b.publisher,
                 b.publish_year,
@@ -391,31 +491,45 @@ def export_library():
                 b.page_count,
                 b.genre,
                 c.status as reading_status,
+                c.created_at as date_added_to_collection,
                 r.rating,
-                r.date_read,
+                (SELECT MIN(date_started) FROM reading_sessions
+                 WHERE book_id = b.id AND user_id = ?) as date_started,
+                (SELECT MAX(date_completed) FROM reading_sessions
+                 WHERE book_id = b.id AND user_id = ?) as date_completed,
+                (SELECT COUNT(*) FROM reading_sessions
+                 WHERE book_id = b.id AND user_id = ? AND date_completed IS NOT NULL) as reread_count,
                 r.comment as review,
-                GROUP_CONCAT(t.tag_name) as tags
+                GROUP_CONCAT(DISTINCT t.tag_name) as tags,
+                GROUP_CONCAT(DISTINCT uc.name) as custom_collections
             FROM books b
             LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
             LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
             LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
+            LEFT JOIN collection_books cb ON b.id = cb.book_id
+            LEFT JOIN user_collections uc ON cb.collection_id = uc.collection_id AND uc.user_id = ?
             GROUP BY b.id
             ORDER BY b.title
         '''
-        books = conn.execute(query, (current_user.id, current_user.id, current_user.id)).fetchall()
+        books = conn.execute(query, (current_user.id, current_user.id, current_user.id,
+                                     current_user.id, current_user.id, current_user.id,
+                                     current_user.id)).fetchall()
 
         # Create CSV in memory
         si = StringIO()
         writer = csv.writer(si)
-        
+
         # Write headers
-        writer.writerow(['Title', 'Author', 'Publisher', 'Year', 'ISBN', 'Pages', 
-                        'Genre', 'Reading Status', 'Rating', 'Date Read', 'Review', 'Tags'])
-        
+        writer.writerow(['Book ID', 'Title', 'Subtitle', 'Author', 'Publisher', 'Year', 'ISBN', 'Pages',
+                        'Genre', 'Reading Status', 'Date Added to Collection', 'Date Started',
+                        'Date Completed', 'Reread Count', 'Rating', 'Review', 'Tags', 'Custom Collections'])
+
         # Write data
         for book in books:
             writer.writerow([
+                book['book_id'],
                 book['title'],
+                book['subtitle'],
                 book['author'],
                 book['publisher'],
                 book['publish_year'],
@@ -423,10 +537,14 @@ def export_library():
                 book['page_count'],
                 book['genre'],
                 book['reading_status'] or 'Untracked',
+                book['date_added_to_collection'],
+                book['date_started'],
+                book['date_completed'],
+                book['reread_count'] or 0,
                 book['rating'],
-                book['date_read'],
                 book['review'],
-                book['tags']
+                book['tags'],
+                book['custom_collections']
             ])
 
         # Create the response

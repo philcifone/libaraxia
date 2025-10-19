@@ -1,5 +1,23 @@
 // Edit Book - Fetch Cover Functionality
 
+// CSRF Token Helper Functions
+function getCSRFToken() {
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
+    if (tokenInput) return tokenInput.value;
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    if (tokenMeta) return tokenMeta.content;
+    console.warn('CSRF token not found');
+    return null;
+}
+
+function getCSRFHeaders() {
+    const token = getCSRFToken();
+    return {
+        'X-CSRFToken': token,
+        'Content-Type': 'application/json'
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const fetchCoverBtn = document.getElementById('fetchCoverBtn');
     const fetchCoverText = document.getElementById('fetchCoverText');
@@ -29,9 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const response = await fetch('/books/fetch_cover', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: getCSRFHeaders(),
                     body: JSON.stringify({
                         isbn: isbn,
                         title: title,

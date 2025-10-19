@@ -9,7 +9,10 @@
 </head>
 <body class="bg-primary min-h-screen">
     {% include '_sidebar.html' %}
-    
+
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
     <!-- Main Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
         <!-- Search Methods Tabs -->
@@ -92,7 +95,8 @@
                 <!-- ISBN Lookup -->
                 <div id="isbn-section" data-method="isbn" class="search-method-content hidden">
                     <form method="POST" enctype="multipart/form-data" class="flex gap-4 p-4">
-                        <input type="text" id="isbn_lookup" name="isbn"
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="text" id="isbn_lookup" name="isbn"
                             class="flex-1 bg-primary text-content-primary rounded-lg mb-6 px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent"
                             placeholder="Enter ISBN to fetch book info"
                             value="{{ book_details.isbn if book_details }}">
@@ -136,7 +140,8 @@
             <h1 class="text-3xl font-display text-content-primary mb-8 text-center">Add New Book</h1>
         
             <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-8">
-                {% if book_details and book_details.source %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    {% if book_details and book_details.source %}
                 <div class="text-sm text-content-secondary italic mb-4 col-span-2">Data source: {{ book_details.source }}</div>
                 {% endif %}
         
@@ -168,7 +173,7 @@
         
                             <div class="space-y-4">
                                 <label class="block text-sm font-medium text-content-secondary">Pages</label>
-                                <input type="text" id="page_count" name="page_count"
+                                <input type="number" id="page_count" name="page_count" min="0" step="1"
                                     value="{{ book_details.page_count if book_details }}"
                                     class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                             </div>

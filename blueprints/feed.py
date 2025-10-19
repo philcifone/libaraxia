@@ -1,4 +1,4 @@
-from flask import render_template, Blueprint, request, redirect, url_for, flash
+from flask import render_template, Blueprint, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
 
@@ -100,7 +100,8 @@ def activity_feed():
             SELECT
                 r.user_id,
                 r.book_id,
-                r.date_read,
+                (SELECT MAX(date_completed) FROM reading_sessions
+                 WHERE book_id = r.book_id AND user_id = r.user_id) as date_read,
                 r.rating,
                 r.comment,
                 b.title,
@@ -118,7 +119,7 @@ def activity_feed():
                 AND da.book_id = r.book_id
                 AND da.user_id = r.user_id
             )
-            ORDER BY r.date_read DESC
+            ORDER BY date_read DESC
             LIMIT 20
         """).fetchall()
 
@@ -126,6 +127,14 @@ def activity_feed():
         activities = []
 
         for book in recent_books:
+            # Get like count for this activity
+            like_data = conn.execute("""
+                SELECT COUNT(*) as like_count,
+                       COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
+                FROM activity_likes
+                WHERE activity_type = 'book_added' AND book_id = ? AND activity_user_id = ?
+            """, (current_user.id, book['id'], book['added_by'])).fetchone()
+
             activities.append({
                 'type': 'book_added',
                 'date': book['created_at'],
@@ -135,10 +144,20 @@ def activity_feed():
                 'cover_image_url': book['cover_image_url'],
                 'genre': book['genre'],
                 'username': book['username'],
-                'user_id': book['added_by']
+                'user_id': book['added_by'],
+                'like_count': like_data['like_count'],
+                'user_liked': like_data['user_liked'] > 0
             })
 
         for wishlist_item in recent_wishlist:
+            # Get like count for this activity
+            like_data = conn.execute("""
+                SELECT COUNT(*) as like_count,
+                       COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
+                FROM activity_likes
+                WHERE activity_type = 'wishlist_added' AND book_id = ? AND activity_user_id = ?
+            """, (current_user.id, wishlist_item['book_id'], wishlist_item['user_id'])).fetchone()
+
             activities.append({
                 'type': 'wishlist_added',
                 'date': wishlist_item['added_at'],
@@ -148,10 +167,20 @@ def activity_feed():
                 'cover_image_url': wishlist_item['cover_image_url'],
                 'genre': wishlist_item['genre'],
                 'username': wishlist_item['username'],
-                'user_id': wishlist_item['user_id']
+                'user_id': wishlist_item['user_id'],
+                'like_count': like_data['like_count'],
+                'user_liked': like_data['user_liked'] > 0
             })
 
         for collection in recent_collections:
+            # Get like count for this activity
+            like_data = conn.execute("""
+                SELECT COUNT(*) as like_count,
+                       COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
+                FROM activity_likes
+                WHERE activity_type = 'collection_added' AND book_id = ? AND activity_user_id = ?
+            """, (current_user.id, collection['book_id'], collection['user_id'])).fetchone()
+
             activities.append({
                 'type': 'collection_added',
                 'date': collection['created_at'],
@@ -162,10 +191,20 @@ def activity_feed():
                 'cover_image_url': collection['cover_image_url'],
                 'username': collection['username'],
                 'user_id': collection['user_id'],
-                'status': collection['status']
+                'status': collection['status'],
+                'like_count': like_data['like_count'],
+                'user_liked': like_data['user_liked'] > 0
             })
 
         for review in recent_reviews:
+            # Get like count for this activity
+            like_data = conn.execute("""
+                SELECT COUNT(*) as like_count,
+                       COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
+                FROM activity_likes
+                WHERE activity_type = 'review_added' AND book_id = ? AND activity_user_id = ?
+            """, (current_user.id, review['book_id'], review['user_id'])).fetchone()
+
             activities.append({
                 'type': 'review_added',
                 'date': review['date_read'],
@@ -176,7 +215,9 @@ def activity_feed():
                 'username': review['username'],
                 'user_id': review['user_id'],
                 'rating': review['rating'],
-                'comment': review['comment']
+                'comment': review['comment'],
+                'like_count': like_data['like_count'],
+                'user_liked': like_data['user_liked'] > 0
             })
 
         # Sort by date, most recent first
@@ -221,3 +262,118 @@ def dismiss_activity():
         conn.close()
 
     return redirect(url_for('feed.activity_feed'))
+
+
+@feed_blueprint.route("/like_activity", methods=["POST"])
+@login_required
+def like_activity():
+    """Like an activity item in the feed"""
+    data = request.get_json()
+    activity_type = data.get('activity_type')
+    book_id = data.get('book_id')
+    activity_user_id = data.get('activity_user_id')
+
+    if not activity_type or not book_id or not activity_user_id:
+        return jsonify({'success': False, 'error': 'Invalid request'}), 400
+
+    # Users cannot like their own activities
+    if int(activity_user_id) == current_user.id:
+        return jsonify({'success': False, 'error': 'Cannot like your own activity'}), 400
+
+    conn = get_db_connection()
+    try:
+        # Check if this is a new like (not already liked)
+        existing_like = conn.execute("""
+            SELECT id FROM activity_likes
+            WHERE activity_type = ? AND book_id = ? AND activity_user_id = ? AND liker_user_id = ?
+        """, (activity_type, book_id, activity_user_id, current_user.id)).fetchone()
+
+        # Insert like (will be ignored if already exists due to UNIQUE constraint)
+        conn.execute("""
+            INSERT OR IGNORE INTO activity_likes (activity_type, book_id, activity_user_id, liker_user_id)
+            VALUES (?, ?, ?, ?)
+        """, (activity_type, book_id, activity_user_id, current_user.id))
+
+        # If this is a new like, create a notification
+        if not existing_like:
+            # Get book title for the notification message
+            book = conn.execute("SELECT title FROM books WHERE id = ?", (book_id,)).fetchone()
+            book_title = book['title'] if book else 'your activity'
+
+            # Create activity type friendly message
+            activity_messages = {
+                'book_added': f'liked the book you added: {book_title}',
+                'wishlist_added': f'liked your wishlist addition: {book_title}',
+                'collection_added': f'liked your collection update: {book_title}',
+                'review_added': f'liked your review of: {book_title}'
+            }
+            message = f"{current_user.username} {activity_messages.get(activity_type, 'liked your activity')}"
+
+            # Insert notification
+            conn.execute("""
+                INSERT INTO notifications (user_id, type, message, related_activity_type, related_book_id, from_user_id)
+                VALUES (?, 'like', ?, ?, ?, ?)
+            """, (activity_user_id, message, activity_type, book_id, current_user.id))
+
+        conn.commit()
+
+        # Get updated like count
+        like_count = conn.execute("""
+            SELECT COUNT(*) as count
+            FROM activity_likes
+            WHERE activity_type = ? AND book_id = ? AND activity_user_id = ?
+        """, (activity_type, book_id, activity_user_id)).fetchone()['count']
+
+        return jsonify({'success': True, 'like_count': like_count})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@feed_blueprint.route("/unlike_activity", methods=["POST"])
+@login_required
+def unlike_activity():
+    """Unlike an activity item in the feed"""
+    data = request.get_json()
+    activity_type = data.get('activity_type')
+    book_id = data.get('book_id')
+    activity_user_id = data.get('activity_user_id')
+
+    if not activity_type or not book_id or not activity_user_id:
+        return jsonify({'success': False, 'error': 'Invalid request'}), 400
+
+    conn = get_db_connection()
+    try:
+        # Remove like
+        conn.execute("""
+            DELETE FROM activity_likes
+            WHERE activity_type = ? AND book_id = ? AND activity_user_id = ? AND liker_user_id = ?
+        """, (activity_type, book_id, activity_user_id, current_user.id))
+
+        # Also delete the notification for this like
+        conn.execute("""
+            DELETE FROM notifications
+            WHERE type = 'like'
+            AND related_activity_type = ?
+            AND related_book_id = ?
+            AND user_id = ?
+            AND from_user_id = ?
+        """, (activity_type, book_id, activity_user_id, current_user.id))
+
+        conn.commit()
+
+        # Get updated like count
+        like_count = conn.execute("""
+            SELECT COUNT(*) as count
+            FROM activity_likes
+            WHERE activity_type = ? AND book_id = ? AND activity_user_id = ?
+        """, (activity_type, book_id, activity_user_id)).fetchone()['count']
+
+        return jsonify({'success': True, 'like_count': like_count})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()

@@ -1,3 +1,21 @@
+// CSRF Token Helper Functions
+function getCSRFToken() {
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
+    if (tokenInput) return tokenInput.value;
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    if (tokenMeta) return tokenMeta.content;
+    console.warn('CSRF token not found');
+    return null;
+}
+
+function getCSRFHeaders() {
+    const token = getCSRFToken();
+    return {
+        'X-CSRFToken': token,
+        'Content-Type': 'application/json'
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
     const methodButtons = document.querySelectorAll('.search-method-btn');
@@ -168,23 +186,90 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    async function checkForDuplicates(bookData) {
+        try {
+            const response = await fetch('/books/check_duplicates', {
+                method: 'POST',
+                headers: getCSRFHeaders(),
+                body: JSON.stringify({
+                    title: bookData.title,
+                    isbn: bookData.isbn
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error checking duplicates:', error);
+            return { has_duplicates: false, duplicates: [] };
+        }
+    }
+
+    function showDuplicateWarning(duplicates) {
+        const reasons = [];
+        const locations = [];
+
+        duplicates.forEach(dup => {
+            if (dup.match_reason.includes('title')) reasons.push('title');
+            if (dup.match_reason.includes('ISBN')) reasons.push('ISBN');
+            if (dup.in_library) locations.push('library');
+            if (dup.in_wishlist) locations.push('wishlist');
+        });
+
+        const uniqueReasons = [...new Set(reasons)];
+        const uniqueLocations = [...new Set(locations)];
+
+        const reasonText = uniqueReasons.join(' and ');
+        const locationText = uniqueLocations.join(' and ');
+
+        let message = `A book with matching ${reasonText} already exists`;
+        if (locationText) {
+            message += ` in your ${locationText}`;
+        }
+        message += '.\n\n';
+
+        duplicates.forEach(dup => {
+            message += `"${dup.title}" by ${dup.author}\n`;
+            message += `  - ${dup.in_library ? 'In library' : ''}${dup.in_library && dup.in_wishlist ? ' and ' : ''}${dup.in_wishlist ? 'In wishlist' : ''}\n`;
+        });
+
+        message += '\nAre you sure you want to add this book?';
+
+        return confirm(message);
+    }
+
     async function selectBook(bookData, button) {
         try {
             console.log('Sending book data to backend:', bookData);
+
+            // Check for duplicates first
+            const duplicateCheck = await checkForDuplicates(bookData);
+
+            if (duplicateCheck.has_duplicates) {
+                console.log('Found duplicates:', duplicateCheck.duplicates);
+                const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
+
+                if (!userConfirmed) {
+                    console.log('User cancelled due to duplicates');
+                    return;
+                }
+            }
+
             const response = await fetch('/books/select_search_result', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: getCSRFHeaders(),
                 body: JSON.stringify({
                     bookData: bookData
                 })
             });
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
             if (data.success) {
                 console.log('Received book details from backend:', data.book_details);
@@ -415,6 +500,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
 
             if (data.success && data.book_details) {
+                // Check for duplicates before filling form
+                const duplicateCheck = await checkForDuplicates({
+                    title: data.book_details.title,
+                    isbn: data.book_details.isbn
+                });
+
+                if (duplicateCheck.has_duplicates) {
+                    console.log('Found duplicates:', duplicateCheck.duplicates);
+                    const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
+
+                    if (!userConfirmed) {
+                        console.log('User cancelled due to duplicates');
+                        interactive.innerHTML = `
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-white text-center">
+                                    <p>Cancelled - duplicate book found</p>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+                }
+
                 fillBookForm(data.book_details);
                 interactive.innerHTML = `
                     <div class="flex items-center justify-center h-full">

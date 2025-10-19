@@ -10,12 +10,15 @@
 <body class="bg-primary min-h-screen">
     {% include '_sidebar.html' %}
 
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
     <!-- Main Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
 
         <!-- Page Header -->
         <div class="mb-8 text-center">
-            <h1 class="text-4xl font-display text-content-primary mb-2">Wishlist</h1>
+            <h1 class="text-4xl font-display font-bold text-content-primary mb-2">Wishlist</h1>
             <p class="text-content-secondary">Books you want to buy and add to your library</p>
         </div>
 
@@ -96,12 +99,11 @@
 
                 <!-- ISBN Lookup -->
                 <div id="isbn-section" data-method="isbn" class="search-method-content hidden">
-                    <form method="POST" enctype="multipart/form-data" class="flex gap-4 p-4">
-                        <input type="text" id="isbn_lookup" name="isbn"
+                    <form class="flex gap-4 p-4">
+                    <input type="text" id="isbn_lookup" name="isbn"
                             class="flex-1 bg-primary text-content-primary rounded-lg mb-6 px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent"
-                            placeholder="Enter ISBN to fetch book info"
-                            value="{{ book_details.isbn if book_details }}">
-                        <button type="submit" name="isbn_lookup" id="isbn-fetch"
+                            placeholder="Enter ISBN to fetch book info">
+                        <button type="submit" id="isbn-fetch"
                                 class="px-6 py-3 mb-6 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors duration-200 flex items-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -137,7 +139,7 @@
         </div>
 
         <!-- Book Form (Hidden by default, shown when book details are fetched) -->
-        <div id="book-form-container" class="bg-secondary-bg rounded-xl shadow-lg p-8 m-8 {% if not book_details %}hidden{% endif %}">
+        <div id="book-form-container" class="bg-secondary-bg rounded-xl shadow-lg p-8 m-8 hidden">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">Add Book to Wishlist</h2>
                 <button type="button"
@@ -150,40 +152,33 @@
             </div>
 
             <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-8">
-                {% if book_details and book_details.source %}
-                <div class="text-sm text-content-secondary italic mb-4 col-span-2">Data source: {{ book_details.source }}</div>
-                {% endif %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                 <!-- Left Column -->
                 <div class="space-y-6">
                     <div class="space-y-4">
                         <label class="block text-sm font-medium text-content-secondary">Title</label>
                         <input type="text" id="title" name="title" required
-                            value="{{ book_details.title if book_details }}"
                             class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
 
                         <label class="block text-sm font-medium text-content-secondary">Subtitle</label>
                         <input type="text" id="subtitle" name="subtitle"
-                            value="{{ book_details.subtitle if book_details }}"
                             class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
 
                         <label class="block text-sm font-medium text-content-secondary">Author</label>
                         <input type="text" id="author" name="author" required
-                            value="{{ book_details.author if book_details }}"
                             class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="space-y-4">
                                 <label class="block text-sm font-medium text-content-secondary">Year</label>
                                 <input type="text" id="year" name="year"
-                                    value="{{ book_details.year if book_details }}"
                                     class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                             </div>
 
                             <div class="space-y-4">
                                 <label class="block text-sm font-medium text-content-secondary">Pages</label>
                                 <input type="text" id="page_count" name="page_count"
-                                    value="{{ book_details.page_count if book_details }}"
                                     class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                             </div>
                         </div>
@@ -195,17 +190,14 @@
                     <div class="space-y-4">
                         <label class="block text-sm font-medium text-content-secondary">ISBN</label>
                         <input type="text" id="isbn" name="isbn"
-                            value="{{ book_details.isbn if book_details }}"
                             class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
 
                         <label class="block text-sm font-medium text-content-secondary">Publisher</label>
                         <input type="text" id="publisher" name="publisher"
-                            value="{{ book_details.publisher if book_details }}"
                             class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
 
                         <label class="block text-sm font-medium text-content-secondary">Genre</label>
                         <input type="text" id="genre" name="genre"
-                            value="{{ book_details.genre if book_details }}"
                             class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                     </div>
                 </div>
@@ -215,7 +207,7 @@
                     <label class="block text-sm font-medium text-content-secondary">Description</label>
                     <textarea id="description" name="description"
                             rows="4"
-                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none">{{ book_details.description if book_details }}</textarea>
+                            class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none"></textarea>
                 </div>
 
                 <!-- Wishlist Notes -->
@@ -234,14 +226,8 @@
                 <div class="md:col-span-2 flex flex-col items-center space-y-4 max-w-md mx-auto">
                     <label class="block font-medium text-content-secondary">Book Cover</label>
                     <div id="cover-preview" class="w-full flex justify-center">
-                        {% if book_details and book_details.thumbnail_url %}
-                        <img src="{{ book_details.thumbnail_url }}"
-                            alt="Book cover"
-                            class="max-w-xs rounded-lg shadow-lg">
-                        {% endif %}
                     </div>
-                    <input type="hidden" name="existing_cover_url"
-                        value="{{ book_details.local_cover_url if book_details and book_details.local_cover_url else '' }}">
+                    <input type="hidden" name="existing_cover_url" value="">
                     <div class="w-full">
                         <input type="file" id="image" name="image" accept="image/*"
                             class="w-full text-content-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg
@@ -262,13 +248,36 @@
             </form>
         </div>
 
+        <!-- Wishlist Search Dropdown (toggles with navbar search icon) -->
+        <div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl bg-primary
+                    transform -translate-y-full transition-all duration-300 ease-in-out opacity-0 invisible
+                    wishlist-search-container z-30">
+            <div class="bg-secondary-bg rounded-lg p-4 shadow-lg">
+                <div class="relative">
+                    <input type="text"
+                           id="wishlist-search"
+                           placeholder="Search your wishlist by title or author..."
+                           class="w-full pl-4 pr-10 py-3 bg-primary-bg border border-gray-600 rounded-lg
+                                  focus:ring-2 focus:ring-accent focus:border-transparent
+                                  placeholder-gray-400 text-content-primary transition-all">
+                    <button type="button"
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-accent hover:text-accent-hover transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="wishlist-search-count" class="text-center text-content-secondary text-sm mt-2 hidden"></div>
+            </div>
+        </div>
+
         <!-- Wishlist Books Grid -->
         {% if wishlist_books %}
         <div class="mt-12 mb-8">
-            <h2 class="text-3xl font-display text-content-primary mb-6 text-center">Your Wishlist ({{ wishlist_books|length }} books)</h2>
+            <h2 class="text-3xl font-display text-content-primary mb-6 text-center">Your Wishlist ({{ wishlist_books|length }} book{% if wishlist_books|length != 1 %}s{% endif %})</h2>
 
             <div class="container mx-auto px-4 py-8">
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="wishlist-grid">
                     {% for book in wishlist_books %}
                     <div class="group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
                         <a href="/books/book/{{ book.id }}"
@@ -304,7 +313,8 @@
                         <!-- Quick Action Buttons -->
                         <div class="px-4 pb-4">
                             <form action="/wishlist/move_to_library/{{ book.id }}" method="POST">
-                                <button type="submit"
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit"
                                         class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-white text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>

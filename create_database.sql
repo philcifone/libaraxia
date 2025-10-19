@@ -29,11 +29,26 @@ CREATE TABLE users (
 CREATE TABLE read_data (
     user_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
-    date_read DATE,
     rating INTEGER,
     comment TEXT,
-    PRIMARY KEY (user_id, book_id)
+    PRIMARY KEY (user_id, book_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
+
+CREATE TABLE reading_sessions (
+    session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    date_started DATE,
+    date_completed DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_reading_sessions_user_book
+ON reading_sessions(user_id, book_id);
 
 CREATE TABLE IF NOT EXISTS "collections" (
     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,

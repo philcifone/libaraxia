@@ -1,3 +1,21 @@
+// CSRF Token Helper Functions
+function getCSRFToken() {
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
+    if (tokenInput) return tokenInput.value;
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    if (tokenMeta) return tokenMeta.content;
+    console.warn('CSRF token not found');
+    return null;
+}
+
+function getCSRFHeaders() {
+    const token = getCSRFToken();
+    return {
+        'X-CSRFToken': token,
+        'Content-Type': 'application/json'
+    };
+}
+
 // Keywording/Tag Javascript
 document.addEventListener('DOMContentLoaded', function() {
     const tagInput = document.getElementById('tagInput');
@@ -29,9 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch('/tags/add', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: getCSRFHeaders(),
             body: JSON.stringify({
                 book_id: bookId,
                 tags: tags
@@ -50,9 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function removeTag(tagName) {
         fetch('/tags/remove', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: getCSRFHeaders(),
             body: JSON.stringify({
                 book_id: bookId,
                 tag: tagName

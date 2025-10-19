@@ -76,6 +76,32 @@ def login():
                 )
                 login_user(user_obj)
                 flash(f"Welcome, {user_obj.username}!", 'success')
+
+                # Check for unread notifications and display them
+                conn = get_db_connection()
+                try:
+                    unread_notifications = conn.execute("""
+                        SELECT message, created_at FROM notifications
+                        WHERE user_id = ? AND is_read = 0
+                        ORDER BY created_at DESC
+                        LIMIT 5
+                    """, (user_obj.id,)).fetchall()
+
+                    # Flash each notification
+                    for notif in unread_notifications:
+                        flash(notif['message'], 'info')
+
+                    # Mark all as read
+                    if unread_notifications:
+                        conn.execute("""
+                            UPDATE notifications
+                            SET is_read = 1
+                            WHERE user_id = ? AND is_read = 0
+                        """, (user_obj.id,))
+                        conn.commit()
+                finally:
+                    conn.close()
+
                 return redirect(url_for('base.index'))
         flash('Invalid email or password!', 'danger')
     return render_template('login.html')

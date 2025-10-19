@@ -1,3 +1,37 @@
+// CSRF Token Helper Function
+function getCSRFToken() {
+    // Try to get CSRF token from a hidden input in the page
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
+    if (tokenInput) {
+        return tokenInput.value;
+    }
+    // Fallback: try to get from meta tag if you add one later
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    if (tokenMeta) {
+        return tokenMeta.content;
+    }
+    console.warn('CSRF token not found');
+    return null;
+}
+
+// Helper function to add CSRF token to FormData
+function addCSRFToFormData(formData) {
+    const token = getCSRFToken();
+    if (token) {
+        formData.append('csrf_token', token);
+    }
+    return formData;
+}
+
+// Helper function to get headers with CSRF token
+function getCSRFHeaders() {
+    const token = getCSRFToken();
+    return {
+        'X-CSRFToken': token,
+        'Content-Type': 'application/json'
+    };
+}
+
 // // NEW JAVASCRIPT FOR BETTER SEARCH BAR NOT WORKING ROLLED BACK
 //
 // // Initialize everything on page load
@@ -172,20 +206,42 @@
 //     handleSort();
 // }
 
-// Sort form submission
+// Sort form submission with loading indicator
 function submitSortForm() {
-    // Preserve filter state when sorting
-    const filterPanel = document.getElementById('filter-panel');
-    if (!filterPanel.classList.contains('hidden')) {
-        const sortForm = document.getElementById('sort-form');
-        const showFiltersInput = document.createElement('input');
-        showFiltersInput.type = 'hidden';
-        showFiltersInput.name = 'show_filters';
-        showFiltersInput.value = '1';
-        sortForm.appendChild(showFiltersInput);
-    }
-    document.body.style.cursor = 'wait';
+    showLoadingIndicator('Sorting books...');
     document.getElementById('sort-form').submit();
+}
+
+// Show loading indicator
+function showLoadingIndicator(message = 'Loading...') {
+    // Create overlay if it doesn't exist
+    let overlay = document.getElementById('loading-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loading-overlay';
+        overlay.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center';
+        overlay.innerHTML = `
+            <div class="bg-secondary-bg rounded-lg px-6 py-4 shadow-xl flex items-center gap-3">
+                <svg class="animate-spin h-6 w-6 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-content-primary font-medium" id="loading-message">${message}</span>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        document.getElementById('loading-message').textContent = message;
+        overlay.classList.remove('hidden');
+    }
+}
+
+// Hide loading indicator
+function hideLoadingIndicator() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
 }
 // Filter toggle
 function toggleFilters() {
@@ -195,41 +251,90 @@ function toggleFilters() {
     // Toggle visibility
     panel.classList.toggle('hidden');
 
-    // Rotate arrow - using transform rotate classes
+    // Rotate arrow
     if (panel.classList.contains('hidden')) {
         arrow.classList.remove('rotate-180');
     } else {
         arrow.classList.add('rotate-180');
     }
 }
+
 // Clear filters
 function clearFilters() {
-    const form = document.getElementById('filter-form');
-    const inputs = form.getElementsByTagName('input');
-    const selects = form.getElementsByTagName('select');
-    // Clear all inputs except show_filters
-    for (let input of inputs) {
-        if (input.type === 'checkbox' || (input.type === 'hidden' && input.id !== 'show_filters')) {
-            input.checked = false;
-        }
-    }
-    // Clear all selects
-    for (let select of selects) {
-        select.value = '';
-    }
-    form.submit();
+    // Clear URL parameters and redirect to index
+    window.location.href = window.location.pathname;
 }
-// On page load, check if filters should be shown
+
+// Update active filters display
+function updateActiveFilters() {
+    const form = document.getElementById('filter-form');
+    if (!form) return;
+
+    const activeFilters = [];
+    const pillsContainer = document.getElementById('active-filter-pills');
+    const displayContainer = document.getElementById('active-filters-display');
+    const countBadge = document.getElementById('filter-count-badge');
+
+    // Check genre
+    const genre = document.getElementById('genre');
+    if (genre && genre.value) {
+        activeFilters.push({ label: 'Genre', value: genre.options[genre.selectedIndex].text });
+    }
+
+    // Check read status
+    const readStatus = document.getElementById('read_status');
+    if (readStatus && readStatus.value) {
+        activeFilters.push({ label: 'Status', value: readStatus.options[readStatus.selectedIndex].text });
+    }
+
+    // Check rating
+    const rating = document.getElementById('rating');
+    if (rating && rating.value) {
+        activeFilters.push({ label: 'Rating', value: rating.options[rating.selectedIndex].text });
+    }
+
+    // Check tags
+    const checkedTags = document.querySelectorAll('input[name="tags[]"]:checked');
+    checkedTags.forEach(tag => {
+        activeFilters.push({ label: 'Tag', value: tag.value });
+    });
+
+    // Update display
+    if (activeFilters.length > 0) {
+        pillsContainer.innerHTML = activeFilters.map(filter => `
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-accent/20 text-accent border border-accent/30">
+                <span class="opacity-75">${filter.label}:</span>
+                <span class="ml-1">${filter.value}</span>
+            </span>
+        `).join('');
+        displayContainer.classList.remove('hidden');
+        countBadge.textContent = activeFilters.length;
+        countBadge.classList.remove('hidden');
+    } else {
+        displayContainer.classList.add('hidden');
+        countBadge.classList.add('hidden');
+    }
+}
+// On page load, check if filters should be shown and update active filters
 document.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
     const filterPanel = document.getElementById('filter-panel');
     const arrow = document.getElementById('filterArrow');
 
+    // Check if there are any filter parameters (excluding sort, page, csrf)
+    const filterParams = ['genre', 'read_status', 'rating', 'tags[]'];
+    const hasFilters = filterParams.some(param => urlParams.has(param));
+
     // Show filters if any filter parameters are present
-    if (urlParams.toString() && urlParams.toString() !== '') {
-        filterPanel.classList.remove('hidden');
-        arrow.classList.add('rotate-180');
+    if (hasFilters) {
+        if (filterPanel && arrow) {
+            filterPanel.classList.remove('hidden');
+            arrow.classList.add('rotate-180');
+        }
     }
+
+    // Update active filters display on page load
+    updateActiveFilters();
 });
 document.addEventListener("DOMContentLoaded", () => {
     const hamburger = document.getElementById("hamburger");
@@ -453,6 +558,9 @@ function toggleCollection(checkbox, bookId, collectionId) {
     const formData = new FormData();
     formData.append('book_id', bookId);
     
+    // Add CSRF token to form data
+    addCSRFToFormData(formData);
+
     // Make the request
     fetch(`/collections/${collectionId}/${action}`, {
         method: 'POST',
@@ -504,7 +612,7 @@ function updateCollectionTags() {
 function removeFromCollection(collectionId, bookId) {
     fetch(`/collections/${collectionId}/remove`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getCSRFHeaders(),
         body: JSON.stringify({ book_id: bookId })
     })
     .then(response => response.json())
@@ -520,7 +628,7 @@ function createCollection() {
 
     fetch('/collections/create_custom_collection', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getCSRFHeaders(),
         body: JSON.stringify({ name })
     })
     .then(response => response.json())
@@ -530,3 +638,227 @@ function createCollection() {
         }
     });
 }
+
+// ============================================================================
+// INFINITE SCROLL PAGINATION
+// ============================================================================
+
+class InfiniteScroll {
+    constructor() {
+        this.currentPage = 1;
+        this.isLoading = false;
+        this.hasMore = true;
+        this.bookGrid = null;
+        this.loadingIndicator = null;
+        this.endMessage = null;
+        this.resultCount = null;
+
+        this.init();
+    }
+
+    init() {
+        // Find the book grid container - use more specific selector to avoid filter grids
+        this.bookGrid = document.querySelector('.container[data-current-page] > .grid');
+        if (!this.bookGrid) return;
+
+        // Get initial state from template data
+        const gridContainer = this.bookGrid.closest('.container');
+        if (gridContainer) {
+            this.currentPage = parseInt(gridContainer.dataset.currentPage) || 1;
+            this.hasMore = gridContainer.dataset.hasMore === 'true';
+        }
+
+        // Create and insert loading indicator
+        this.createLoadingIndicator();
+        this.createEndMessage();
+        this.createResultCount();
+
+        // Set up intersection observer for infinite scroll
+        this.setupIntersectionObserver();
+
+        // Update result count if it exists
+        this.updateResultCount();
+    }
+
+    createLoadingIndicator() {
+        this.loadingIndicator = document.createElement('div');
+        this.loadingIndicator.id = 'loading-indicator';
+        this.loadingIndicator.className = 'hidden text-center py-8';
+        this.loadingIndicator.innerHTML = `
+            <div class="inline-flex items-center gap-3">
+                <svg class="animate-spin h-8 w-8 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-lg text-content-secondary">Loading more books...</span>
+            </div>
+        `;
+
+        // Insert after the grid
+        this.bookGrid.parentElement.appendChild(this.loadingIndicator);
+    }
+
+    createEndMessage() {
+        // Disabled - end message not needed
+        this.endMessage = null;
+    }
+
+    createResultCount() {
+        // Disabled - result count not needed
+        this.resultCount = null;
+    }
+
+    updateResultCount(totalCount = null, currentCount = null) {
+        // Disabled - result count not needed
+        return;
+    }
+
+    setupIntersectionObserver() {
+        // Create a sentinel element at the bottom
+        const sentinel = document.createElement('div');
+        sentinel.id = 'scroll-sentinel';
+        sentinel.className = 'h-px';
+        this.bookGrid.parentElement.appendChild(sentinel);
+
+        // Set up intersection observer
+        const options = {
+            root: null, // viewport
+            rootMargin: '200px', // Load 200px before reaching the bottom
+            threshold: 0
+        };
+
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && this.hasMore && !this.isLoading) {
+                    this.loadMoreBooks();
+                }
+            });
+        }, options);
+
+        this.observer.observe(sentinel);
+    }
+
+    async loadMoreBooks() {
+        if (this.isLoading || !this.hasMore) return;
+
+        this.isLoading = true;
+        this.showLoading();
+
+        try {
+            // Build URL with current query parameters
+            const url = new URL(window.location.href);
+            const params = new URLSearchParams(url.search);
+
+            // Add pagination parameters
+            params.set('page', this.currentPage + 1);
+
+            // Make AJAX request
+            const response = await fetch(`${url.pathname}?${params.toString()}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) throw new Error('Network response was not ok');
+
+            const data = await response.json();
+
+            // Append new books to grid
+            this.appendBooks(data.books);
+
+            // Update state
+            this.currentPage = data.current_page;
+            this.hasMore = data.has_more;
+
+            // Update result count
+            this.updateResultCount(data.total_count, this.bookGrid.querySelectorAll('.group').length);
+
+            // Show end message if no more results
+            if (!this.hasMore) {
+                this.showEndMessage();
+            }
+
+        } catch (error) {
+            console.error('Error loading more books:', error);
+            this.showError();
+        } finally {
+            this.isLoading = false;
+            this.hideLoading();
+        }
+    }
+
+    appendBooks(books) {
+        books.forEach(book => {
+            const bookCard = this.createBookCard(book);
+            this.bookGrid.insertAdjacentHTML('beforeend', bookCard);
+        });
+    }
+
+    createBookCard(book) {
+        const coverImage = book.cover_image_url
+            ? `<img src="/static/${book.cover_image_url}"
+                    alt="${this.escapeHtml(book.title)}"
+                    class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
+            : `<div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
+                    <span class="text-sm italic">No Image Available</span>
+               </div>`;
+
+        return `
+            <div class="group">
+                <a href="/books/book/${book.id}"
+                   class="block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                    <div class="aspect-w-3 aspect-h-4 relative">
+                        ${coverImage}
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
+                            ${this.escapeHtml(book.title)}
+                        </h3>
+                        <p class="text-content-secondary text-sm italic">
+                            by ${this.escapeHtml(book.author)}
+                        </p>
+                    </div>
+                </a>
+            </div>
+        `;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    showLoading() {
+        this.loadingIndicator.classList.remove('hidden');
+    }
+
+    hideLoading() {
+        this.loadingIndicator.classList.add('hidden');
+    }
+
+    showEndMessage() {
+        // Disabled - end message not needed
+        return;
+    }
+
+    showError() {
+        // Create temporary error message
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'text-center py-4 text-red-400';
+        errorMsg.textContent = 'Failed to load more books. Please try again.';
+        this.bookGrid.parentElement.appendChild(errorMsg);
+
+        setTimeout(() => errorMsg.remove(), 5000);
+    }
+}
+
+// Initialize infinite scroll when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Only initialize on library index and search results pages
+    // Check for the book grid container with pagination data attributes
+    const bookGridContainer = document.querySelector('.container[data-current-page]');
+    if (bookGridContainer && document.querySelector('.container[data-current-page] > .grid')) {
+        new InfiniteScroll();
+    }
+});

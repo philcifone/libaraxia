@@ -11,18 +11,28 @@
 <body class="bg-primary text-content-primary p-6">
     {% include '_sidebar.html' %}
 
-    <div class="max-w-4xl mx-auto mt-20 px-4">
-        <h1 class="text-4xl font-display font-bold text-content-primary mb-8">Activity Feed</h1>
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+        <!-- Page Header -->
+        <div class="mb-8 text-center">
+            <h1 class="text-4xl font-display font-bold text-content-primary mb-2">Activity Feed</h1>
+            <p class="text-content-secondary">What are other users doing?</p>
+        </div>
 
         <!-- Activity Feed -->
         <div class="space-y-6">
             {% if activities %}
                 {% for activity in activities %}
-                    <div class="bg-secondary rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow relative">
-                        <!-- Dismiss button (only for user's own activities) -->
-                        {% if activity.user_id == current_user.id %}
-                        <div class="absolute top-4 right-4">
+                    <div class="bg-secondary rounded-lg shadow-md p-6 pb-16 hover:shadow-xl transition-shadow relative">
+                        <!-- Action buttons in top right -->
+                        <div class="absolute top-4 right-4 flex gap-3 items-center">
+                            <!-- Dismiss button (only for user's own activities) -->
+                            {% if activity.user_id == current_user.id %}
                             <form method="POST" action="/feed/dismiss_activity" class="inline" onsubmit="return confirm('Are you sure you want to dismiss this activity from the feed? This will hide it for all users.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <input type="hidden" name="activity_type" value="{{ activity.type }}">
                                 <input type="hidden" name="book_id" value="{{ activity.book_id }}">
                                 <input type="hidden" name="user_id" value="{{ activity.user_id }}">
@@ -32,8 +42,8 @@
                                     </svg>
                                 </button>
                             </form>
+                            {% endif %}
                         </div>
-                        {% endif %}
 
                         <div class="flex gap-4">
                             <!-- Book Cover -->
@@ -192,6 +202,38 @@
                                 {% endif %}
                             </div>
                         </div>
+
+                        <!-- Like button in bottom right corner (for all activity types) -->
+                        <div class="absolute bottom-6 right-6 z-10">
+                            {% if activity.user_id != current_user.id %}
+                            <button
+                                onclick="toggleLike('{{ activity.type }}', {{ activity.book_id | tojson }}, {{ activity.user_id | tojson }}, this)"
+                                class="like-button flex items-center gap-1 text-content-secondary hover:text-red-500 transition-colors"
+                                data-liked="{{ 'true' if activity.user_liked else 'false' }}"
+                                title="{{ 'Unlike' if activity.user_liked else 'Like' }}">
+                                <svg class="w-5 h-5 {{ 'fill-red-500 text-red-500' if activity.user_liked else 'fill-none' }}"
+                                     viewBox="0 0 24 24"
+                                     stroke="currentColor"
+                                     stroke-width="2">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                </svg>
+                                <span class="like-count text-sm">{{ activity.like_count if activity.like_count > 0 else '' }}</span>
+                            </button>
+                            {% else %}
+                            <!-- Show like count for own activities (non-clickable) -->
+                            {% if activity.like_count > 0 %}
+                            <div class="flex items-center gap-1 text-content-secondary">
+                                <svg class="w-5 h-5 fill-red-500 text-red-500"
+                                     viewBox="0 0 24 24"
+                                     stroke="currentColor"
+                                     stroke-width="2">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                </svg>
+                                <span class="text-sm">{{ activity.like_count }}</span>
+                            </div>
+                            {% endif %}
+                            {% endif %}
+                        </div>
                     </div>
                 {% endfor %}
             {% else %}
@@ -205,7 +247,64 @@
             {% endif %}
         </div>
     </div>
+    <!-- End Main Container -->
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        async function toggleLike(activityType, bookId, activityUserId, button) {
+            const isLiked = button.dataset.liked === 'true';
+            const endpoint = isLiked ? '/feed/unlike_activity' : '/feed/like_activity';
+
+            // Get CSRF token from meta tag or form
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value ||
+                              document.querySelector('meta[name="csrf-token"]')?.content;
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        activity_type: activityType,
+                        book_id: bookId,
+                        activity_user_id: activityUserId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Toggle the liked state
+                    button.dataset.liked = isLiked ? 'false' : 'true';
+
+                    // Update the heart icon
+                    const svg = button.querySelector('svg');
+                    if (isLiked) {
+                        svg.classList.remove('fill-red-500', 'text-red-500');
+                        svg.classList.add('fill-none');
+                        button.title = 'Like';
+                    } else {
+                        svg.classList.remove('fill-none');
+                        svg.classList.add('fill-red-500', 'text-red-500');
+                        button.title = 'Unlike';
+                    }
+
+                    // Update the like count
+                    const likeCountSpan = button.querySelector('.like-count');
+                    likeCountSpan.textContent = data.like_count > 0 ? data.like_count : '';
+                } else {
+                    console.error('Error toggling like:', data.error);
+                    if (data.error === 'Cannot like your own activity') {
+                        alert('You cannot like your own activity!');
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while processing your request.');
+            }
+        }
+    </script>
 </body>
 </html>

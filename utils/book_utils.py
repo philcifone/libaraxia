@@ -15,12 +15,21 @@ MAX_IMAGE_SIZE = (500, 1000)
 from typing import Optional, Dict, Any, List
 from flask import current_app
 import requests
+from urllib.parse import quote_plus
 
 def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any]]:
     """Search Google Books API by title/author and return formatted results."""
-    api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
+    api_url = f"https://www.googleapis.com/books/v1/volumes?q={quote_plus(query)}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
     try:
-        response = requests.get(api_url).json()
+        http_response = requests.get(api_url)
+        http_response.raise_for_status()  # Raise exception for bad status codes
+        response = http_response.json()
+
+        # Check for API errors
+        if "error" in response:
+            error_msg = response.get("error", {}).get("message", "Unknown API error")
+            current_app.logger.error(f"Google Books API error: {error_msg}")
+            raise Exception(f"Google Books API error: {error_msg}")
 
         if "items" not in response:
             current_app.logger.debug("No items found in Google Books response")
@@ -81,7 +90,16 @@ def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
     """Fetch book details from Google Books API with highest resolution cover."""
     api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
     try:
-        response = requests.get(api_url).json()
+        http_response = requests.get(api_url)
+        http_response.raise_for_status()
+        response = http_response.json()
+
+        # Check for API errors
+        if "error" in response:
+            error_msg = response.get("error", {}).get("message", "Unknown API error")
+            current_app.logger.error(f"Google Books API error: {error_msg}")
+            return None
+
         if "items" not in response:
             return None
 

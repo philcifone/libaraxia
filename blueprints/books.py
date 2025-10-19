@@ -58,7 +58,17 @@ def add_book():
                 request.files.get("image"),
                 request.form.get("existing_cover_url")
             )
-            
+
+            # Sanitize page_count: convert to integer or default to 0 if invalid
+            page_count_raw = request.form.get("page_count", "").strip()
+            try:
+                page_count = int(page_count_raw) if page_count_raw else 0
+                # Ensure non-negative
+                page_count = max(0, page_count)
+            except (ValueError, TypeError):
+                current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
+                page_count = 0
+
             with get_db_connection() as conn:
                 conn.execute("""
                     INSERT INTO books (title, author, publisher, publish_year, isbn,
@@ -70,14 +80,14 @@ def add_book():
                     request.form["publisher"],
                     request.form["year"],
                     request.form["isbn"],
-                    request.form["page_count"],
+                    page_count,
                     cover_image_url,
                     request.form.get("description"),
                     request.form["subtitle"],
                     request.form["genre"],
                     current_user.id
                 ))
-                
+
             flash("Book added successfully!", "success")
             return redirect(url_for("base.index"))
 
@@ -89,7 +99,6 @@ def add_book():
 
 @books_blueprint.route("/search_books")
 @login_required
-@admin_required
 def search_books():
     """AJAX endpoint for book search - returns JSON for frontend"""
     query = request.args.get("q", "")
@@ -114,7 +123,6 @@ def search_books():
 
 @books_blueprint.route("/fetch_isbn_details")
 @login_required
-@admin_required
 def fetch_isbn_details():
     """AJAX endpoint for barcode scanner - fetches book by ISBN"""
     isbn = request.args.get("isbn", "")
@@ -138,9 +146,86 @@ def fetch_isbn_details():
         current_app.logger.error(f"Error fetching ISBN details: {str(e)}")
         return jsonify({"success": False, "error": str(e)})
 
+@books_blueprint.route("/check_duplicates", methods=["POST"])
+@login_required
+def check_duplicates():
+    """Check if a book already exists in the library or wishlist"""
+    try:
+        data = request.get_json()
+        title = data.get("title", "").strip()
+        isbn = data.get("isbn", "").strip()
+
+        current_app.logger.debug(f"Checking duplicates for title: {title}, ISBN: {isbn}")
+
+        duplicates = []
+
+        with get_db_connection() as conn:
+            # Check for exact title match or ISBN match
+            query_parts = []
+            params = []
+
+            if title:
+                query_parts.append("LOWER(title) = LOWER(?)")
+                params.append(title)
+
+            if isbn:
+                if query_parts:
+                    query_parts.append("OR isbn = ?")
+                else:
+                    query_parts.append("isbn = ?")
+                params.append(isbn)
+
+            if not query_parts:
+                return jsonify({"has_duplicates": False, "duplicates": []})
+
+            query = f"SELECT id, title, author, isbn FROM books WHERE {' '.join(query_parts)}"
+            existing_books = conn.execute(query, params).fetchall()
+
+            for book in existing_books:
+                # Check if in library (collections table)
+                in_library = conn.execute("""
+                    SELECT 1 FROM collections
+                    WHERE user_id = ? AND book_id = ?
+                """, (current_user.id, book['id'])).fetchone()
+
+                # Check if in wishlist
+                in_wishlist = conn.execute("""
+                    SELECT 1 FROM wishlist
+                    WHERE user_id = ? AND book_id = ?
+                """, (current_user.id, book['id'])).fetchone()
+
+                duplicate_info = {
+                    "id": book['id'],
+                    "title": book['title'],
+                    "author": book['author'],
+                    "isbn": book['isbn'],
+                    "in_library": bool(in_library),
+                    "in_wishlist": bool(in_wishlist),
+                    "match_reason": []
+                }
+
+                # Determine what matched
+                if title and book['title'].lower() == title.lower():
+                    duplicate_info["match_reason"].append("title")
+                if isbn and book['isbn'] == isbn:
+                    duplicate_info["match_reason"].append("ISBN")
+
+                duplicates.append(duplicate_info)
+
+        has_duplicates = len(duplicates) > 0
+        current_app.logger.info(f"Found {len(duplicates)} potential duplicates")
+
+        return jsonify({
+            "has_duplicates": has_duplicates,
+            "duplicates": duplicates
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error checking duplicates: {str(e)}")
+        return jsonify({"success": False, "error": str(e)})
+
 @books_blueprint.route("/select_search_result", methods=["POST"])
 @login_required
-@admin_required
 def select_search_result():
     """Handle selection of a book from search results"""
     try:
@@ -164,6 +249,16 @@ def select_search_result():
             if not local_cover_url:
                 current_app.logger.warning("Failed to download cover image")
 
+        # Sanitize page_count: convert to integer or default to 0 if invalid
+        page_count_raw = original_data.get("pageCount", 0)
+        try:
+            page_count = int(page_count_raw) if page_count_raw else 0
+            # Ensure non-negative
+            page_count = max(0, page_count)
+        except (ValueError, TypeError):
+            current_app.logger.warning(f"Invalid pageCount value from API: {page_count_raw}, defaulting to 0")
+            page_count = 0
+
         # Create book details dictionary
         book_details = {
             "title": original_data.get("title", ""),
@@ -172,7 +267,7 @@ def select_search_result():
             "publisher": original_data.get("publisher", ""),
             "year": original_data.get("publishedDate", "").split("-")[0] if original_data.get("publishedDate") else "",
             "isbn": isbn,
-            "page_count": original_data.get("pageCount", 0),
+            "page_count": page_count,
             "description": original_data.get("description", ""),
             "genre": original_data.get("genre", ""),
             "cover_image_url": local_cover_url,  # Use local URL for database
@@ -247,9 +342,20 @@ def fetch_cover():
         
 @books_blueprint.route("/edit/<int:id>", methods=["GET", "POST"])
 @login_required
-@admin_required
 def edit_book(id):
     with get_db_connection() as conn:
+        # Get the book to check who added it
+        book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
+
+        if not book:
+            flash("Book not found.", "error")
+            return redirect(url_for("base.index"))
+
+        # Allow editing if user is admin or if they added the book
+        if not (current_user.is_admin or book['added_by'] == current_user.id):
+            flash("You don't have permission to edit this book.", "error")
+            return redirect(url_for("base.index"))
+
         book_details = None
 
         if request.method == "POST":
@@ -260,7 +366,7 @@ def edit_book(id):
                     flash("Book not found. Please enter details manually.", "error")
             else:
                 # Get current cover
-                current_cover = conn.execute("SELECT cover_image_url FROM books WHERE id = ?", (id,)).fetchone()[0]
+                current_cover = book['cover_image_url']
 
                 # Check if a cover was fetched via the fetch cover button
                 fetched_cover = request.form.get("fetched_cover_url")
@@ -276,6 +382,16 @@ def edit_book(id):
                     # Keep existing cover
                     cover_image_url = current_cover
 
+                # Sanitize page_count: convert to integer or default to 0 if invalid
+                page_count_raw = request.form.get("page_count", "").strip()
+                try:
+                    page_count = int(page_count_raw) if page_count_raw else 0
+                    # Ensure non-negative
+                    page_count = max(0, page_count)
+                except (ValueError, TypeError):
+                    current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
+                    page_count = 0
+
                 conn.execute("""
                     UPDATE books
                     SET title = ?, author = ?, publisher = ?, publish_year = ?,
@@ -286,7 +402,7 @@ def edit_book(id):
                     request.form["author"],
                     request.form.get("publisher"),
                     request.form.get("year"),
-                    request.form.get("page_count", 0),
+                    page_count,
                     cover_image_url,
                     request.form.get("description", ""),
                     request.form["subtitle"],
@@ -296,8 +412,6 @@ def edit_book(id):
 
                 flash("Book updated successfully!", "success")
                 return redirect(url_for("base.index"))
-
-        book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
 
     return render_template("edit_book.html", book=book, book_details=book_details)
 
@@ -309,12 +423,26 @@ def show_book(id):
         # Get book details
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
 
-        # Get reading status
+        # Get reading status and most recent reading session
         read_data = conn.execute("""
-            SELECT date_read, rating, comment
+            SELECT rating, comment
             FROM read_data
             WHERE user_id = ? AND book_id = ?
         """, (current_user.id, id)).fetchone()
+
+        # Get all reading sessions (ordered by completion date, oldest first)
+        reading_sessions = conn.execute("""
+            SELECT session_id, date_started, date_completed, created_at
+            FROM reading_sessions
+            WHERE user_id = ? AND book_id = ?
+            ORDER BY
+                CASE WHEN date_completed IS NULL THEN 1 ELSE 0 END,
+                COALESCE(date_completed, date_started, created_at) ASC,
+                created_at ASC
+        """, (current_user.id, id)).fetchall()
+
+        # Get the latest session for quick display
+        latest_session = reading_sessions[-1] if reading_sessions else None
 
         collection_status = conn.execute("""
             SELECT status
@@ -350,6 +478,8 @@ def show_book(id):
             "book_detail.html",
             book=book,
             read_data=read_data,
+            latest_session=latest_session,
+            reading_sessions=reading_sessions,
             collection_status=collection_status,
             custom_collections=custom_collections,
             wishlist_entry=wishlist_entry,
@@ -360,18 +490,34 @@ def show_book(id):
 
 @books_blueprint.route("/delete/<int:id>")
 @login_required
-@admin_required
 def delete_book(id):
     with get_db_connection() as conn:
-        conn.execute("DELETE FROM books WHERE id = ?", (id,))
+        # Get the book to check who added it
+        book = conn.execute("SELECT added_by FROM books WHERE id = ?", (id,)).fetchone()
+
+        if not book:
+            flash("Book not found.", "error")
+            return redirect(url_for('base.index'))
+
+        # Allow deletion if user is admin or if they added the book
+        if current_user.is_admin or book['added_by'] == current_user.id:
+            conn.execute("DELETE FROM books WHERE id = ?", (id,))
+            flash("Book deleted successfully.", "success")
+        else:
+            flash("You don't have permission to delete this book.", "error")
+
     return redirect(url_for('base.index'))
 
 @books_blueprint.route("/search", methods=["GET"])
 @login_required
 def search():
+    # Get pagination parameters
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 30, type=int)
+
     # Get search term
-    search_term = request.args.get("search_term", "").lower()
-    
+    search_term = request.args.get("search_term", "").strip()
+
     # Get sort parameters with validation
     sort_by = request.args.get("sort_by", "title")
     sort_order = request.args.get("sort_order", "asc")
@@ -384,67 +530,87 @@ def search():
     if sort_order not in valid_orders:
         sort_order = "asc"
 
-    # Build the base query
-    query = '''
-        SELECT DISTINCT b.* FROM books b
-        LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
-        LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
-        LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
-        LEFT JOIN wishlist w ON b.id = w.book_id AND w.user_id = ?
-        WHERE (b.title LIKE ? OR b.author LIKE ? OR b.publish_year LIKE ?)
-        AND w.wishlist_id IS NULL
-        AND NOT EXISTS (SELECT 1 FROM wishlist w2 WHERE w2.book_id = b.id)
-    '''
-    params = [current_user.id, current_user.id, current_user.id, current_user.id]
-    search_like = f"%{search_term}%"
-    params.extend([search_like, search_like, search_like])
-    
-    # Apply filters if they exist
-    if request.args.get('genre'):
-        query += " AND b.genre = ?"
-        params.append(request.args.get('genre'))
-    
-    if request.args.get('read_status'):
-        query += " AND c.status = ?"
-        params.append(request.args.get('read_status'))
-    
-    if request.args.get('rating'):
-        query += " AND r.rating = ?"
-        params.append(request.args.get('rating'))
-    
-    tags = request.args.getlist('tags[]')
-    if tags:
-        # Only use tags from the database
-        valid_tags_query = '''
-            SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?
-        '''
-        conn = get_db_connection()
-        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
-        conn.close()
+    # Limit per_page to reasonable values
+    per_page = max(12, min(per_page, 100))
 
-        # Filter to only include valid tags
-        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
-        if valid_tags_in_request:
-            placeholders = ','.join(['?' for _ in valid_tags_in_request])
-            query += f" AND t.tag_name IN ({placeholders})"
-            params.extend(valid_tags_in_request)
-    
-    # Add sorting
-    query += f" ORDER BY {sort_by} {sort_order}"
-
-    # Execute query
     conn = get_db_connection()
     try:
+        # Simplified query - search books not in wishlist
+        query = '''
+            SELECT b.* FROM books b
+            WHERE NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id)
+            AND (LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?)
+        '''
+        search_like = f"%{search_term}%"
+        params = [search_like, search_like, search_like]
+
+        # Apply filters if they exist (simplified)
+        if request.args.get('genre'):
+            query += " AND LOWER(b.genre) = LOWER(?)"
+            params.append(request.args.get('genre'))
+
+        if request.args.get('read_status'):
+            query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
+            params.extend([current_user.id, request.args.get('read_status')])
+
+        if request.args.get('rating'):
+            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating = ?)"
+            params.extend([current_user.id, int(request.args.get('rating'))])
+
+        tags = request.args.getlist('tags[]')
+        if tags:
+            # Validate tags exist for this user
+            valid_tags_query = 'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?'
+            valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
+
+            # Filter to only valid tags
+            valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
+            if valid_tags_in_request:
+                placeholders = ','.join(['?' for _ in valid_tags_in_request])
+                query += f" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = ? AND t.tag_name IN ({placeholders}))"
+                params.append(current_user.id)
+                params.extend(valid_tags_in_request)
+
+        # Get total count before pagination
+        count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")
+        total_count = conn.execute(count_query, params).fetchone()[0]
+
+        # Add sorting and pagination
+        query += f" ORDER BY b.{sort_by} {sort_order} LIMIT ? OFFSET ?"
+        offset = (page - 1) * per_page
+        params.extend([per_page, offset])
+
+        # Get paginated books
         books = conn.execute(query, params).fetchall()
-        
+        has_more = (offset + len(books)) < total_count
+
+        # Handle AJAX requests for infinite scroll
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            books_data = [{
+                'id': book['id'],
+                'title': book['title'],
+                'author': book['author'],
+                'cover_image_url': book['cover_image_url']
+            } for book in books]
+
+            return jsonify({
+                'books': books_data,
+                'total_count': total_count,
+                'has_more': has_more,
+                'current_page': page
+            })
+
         # Get filter options for the template
         filter_options = get_filter_options()
-        
+
         return render_template("search.html",
                              books=books,
                              filter_options=filter_options,
                              sort_by=sort_by,
                              sort_order=sort_order,
-                             search_term=search_term)
+                             search_term=search_term,
+                             total_count=total_count,
+                             has_more=has_more,
+                             current_page=page)
     finally:
         conn.close()

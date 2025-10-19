@@ -5,8 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=.8">
     <title>User Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+    <style>
+        .tab-button.active {
+            border-bottom: 3px solid #4f7d19;
+            background-color: rgba(79, 125, 25, 0.1);
+        }
+    </style>
 </head>
-<body class="bg-primary min-h-screen">
+<body class="bg-primary dark:bg-primary light:bg-primary-light min-h-screen">
     {% include '_sidebar.html' %}
 
     <!-- Flash Messages -->
@@ -25,25 +31,28 @@
             <div class="flex items-center gap-4 mb-6">
                 <!-- Avatar with Upload on Hover -->
                 {% if current_user.id == user['id'] %}
-                <div class="relative flex-shrink-0 group" style="width: 64px; height: 64px;">
-                    <label for="avatar-input" class="block w-full h-full cursor-pointer relative">
-                        {% if user['avatar_url'] %}
-                            <img id="avatar-image" src="{{ url_for('static', filename=user['avatar_url']) }}"
-                                 alt="{{ user['username'] }}"
-                                 class="w-full h-full rounded-full object-cover transition-all duration-200 group-hover:ring-2 group-hover:ring-accent group-hover:ring-offset-2 group-hover:ring-offset-secondary"
-                                 style="width: 64px; height: 64px;">
-                        {% else %}
-                            <div id="avatar-placeholder" class="w-full h-full rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-white transition-all duration-200 group-hover:ring-2 group-hover:ring-accent group-hover:ring-offset-2 group-hover:ring-offset-secondary"
-                                 style="width: 64px; height: 64px;">
-                                {{ user['username'][0].upper() }}
-                            </div>
-                        {% endif %}
-                    </label>
-                    <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" onchange="uploadAvatar(event)">
-                    <!-- Subtle hint text below avatar -->
-                    <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                        <span class="text-xs text-content-secondary"></span>
+                <div class="relative flex-shrink-0 flex items-center gap-2 group">
+                    <div style="width: 64px; height: 64px;">
+                        <label for="avatar-input" class="block w-full h-full cursor-pointer">
+                            {% if user['avatar_url'] %}
+                                <img id="avatar-image" src="{{ url_for('static', filename=user['avatar_url']) }}"
+                                     alt="{{ user['username'] }}"
+                                     class="w-full h-full rounded-full object-cover"
+                                     style="width: 64px; height: 64px;">
+                            {% else %}
+                                <div id="avatar-placeholder" class="w-full h-full rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-white"
+                                     style="width: 64px; height: 64px;">
+                                    {{ user['username'][0].upper() }}
+                                </div>
+                            {% endif %}
+                        </label>
+                        <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" onchange="uploadAvatar(event)">
                     </div>
+                    <label for="avatar-input" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100 cursor-pointer" title="Change profile picture">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                    </label>
                 </div>
                 {% else %}
                 <div class="relative flex-shrink-0" style="width: 64px; height: 64px;">
@@ -171,7 +180,7 @@
             </div>
         </section>
 
-                <!-- Reading Goal Section -->
+        <!-- Reading Goal Section -->
         {% if current_user.id == user['id'] %}
         <section class="bg-secondary rounded-xl p-6 shadow-lg">
             <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
@@ -214,7 +223,8 @@
 
             <!-- Update Reading Goal Form -->
             <form method="POST" action="{{ url_for('user.update_reading_goal') }}" class="flex gap-3">
-                <input type="number" id="reading_goal" name="reading_goal"
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="number" id="reading_goal" name="reading_goal"
                        value="{{ user['reading_goal'] or 0 }}" min="0"
                        placeholder="How many books do you want to read this year?"
                        class="flex-1 px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
@@ -227,58 +237,146 @@
         </section>
         {% endif %}
 
-        <!-- Library Stats Section -->
-        {% if library_stats %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
-            <h2 class="text-2xl font-display text-content-primary mb-6">Library Statistics</h2>
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Total Books</p>
-                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_books }}</p>
-                </div>
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Total Pages</p>
-                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_pages }}</p>
-                </div>
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Unique Authors</p>
-                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.unique_authors }}</p>
-                </div>
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Read Percentage</p>
-                    <p class="text-3xl font-bold text-content-primary">{{ library_stats.read_percentage }}%</p>
-                </div>
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Longest Book</p>
-                    <p class="text-xl font-bold text-content-primary truncate">{{ library_stats.longest_book }}</p>
-                </div>
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Most Common Genre</p>
-                    <p class="text-xl font-bold text-content-primary">{{ library_stats.most_common_genre }}</p>
-                </div>
-            </div>
-        </section>
-        {% endif %}
-
-        <!-- Stats Section -->
+        <!-- Statistics Tabs Section -->
         {% if stats %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
-            <h2 class="text-2xl font-display text-content-primary mb-6">Reading Statistics</h2>
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Books Read</p>
-                    <p class="text-3xl font-bold text-content-primary">{{ stats.books_read }}</p>
+        <section class="bg-secondary rounded-xl shadow-lg overflow-hidden">
+            <!-- Tab Navigation -->
+            <div class="flex">
+                <button onclick="switchTab('overview')" id="tab-overview" class="tab-button active flex-1 px-6 py-4 text-content-primary font-medium transition-colors hover:bg-primary focus:outline-none">
+                    Overview
+                </button>
+                <button onclick="switchTab('insights')" id="tab-insights" class="tab-button flex-1 px-6 py-4 text-content-secondary font-medium transition-colors hover:bg-primary focus:outline-none">
+                    Insights
+                </button>
+                <button onclick="switchTab('library')" id="tab-library" class="tab-button flex-1 px-6 py-4 text-content-secondary font-medium transition-colors hover:bg-primary focus:outline-none">
+                    Library
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="p-6">
+                <!-- Overview Tab -->
+                <div id="content-overview" class="tab-content">
+                    <h2 class="text-2xl font-display text-content-primary mb-6">Your Reading Stats</h2>
+                    <div class="grid md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Books Read</p>
+                            <p class="text-3xl font-bold text-content-primary">{{ stats.books_read or 0 }}</p>
+                        </div>
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Pages Read</p>
+                            <p class="text-3xl font-bold text-content-primary">{{ "{:,}".format(stats.pages_read or 0) }}</p>
+                        </div>
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Average Rating</p>
+                            <p class="text-3xl font-bold text-content-primary">
+                                {{ "%.1f"|format(stats.avg_rating or 0) }}
+                                <span class="text-yellow-400">★</span>
+                            </p>
+                        </div>
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Read Percentage</p>
+                            <p class="text-3xl font-bold text-content-primary">{{ stats.read_percentage }}%</p>
+                        </div>
+                    </div>
+
                 </div>
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Pages Read</p>
-                    <p class="text-3xl font-bold text-content-primary">{{ stats.pages_read or 0 }}</p>
+
+                <!-- Insights Tab -->
+                <div id="content-insights" class="tab-content hidden">
+                    <h2 class="text-2xl font-display text-content-primary mb-6">Reading Insights</h2>
+
+                    <!-- Top Genres -->
+                    <div class="bg-primary rounded-lg p-4 mb-6">
+                        <h3 class="text-lg font-semibold text-content-primary mb-4">Top Genres</h3>
+                        {% if stats.top_genres and stats.top_genres|length > 0 %}
+                        <div class="space-y-3">
+                            {% for genre in stats.top_genres %}
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg">
+                                <div class="flex-1">
+                                    <p class="font-medium text-content-primary">{{ genre.genre }}</p>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <p class="text-lg font-semibold text-accent">{{ genre.count }} book{{ 's' if genre.count > 1 else '' }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-content-secondary text-center py-8">No genre data available yet. Start reading books with genres!</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Collection Status -->
+                    <div class="bg-primary rounded-lg p-4 mb-6">
+                        <h3 class="text-lg font-semibold text-content-primary mb-4">Collection Status</h3>
+                        {% if stats.collection_status and stats.collection_status|length > 0 %}
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {% for status in stats.collection_status %}
+                            <div class="bg-secondary rounded-lg p-4 text-center">
+                                <p class="text-sm text-content-secondary mb-1">{{ status.status.capitalize() }}</p>
+                                <p class="text-3xl font-bold text-accent">{{ status.count }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-content-secondary text-center py-8">No collection data available yet.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Top Authors -->
+                    <div class="bg-primary rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-content-primary mb-4">Top Authors</h3>
+                        {% if stats.top_authors and stats.top_authors|length > 0 %}
+                        <div class="space-y-3">
+                            {% for author in stats.top_authors %}
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg">
+                                <div class="flex-1">
+                                    <p class="font-medium text-content-primary">{{ author.author }}</p>
+                                    <p class="text-sm text-content-secondary">{{ author.books_count }} book{{ 's' if author.books_count > 1 else '' }}</p>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <p class="text-lg font-semibold text-accent">
+                                        {{ author.avg_rating or 'N/A' }}
+                                        {% if author.avg_rating %}<span class="text-yellow-400">★</span>{% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-content-secondary text-center py-8">No author data available yet. Start reading and rating books!</p>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="bg-primary rounded-lg p-4">
-                    <p class="text-sm text-content-secondary mb-1">Average Rating</p>
-                    <p class="text-3xl font-bold text-content-primary">
-                        {{ "%.1f"|format(stats.avg_rating or 0) }}
-                        <span class="text-yellow-400">★</span>
-                    </p>
+
+                <!-- Library Tab -->
+                <div id="content-library" class="tab-content hidden">
+                    {% if library_stats %}
+                    <h2 class="text-2xl font-display text-content-primary mb-6">Library Statistics</h2>
+                    <div class="grid md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Total Books</p>
+                            <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_books }}</p>
+                        </div>
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Total Pages</p>
+                            <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_pages }}</p>
+                        </div>
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Unique Authors</p>
+                            <p class="text-3xl font-bold text-content-primary">{{ library_stats.unique_authors }}</p>
+                        </div>
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Longest Book</p>
+                            <p class="text-xl font-bold text-content-primary">{{ library_stats.longest_book }}</p>
+                        </div>
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">Most Common Genre</p>
+                            <p class="text-xl font-bold text-content-primary">{{ library_stats.most_common_genre }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -297,6 +395,30 @@
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+                button.classList.remove('text-content-primary');
+                button.classList.add('text-content-secondary');
+            });
+
+            // Show selected tab content
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+
+            // Activate selected tab button
+            const activeButton = document.getElementById('tab-' + tabName);
+            activeButton.classList.add('active', 'text-content-primary');
+            activeButton.classList.remove('text-content-secondary');
+        }
+    </script>
     <script>
         // Inline editing functionality
         function editField(fieldName) {
@@ -357,9 +479,7 @@
             try {
                 const response = await fetch(`/user/update_${fieldName}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: getCSRFHeaders(),
                     body: JSON.stringify({ [fieldName]: newValue })
                 });
 
@@ -462,9 +582,7 @@
             try {
                 const response = await fetch('/user/update_password', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: getCSRFHeaders(),
                     body: JSON.stringify({
                         current_password: currentPassword,
                         new_password: newPassword,
@@ -521,7 +639,8 @@
             // Create FormData and append file
             const formData = new FormData();
             formData.append('avatar', file);
-            console.log('FormData created with file');
+            addCSRFToFormData(formData); // Add CSRF token
+            console.log('FormData created with file and CSRF token');
 
             try {
                 console.log('Sending upload request to /user/upload_avatar');

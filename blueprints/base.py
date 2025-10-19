@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, request, Blueprint
+from flask import render_template, redirect, url_for, request, Blueprint, jsonify
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
 from datetime import datetime
@@ -10,12 +10,13 @@ def get_filter_options():
     """Get all filter options from the database"""
     conn = get_db_connection()
     try:
-        # Get unique genres
+        # Get unique genres (case-insensitive)
         genres = conn.execute('''
-            SELECT DISTINCT genre 
-            FROM books 
-            WHERE genre IS NOT NULL 
-            ORDER BY genre
+            SELECT genre
+            FROM books
+            WHERE genre IS NOT NULL
+            GROUP BY LOWER(genre)
+            ORDER BY LOWER(genre)
         ''').fetchall()
         
         # Get unique read statuses
@@ -61,6 +62,10 @@ def home():
 @base_blueprint.route("/index")
 @login_required
 def index():
+    # Get pagination parameters
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 30, type=int)
+
     # Get sort parameters with validation
     sort_by = request.args.get("sort_by", "title")
     sort_order = request.args.get("sort_order", "asc")
@@ -73,84 +78,85 @@ def index():
     if sort_order not in valid_orders:
         sort_order = "asc"
 
-    # Build the base query
-    query = '''
-        SELECT DISTINCT b.* FROM books b
-        LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
-        LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
-        LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
-        LEFT JOIN wishlist w ON b.id = w.book_id AND w.user_id = ?
-    '''
-    params = [current_user.id, current_user.id, current_user.id, current_user.id]
-    # Always exclude ALL wishlist books (from any user) from main library
-    conditions = [
-        "w.wishlist_id IS NULL",
-        "NOT EXISTS (SELECT 1 FROM wishlist w2 WHERE w2.book_id = b.id)"
-    ]
+    # Limit per_page to reasonable values
+    per_page = max(12, min(per_page, 100))
 
-    # Apply filters if they exist
-    if request.args.get('genre'):
-        conditions.append("b.genre = ?")
-        params.append(request.args.get('genre'))
-    
-    if request.args.get('read_status'):
-        conditions.append("c.status = ?")
-        params.append(request.args.get('read_status'))
-    
-    if request.args.get('rating'):
-        conditions.append("r.rating = ?")
-        params.append(request.args.get('rating'))
-    
-    tags = request.args.getlist('tags[]')
-    if tags:
-        # Only use tags from the database
-        valid_tags_query = '''
-            SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?
-        '''
-        conn = get_db_connection()
-        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
-        conn.close()
-
-        # Filter to only include valid tags
-        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
-        if valid_tags_in_request:
-            placeholders = ','.join(['?' for _ in valid_tags_in_request])
-            conditions.append(f"t.tag_name IN ({placeholders})")
-            params.extend(valid_tags_in_request)
-    
-    if request.args.get('date_range'):
-        date_range = request.args.get('date_range')
-        current_year = datetime.now().year
-        if date_range == 'this_year':
-            conditions.append("strftime('%Y', b.publish_year) = ?")
-            params.append(str(current_year))
-        elif date_range == 'last_year':
-            conditions.append("strftime('%Y', b.publish_year) = ?")
-            params.append(str(current_year - 1))
-        elif date_range == 'older':
-            conditions.append("strftime('%Y', b.publish_year) < ?")
-            params.append(str(current_year - 1))
-
-    # Add WHERE clause if conditions exist
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
-    
-    # Add sorting
-    query += f" ORDER BY {sort_by} {sort_order}"
-
-    # Execute query
     conn = get_db_connection()
     try:
+        # Simplified query - just get books not in wishlist
+        query = '''
+            SELECT b.* FROM books b
+            WHERE NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id)
+        '''
+        params = []
+
+        # Apply filters if they exist (simplified - no complex joins unless needed)
+        if request.args.get('genre'):
+            query += " AND LOWER(b.genre) = LOWER(?)"
+            params.append(request.args.get('genre'))
+
+        if request.args.get('read_status'):
+            query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
+            params.extend([current_user.id, request.args.get('read_status')])
+
+        if request.args.get('rating'):
+            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating = ?)"
+            params.extend([current_user.id, int(request.args.get('rating'))])
+
+        tags = request.args.getlist('tags[]')
+        if tags:
+            # Validate tags exist for this user
+            valid_tags_query = 'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?'
+            valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
+
+            # Filter to only valid tags
+            valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
+            if valid_tags_in_request:
+                placeholders = ','.join(['?' for _ in valid_tags_in_request])
+                query += f" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = ? AND t.tag_name IN ({placeholders}))"
+                params.append(current_user.id)
+                params.extend(valid_tags_in_request)
+
+        # Get total count before pagination
+        count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")
+        total_count = conn.execute(count_query, params).fetchone()[0]
+
+        # Add sorting and pagination
+        query += f" ORDER BY b.{sort_by} {sort_order} LIMIT ? OFFSET ?"
+        offset = (page - 1) * per_page
+        params.extend([per_page, offset])
+
+        # Get paginated books
         books = conn.execute(query, params).fetchall()
-        
+        has_more = (offset + len(books)) < total_count
+
+        # Handle AJAX requests for infinite scroll
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            books_data = [{
+                'id': book['id'],
+                'title': book['title'],
+                'author': book['author'],
+                'cover_image_url': book['cover_image_url']
+            } for book in books]
+
+            return jsonify({
+                'books': books_data,
+                'total_count': total_count,
+                'has_more': has_more,
+                'current_page': page
+            })
+
         # Get filter options for the template
         filter_options = get_filter_options()
-        
+
         return render_template("index.html",
                              books=books,
                              filter_options=filter_options,
                              sort_by=sort_by,
-                             sort_order=sort_order)
+                             sort_order=sort_order,
+                             total_count=total_count,
+                             has_more=has_more,
+                             current_page=page)
     finally:
         conn.close()
 

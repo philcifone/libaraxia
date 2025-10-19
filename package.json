@@ -12,5 +12,8 @@
   "dependencies": {
     "@fontsource-variable/crimson-pro": "^5.1.1",
     "@fontsource-variable/outfit": "^5.1.1"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.1.14"
   }
 }

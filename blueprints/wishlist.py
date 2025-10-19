@@ -15,39 +15,9 @@ wishlist_blueprint = Blueprint('wishlist', __name__, template_folder='templates'
 @login_required
 def view_wishlist():
     """Main wishlist page - shows search interface and current wishlist books"""
-    book_details = None
-    search_results = None
-
     if request.method == "POST":
-        if "isbn_lookup" in request.form:
-            # ISBN search
-            isbn = request.form["isbn"]
-            book_details = fetch_book_details_from_isbn(isbn)
-            if book_details:
-                flash(f"Book details fetched from {book_details['source']}", "success")
-            else:
-                book_details = {"error": "Book not found. Please enter details manually."}
-                flash("Book not found. Please enter details manually.", "error")
-
-        elif "title_search" in request.form:
-            # Title/Author search
-            query = request.form["search_query"]
-            search_results = search_google_books(query, max_results=15)
-            if not search_results:
-                flash("No results found", "error")
-
-        elif "barcode_scan" in request.form:
-            # Handle barcode scan result
-            isbn = request.form["barcode_result"]
-            if isbn:
-                book_details = fetch_book_details_from_isbn(isbn)
-                if book_details:
-                    flash(f"Book details fetched from {book_details['source']}", "success")
-                else:
-                    book_details = {"error": "Book not found. Please enter details manually."}
-                    flash("Book not found. Please enter details manually.", "error")
-
-        elif "submit_book" in request.form:
+        # Only handle manual book form submission
+        if "submit_book" in request.form:
             # Add book to wishlist
             # First, add to books table if it doesn't exist
             with get_db_connection() as conn:
@@ -116,11 +86,87 @@ def view_wishlist():
 
     return render_template(
         "wishlist.html",
-        book_details=book_details,
-        search_results=search_results,
         wishlist_books=wishlist_books
     )
 
+
+@wishlist_blueprint.route("/check_duplicates", methods=["POST"])
+@login_required
+def check_duplicates():
+    """Check if a book already exists in the library or wishlist"""
+    try:
+        data = request.get_json()
+        title = data.get("title", "").strip()
+        isbn = data.get("isbn", "").strip()
+
+        current_app.logger.debug(f"Checking duplicates for title: {title}, ISBN: {isbn}")
+
+        duplicates = []
+
+        with get_db_connection() as conn:
+            # Check for exact title match or ISBN match
+            query_parts = []
+            params = []
+
+            if title:
+                query_parts.append("LOWER(title) = LOWER(?)")
+                params.append(title)
+
+            if isbn:
+                if query_parts:
+                    query_parts.append("OR isbn = ?")
+                else:
+                    query_parts.append("isbn = ?")
+                params.append(isbn)
+
+            if not query_parts:
+                return jsonify({"has_duplicates": False, "duplicates": []})
+
+            query = f"SELECT id, title, author, isbn FROM books WHERE {' '.join(query_parts)}"
+            existing_books = conn.execute(query, params).fetchall()
+
+            for book in existing_books:
+                # Check if in library (collections table)
+                in_library = conn.execute("""
+                    SELECT 1 FROM collections
+                    WHERE user_id = ? AND book_id = ?
+                """, (current_user.id, book['id'])).fetchone()
+
+                # Check if in wishlist
+                in_wishlist = conn.execute("""
+                    SELECT 1 FROM wishlist
+                    WHERE user_id = ? AND book_id = ?
+                """, (current_user.id, book['id'])).fetchone()
+
+                duplicate_info = {
+                    "id": book['id'],
+                    "title": book['title'],
+                    "author": book['author'],
+                    "isbn": book['isbn'],
+                    "in_library": bool(in_library),
+                    "in_wishlist": bool(in_wishlist),
+                    "match_reason": []
+                }
+
+                # Determine what matched
+                if title and book['title'].lower() == title.lower():
+                    duplicate_info["match_reason"].append("title")
+                if isbn and book['isbn'] == isbn:
+                    duplicate_info["match_reason"].append("ISBN")
+
+                duplicates.append(duplicate_info)
+
+        has_duplicates = len(duplicates) > 0
+        current_app.logger.info(f"Found {len(duplicates)} potential duplicates")
+
+        return jsonify({
+            "has_duplicates": has_duplicates,
+            "duplicates": duplicates
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error checking duplicates: {str(e)}")
+        return jsonify({"success": False, "error": str(e)})
 
 @wishlist_blueprint.route("/select_search_result", methods=["POST"])
 @login_required

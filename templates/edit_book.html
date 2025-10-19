@@ -9,6 +9,9 @@
 <body class="h-full">
     {% include '_sidebar.html' %}
 
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
         <div class="flex items-center mb-8">
@@ -23,7 +26,8 @@
             <h1 class="text-3xl font-display text-content-primary mb-8 text-center">Edit Book Information</h1>
 
             <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-8">
-                <!-- Left Column -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <!-- Left Column -->
                 <div class="space-y-6">
                     <div class="space-y-4">
                         <label class="block text-sm font-medium text-content-secondary">Title</label>
@@ -66,9 +70,11 @@
 
                         <div class="space-y-4">
                             <label class="block text-sm font-medium text-content-secondary">Pages</label>
-                            <input type="text" 
-                                   id="page_count" 
+                            <input type="number"
+                                   id="page_count"
                                    name="page_count"
+                                   min="0"
+                                   step="1"
                                    value="{{ book_details.page_count if book_details else book[7] }}"
                                    class="w-full bg-primary-bg border border-gray-600 rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                         </div>

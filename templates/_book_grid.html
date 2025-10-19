@@ -1,13 +1,16 @@
     <!-- Book Grid -->
-    <div class="container mx-auto px-4 py-8">
+    <div class="container mx-auto px-4 py-8"
+         data-current-page="{{ current_page | default(1) }}"
+         data-has-more="{{ has_more | default(false) | lower }}"
+         data-total-count="{{ total_count | default(0) }}">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mt-12">
             {% for book in books %}
             <div class="group">
-                <a href="/books/book/{{ book[0] }}" 
+                <a href="/books/book/{{ book[0] }}"
                    class="block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
                     <div class="aspect-w-3 aspect-h-4 relative">
                         {% if book.cover_image_url %}
-                        <img src="{{ url_for('static', filename=book['cover_image_url']) }}" 
+                        <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                              alt="{{ book[1] }}"
                              class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />
                         {% else %}
@@ -16,7 +19,7 @@
                         </div>
                         {% endif %}
                     </div>
-                    
+
                     <div class="p-4">
                         <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
                             {{ book[1] }}

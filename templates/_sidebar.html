@@ -1,31 +1,31 @@
 <!-- Fixed Header -->
-<div class="fixed top-0 left-0 w-full h-16 bg-secondary z-50 px-5 flex items-center justify-between">
+<div class="fixed top-0 left-0 w-full h-16 bg-secondary z-50 px-4 flex items-center justify-between">
+    <!-- Hamburger Menu -->
+    <button id="hamburger" 
+            class="p-2 hover:bg-primary/20 rounded-lg transition-colors" 
+            aria-label="Menu">
+        <div class="flex flex-col gap-1.5 justify-center h-full">
+            <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
+            <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
+            <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
+        </div>
+    </button>
+    
+    <!-- Site Title -->
+    <h1>
+        <a href="/base/index" class="text-2xl font-display text-content-primary font-semibold tracking-wide">
+            L I B A R A X I A
+        </a>
+    </h1>
+    
     <!-- Search Toggle -->
-    <button id="search-toggle" class="absolute right-4 p-2 hover:bg-primary/20 rounded-lg transition-colors" aria-label="Toggle Search">
+    <button id="search-toggle" class="p-2 hover:bg-primary/20 rounded-lg transition-colors" aria-label="Toggle Search">
         <svg class="w-6 h-6 stroke-content-primary" viewBox="0 0 24 24" stroke-width="2" fill="none">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
     </button>
-    
-    <!-- Site Title -->
-    <h1>
-        <a href="/base/index" class="text-2xl font-display text-content-primary font-semibold tracking-wide ml-16">
-            Libaraxia
-        </a>
-    </h1>
 </div>
-
-<!-- Hamburger Menu -->
-<button id="hamburger" 
-        class="fixed top-4 left-4 w-10 h-10 z-50 p-2 hover:bg-primary/20 rounded-lg transition-colors" 
-        aria-label="Menu">
-    <div class="flex flex-col gap-1.5 justify-center h-full">
-        <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
-        <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
-        <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
-    </div>
-</button>
 
 <!-- Sidebar -->
 <div id="sidebar" 

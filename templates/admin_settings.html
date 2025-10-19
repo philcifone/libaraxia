@@ -46,6 +46,7 @@
 
             <!-- Create User Form -->
             <form method="POST" action="{{ url_for('admin.create_user') }}" id="create-user-form" class="grid md:grid-cols-2 gap-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div>
                     <label class="block text-sm font-medium text-content-secondary mb-2">Username</label>
                     <input type="text" name="username" required
@@ -111,6 +112,7 @@
                 <div class="grid md:grid-cols-2 gap-6">
                     <!-- Update Email -->
                     <form method="POST" action="{{ url_for('admin.update_user_email') }}" class="space-y-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="user_id" id="edit-user-id-email">
                         <h4 class="text-sm font-semibold text-content-primary">Update Email</h4>
                         <input type="email" name="new_email" placeholder="New email address" required
@@ -122,6 +124,7 @@
 
                     <!-- Reset Password -->
                     <form method="POST" action="{{ url_for('admin.reset_user_password') }}" class="space-y-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="user_id" id="edit-user-id-password">
                         <h4 class="text-sm font-semibold text-content-primary">Reset Password</h4>
                         <input type="password" name="new_password" placeholder="New password" required minlength="6"
@@ -136,6 +139,7 @@
                 <div class="grid md:grid-cols-2 gap-4">
                     <!-- Admin Status -->
                     <form method="POST" action="{{ url_for('admin.toggle_admin') }}" class="bg-primary rounded-lg p-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="user_id" id="edit-user-id-admin">
                         <div class="mb-3">
                             <p class="text-sm font-medium text-content-primary">Admin Privileges</p>
@@ -148,6 +152,7 @@
 
                     <!-- Active Status -->
                     <form method="POST" action="{{ url_for('admin.toggle_user') }}" class="bg-primary rounded-lg p-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="user_id" id="edit-user-id-active">
                         <div class="mb-3">
                             <p class="text-sm font-medium text-content-primary">Account Status</p>
@@ -163,6 +168,7 @@
                 <div class="pt-4 border-t border-gray-700">
                     <form method="POST" action="{{ url_for('admin.delete_user') }}"
                           onsubmit="return confirm('Are you sure you want to permanently delete this user and all their data? This cannot be undone.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="user_id" id="edit-user-id-delete">
                         <button type="submit" class="w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,6 +426,10 @@
             formData.append('user_id', currentEditUserId);
 
             try {
+                // Get CSRF token from meta tag or form
+                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+                formData.append('csrf_token', csrfToken);
+
                 const response = await fetch('/admin/upload_user_avatar', {
                     method: 'POST',
                     body: formData
@@ -462,10 +472,14 @@
             if (!confirm('Remove this user\'s avatar?')) return;
 
             try {
+                // Get CSRF token
+                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
                 const response = await fetch('/admin/remove_user_avatar', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({ user_id: currentEditUserId })
                 });

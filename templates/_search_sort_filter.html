@@ -1,22 +1,24 @@
 <!-- Main container with transitions for smooth show/hide -->
-<div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl space-y-6 bg-primary 
+<div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl space-y-4 bg-primary
             transform -translate-y-full transition-all duration-300 ease-in-out opacity-0 invisible
             search-form-container z-30">
+
     <!-- Search and Sort Container -->
-    <div class="flex flex-col md:flex-row gap-4 items-center bg-secondary-bg rounded-lg p-4 shadow-lg">
+    <div class="flex flex-col lg:flex-row gap-4 items-stretch bg-secondary-bg rounded-lg p-4 shadow-lg">
         <!-- Search Form -->
-        <form method="GET" action="{{ url_for('books.search') }}" class="w-full md:w-1/2">
+        <form method="GET" action="{{ url_for('books.search') }}" class="flex-1" onsubmit="showLoadingIndicator('Searching...')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="relative">
-                <input type="text" 
-                       id="search_term" 
+                <input type="text"
+                       id="search_term"
                        name="search_term"
-                       placeholder="Search by title, author, year..." 
+                       placeholder="Search by title, author, year..."
                        value="{{ request.args.get('search_term', '') }}"
-                       class="w-full pl-4 pr-10 py-2 bg-primary-bg border border-gray-600 rounded-lg 
+                       class="w-full pl-4 pr-10 py-2.5 bg-primary-bg border border-gray-600 rounded-lg
                               focus:ring-2 focus:ring-accent focus:border-transparent
-                              placeholder-gray-400 text-content-primary">
-                <button type="submit" 
-                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-accent hover:text-accent-hover">
+                              placeholder-gray-400 text-content-primary transition-all">
+                <button type="submit"
+                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-accent hover:text-accent-hover transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                     </svg>
@@ -25,62 +27,87 @@
         </form>
 
         <!-- Sort Controls -->
-        <form method="GET" 
-              action="{{ url_for('base.index') }}" 
+        <form method="GET"
+              action="{{ url_for('base.index') }}"
               id="sort-form"
-              class="flex flex-wrap gap-2 items-center w-full md:w-1/2">
-            <label for="sort_by" class="text-content-secondary font-medium">Sort:</label>
-            <select name="sort_by" 
-                    id="sort_by" 
+              class="flex flex-wrap gap-2 items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <label for="sort_by" class="text-content-secondary font-medium text-sm">Sort:</label>
+            <select name="sort_by"
+                    id="sort_by"
                     onchange="submitSortForm()"
                     class="bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
-                           focus:ring-2 focus:ring-accent focus:border-transparent">
+                           focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
                 <option value="title" {% if sort_by=="title" %}selected{% endif %}>Title</option>
                 <option value="author" {% if sort_by=="author" %}selected{% endif %}>Author</option>
-                <option value="publish_year" {% if sort_by=="publish_year" %}selected{% endif %}>Year Published</option>
+                <option value="publish_year" {% if sort_by=="publish_year" %}selected{% endif %}>Year</option>
                 <option value="created_at" {% if sort_by=="created_at" %}selected{% endif %}>Date Added</option>
             </select>
 
-            <select name="sort_order" 
-                    id="sort_order" 
+            <select name="sort_order"
+                    id="sort_order"
                     onchange="submitSortForm()"
                     class="bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
-                           focus:ring-2 focus:ring-accent focus:border-transparent">
-                <option value="asc" {% if sort_order=="asc" %}selected{% endif %}>Ascending</option>
-                <option value="desc" {% if sort_order=="desc" %}selected{% endif %}>Descending</option>
+                           focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
+                <option value="asc" {% if sort_order=="asc" %}selected{% endif %}>A-Z</option>
+                <option value="desc" {% if sort_order=="desc" %}selected{% endif %}>Z-A</option>
             </select>
         </form>
     </div>
 
-    <!-- Filter Section -->
+    <!-- Active Filters Display -->
+    <div id="active-filters-display" class="hidden">
+        <div class="bg-secondary-bg rounded-lg px-4 py-2 shadow-md">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-content-secondary text-sm font-medium">Active filters:</span>
+                <div id="active-filter-pills" class="flex flex-wrap gap-2"></div>
+                <button onclick="clearFilters()"
+                        class="ml-auto text-accent hover:text-accent-hover text-sm font-medium transition-colors">
+                    Clear all
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section - Collapsible -->
     <div class="bg-secondary-bg rounded-lg shadow-lg overflow-hidden">
         <!-- Filter Toggle Button -->
-        <button onclick="toggleFilters()" 
-                class="w-full px-4 py-3 flex items-center justify-center gap-2 
-                       text-content-primary hover:bg-primary-hover transition-colors">
-            <span class="font-medium">Filters</span>
-            <svg xmlns="http://www.w3.org/2000/svg" 
-                 class="h-5 w-5 transform transition-transform duration-200" 
+        <button onclick="toggleFilters()"
+                type="button"
+                class="w-full px-4 py-3 flex items-center justify-between
+                       text-content-primary hover:bg-primary-hover transition-colors group">
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span class="font-medium">Advanced Filters</span>
+                <span id="filter-count-badge" class="hidden px-2 py-0.5 bg-accent text-white text-xs rounded-full"></span>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 class="h-5 w-5 transform transition-transform duration-200 group-hover:text-accent"
                  id="filterArrow"
-                 fill="none" 
-                 viewBox="0 0 24 24" 
+                 fill="none"
+                 viewBox="0 0 24 24"
                  stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
         </button>
 
         <!-- Filter Panel -->
-        <div class="filter-content {% if request.args|length > 1 %}active{% endif %} hidden p-4" id="filter-panel">
-            <form id="filter-form" method="GET" action="{{ url_for('base.index') }}" class="space-y-6">
+        <div class="filter-content hidden transition-all duration-200" id="filter-panel">
+            <form id="filter-form" method="GET" action="{{ url_for('base.index') }}" class="p-4 space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
                 <!-- Filter Groups Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <!-- Genre Filter -->
                     <div class="space-y-2">
                         <label for="genre" class="block text-sm font-medium text-content-secondary">Genre</label>
-                        <select name="genre" id="genre" 
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 
-                                       focus:ring-2 focus:ring-accent focus:border-transparent">
-                            <option value="">All</option>
+                        <select name="genre" id="genre"
+                                onchange="updateActiveFilters()"
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
+                            <option value="">All Genres</option>
                             {% for genre in filter_options.genres %}
                             <option value="{{ genre }}" {% if request.args.get('genre')==genre %}selected{% endif %}>
                                 {{ genre }}
@@ -91,11 +118,12 @@
 
                     <!-- Status Filter -->
                     <div class="space-y-2">
-                        <label for="read_status" class="block text-sm font-medium text-content-secondary">Status</label>
-                        <select name="read_status" id="read_status" 
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 
-                                       focus:ring-2 focus:ring-accent focus:border-transparent">
-                            <option value="">All</option>
+                        <label for="read_status" class="block text-sm font-medium text-content-secondary">Read Status</label>
+                        <select name="read_status" id="read_status"
+                                onchange="updateActiveFilters()"
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
+                            <option value="">All Statuses</option>
                             {% for status in filter_options.read_statuses %}
                             <option value="{{ status }}" {% if request.args.get('read_status')==status %}selected{% endif %}>
                                 {{ status }}
@@ -104,30 +132,17 @@
                         </select>
                     </div>
 
-                    <!-- Date Range Filter -->
-                    <div class="space-y-2">
-                        <label for="date_range" class="block text-sm font-medium text-content-secondary">Date</label>
-                        <select name="date_range" id="date_range" 
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 
-                                       focus:ring-2 focus:ring-accent focus:border-transparent">
-                            {% for range in filter_options.date_ranges %}
-                            <option value="{{ range.value }}" {% if request.args.get('date_range')==range.value %}selected{% endif %}>
-                                {{ range.label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
                     <!-- Rating Filter -->
                     <div class="space-y-2">
-                        <label for="rating" class="block text-sm font-medium text-content-secondary">Rating</label>
-                        <select name="rating" id="rating" 
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 
-                                       focus:ring-2 focus:ring-accent focus:border-transparent">
-                            <option value="">All</option>
+                        <label for="rating" class="block text-sm font-medium text-content-secondary">Minimum Rating</label>
+                        <select name="rating" id="rating"
+                                onchange="updateActiveFilters()"
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
+                            <option value="">All Ratings</option>
                             {% for rating in range(1, 6) %}
                             <option value="{{ rating }}" {% if request.args.get('rating')|int == rating %}selected{% endif %}>
-                                {{ "★" * rating }}
+                                {{ "★" * rating }} and up
                             </option>
                             {% endfor %}
                         </select>
@@ -135,36 +150,40 @@
                 </div>
 
                 <!-- Tags Section -->
+                {% if filter_options.tags %}
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-content-secondary">Tags</label>
-                    <div class="max-h-32 overflow-y-auto p-2 bg-primary-bg rounded-lg border border-gray-600 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {% for tag in filter_options.tags %}
-                        <label class="inline-flex items-center space-x-2">
-                            <input type="checkbox" 
-                                   name="tags[]" 
-                                   value="{{ tag }}"
-                                   {% if tag in request.args.getlist('tags[]') %}checked{% endif %}
-                                   class="form-checkbox text-accent rounded border-gray-600 
-                                          focus:ring-accent focus:ring-offset-0">
-                            <span class="text-content-primary text-sm">{{ tag }}</span>
-                        </label>
-                        {% endfor %}
+                    <div class="max-h-32 overflow-y-auto p-3 bg-primary-bg rounded-lg border border-gray-600">
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                            {% for tag in filter_options.tags %}
+                            <label class="inline-flex items-center space-x-2 cursor-pointer hover:text-accent transition-colors">
+                                <input type="checkbox"
+                                       name="tags[]"
+                                       value="{{ tag }}"
+                                       onchange="updateActiveFilters()"
+                                       {% if tag in request.args.getlist('tags[]') %}checked{% endif %}
+                                       class="form-checkbox text-accent rounded border-gray-600
+                                              focus:ring-accent focus:ring-offset-0 cursor-pointer">
+                                <span class="text-content-primary text-sm">{{ tag }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
-
-                <input type="hidden" name="show_filters" id="show_filters" value="1">
+                {% endif %}
 
                 <!-- Filter Actions -->
-                <div class="flex justify-end gap-4">
-                    <button type="button" 
-                            onclick="clearFilters()" 
-                            class="px-4 py-2 text-content-primary bg-primary-bg hover:bg-primary-hover 
-                                   rounded-lg border border-gray-600 transition-colors">
-                        Clear
+                <div class="flex justify-end gap-3 pt-2 border-t border-gray-700">
+                    <button type="button"
+                            onclick="clearFilters()"
+                            class="px-4 py-2 text-content-primary bg-primary-bg hover:bg-primary-hover
+                                   rounded-lg border border-gray-600 transition-all font-medium">
+                        Clear Filters
                     </button>
-                    <button type="submit" 
-                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg 
-                                   transition-colors">
+                    <button type="submit"
+                            onclick="showLoadingIndicator('Applying filters...')"
+                            class="px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg
+                                   transition-all font-medium shadow-md hover:shadow-lg">
                         Apply Filters
                     </button>
                 </div>
