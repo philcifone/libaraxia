@@ -159,7 +159,7 @@ def delete_user():
 
     conn = get_db_connection()
     try:
-        user = conn.execute('SELECT username, is_admin FROM users WHERE id = ?', (user_id,)).fetchone()
+        user = conn.execute('SELECT username, is_admin, avatar_url FROM users WHERE id = ?', (user_id,)).fetchone()
 
         if not user:
             flash("User not found", "error")
@@ -174,6 +174,11 @@ def delete_user():
 
         # Delete user and their associated data
         username = user['username']
+
+        # Delete user's avatar file if it exists
+        if user['avatar_url']:
+            from utils.image_utils import delete_image_file
+            delete_image_file(user['avatar_url'])
 
         # Delete user's data (cascading delete)
         conn.execute('DELETE FROM read_data WHERE user_id = ?', (user_id,))
@@ -476,3 +481,57 @@ def remove_user_avatar():
     except Exception as e:
         current_app.logger.error(f"Error removing avatar: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+
+
+@admin_blueprint.route("/orphaned_images")
+@login_required
+@admin_required
+def orphaned_images():
+    """Display orphaned images that can be cleaned up"""
+    conn = get_db_connection()
+    try:
+        from utils.image_utils import find_orphaned_images
+        orphaned_data = find_orphaned_images(conn)
+
+        return render_template(
+            'admin/orphaned_images.html',
+            orphaned_files=orphaned_data['orphaned_files'],
+            total_size_mb=orphaned_data['total_size_mb'],
+            count=orphaned_data['count']
+        )
+    finally:
+        conn.close()
+
+
+@admin_blueprint.route("/cleanup_orphaned_images", methods=["POST"])
+@login_required
+@admin_required
+def cleanup_orphaned_images():
+    """Delete selected orphaned image files"""
+    try:
+        # Get list of files to delete from form
+        files_to_delete = request.form.getlist('files[]')
+
+        if not files_to_delete:
+            flash("No files selected for deletion", "warning")
+            return redirect(url_for('admin.orphaned_images'))
+
+        from utils.image_utils import cleanup_orphaned_images
+        result = cleanup_orphaned_images(files_to_delete)
+
+        if result['deleted'] > 0:
+            flash(f"Successfully deleted {result['deleted']} orphaned image(s)", "success")
+
+        if result['failed'] > 0:
+            flash(f"Failed to delete {result['failed']} file(s)", "error")
+            for error in result['errors']:
+                current_app.logger.error(error)
+
+        current_app.logger.info(f"Admin {current_user.username} cleaned up {result['deleted']} orphaned images")
+
+        return redirect(url_for('admin.orphaned_images'))
+
+    except Exception as e:
+        current_app.logger.error(f"Error cleaning up orphaned images: {str(e)}", exc_info=True)
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('admin.orphaned_images'))

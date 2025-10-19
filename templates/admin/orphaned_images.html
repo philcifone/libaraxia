@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8">
+    <title>Orphaned Images - Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+</head>
+<body class="bg-primary min-h-screen">
+    {% include '_sidebar.html' %}
+
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+        <!-- Back Nav -->
+        <a href="{{ url_for('admin.settings') }}"
+           class="inline-flex items-center text-content-secondary hover:text-accent transition-colors mb-6">
+            <span class="mr-2">←</span>
+            <span>Back to Admin Settings</span>
+        </a>
+
+        <div class="mb-8">
+            <h1 class="text-3xl font-display text-content-primary mb-2">Orphaned Images</h1>
+            <p class="text-content-secondary text-sm">
+                Image files on disk that are not referenced in the database
+            </p>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="bg-secondary rounded-lg border border-gray-700 p-6">
+                <div class="text-sm font-medium text-content-secondary mb-2">Orphaned Files</div>
+                <div class="text-3xl font-bold text-content-primary">{{ count }}</div>
+            </div>
+            <div class="bg-secondary rounded-lg border border-gray-700 p-6">
+                <div class="text-sm font-medium text-content-secondary mb-2">Total Size</div>
+                <div class="text-3xl font-bold text-content-primary">{{ total_size_mb }} MB</div>
+            </div>
+        </div>
+
+        {% if count == 0 %}
+            <!-- No Orphaned Files -->
+            <div class="bg-secondary rounded-lg border border-gray-700 p-12 text-center">
+                <p class="text-content-secondary text-lg">No orphaned images</p>
+            </div>
+        {% else %}
+            <!-- Orphaned Files List -->
+            <div class="bg-secondary rounded-lg border border-gray-700 p-6">
+                <form method="POST" action="{{ url_for('admin.cleanup_orphaned_images') }}" onsubmit="return confirmDeletion()">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <button type="button" onclick="selectAll()" class="text-sm text-content-secondary hover:text-accent transition-colors">
+                                Select All
+                            </button>
+                            <button type="button" onclick="deselectAll()" class="text-sm text-content-secondary hover:text-accent transition-colors">
+                                Deselect All
+                            </button>
+                            <span class="text-sm text-content-secondary">
+                                <span id="selected-count">0</span> selected
+                            </span>
+                        </div>
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors font-medium">
+                            Delete Selected
+                        </button>
+                    </div>
+
+                    <div class="space-y-2 max-h-[600px] overflow-y-auto">
+                        {% for file in orphaned_files %}
+                            <div class="flex items-center justify-between p-3 bg-primary rounded border border-gray-700 hover:border-gray-600 transition-colors">
+                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                    <input
+                                        type="checkbox"
+                                        name="files[]"
+                                        value="{{ file.path }}"
+                                        class="orphan-checkbox w-4 h-4 text-accent bg-gray-700 border-gray-600 rounded focus:ring-accent focus:ring-2"
+                                        onchange="updateSelectedCount()"
+                                    >
+                                    <a
+                                        href="{{ url_for('static', filename=file.path) }}"
+                                        target="_blank"
+                                        class="flex-shrink-0"
+                                    >
+                                        <img
+                                            src="{{ url_for('static', filename=file.path) }}"
+                                            alt="Thumbnail"
+                                            class="w-16 h-16 object-cover rounded border border-gray-600 hover:border-accent transition-colors"
+                                            onerror="this.src='{{ url_for('static', filename='no-cover.png') }}'"
+                                        >
+                                    </a>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm text-content-primary font-mono truncate" title="{{ file.path }}">
+                                            {{ file.path }}
+                                        </div>
+                                        <div class="text-xs text-content-secondary">
+                                            {{ file.size_kb }} KB
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </form>
+            </div>
+
+            <div class="mt-6 bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
+                <div class="flex gap-3">
+                    <svg class="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <div class="text-sm text-content-secondary">
+                        <p class="font-semibold text-yellow-500 mb-1">Warning: This action cannot be undone</p>
+                        <p>Deleted files will be permanently removed from the filesystem. Make sure these files are truly orphaned before deleting.</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function selectAll() {
+            document.querySelectorAll('.orphan-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            updateSelectedCount();
+        }
+
+        function deselectAll() {
+            document.querySelectorAll('.orphan-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const count = document.querySelectorAll('.orphan-checkbox:checked').length;
+            document.getElementById('selected-count').textContent = count;
+        }
+
+        function confirmDeletion() {
+            const count = document.querySelectorAll('.orphan-checkbox:checked').length;
+            if (count === 0) {
+                alert('Please select at least one file to delete.');
+                return false;
+            }
+            return confirm(`Are you sure you want to delete ${count} orphaned image file(s)? This action cannot be undone.`);
+        }
+
+        // Initialize count on page load
+        updateSelectedCount();
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

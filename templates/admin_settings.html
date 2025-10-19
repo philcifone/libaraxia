@@ -35,6 +35,21 @@
             </div>
         </div>
 
+        <!-- Maintenance Section -->
+        <div class="bg-secondary rounded-lg p-6 mb-8 border border-gray-700">
+            <h2 class="text-xl font-semibold text-content-primary mb-4">Maintenance</h2>
+            <div class="flex items-center justify-between p-4 bg-primary rounded-lg border border-gray-700 hover:border-gray-600 transition-colors">
+                <div>
+                    <h3 class="text-content-primary font-medium mb-1">Orphaned Images</h3>
+                    <p class="text-sm text-content-secondary">Find and cleanup image files that are no longer referenced in the database</p>
+                </div>
+                <a href="{{ url_for('admin.orphaned_images') }}"
+                   class="bg-accent hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
+                    Manage
+                </a>
+            </div>
+        </div>
+
         <!-- Create/Edit User Panel -->
         <div class="bg-secondary rounded-lg p-6 mb-8 border border-gray-700" id="user-form-panel">
             <div class="flex items-center justify-between mb-4">

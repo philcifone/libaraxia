@@ -373,10 +373,16 @@ def edit_book(id):
 
                 # Priority: uploaded image > fetched cover > existing cover
                 if request.files.get("image") and request.files.get("image").filename != '':
-                    # User uploaded a new image
+                    # User uploaded a new image - delete old cover first
+                    if current_cover:
+                        from utils.image_utils import delete_image_file
+                        delete_image_file(current_cover)
                     cover_image_url = process_image(request.files.get("image"), current_cover)
                 elif fetched_cover:
-                    # User fetched a new cover
+                    # User fetched a new cover - delete old cover first
+                    if current_cover and current_cover != fetched_cover:
+                        from utils.image_utils import delete_image_file
+                        delete_image_file(current_cover)
                     cover_image_url = fetched_cover
                 else:
                     # Keep existing cover
@@ -492,8 +498,8 @@ def show_book(id):
 @login_required
 def delete_book(id):
     with get_db_connection() as conn:
-        # Get the book to check who added it
-        book = conn.execute("SELECT added_by FROM books WHERE id = ?", (id,)).fetchone()
+        # Get the book to check who added it and get the cover image
+        book = conn.execute("SELECT added_by, cover_image_url FROM books WHERE id = ?", (id,)).fetchone()
 
         if not book:
             flash("Book not found.", "error")
@@ -501,6 +507,11 @@ def delete_book(id):
 
         # Allow deletion if user is admin or if they added the book
         if current_user.is_admin or book['added_by'] == current_user.id:
+            # Delete the cover image file if it exists
+            if book['cover_image_url']:
+                from utils.image_utils import delete_image_file
+                delete_image_file(book['cover_image_url'])
+
             conn.execute("DELETE FROM books WHERE id = ?", (id,))
             flash("Book deleted successfully.", "success")
         else:
