@@ -50,7 +50,7 @@
 
                         <!-- Book Cover Previews -->
                         {% if reading_list_covers.get(status) %}
-                            <div class="flex gap-2 mt-2">
+                            <div class="flex gap-2 mt-2 truncate">
                                 {% for cover_url in reading_list_covers[status][:8] %}
                                     {% if cover_url %}
                                         <img src="{{ url_for('static', filename=cover_url) }}"
