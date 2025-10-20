@@ -163,8 +163,8 @@
                     {% elif collection_status == 'untracked' %}
                     {% endif %}
 
-                    <!-- Action Buttons (only show if user is admin or added the book, and book is NOT in wishlist) -->
-                    {% if not in_wishlist and (current_user.is_admin or book['added_by'] == current_user.id) %}
+                    <!-- Action Buttons (only show if user is admin or added the book) -->
+                    {% if current_user.is_admin or book['added_by'] == current_user.id %}
                     <div class="grid grid-cols-2 gap-4">
                         <a href="/books/edit/{{ book[0] }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors">
