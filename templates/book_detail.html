@@ -113,6 +113,33 @@
                             </div>
                         </div>
 
+                        <!-- Buy Links -->
+                        <div class="mb-4">
+                            <p class="text-sm text-content-secondary mb-2">Buy this book:</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   title="Search on ThriftBooks">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    ThriftBooks
+                                </a>
+                                <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   title="Search on Bookshop.org">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    Bookshop.org
+                                </a>
+                            </div>
+                        </div>
+
                         <div class="flex flex-col sm:flex-row gap-3">
                             <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
