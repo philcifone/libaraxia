@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <title>Notifications</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+</head>
+<body class="bg-primary dark:bg-primary light:bg-primary-light min-h-screen">
+    {% include '_sidebar.html' %}
+
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
+        <!-- Back Nav -->
+        <a href="{{ url_for('base.index') }}"
+           class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
+            <span class="mr-2">←</span>
+            <span>Back to Catalog</span>
+        </a>
+
+        <h1 class="text-3xl font-display text-content-primary">Notifications</h1>
+
+        <!-- Friend Requests Section -->
+        {% if friend_requests %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-xl font-display text-content-primary mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+                Friend Requests
+            </h2>
+            <div class="space-y-4">
+                {% for request in friend_requests %}
+                <div class="flex items-center gap-4 p-4 bg-primary rounded-lg">
+                    <!-- Avatar (Circle) -->
+                    {% if request.avatar_url %}
+                    <img src="{{ url_for('static', filename=request.avatar_url) }}"
+                         alt="{{ request.username }}"
+                         class="w-16 h-16 rounded-full object-cover flex-shrink-0">
+                    {% else %}
+                    <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-white text-2xl font-semibold flex-shrink-0">
+                        {{ request.username[0].upper() }}
+                    </div>
+                    {% endif %}
+
+                    <!-- User Info -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-content-primary font-semibold text-lg">{{ request.username }}</p>
+                        <p class="text-content-secondary text-sm">Sent you a friend request</p>
+                        <p class="text-content-secondary text-xs mt-1">{{ request.created_at }}</p>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex gap-3 flex-shrink-0">
+                        <form method="POST" action="{{ url_for('friends.accept_request', request_id=request.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg font-medium transition-colors">
+                                Accept
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('friends.decline_request', request_id=request.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-6 py-2 bg-primary-hover hover:bg-content-secondary/20 text-content-secondary rounded-lg font-medium transition-colors border border-content-secondary/30">
+                                Decline
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Recent Activity Section -->
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-display text-content-primary flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    Recent Activity
+                </h2>
+                {% if notifications %}
+                <form method="POST" action="{{ url_for('friends.mark_all_read') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit"
+                            class="px-4 py-2 text-sm bg-primary-hover hover:bg-accent/20 text-content-secondary hover:text-accent rounded-lg transition-colors border border-content-secondary/30">
+                        Mark all as read
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+            {% if notifications %}
+            <div class="space-y-2">
+                {% for notif in notifications %}
+                <div class="flex items-start gap-3 p-4 rounded-lg hover:bg-primary/20 transition-colors {% if not notif.is_read %}bg-accent/10{% endif %}">
+                    <!-- Avatar -->
+                    {% if notif.from_avatar_url %}
+                    <img src="{{ url_for('static', filename=notif.from_avatar_url) }}"
+                         alt="{{ notif.from_username }}"
+                         class="w-10 h-10 rounded-full object-cover">
+                    {% elif notif.from_username %}
+                    <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-semibold">
+                        {{ notif.from_username[0].upper() }}
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                    </div>
+                    {% endif %}
+
+                    <!-- Notification Content -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-content-primary text-sm">{{ notif.message }}</p>
+                        <p class="text-content-secondary text-xs mt-1">{{ notif.created_at }}</p>
+                    </div>
+
+                    <!-- Dismiss Button -->
+                    <form method="POST" action="{{ url_for('friends.dismiss_notification', notification_id=notif.id) }}" class="flex-shrink-0">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit"
+                                class="text-content-secondary hover:text-red-400 transition-colors p-1"
+                                title="Dismiss">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-content-secondary text-center py-8">No recent notifications</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <!-- Sidebar Toggle Script -->
+    <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
+</body>
+</html>

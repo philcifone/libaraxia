@@ -795,32 +795,68 @@ class InfiniteScroll {
     }
 
     createBookCard(book) {
-        const coverImage = book.cover_image_url
-            ? `<img src="/static/${book.cover_image_url}"
-                    alt="${this.escapeHtml(book.title)}"
-                    class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
-            : `<div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
-                    <span class="text-sm italic">No Image Available</span>
-               </div>`;
+        // Check current view mode
+        const currentView = localStorage.getItem('libraryView') || 'grid';
+        const container = document.getElementById('book-container');
+        const isListView = container && container.className.includes('flex-col');
 
-        return `
-            <div class="group">
-                <a href="/books/book/${book.id}"
-                   class="block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
-                    <div class="aspect-w-3 aspect-h-4 relative">
-                        ${coverImage}
-                    </div>
-                    <div class="p-4">
-                        <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
-                            ${this.escapeHtml(book.title)}
-                        </h3>
-                        <p class="text-content-secondary text-sm italic">
-                            by ${this.escapeHtml(book.author)}
-                        </p>
-                    </div>
-                </a>
-            </div>
-        `;
+        if (isListView || currentView === 'list') {
+            // List view card
+            const coverImage = book.cover_image_url
+                ? `<img src="/static/${book.cover_image_url}"
+                        alt="${this.escapeHtml(book.title)}"
+                        class="object-cover w-full h-full rounded" />`
+                : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary rounded">
+                        <span class="text-xs italic">No Image</span>
+                   </div>`;
+
+            return `
+                <div class="book-item">
+                    <a href="/books/book/${book.id}"
+                       class="book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4">
+                        <div class="book-cover flex-shrink-0 w-24 h-32">
+                            ${coverImage}
+                        </div>
+                        <div class="book-info flex-1 flex flex-col justify-center">
+                            <h3 class="book-title text-xl font-semibold mb-2 text-white">
+                                ${this.escapeHtml(book.title)}
+                            </h3>
+                            <p class="book-author text-content-secondary italic">
+                                by ${this.escapeHtml(book.author)}
+                            </p>
+                        </div>
+                    </a>
+                </div>
+            `;
+        } else {
+            // Grid view card
+            const coverImage = book.cover_image_url
+                ? `<img src="/static/${book.cover_image_url}"
+                        alt="${this.escapeHtml(book.title)}"
+                        class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
+                : `<div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
+                        <span class="text-sm italic">No Image Available</span>
+                   </div>`;
+
+            return `
+                <div class="book-item group">
+                    <a href="/books/book/${book.id}"
+                       class="book-link block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                        <div class="book-cover aspect-w-3 aspect-h-4 relative">
+                            ${coverImage}
+                        </div>
+                        <div class="book-info p-4">
+                            <h3 class="book-title text-lg font-semibold line-clamp-2 mb-2 text-white">
+                                ${this.escapeHtml(book.title)}
+                            </h3>
+                            <p class="book-author text-content-secondary text-sm italic">
+                                by ${this.escapeHtml(book.author)}
+                            </p>
+                        </div>
+                    </a>
+                </div>
+            `;
+        }
     }
 
     escapeHtml(text) {
@@ -860,5 +896,103 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookGridContainer = document.querySelector('.container[data-current-page]');
     if (bookGridContainer && document.querySelector('.container[data-current-page] > .grid')) {
         new InfiniteScroll();
+    }
+});
+
+// ============================================================================
+// LIBRARY VIEW TOGGLE (GRID/LIST)
+// ============================================================================
+
+// Switch between grid and list views
+function switchView(viewType) {
+    const container = document.getElementById('book-container');
+    const gridBtn = document.getElementById('grid-view-btn');
+    const listBtn = document.getElementById('list-view-btn');
+
+    if (!container) return;
+
+    if (viewType === 'grid') {
+        // Grid view
+        container.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mt-12';
+
+        // Update book items for grid view
+        document.querySelectorAll('.book-item').forEach(item => {
+            item.className = 'book-item group';
+        });
+
+        document.querySelectorAll('.book-link').forEach(link => {
+            link.className = 'book-link block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200';
+        });
+
+        document.querySelectorAll('.book-cover').forEach(cover => {
+            cover.className = 'book-cover aspect-w-3 aspect-h-4 relative';
+        });
+
+        document.querySelectorAll('.book-info').forEach(info => {
+            info.className = 'book-info p-4';
+        });
+
+        document.querySelectorAll('.book-title').forEach(title => {
+            title.className = 'book-title text-lg font-semibold line-clamp-2 mb-2 text-white';
+        });
+
+        document.querySelectorAll('.book-author').forEach(author => {
+            author.className = 'book-author text-content-secondary text-sm italic';
+        });
+
+        // Update button states
+        gridBtn.classList.add('active', 'bg-accent/30', 'text-accent');
+        listBtn.classList.remove('active', 'bg-accent/30', 'text-accent');
+
+    } else {
+        // List view
+        container.className = 'flex flex-col gap-4 mt-12';
+
+        // Update book items for list view
+        document.querySelectorAll('.book-item').forEach(item => {
+            item.className = 'book-item';
+        });
+
+        document.querySelectorAll('.book-link').forEach(link => {
+            link.className = 'book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4';
+        });
+
+        document.querySelectorAll('.book-cover').forEach(cover => {
+            cover.className = 'book-cover flex-shrink-0 w-24 h-32';
+        });
+
+        document.querySelectorAll('.book-cover img').forEach(img => {
+            img.className = 'object-cover w-full h-full rounded';
+        });
+
+        document.querySelectorAll('.book-info').forEach(info => {
+            info.className = 'book-info flex-1 flex flex-col justify-center';
+        });
+
+        document.querySelectorAll('.book-title').forEach(title => {
+            title.className = 'book-title text-xl font-semibold mb-2 text-white';
+        });
+
+        document.querySelectorAll('.book-author').forEach(author => {
+            author.className = 'book-author text-content-secondary italic';
+        });
+
+        // Update button states
+        listBtn.classList.add('active', 'bg-accent/30', 'text-accent');
+        gridBtn.classList.remove('active', 'bg-accent/30', 'text-accent');
+    }
+
+    // Save preference to localStorage
+    localStorage.setItem('libraryView', viewType);
+}
+
+// Initialize view preference on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const savedView = localStorage.getItem('libraryView') || 'grid';
+    const container = document.getElementById('book-container');
+
+    // Only apply view toggle on pages with book container
+    if (container) {
+        switchView(savedView);
     }
 });

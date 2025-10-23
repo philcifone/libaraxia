@@ -429,6 +429,26 @@ def show_book(id):
         # Get book details
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
 
+        # Check if we're viewing from someone else's wishlist
+        wishlist_owner = request.args.get('wishlist_owner')
+        wishlist_owner_entry = None
+        wishlist_owner_user = None
+
+        if wishlist_owner and wishlist_owner != current_user.username:
+            # Get the wishlist owner's user info
+            wishlist_owner_user = conn.execute(
+                "SELECT id, username FROM users WHERE username = ?",
+                (wishlist_owner,)
+            ).fetchone()
+
+            if wishlist_owner_user:
+                # Get the wishlist entry for that user
+                wishlist_owner_entry = conn.execute("""
+                    SELECT wishlist_id, notes, added_at
+                    FROM wishlist
+                    WHERE user_id = ? AND book_id = ?
+                """, (wishlist_owner_user['id'], id)).fetchone()
+
         # Get reading status and most recent reading session
         read_data = conn.execute("""
             SELECT rating, comment
@@ -489,7 +509,10 @@ def show_book(id):
             collection_status=collection_status,
             custom_collections=custom_collections,
             wishlist_entry=wishlist_entry,
-            in_wishlist=wishlist_entry is not None
+            in_wishlist=wishlist_entry is not None,
+            wishlist_owner=wishlist_owner,
+            wishlist_owner_user=wishlist_owner_user,
+            wishlist_owner_entry=wishlist_owner_entry
         )
     finally:
         conn.close()

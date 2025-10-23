@@ -352,6 +352,17 @@ def upload_user_avatar():
         if file.filename == '':
             return jsonify({'success': False, 'message': 'No file selected'}), 400
 
+        # Check file size
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)  # Reset file pointer
+
+        max_size = current_app.config.get('MAX_CONTENT_LENGTH', 20 * 1024 * 1024)
+        if file_size > max_size:
+            max_size_mb = max_size / (1024 * 1024)
+            logger.error(f"File too large: {file_size} bytes")
+            return jsonify({'success': False, 'message': f'File size must be less than {max_size_mb:.0f}MB'}), 400
+
         # Validate file type
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
         if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
@@ -372,6 +383,14 @@ def upload_user_avatar():
             # Process and resize image
             try:
                 img = Image.open(file)
+
+                # Fix orientation based on EXIF data
+                try:
+                    from PIL import ImageOps
+                    img = ImageOps.exif_transpose(img)
+                    logger.info(f"Applied EXIF orientation correction")
+                except Exception as e:
+                    logger.warning(f"Could not apply EXIF orientation: {str(e)}")
 
                 # Convert RGBA to RGB if necessary
                 if img.mode in ('RGBA', 'LA', 'P'):
@@ -441,10 +460,16 @@ def remove_user_avatar():
     """Remove avatar for a user (admin only)"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id', type=int) if data else None
+        user_id = data.get('user_id') if data else None
 
         if not user_id:
             return jsonify({'success': False, 'message': 'User ID required'}), 400
+
+        # Convert to int if needed
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Invalid user ID'}), 400
 
         conn = get_db_connection()
         try:

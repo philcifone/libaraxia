@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html class="h-full bg-primary-bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resend Verification Email - Libaraxia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+</head>
+<body class="h-full">
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
+    <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+            <h1 class="text-center text-3xl font-display text-content-primary">
+                Libaraxia
+            </h1>
+            <h2 class="mt-6 text-center text-2xl font-medium text-content-secondary">
+                Resend Verification Email
+            </h2>
+            <p class="mt-2 text-center text-sm text-content-tertiary">
+                Enter your email address to receive a new verification link
+            </p>
+        </div>
+
+        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+            <div class="bg-secondary-bg py-8 px-4 shadow-xl rounded-lg sm:px-10">
+                <form method="POST" action="{{ url_for('auth.resend_verification') }}" class="space-y-6">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-content-secondary">
+                            Email Address
+                        </label>
+                        <div class="mt-1">
+                            <input id="email" name="email" type="email" required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-600 rounded-md
+                                shadow-sm bg-primary-bg text-content-primary placeholder-gray-400
+                                focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                                placeholder="you@example.com">
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit"
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md
+                            shadow-sm text-sm font-medium text-white bg-accent hover:bg-accent-hover
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent">
+                            Send Verification Email
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-6">
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-600"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-secondary-bg text-content-tertiary">Or</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 text-center">
+                        <a href="{{ url_for('auth.login') }}"
+                            class="text-accent hover:text-accent-hover">
+                            Back to Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

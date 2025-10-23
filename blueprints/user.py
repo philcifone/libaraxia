@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response, jsonify, current_app
 from flask_login import current_user, login_required
+from functools import wraps
 from utils.database import get_db_connection
-from models import User, admin_required
+from models import User, admin_required, get_friendship_status, is_friends_with
 from werkzeug.utils import secure_filename
 import bcrypt
 import csv
@@ -11,6 +12,25 @@ from PIL import Image
 
 # Initialize Blueprint
 user_blueprint = Blueprint('user', __name__)
+
+def rate_limit(limit_string):
+    """
+    Decorator to apply rate limiting to a route.
+
+    Args:
+        limit_string: Rate limit specification (e.g., "20 per hour")
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Get the limiter from app extensions
+            limiter = current_app.extensions.get('limiter')
+            if limiter:
+                # Check the rate limit
+                limiter.limit(limit_string)(lambda: None)()
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 # Allowed extensions for profile pictures
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -164,22 +184,118 @@ def profile(username):
         # Convert user data to dictionary format
         user = dict(user)
 
-        # Get user's reading stats
-        stats = calculate_user_stats(conn, user['id'])
+        # Get friendship status
+        friendship_status = get_friendship_status(current_user.id, user['id'])
 
-        # Library stats
-        library_stats = calculate_library_stats(conn)
+        # If viewing someone else's profile and not friends, show limited info
+        is_own_profile = current_user.id == user['id']
+        are_friends = friendship_status in ('self', 'friends')
+
+        # Get user's reading stats (only if friends or own profile)
+        stats = calculate_user_stats(conn, user['id']) if are_friends else None
+
+        # Library stats (only if friends or own profile)
+        library_stats = calculate_library_stats(conn) if are_friends else None
+
+        # Get pending friend request ID if applicable
+        friend_request_id = None
+        if friendship_status == 'request_received':
+            friend_request = conn.execute('''
+                SELECT id FROM friend_requests
+                WHERE sender_id = ? AND receiver_id = ? AND status = 'pending'
+            ''', (user['id'], current_user.id)).fetchone()
+            if friend_request:
+                friend_request_id = friend_request['id']
+
+        # Get friends list (only if friends or own profile)
+        friends = []
+        if are_friends:
+            friends_query = '''
+                SELECT
+                    u.id, u.username, u.avatar_url,
+                    f.created_at as friends_since
+                FROM friendships f
+                JOIN users u ON (
+                    CASE
+                        WHEN f.user_id_1 = ? THEN f.user_id_2
+                        ELSE f.user_id_1
+                    END = u.id
+                )
+                WHERE f.user_id_1 = ? OR f.user_id_2 = ?
+                ORDER BY u.username
+            '''
+            friends = [dict(f) for f in conn.execute(friends_query, (user['id'], user['id'], user['id'])).fetchall()]
 
         # Get current year for the reading goal section
         from datetime import datetime
         current_year = datetime.now().year
 
-        return render_template('user.html', user=user, stats=stats, library_stats=library_stats, current_year=current_year)
+        # Get wishlist books for the user
+        wishlist_books = []
+        if are_friends:
+            wishlist_query = """
+                SELECT
+                    b.id,
+                    b.title,
+                    b.author,
+                    b.cover_image_url,
+                    w.notes,
+                    w.added_at
+                FROM wishlist w
+                JOIN books b ON w.book_id = b.id
+                WHERE w.user_id = ?
+                ORDER BY w.added_at DESC
+                LIMIT 20
+            """
+            wishlist_books = [dict(row) for row in conn.execute(wishlist_query, (user['id'],)).fetchall()]
+
+        # Get reading shelves data (like collections page)
+        reading_lists = []
+        reading_list_covers = {}
+        if are_friends:
+            # Get count for each reading status
+            reading_lists = conn.execute("""
+                SELECT status, COUNT(*) as book_count
+                FROM collections
+                WHERE user_id = ?
+                GROUP BY status
+            """, (user['id'],)).fetchall()
+            reading_lists = [dict(row) for row in reading_lists]
+
+            # Get cover previews for each status
+            statuses = ['read', 'currently reading', 'want to read', 'did not finish']
+            for status in statuses:
+                covers = conn.execute("""
+                    SELECT b.cover_image_url
+                    FROM collections c
+                    JOIN books b ON c.book_id = b.id
+                    WHERE c.user_id = ? AND c.status = ?
+                    ORDER BY c.created_at DESC
+                    LIMIT 8
+                """, (user['id'], status)).fetchall()
+                reading_list_covers[status] = [row['cover_image_url'] for row in covers]
+
+        return render_template(
+            'user.html',
+            user=user,
+            stats=stats,
+            library_stats=library_stats,
+            current_year=current_year,
+            friendship_status=friendship_status,
+            is_own_profile=is_own_profile,
+            are_friends=are_friends,
+            friend_request_id=friend_request_id,
+            friends=friends,
+            wishlist_books=wishlist_books,
+            reading_lists=reading_lists,
+            reading_list_covers=reading_list_covers
+        )
     finally:
         conn.close()
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])
 @login_required
+@rate_limit("20 per hour")
 def update_reading_goal():
     reading_goal = request.form.get('reading_goal')
 
@@ -211,6 +327,7 @@ def update_reading_goal():
 
 @user_blueprint.route('/update_email', methods=['POST'])
 @login_required
+@rate_limit("20 per hour")
 def update_email():
     """Update user email via inline editing"""
     try:
@@ -242,6 +359,7 @@ def update_email():
 
 @user_blueprint.route('/update_username', methods=['POST'])
 @login_required
+@rate_limit("20 per hour")
 def update_username():
     """Update username via inline editing"""
     try:
@@ -278,8 +396,39 @@ def update_username():
     except Exception as e:
         return jsonify({'success': False, 'message': 'An error occurred while updating username'}), 500
 
+@user_blueprint.route('/update_bio', methods=['POST'])
+@login_required
+@rate_limit("20 per hour")
+def update_bio():
+    """Update user bio via inline editing"""
+    try:
+        data = request.get_json()
+        new_bio = data.get('bio', '').strip()
+
+        # Bio can be empty, but limit length
+        if len(new_bio) > 500:
+            return jsonify({'success': False, 'message': 'Bio must be 500 characters or less'}), 400
+
+        conn = get_db_connection()
+        try:
+            # Update bio
+            conn.execute('UPDATE users SET bio = ? WHERE id = ?', (new_bio if new_bio else None, current_user.id))
+            conn.commit()
+
+            # Update the current_user object
+            current_user.bio = new_bio if new_bio else None
+
+            return jsonify({'success': True, 'message': 'Bio updated successfully'})
+
+        finally:
+            conn.close()
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'An error occurred while updating bio'}), 500
+
 @user_blueprint.route('/update_password', methods=['POST'])
 @login_required
+@rate_limit("10 per hour")
 def update_password():
     """Update password via inline editing"""
     try:
@@ -328,6 +477,7 @@ def update_password():
 
 @user_blueprint.route('/upload_avatar', methods=['POST'])
 @login_required
+@rate_limit("10 per hour")
 def upload_avatar():
     """Upload and update user profile picture"""
     import logging
@@ -351,6 +501,17 @@ def upload_avatar():
             logger.error("Empty filename")
             return jsonify({'success': False, 'message': 'No file selected'}), 400
 
+        # Check file size (Flask's MAX_CONTENT_LENGTH handles this, but provide better error message)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)  # Reset file pointer
+
+        max_size = current_app.config.get('MAX_CONTENT_LENGTH', 20 * 1024 * 1024)
+        if file_size > max_size:
+            max_size_mb = max_size / (1024 * 1024)
+            logger.error(f"File too large: {file_size} bytes")
+            return jsonify({'success': False, 'message': f'File size must be less than {max_size_mb:.0f}MB'}), 400
+
         if file and allowed_file(file.filename):
             # Secure the filename and create a unique name
             filename = secure_filename(file.filename)
@@ -370,6 +531,14 @@ def upload_avatar():
             try:
                 img = Image.open(file)
                 logger.info(f"Image opened successfully, mode: {img.mode}, size: {img.size}")
+
+                # Fix orientation based on EXIF data
+                try:
+                    from PIL import ImageOps
+                    img = ImageOps.exif_transpose(img)
+                    logger.info(f"Applied EXIF orientation correction")
+                except Exception as e:
+                    logger.warning(f"Could not apply EXIF orientation: {str(e)}")
 
                 # Convert RGBA to RGB if necessary
                 if img.mode in ('RGBA', 'LA', 'P'):

@@ -17,28 +17,28 @@
 
         <!-- System Stats Grid -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div class="bg-secondary rounded-lg border border-gray-700 p-6">
+            <div class="bg-secondary rounded-lg p-6">
                 <div class="text-sm font-medium text-content-secondary mb-2">Total Users</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.total_users }}</div>
             </div>
-            <div class="bg-secondary rounded-lg border border-gray-700 p-6">
+            <div class="bg-secondary rounded-lg p-6">
                 <div class="text-sm font-medium text-content-secondary mb-2">Active Users</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.active_users }}</div>
             </div>
-            <div class="bg-secondary rounded-lg border border-gray-700 p-6">
+            <div class="bg-secondary rounded-lg p-6">
                 <div class="text-sm font-medium text-content-secondary mb-2">Admin Users</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.admin_users }}</div>
             </div>
-            <div class="bg-secondary rounded-lg border border-gray-700 p-6">
+            <div class="bg-secondary rounded- p-6">
                 <div class="text-sm font-medium text-content-secondary mb-2">Total Books</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.total_books }}</div>
             </div>
         </div>
 
         <!-- Maintenance Section -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 border border-gray-700">
+        <div class="bg-secondary rounded-lg p-6 mb-8">
             <h2 class="text-xl font-semibold text-content-primary mb-4">Maintenance</h2>
-            <div class="flex items-center justify-between p-4 bg-primary rounded-lg border border-gray-700 hover:border-gray-600 transition-colors">
+            <div class="flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
                 <div>
                     <h3 class="text-content-primary font-medium mb-1">Orphaned Images</h3>
                     <p class="text-sm text-content-secondary">Find and cleanup image files that are no longer referenced in the database</p>
@@ -51,7 +51,7 @@
         </div>
 
         <!-- Create/Edit User Panel -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 border border-gray-700" id="user-form-panel">
+        <div class="bg-secondary rounded-lg p-6 mb-8" id="user-form-panel">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-content-primary" id="form-title">Create New User</h2>
                 <button type="button" onclick="resetToCreateForm()" id="cancel-edit-btn" class="hidden text-content-secondary hover:text-accent transition-colors text-sm">
@@ -65,17 +65,17 @@
                 <div>
                     <label class="block text-sm font-medium text-content-secondary mb-2">Username</label>
                     <input type="text" name="username" required
-                           class="w-full bg-primary text-content-primary rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent">
+                           class="w-full bg-primary text-content-primary rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-content-secondary mb-2">Email</label>
                     <input type="email" name="email" required
-                           class="w-full bg-primary text-content-primary rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent">
+                           class="w-full bg-primary text-content-primary rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-content-secondary mb-2">Password</label>
                     <input type="password" name="password" required minlength="6"
-                           class="w-full bg-primary text-content-primary rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent">
+                           class="w-full bg-primary text-content-primary rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
                     <p class="text-xs text-content-secondary mt-1">Minimum 6 characters</p>
                 </div>
                 <div class="flex items-end">
@@ -99,19 +99,22 @@
                 <div class="bg-primary rounded-lg p-4 mb-4">
                     <div class="flex items-center gap-4">
                         <!-- Avatar with Upload -->
-                        <div class="flex-shrink-0 relative group">
-                            <img id="edit-avatar-img" class="hidden h-16 w-16 rounded-full object-cover">
-                            <div class="h-16 w-16 rounded-full bg-accent flex items-center justify-center text-white text-2xl font-bold" id="edit-avatar-placeholder">
-                                U
+                        <div class="flex-shrink-0 flex items-center gap-2 group">
+                            <div class="relative">
+                                <img id="edit-avatar-img" class="hidden h-16 w-16 rounded-full object-cover">
+                                <div class="h-16 w-16 rounded-full bg-accent flex items-center justify-center text-white text-2xl font-bold" id="edit-avatar-placeholder">
+                                    U
+                                </div>
+                                <input type="file" id="admin-avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" onchange="uploadUserAvatar(event)">
                             </div>
-                            <!-- Camera overlay for avatar upload -->
-                            <label for="admin-avatar-input" class="absolute inset-0 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/50 rounded-full">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <!-- Camera icon to right of avatar -->
+                            <label for="admin-avatar-input" class="text-content-secondary hover:text-accent transition-colors cursor-pointer" title="Change avatar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
                             </label>
-                            <input type="file" id="admin-avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" onchange="uploadUserAvatar(event)">
+                            <span id="admin-avatar-status" class="hidden text-sm text-accent">Uploading...</span>
                         </div>
                         <div class="flex-1">
                             <h4 class="text-lg font-semibold text-content-primary" id="edit-username">Username</h4>
@@ -131,7 +134,7 @@
                         <input type="hidden" name="user_id" id="edit-user-id-email">
                         <h4 class="text-sm font-semibold text-content-primary">Update Email</h4>
                         <input type="email" name="new_email" placeholder="New email address" required
-                               class="w-full mb-2 bg-primary text-content-primary rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent">
+                               class="w-full mb-2 bg-primary text-content-primary rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
                         <button type="submit" class="w-full px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
                             Update Email
                         </button>
@@ -143,7 +146,7 @@
                         <input type="hidden" name="user_id" id="edit-user-id-password">
                         <h4 class="text-sm font-semibold text-content-primary">Reset Password</h4>
                         <input type="password" name="new_password" placeholder="New password" required minlength="6"
-                               class="w-full mb-2 bg-primary text-content-primary rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent">
+                               class="w-full mb-2 bg-primary text-content-primary rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
                         <button type="submit" class="w-full px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
                             Reset Password
                         </button>
@@ -197,7 +200,7 @@
         </div>
 
         <!-- User Management Table -->
-        <div class="bg-secondary rounded-lg overflow-hidden border border-gray-700">
+        <div class="bg-secondary rounded-lg overflow-hidden">
             <div class="px-4 sm:px-6 py-4 border-b border-gray-700">
                 <h2 class="text-xl font-semibold text-content-primary">User Management</h2>
             </div>
@@ -422,17 +425,17 @@
 
             console.log('Uploading avatar for user', currentEditUserId, file);
 
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('File size must be less than 5MB');
-                return;
-            }
-
             // Validate file type
             const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
             if (!allowedTypes.includes(file.type)) {
                 alert('Please upload a valid image file (PNG, JPG, GIF, or WebP)');
                 return;
+            }
+
+            // Show loading text
+            const statusText = document.getElementById('admin-avatar-status');
+            if (statusText) {
+                statusText.classList.remove('hidden');
             }
 
             // Create FormData and append file and user_id
@@ -454,6 +457,11 @@
                 console.log('Upload response:', data);
 
                 if (response.ok && data.success) {
+                    // Hide status text
+                    if (statusText) {
+                        statusText.classList.add('hidden');
+                    }
+
                     // Update avatar display
                     const avatarImg = document.getElementById('edit-avatar-img');
                     const avatarPlaceholder = document.getElementById('edit-avatar-placeholder');
@@ -464,16 +472,32 @@
                     avatarPlaceholder.classList.add('hidden');
                     removeAvatarBtn.classList.remove('hidden');
 
-                    alert(data.message || 'Avatar uploaded successfully!');
+                    // Update avatar in user table if visible
+                    const userRow = document.querySelector(`tr[data-user-id="${currentEditUserId}"]`);
+                    if (userRow) {
+                        const tableAvatar = userRow.querySelector('.user-table-avatar');
+                        if (tableAvatar) {
+                            tableAvatar.src = data.avatar_url + '?t=' + new Date().getTime();
+                        }
+                    }
 
-                    // Reload page to update table
-                    setTimeout(() => window.location.reload(), 1000);
+                    alert(data.message || 'Avatar uploaded successfully!');
                 } else {
                     alert(data.message || 'Failed to upload avatar');
+
+                    // Hide status text on error
+                    if (statusText) {
+                        statusText.classList.add('hidden');
+                    }
                 }
             } catch (error) {
                 console.error('Upload error:', error);
                 alert('An error occurred while uploading avatar');
+
+                // Hide status text on error
+                if (statusText) {
+                    statusText.classList.add('hidden');
+                }
             }
 
             // Reset file input
@@ -514,10 +538,21 @@
                     avatarPlaceholder.textContent = username[0].toUpperCase();
                     removeAvatarBtn.classList.add('hidden');
 
-                    alert(data.message || 'Avatar removed successfully!');
+                    // Update avatar in user table if visible
+                    const userRow = document.querySelector(`tr[data-user-id="${currentEditUserId}"]`);
+                    if (userRow) {
+                        const tableAvatarContainer = userRow.querySelector('.user-avatar-container');
+                        if (tableAvatarContainer) {
+                            // Replace image with placeholder
+                            tableAvatarContainer.innerHTML = `
+                                <div class="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold">
+                                    ${username[0].toUpperCase()}
+                                </div>
+                            `;
+                        }
+                    }
 
-                    // Reload page to update table
-                    setTimeout(() => window.location.reload(), 1000);
+                    alert(data.message || 'Avatar removed successfully!');
                 } else {
                     alert(data.message || 'Failed to remove avatar');
                 }

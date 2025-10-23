@@ -247,21 +247,47 @@ def add_to_status_collection():
 @collections_blueprint.route('/collections/status/<status>', methods=['GET'])
 @login_required
 def view_by_status(status):
+    # Get optional username parameter (defaults to current user)
+    username = request.args.get('username', current_user.username)
+
     conn = get_db_connection()
     try:
+        # Get the target user
+        target_user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+
+        if not target_user:
+            flash('User not found!', 'danger')
+            return redirect(url_for('base.index'))
+
+        target_user_id = target_user['id']
+        is_own_profile = (target_user_id == current_user.id)
+
+        # Check friendship status if viewing someone else's profile
+        if not is_own_profile:
+            from models import get_friendship_status
+            friendship_status = get_friendship_status(current_user.id, target_user_id)
+
+            # Only allow viewing if they are friends
+            if friendship_status not in ('self', 'friends'):
+                flash('You must be friends to view this shelf!', 'warning')
+                return redirect(url_for('user.profile', username=username))
+
+        # Fetch books for the target user
         cursor = conn.execute('''
             SELECT b.id, b.title, b.author, b.cover_image_url
             FROM collections c
             JOIN books b ON c.book_id = b.id
             WHERE c.user_id = ? AND c.status = ?
-        ''', (current_user.id, status))
+        ''', (target_user_id, status))
         books = cursor.fetchall()
-        
+
         return render_template('collection_status.html',
                              status=status,
                              books=books,
                              is_custom=False,
-                             collection=None)  # Include collection but set to None for status-based collections
+                             collection=None,
+                             target_username=username,
+                             is_own_profile=is_own_profile)
     finally:
         conn.close()
 

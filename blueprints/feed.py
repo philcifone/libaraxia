@@ -1,6 +1,7 @@
 from flask import render_template, Blueprint, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
+from models import is_friends_with
 
 feed_blueprint = Blueprint('feed', __name__, template_folder='templates')
 
@@ -220,13 +221,21 @@ def activity_feed():
                 'user_liked': like_data['user_liked'] > 0
             })
 
+        # Filter to only show activities from friends or own activities
+        friend_activities = []
+        for activity in activities:
+            activity_user_id = activity.get('user_id')
+            # Show if it's your own activity or if you're friends with the user
+            if activity_user_id == current_user.id or is_friends_with(current_user.id, activity_user_id):
+                friend_activities.append(activity)
+
         # Sort by date, most recent first
-        activities.sort(key=lambda x: x['date'] if x['date'] else '', reverse=True)
+        friend_activities.sort(key=lambda x: x['date'] if x['date'] else '', reverse=True)
 
         # Limit to 30 most recent activities
-        activities = activities[:30]
+        friend_activities = friend_activities[:30]
 
-        return render_template("activity_feed.html", activities=activities)
+        return render_template("activity_feed.html", activities=friend_activities)
 
     finally:
         conn.close()

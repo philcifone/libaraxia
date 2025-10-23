@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8">
+    <title>{{ target_username.capitalize() }}'s Wishlist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+</head>
+<body class="bg-primary min-h-screen">
+    {% include '_sidebar.html' %}
+
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+
+        <!-- Page Header -->
+        <div class="mb-8 text-center">
+            <h1 class="text-4xl font-display font-bold text-content-primary mb-2">
+                {{ target_username.capitalize() }}'s Wishlist
+            </h1>
+            <p class="text-content-secondary">Books {{ target_username }} wants to purchase</p>
+        </div>
+
+        <!-- Back Navigation -->
+        <div class="mb-6">
+            <a href="{{ url_for('user.profile', username=target_username) }}"
+               class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
+                <span class="mr-2">←</span>
+                <span>Back to {{ target_username.capitalize() }}'s Profile</span>
+            </a>
+        </div>
+
+        <!-- Wishlist Books Grid -->
+        {% if wishlist_books %}
+        <div class="mt-8 mb-8">
+            <div class="container mx-auto px-4 py-8">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    {% for book in wishlist_books %}
+                    <div class="group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                        <a href="{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ target_username }}"
+                           class="block flex-1">
+                            <div class="aspect-w-3 aspect-h-4 relative">
+                                {% if book.cover_image_url %}
+                                <img src="{{ url_for('static', filename=book.cover_image_url) }}"
+                                     alt="{{ book.title }}"
+                                     class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />
+                                {% else %}
+                                <div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
+                                    <span class="text-sm italic">No Image Available</span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="p-4 pb-2">
+                                <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
+                                    {{ book.title }}
+                                </h3>
+                                <p class="text-content-secondary text-sm italic mb-2">
+                                    by {{ book.author }}
+                                </p>
+                                {% if book.notes %}
+                                <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">
+                                    "{{ book.notes }}"
+                                </p>
+                                {% endif %}
+                            </div>
+                        </a>
+
+                        <!-- Purchase Links -->
+                        <div class="px-4 pb-4 space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="px-2 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors duration-200 flex items-center justify-center gap-1"
+                                   title="Buy on ThriftBooks">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                    </svg>
+                                    ThriftBooks
+                                </a>
+                                <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="px-2 py-2 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors duration-200 flex items-center justify-center gap-1"
+                                   title="Buy on Bookshop.org">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                    </svg>
+                                    Bookshop.org
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-16">
+            <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto">
+                <p class="text-content-secondary text-lg">
+                    {{ target_username.capitalize() }}'s wishlist is empty.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

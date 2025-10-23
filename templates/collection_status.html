@@ -25,15 +25,27 @@
                 {% if is_custom %}
                     {{ collection.name }} Collection
                 {% else %}
-                    {{ status.capitalize() }} Bookshelf
+                    {% if is_own_profile %}
+                        Your {{ status.capitalize() }} Shelf
+                    {% else %}
+                        {{ target_username.capitalize() }}'s {{ status.capitalize() }} Shelf
+                    {% endif %}
                 {% endif %}
             </h1>
 
-            <a href="{{ url_for('collections.view_collections') }}" 
-               class="flex items-center space-x-2 text-content-secondary hover:text-accent transition-colors duration-200">
-                <span class="text-xl">←</span>
-                <span>Back to Bookshelves</span>
-            </a>
+            {% if is_own_profile %}
+                <a href="{{ url_for('collections.view_collections') }}"
+                   class="flex items-center space-x-2 text-content-secondary hover:text-accent transition-colors duration-200">
+                    <span class="text-xl">←</span>
+                    <span>Back to Bookshelves</span>
+                </a>
+            {% else %}
+                <a href="{{ url_for('user.profile', username=target_username) }}"
+                   class="flex items-center space-x-2 text-content-secondary hover:text-accent transition-colors duration-200">
+                    <span class="text-xl">←</span>
+                    <span>Back to {{ target_username.capitalize() }}'s Profile</span>
+                </a>
+            {% endif %}
         </div>
 
             {% include '_book_grid.html' %}

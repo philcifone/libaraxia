@@ -16,7 +16,13 @@
     <!-- Main Content Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
         <!-- Back Navigation (context-aware) -->
-        {% if in_wishlist %}
+        {% if wishlist_owner and wishlist_owner_entry %}
+        <a href="{{ url_for('wishlist.view_user_wishlist', username=wishlist_owner) }}"
+           class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
+            <span class="mr-2">←</span>
+            <span>Back to {{ wishlist_owner.capitalize() }}'s Wishlist</span>
+        </a>
+        {% elif in_wishlist %}
         <a href="{{ url_for('wishlist.view_wishlist') }}"
            class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
             <span class="mr-2">←</span>
@@ -98,7 +104,52 @@
                     </div>
 
                     <!-- Wishlist Section -->
-                    {% if in_wishlist %}
+                    {% if wishlist_owner and wishlist_owner_entry %}
+                    <!-- Viewing someone else's wishlist -->
+                    <div class="bg-primary rounded-lg p-6 border-2 border-accent">
+                        <div class="flex items-start gap-3 mb-4">
+                            <svg class="w-6 h-6 text-accent flex-shrink-0 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                            </svg>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-white mb-1">On {{ wishlist_owner.capitalize() }}'s Wishlist</h3>
+                                <p class="text-sm text-content-secondary">{{ wishlist_owner.capitalize() }} wants to purchase this book</p>
+                                {% if wishlist_owner_entry['notes'] %}
+                                <p class="text-sm text-content-primary mt-2 italic">"{{ wishlist_owner_entry['notes'] }}"</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Buy Links -->
+                        <div class="mb-4">
+                            <p class="text-sm text-content-secondary mb-2">Purchase this book:</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   title="Search on ThriftBooks">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                    </svg>
+                                    ThriftBooks
+                                </a>
+                                <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   title="Search on Bookshop.org">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                    </svg>
+                                    Bookshop.org
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% elif in_wishlist %}
+                    <!-- User's own wishlist -->
                     <div class="bg-primary rounded-lg p-6">
                         <div class="flex items-start gap-3 mb-4">
                             <svg class="w-6 h-6 text-accent flex-shrink-0 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

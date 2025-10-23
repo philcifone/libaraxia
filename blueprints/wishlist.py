@@ -11,6 +11,51 @@ from utils.book_utils import (
 wishlist_blueprint = Blueprint('wishlist', __name__, template_folder='templates')
 
 
+@wishlist_blueprint.route("/user/<username>", methods=["GET"])
+@login_required
+def view_user_wishlist(username):
+    """View another user's wishlist (friends only)"""
+    with get_db_connection() as conn:
+        # Get the target user
+        target_user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+
+        if not target_user:
+            flash('User not found!', 'error')
+            return redirect(url_for('base.index'))
+
+        target_user_id = target_user['id']
+        is_own_wishlist = (target_user_id == current_user.id)
+
+        # If viewing own wishlist, redirect to main wishlist page
+        if is_own_wishlist:
+            return redirect(url_for('wishlist.view_wishlist'))
+
+        # Check friendship status
+        from models import get_friendship_status
+        friendship_status = get_friendship_status(current_user.id, target_user_id)
+
+        # Only allow viewing if they are friends
+        if friendship_status not in ('self', 'friends'):
+            flash('You must be friends to view this wishlist!', 'warning')
+            return redirect(url_for('user.profile', username=username))
+
+        # Get wishlist books for the target user
+        wishlist_books = conn.execute("""
+            SELECT b.*, w.wishlist_id, w.notes, w.added_at as wishlist_added_at
+            FROM wishlist w
+            JOIN books b ON w.book_id = b.id
+            WHERE w.user_id = ?
+            ORDER BY w.added_at DESC
+        """, (target_user_id,)).fetchall()
+
+        return render_template(
+            "user_wishlist.html",
+            wishlist_books=wishlist_books,
+            target_username=username,
+            target_user=target_user
+        )
+
+
 @wishlist_blueprint.route("/view", methods=["GET", "POST"])
 @login_required
 def view_wishlist():

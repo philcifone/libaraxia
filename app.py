@@ -3,6 +3,9 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_mail import Mail
 import os, logging, bcrypt
 from dotenv import load_dotenv
 
@@ -19,6 +22,7 @@ from blueprints.tags import tags_blueprint
 from blueprints.admin import admin_blueprint
 from blueprints.feed import feed_blueprint
 from blueprints.wishlist import wishlist_blueprint
+from blueprints.friends import friends_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User
 
@@ -29,9 +33,15 @@ def create_app():
     # Load environment variables first
     load_dotenv()
 
-    # App Configuration
+    # App Configuration - Load config FIRST
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback-secret-key')
     env = os.getenv('FLASK_ENV', 'development')
+
+    # Load environment-specific configuration
+    if env == 'production':
+        app.config.from_object(ProductionConfig)
+    else:
+        app.config.from_object(DevelopmentConfig)
 
     # Initialize CSRF Protection
     csrf = CSRFProtect(app)
@@ -45,10 +55,27 @@ def create_app():
         """Make CSRF token available for JavaScript"""
         return response
 
+    # Initialize Rate Limiter
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"],
+        storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
+        strategy=app.config.get('RATELIMIT_STRATEGY', 'fixed-window'),
+        headers_enabled=app.config.get('RATELIMIT_HEADERS_ENABLED', True)
+    )
+
+    # Make limiter available globally
+    app.extensions['limiter'] = limiter
+
+    # Initialize Flask-Mail
+    mail = Mail(app)
+    app.mail = mail
+
     # Initialize Flask-Login
     login_manager = LoginManager()
     login_manager.init_app(app)
-    
+
     # Define the login view to redirect unauthenticated users
     login_manager.login_view = 'auth.login'  # 'auth.login' is the login route name
 
@@ -67,15 +94,11 @@ def create_app():
                 email=user_dict['email'],
                 is_active=user_dict.get('is_active', 0) == 1,
                 is_admin=user_dict.get('is_admin', 0) == 1,
-                avatar_url=user_dict.get('avatar_url')
+                avatar_url=user_dict.get('avatar_url'),
+                email_verified=user_dict.get('email_verified', 1) == 1,
+                bio=user_dict.get('bio')
             )
         return None
-
-    env = os.getenv('FLASK_ENV', 'development')
-    if env == 'production':
-        app.config.from_object(ProductionConfig)
-    else:
-        app.config.from_object(DevelopmentConfig)
 
     # FOR HOME PAGE LANDING & REDIRECTS
     @app.route("/")
@@ -107,6 +130,7 @@ def create_app():
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
     app.register_blueprint(feed_blueprint, url_prefix='/feed')
     app.register_blueprint(wishlist_blueprint, url_prefix='/wishlist')
+    app.register_blueprint(friends_blueprint, url_prefix='/friends')
     
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)

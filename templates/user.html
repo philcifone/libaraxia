@@ -27,8 +27,8 @@
          <span>Back to Catalog</span>
      </a>
         <!-- Profile Info -->
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
-            <div class="flex items-center gap-4 mb-6">
+        <section class="bg-secondary rounded-xl p-4 shadow-lg">
+            <div class="flex items-center gap-4 p-4">
                 <!-- Avatar with Upload on Hover -->
                 {% if current_user.id == user['id'] %}
                 <div class="relative flex-shrink-0 flex items-center gap-2 group">
@@ -53,6 +53,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
                     </label>
+                    <!-- Simple loading text -->
+                    <span id="avatar-upload-status" class="hidden text-sm text-accent">Uploading...</span>
                 </div>
                 {% else %}
                 <div class="relative flex-shrink-0" style="width: 64px; height: 64px;">
@@ -70,12 +72,108 @@
                 </div>
                 {% endif %}
 
-                <h1 class="text-3xl font-display text-content-primary">
-                    {{ user['username'].capitalize() }}'s Profile
-                </h1>
+                <div class="flex-1">
+                    <h1 class="text-3xl font-display text-content-primary">
+                        {{ user['username'].capitalize() }}'s Profile
+                    </h1>
+
+                    <!-- Friend Request Actions -->
+                    {% if not is_own_profile %}
+                    <div class="mt-3">
+                        {% if friendship_status == 'friends' %}
+                            <div class="flex items-center gap-2">
+                                <form method="POST" action="{{ url_for('friends.remove_friend', friend_id=user['id']) }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="text-xs text-content-secondary hover:text-red-500 transition-colors" onclick="return confirm('Remove {{ user['username'] }} from friends?')">
+                                        Remove Friend
+                                    </button>
+                                </form>
+                            </div>
+                        {% elif friendship_status == 'request_sent' %}
+                            <span class="text-sm text-content-secondary">Friend request sent</span>
+                        {% elif friendship_status == 'request_received' %}
+                            <div class="flex gap-2">
+                                <form method="POST" action="{{ url_for('friends.accept_request', request_id=friend_request_id) }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">
+                                        Accept Friend Request
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('friends.decline_request', request_id=friend_request_id) }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm transition-colors">
+                                        Decline
+                                    </button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <form method="POST" action="{{ url_for('friends.send_request', username=user['username']) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded transition-colors">
+                                    Add Friend
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-6">
+            <!-- Bio Section -->
+            {% if current_user.id == user['id'] or (user['bio'] and not is_own_profile) %}
+            <div class="rounded-lg">
+                {% if current_user.id == user['id'] %}
+                <!-- Editable Bio for Own Profile -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm uppercase tracking-wider text-content-secondary">Bio</p>
+                        <button id="bio-edit-btn" class="text-content-secondary hover:text-accent transition-colors" onclick="editBio()" title="Edit bio">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="bio-display-container">
+                        <p id="bio-display" class="text-content-primary whitespace-pre-wrap">{{ user['bio'] if user['bio'] else 'Add a bio to tell others about yourself...' }}</p>
+                    </div>
+                    <div id="bio-edit-container" class="hidden">
+                        <textarea id="bio-input" class="w-full px-3 py-2 bg-secondary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" rows="4" maxlength="500" placeholder="Tell others about yourself...">{{ user['bio'] if user['bio'] else '' }}</textarea>
+                        <div class="flex items-center justify-between mt-2">
+                            <span id="bio-char-count" class="text-xs text-content-secondary">0 / 500</span>
+                            <div class="flex gap-2">
+                                <button id="bio-save-btn" class="px-3 py-1 bg-accent hover:bg-accent-hover text-white rounded transition-colors" onclick="saveBio()">
+                                    Save
+                                </button>
+                                <button id="bio-cancel-btn" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors" onclick="cancelBioEdit()">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif user['bio'] %}
+                <!-- Display Bio for Other Users -->
+                <div class="space-y-2">
+                    <p class="text-sm uppercase tracking-wider text-content-secondary">Bio</p>
+                    <p class="text-content-primary whitespace-pre-wrap">{{ user['bio'] }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Privacy Notice for Non-Friends -->
+            {% if not are_friends %}
+            <div class="mt-4 p-2 bg-primary rounded border border-accent">
+                <p class="text-sm text-content-secondary">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    This profile is private. Send a friend request to see {{ user['username'] }}'s reading activity.
+                </p>
+            </div>
+            {% endif %}
+
+            <div class="grid md:grid-cols-2 gap-6 mt-6">
                 {% if current_user.id == user['id'] %}
                 <!-- Email (Editable) -->
                 <div class="space-y-2">
@@ -88,7 +186,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
                         </button>
-                        <button id="email-save-btn" class="hidden text-green-500 hover:text-green-600 transition-colors" onclick="saveField('email')" title="Save">
+                        <button id="email-save-btn" class="hidden text-accent hover:text-accent-hover transition-colors" onclick="saveField('email')" title="Save">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
@@ -112,7 +210,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
                         </button>
-                        <button id="username-save-btn" class="hidden text-green-500 hover:text-green-600 transition-colors" onclick="saveField('username')" title="Save">
+                        <button id="username-save-btn" class="hidden text-accent hover:text-accent-hover transition-colors" onclick="saveField('username')" title="Save">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
@@ -140,7 +238,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
                         </button>
-                        <button id="password-save-btn" class="hidden text-green-500 hover:text-green-600 transition-colors" onclick="savePassword()" title="Save">
+                        <button id="password-save-btn" class="hidden text-accent hover:text-accent- transition-colors" onclick="savePassword()" title="Save">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
@@ -158,27 +256,192 @@
                     <p class="text-sm uppercase tracking-wider text-content-secondary">Admin Status</p>
                     <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
                 </div>
-                {% else %}
-                <!-- Email (Non-editable for other users) -->
-                <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Email</p>
-                    <p class="text-content-primary">{{ user['email'] }}</p>
-                </div>
-
-                <!-- Username (Non-editable for other users) -->
-                <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Username</p>
-                    <p class="text-content-primary">{{ user['username'] }}</p>
-                </div>
-
-                <!-- Admin Status -->
-                <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Admin Status</p>
-                    <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
-                </div>
                 {% endif %}
             </div>
         </section>
+
+        <!-- Wishlist Section -->
+        {% if are_friends and wishlist_books %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-display text-content-primary">
+                    {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
+                </h2>
+                {% if is_own_profile %}
+                <a href="{{ url_for('wishlist.view_wishlist') }}"
+                   class="text-accent hover:text-accent-hover transition-colors text-sm">
+                    View all →
+                </a>
+                {% else %}
+                <a href="{{ url_for('wishlist.view_user_wishlist', username=user['username']) }}"
+                   class="text-accent hover:text-accent-hover transition-colors text-sm">
+                    View all →
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Book Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                {% for book in wishlist_books %}
+                <div class="book-item group">
+                    <a href="{% if is_own_profile %}{{ url_for('books.show_book', id=book.id) }}{% else %}{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ user['username'] }}{% endif %}"
+                       class="book-link block h-full bg-primary rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                        <div class="book-cover aspect-w-3 aspect-h-4 relative">
+                            {% if book.cover_image_url %}
+                            <img src="{{ url_for('static', filename=book.cover_image_url) }}"
+                                 alt="{{ book.title }}"
+                                 class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />
+                            {% else %}
+                            <div class="flex items-center justify-center h-56 bg-primary text-content-secondary">
+                                <svg class="w-12 h-12 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="book-info p-2">
+                            <h3 class="book-title text-sm font-semibold line-clamp-2 mb-1 text-content-primary">
+                                {{ book.title }}
+                            </h3>
+                            <p class="book-author text-content-secondary text-xs">
+                                {{ book.author }}
+                            </p>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Reading Shelves Section -->
+        {% if are_friends and reading_lists %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-display text-content-primary mb-6">
+                {% if is_own_profile %}Your Reading Shelves{% else %}{{ user['username'] }}'s Reading Shelves{% endif %}
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% set statuses = [
+                    ('read', 'Read'),
+                    ('currently reading', 'Currently Reading'),
+                    ('want to read', 'Want to Read'),
+                    ('did not finish', 'Did Not Finish')
+                ] %}
+
+                {% for status, label in statuses %}
+                    <a href="{{ url_for('collections.view_by_status', status=status, username=user['username']) }}"
+                       class="group bg-primary hover:bg-primary-hover p-4 rounded-lg transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-content-primary text-lg">{{ label }}</span>
+                            {% if reading_lists %}
+                                {% for list in reading_lists %}
+                                    {% if list['status'] == status %}
+                                        <span class="bg-accent text-white font-semibold px-3 py-1 rounded-full text-sm">
+                                            {{ list['book_count'] }}
+                                        </span>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Book Cover Previews -->
+                        {% if reading_list_covers.get(status) %}
+                            <div class="flex gap-2 mt-2 truncate">
+                                {% for cover_url in reading_list_covers[status][:8] %}
+                                    {% if cover_url %}
+                                        <img src="{{ url_for('static', filename=cover_url) }}"
+                                             alt="Book cover"
+                                             class="w-12 h-16 object-cover rounded shadow-sm">
+                                    {% else %}
+                                        <div class="w-12 h-16 bg-accent/20 rounded flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                            </svg>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Friends List Section -->
+        {% if are_friends %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-display text-content-primary">
+                    {% if is_own_profile %}Your Friends{% else %}{{ user['username'] }}'s Friends{% endif %}
+                </h2>
+                {% if is_own_profile %}
+                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors" style="background-color: #4f7d19;" onmouseover="this.style.backgroundColor='#6a9839'" onmouseout="this.style.backgroundColor='#4f7d19'" title="Find new friends">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span>Add Friends</span>
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Inline Search Bar (hidden by default) -->
+            {% if is_own_profile %}
+            <div id="friend-search-container" class="hidden mb-4 bg-primary rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg mb-4 font-semibold text-content-primary">Find New Friends</h3>
+                    <button id="close-friend-search" class="text-content-secondary hover:text-content-primary transition-colors">
+                        <svg class="mb-4 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="mb-3">
+                    <input type="text"
+                           id="friend-search-input"
+                           placeholder="Search for users by username..."
+                           class="w-full mb-2 px-4 py-2 bg-secondary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                           autocomplete="off">
+                </div>
+                <div id="search-results" class="space-y-2">
+                    <p class="text-content-secondary text-center py-4 text-sm">Start typing to search for users...</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if friends and friends|length > 0 %}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {% for friend in friends %}
+                <a href="{{ url_for('user.profile', username=friend.username) }}"
+                   class="bg-primary rounded-lg p-2 hover:bg-primary-hover transition-colors flex items-center gap-3">
+                    {% if friend.avatar_url %}
+                        <img src="{{ url_for('static', filename=friend.avatar_url) }}"
+                             alt="{{ friend.username }}"
+                             class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                    {% else %}
+                        <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-white flex-shrink-0">
+                            {{ friend.username[0].upper() }}
+                        </div>
+                    {% endif %}
+                    <p class="text-content-primary font-medium">{{ friend.username }}</p>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-content-secondary text-center py-8">
+                {% if is_own_profile %}
+                You don't have any friends yet. Start adding friends to see them here!
+                {% else %}
+                {{ user['username'] }} doesn't have any friends yet.
+                {% endif %}
+            </p>
+            {% endif %}
+        </section>
+        {% endif %}
 
         <!-- Reading Goal Section -->
         {% if current_user.id == user['id'] %}
@@ -623,17 +886,17 @@
                 type: file.type
             });
 
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('File size must be less than 5MB');
-                return;
-            }
-
             // Validate file type
             const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
             if (!allowedTypes.includes(file.type)) {
                 alert('Please upload a valid image file (PNG, JPG, GIF, or WebP)');
                 return;
+            }
+
+            // Show loading text
+            const statusText = document.getElementById('avatar-upload-status');
+            if (statusText) {
+                statusText.classList.remove('hidden');
             }
 
             // Create FormData and append file
@@ -657,6 +920,11 @@
                 if (response.ok && data.success) {
                     console.log('Upload successful, avatar URL:', data.avatar_url);
 
+                    // Hide status text
+                    if (statusText) {
+                        statusText.classList.add('hidden');
+                    }
+
                     // Update avatar display
                     const avatarImage = document.getElementById('avatar-image');
                     const avatarPlaceholder = document.getElementById('avatar-placeholder');
@@ -672,33 +940,225 @@
                         newImg.id = 'avatar-image';
                         newImg.src = data.avatar_url;
                         newImg.alt = '{{ user["username"] }}';
-                        newImg.className = 'rounded-full object-cover transition-opacity duration-200 group-hover:opacity-30';
+                        newImg.className = 'w-full h-full rounded-full object-cover';
                         newImg.style.width = '64px';
                         newImg.style.height = '64px';
-                        newImg.style.minWidth = '64px';
-                        newImg.style.minHeight = '64px';
                         avatarPlaceholder.replaceWith(newImg);
+                    }
+
+                    // Update all other avatar instances on page without reload
+                    const sidebarAvatar = document.querySelector('.sidebar-avatar');
+                    if (sidebarAvatar) {
+                        sidebarAvatar.src = data.avatar_url + '?t=' + new Date().getTime();
                     }
 
                     // Show success message
                     showFlashMessage('success', data.message || 'Profile picture updated successfully!');
-
-                    // Reload page after short delay to update all instances
-                    console.log('Reloading page in 1 second');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
                 } else {
                     console.error('Upload failed:', data.message);
                     alert(data.message || 'Failed to upload profile picture');
+
+                    // Hide status text on error
+                    if (statusText) {
+                        statusText.classList.add('hidden');
+                    }
                 }
             } catch (error) {
                 console.error('Upload error:', error);
                 alert('An error occurred while uploading profile picture: ' + error.message);
+
+                // Hide status text on error
+                if (statusText) {
+                    statusText.classList.add('hidden');
+                }
             }
 
             // Reset file input
             event.target.value = '';
+        }
+
+        // Bio editing functions
+        function editBio() {
+            const displayContainer = document.getElementById('bio-display-container');
+            const editContainer = document.getElementById('bio-edit-container');
+            const editBtn = document.getElementById('bio-edit-btn');
+            const input = document.getElementById('bio-input');
+
+            displayContainer.classList.add('hidden');
+            editContainer.classList.remove('hidden');
+            editBtn.classList.add('hidden');
+
+            // Update character count
+            updateCharCount();
+
+            // Focus the textarea
+            input.focus();
+        }
+
+        function cancelBioEdit() {
+            const displayContainer = document.getElementById('bio-display-container');
+            const editContainer = document.getElementById('bio-edit-container');
+            const editBtn = document.getElementById('bio-edit-btn');
+            const input = document.getElementById('bio-input');
+            const display = document.getElementById('bio-display');
+
+            // Reset textarea to original value
+            input.value = '{{ user["bio"] if user["bio"] else "" }}'.replace(/&#34;/g, '"').replace(/&#39;/g, "'");
+
+            displayContainer.classList.remove('hidden');
+            editContainer.classList.add('hidden');
+            editBtn.classList.remove('hidden');
+        }
+
+        async function saveBio() {
+            const input = document.getElementById('bio-input');
+            const newBio = input.value.trim();
+
+            if (newBio.length > 500) {
+                alert('Bio must be 500 characters or less!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/user/update_bio', {
+                    method: 'POST',
+                    headers: getCSRFHeaders(),
+                    body: JSON.stringify({ bio: newBio })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Update the display text
+                    const display = document.getElementById('bio-display');
+                    display.textContent = newBio || 'Add a bio to tell others about yourself...';
+
+                    // Exit edit mode
+                    cancelBioEdit();
+
+                    // Show success message
+                    showFlashMessage('success', data.message || 'Bio updated successfully!');
+                } else {
+                    alert(data.message || 'Failed to update bio');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while updating bio');
+            }
+        }
+
+        function updateCharCount() {
+            const input = document.getElementById('bio-input');
+            const charCount = document.getElementById('bio-char-count');
+            const count = input.value.length;
+            charCount.textContent = `${count} / 500`;
+        }
+
+        // Add event listener for character count
+        const bioInput = document.getElementById('bio-input');
+        if (bioInput) {
+            bioInput.addEventListener('input', updateCharCount);
+            // Initialize count on page load
+            updateCharCount();
+        }
+
+        // Friend search inline toggle functionality
+        const toggleBtn = document.getElementById('toggle-friend-search');
+        const closeBtn = document.getElementById('close-friend-search');
+        const searchContainer = document.getElementById('friend-search-container');
+        const searchInput = document.getElementById('friend-search-input');
+        const searchResults = document.getElementById('search-results');
+        let searchTimeout;
+
+        // Toggle search container
+        if (toggleBtn && searchContainer) {
+            toggleBtn.addEventListener('click', function() {
+                searchContainer.classList.toggle('hidden');
+                if (!searchContainer.classList.contains('hidden')) {
+                    // Focus the search input when opening
+                    setTimeout(() => {
+                        if (searchInput) searchInput.focus();
+                    }, 100);
+                }
+            });
+        }
+
+        // Close search container
+        if (closeBtn && searchContainer) {
+            closeBtn.addEventListener('click', function() {
+                searchContainer.classList.add('hidden');
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">Start typing to search for users...</p>';
+                }
+            });
+        }
+
+        // Search functionality
+        if (searchInput && searchResults) {
+            searchInput.addEventListener('input', function(e) {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
+
+                if (query.length < 2) {
+                    searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">Start typing to search for users...</p>';
+                    return;
+                }
+
+                searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">Searching...</p>';
+
+                searchTimeout = setTimeout(() => {
+                    fetch(`/friends/search_users?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(users => {
+                            if (users.length === 0) {
+                                searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">No users found</p>';
+                            } else {
+                                searchResults.innerHTML = users.map(user => {
+                                    const avatarHtml = user.avatar_url
+                                        ? `<img src="/static/${user.avatar_url}" alt="${user.username}" class="w-10 h-10 rounded-full object-cover">`
+                                        : `<div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-white">${user.username[0].toUpperCase()}</div>`;
+
+                                    let actionHtml = '';
+                                    if (user.friendship_status === 'friends') {
+                                        actionHtml = '<span class="text-sm text-green-500">✓ Friends</span>';
+                                    } else if (user.friendship_status === 'request_sent') {
+                                        actionHtml = '<span class="text-sm text-content-secondary">Request Sent</span>';
+                                    } else if (user.friendship_status === 'request_received') {
+                                        actionHtml = '<span class="text-sm text-blue-500">Request Received</span>';
+                                    } else {
+                                        actionHtml = `<form method="POST" action="/friends/send_request/${user.username}" class="inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="px-3 py-1 text-white rounded text-sm transition-colors" style="background-color: #4f7d19;" onmouseover="this.style.backgroundColor='#6a9839'" onmouseout="this.style.backgroundColor='#4f7d19'">
+                                                Add Friend
+                                            </button>
+                                        </form>`;
+                                    }
+
+                                    return `
+                                        <div class="p-2 mt-2 hover:bg-primary transition-colors rounded-lg">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <a href="/user/${user.username}" class="flex items-center gap-3 flex-1">
+                                                    ${avatarHtml}
+                                                    <div>
+                                                        <p class="text-content-primary font-medium">${user.username}</p>
+                                                    </div>
+                                                </a>
+                                                <div class="flex-shrink-0">
+                                                    ${actionHtml}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Search error:', error);
+                            searchResults.innerHTML = '<p class="text-red-500 text-center py-4 text-sm">Error searching users</p>';
+                        });
+                }, 300);
+            });
         }
     </script>
 </body>
