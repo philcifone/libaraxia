@@ -25,6 +25,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const newCoverPreview = document.getElementById('newCoverPreview');
     const newCoverImage = document.getElementById('newCoverImage');
     const fetchedCoverUrlInput = document.getElementById('fetched_cover_url');
+    const coverOptionsContainer = document.getElementById('coverOptionsContainer');
+    const coverOptionsGrid = document.getElementById('coverOptionsGrid');
+
+    let availableCovers = [];
 
     if (fetchCoverBtn) {
         fetchCoverBtn.addEventListener('click', async function() {
@@ -57,17 +61,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const data = await response.json();
 
-                if (data.success) {
-                    // Show the new cover preview
-                    newCoverImage.src = `/static/${data.cover_url}`;
-                    fetchedCoverUrlInput.value = data.cover_url;
-                    newCoverPreview.classList.remove('hidden');
+                if (data.success && data.covers && data.covers.length > 0) {
+                    availableCovers = data.covers;
 
-                    // Show success message with source info
-                    const sourcesInfo = data.tried_sources > 1
-                        ? ` (searched ${data.tried_sources} sources)`
-                        : '';
-                    showMessage(`Cover found from ${data.source}${sourcesInfo}!`, 'success');
+                    // Display cover options inline
+                    displayCoverOptions(data.covers);
+                    coverOptionsContainer.classList.remove('hidden');
+
+                    showMessage(`Found ${data.total_downloaded} covers from ${data.total_found} sources!`, 'success');
                 } else {
                     showMessage(data.error || 'Failed to fetch cover', 'error');
                 }
@@ -81,6 +82,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 fetchCoverSpinner.classList.add('hidden');
             }
         });
+    }
+
+    // Display cover options inline
+    function displayCoverOptions(covers) {
+        coverOptionsGrid.innerHTML = '';
+
+        covers.forEach((cover, index) => {
+            const coverOption = document.createElement('div');
+            coverOption.className = 'cover-option cursor-pointer border-2 border-gray-600 hover:border-accent rounded-lg p-2 transition-all duration-200 bg-primary-bg';
+            coverOption.innerHTML = `
+                <img src="/static/${cover.url}"
+                     alt="Cover from ${cover.source}"
+                     class="w-full h-72 rounded-lg shadow-md mb-2"
+                     loading="lazy">
+                <p class="text-xs text-content-secondary text-center mb-2">${cover.source}</p>
+                <button type="button" class="w-full bg-accent hover:bg-accent-hover text-white text-xs py-1 px-2 rounded transition-colors duration-200">
+                    Select
+                </button>
+            `;
+
+            coverOption.querySelector('button').addEventListener('click', function() {
+                selectCover(cover);
+            });
+
+            coverOptionsGrid.appendChild(coverOption);
+        });
+    }
+
+    // Handle cover selection
+    function selectCover(cover) {
+        // Update the preview
+        newCoverImage.src = `/static/${cover.url}`;
+        fetchedCoverUrlInput.value = cover.url;
+        newCoverPreview.classList.remove('hidden');
+
+        // Hide the cover options
+        coverOptionsContainer.classList.add('hidden');
+
+        // Show success message
+        showMessage(`Selected cover from ${cover.source}`, 'success');
     }
 
     // Helper function to show messages

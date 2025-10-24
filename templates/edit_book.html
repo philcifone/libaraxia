@@ -126,7 +126,7 @@
 
                         <!-- New Cover Preview (will show after fetching) -->
                         <div id="newCoverPreview" class="mb-4 hidden">
-                            <p class="text-xs text-content-secondary mb-2">New Cover (fetched):</p>
+                            <p class="text-xs text-content-secondary mb-2">New Cover (selected):</p>
                             <img id="newCoverImage"
                                  src=""
                                  alt="New cover"
@@ -141,6 +141,14 @@
                             <span id="fetchCoverText">Fetch High-Res Cover</span>
                             <span id="fetchCoverSpinner" class="hidden">Fetching...</span>
                         </button>
+
+                        <!-- Cover Options Container (shown after fetching) -->
+                        <div id="coverOptionsContainer" class="hidden mb-4">
+                            <p class="text-sm font-medium text-content-secondary p-2 mb-4">Select a cover:</p>
+                            <div id="coverOptionsGrid" class="grid grid-cols-2 gap-3">
+                                <!-- Cover options will be populated here by JavaScript -->
+                            </div>
+                        </div>
 
                         <input type="file"
                                id="image"

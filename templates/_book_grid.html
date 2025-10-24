@@ -7,7 +7,7 @@
             {% for book in books %}
             <div class="book-item group">
                 <a href="/books/book/{{ book[0] }}"
-                   class="book-link block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                   class="book-link block h-72 bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
                     <div class="book-cover aspect-w-3 aspect-h-4 relative">
                         {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
@@ -19,7 +19,7 @@
                         </div>
                         {% endif %}
                     </div>
-
+ 
                     <div class="book-info p-4">
                         <h3 class="book-title text-lg font-semibold line-clamp-2 mb-2 text-white">
                             {{ book[1] }}

@@ -290,9 +290,9 @@ def select_search_result():
 @login_required
 @admin_required
 def fetch_cover():
-    """Fetch high-resolution cover image for a book by ISBN or title/author.
+    """Fetch high-resolution cover images for a book by ISBN or title/author.
 
-    Searches multiple sources and tries to download the best quality cover available.
+    Searches multiple sources and returns all found covers for user selection.
     """
     try:
         data = request.get_json()
@@ -300,7 +300,7 @@ def fetch_cover():
         title = data.get("title", "").strip()
         author = data.get("author", "").strip()
 
-        current_app.logger.debug(f"Fetching cover - ISBN: {isbn}, Title: {title}, Author: {author}")
+        current_app.logger.debug(f"Fetching covers - ISBN: {isbn}, Title: {title}, Author: {author}")
 
         # Search multiple sources for covers
         cover_candidates = search_covers_multiple_sources(isbn=isbn, title=title, author=author)
@@ -313,7 +313,8 @@ def fetch_cover():
 
         current_app.logger.info(f"Found {len(cover_candidates)} cover candidates from various sources")
 
-        # Try to download covers in priority order
+        # Try to download all covers and return them for user selection
+        downloaded_covers = []
         for cover_url, source, priority in cover_candidates:
             current_app.logger.info(f"Attempting to download from {source} (priority {priority}): {cover_url}")
 
@@ -321,19 +322,26 @@ def fetch_cover():
 
             if local_cover_url:
                 current_app.logger.info(f"Successfully downloaded cover from {source}")
-                return jsonify({
-                    "success": True,
-                    "cover_url": local_cover_url,
+                downloaded_covers.append({
+                    "url": local_cover_url,
                     "source": source,
-                    "tried_sources": len(cover_candidates)
+                    "priority": priority
                 })
             else:
-                current_app.logger.warning(f"Failed to download from {source}, trying next source...")
+                current_app.logger.warning(f"Failed to download from {source}, skipping...")
 
-        # All attempts failed
+        if not downloaded_covers:
+            return jsonify({
+                "success": False,
+                "error": f"Failed to download covers from {len(cover_candidates)} sources"
+            })
+
+        # Return all downloaded covers for user selection
         return jsonify({
-            "success": False,
-            "error": f"Failed to download covers from {len(cover_candidates)} sources"
+            "success": True,
+            "covers": downloaded_covers,
+            "total_found": len(cover_candidates),
+            "total_downloaded": len(downloaded_covers)
         })
 
     except Exception as e:

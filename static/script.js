@@ -962,7 +962,7 @@ function switchView(viewType) {
         });
 
         document.querySelectorAll('.book-cover img').forEach(img => {
-            img.className = 'object-cover w-full h-full rounded';
+            img.className = 'object-cover w-full h-72 rounded';
         });
 
         document.querySelectorAll('.book-info').forEach(info => {
