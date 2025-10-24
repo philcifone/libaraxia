@@ -260,63 +260,7 @@
             </div>
         </section>
 
-        <!-- Wishlist Section -->
-        {% if are_friends and wishlist_books %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-display text-content-primary">
-                    {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
-                </h2>
-                {% if is_own_profile %}
-                <a href="{{ url_for('wishlist.view_wishlist') }}"
-                   class="text-accent hover:text-accent-hover transition-colors text-sm">
-                    View all →
-                </a>
-                {% else %}
-                <a href="{{ url_for('wishlist.view_user_wishlist', username=user['username']) }}"
-                   class="text-accent hover:text-accent-hover transition-colors text-sm">
-                    View all →
-                </a>
-                {% endif %}
-            </div>
-
-            <!-- Book Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
-                {% for book in wishlist_books %}
-                <div class="book-item group">
-                    <a href="{% if is_own_profile %}{{ url_for('books.show_book', id=book.id) }}{% else %}{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ user['username'] }}{% endif %}"
-                       class="book-link block h-full bg-primary rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
-                        <div class="book-cover aspect-w-3 aspect-h-4 relative">
-                            {% if book.cover_image_url %}
-                            <img src="{{ url_for('static', filename=book.cover_image_url) }}"
-                                 alt="{{ book.title }}"
-                                 class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />
-                            {% else %}
-                            <div class="flex items-center justify-center h-56 bg-primary text-content-secondary">
-                                <svg class="w-12 h-12 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                </svg>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="book-info p-2">
-                            <h3 class="book-title text-sm font-semibold line-clamp-2 mb-1 text-content-primary">
-                                {{ book.title }}
-                            </h3>
-                            <p class="book-author text-content-secondary text-xs">
-                                {{ book.author }}
-                            </p>
-                        </div>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
-        {% endif %}
-
-        <!-- Reading Shelves Section -->
+                <!-- Reading Shelves Section -->
         {% if are_friends and reading_lists %}
         <section class="bg-secondary rounded-xl p-6 shadow-lg">
             <h2 class="text-2xl font-display text-content-primary mb-6">
@@ -369,6 +313,63 @@
                     </a>
                 {% endfor %}
             </div>
+        </section>
+        {% endif %}
+
+        <!-- Reading Goal Section -->
+        {% if current_user.id == user['id'] %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
+
+            {% if user['reading_goal'] and user['reading_goal'] > 0 %}
+            <div class="space-y-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-4xl font-bold text-content-primary">
+                            {{ stats.books_read_this_year if stats else 0 }} / {{ user['reading_goal'] }}
+                        </p>
+                        <p class="text-sm text-content-secondary mt-1">books read this year</p>
+                    </div>
+                    <div class="text-right">
+                        {% set progress = ((stats.books_read_this_year / user['reading_goal']) * 100) if (stats and user['reading_goal'] > 0) else 0 %}
+                        <p class="text-3xl font-bold text-accent">{{ "%.0f"|format(progress) }}%</p>
+                        <p class="text-sm text-content-secondary">complete</p>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-primary rounded-full h-4 overflow-hidden">
+                    {% set progress_width = progress if progress <= 100 else 100 %}
+                    <div class="h-full bg-accent rounded-full transition-all duration-500"
+                         style="width: {{ progress_width }}%"></div>
+                </div>
+
+                <!-- Encouragement message -->
+                {% if progress >= 100 %}
+                <p class="text-center text-green-400 font-semibold">Congratulations! You've reached your goal!</p>
+                {% elif progress >= 75 %}
+                <p class="text-center text-content-secondary">You're almost there! Keep going!</p>
+                {% elif progress >= 50 %}
+                <p class="text-center text-content-secondary">Halfway to your goal!</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="text-content-secondary mb-4">Set your annual reading goal to track your progress!</p>
+            {% endif %}
+
+            <!-- Update Reading Goal Form -->
+            <form method="POST" action="{{ url_for('user.update_reading_goal') }}" class="flex gap-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="number" id="reading_goal" name="reading_goal"
+                       value="{{ user['reading_goal'] or 0 }}" min="0"
+                       placeholder="How many books do you want to read this year?"
+                       class="flex-1 px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                <button type="submit"
+                        class="px-6 py-2 bg-accent text-white rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
+                    Update Goal
+                </button>
+            </form>
+            <p class="text-xs text-content-secondary mt-2">Set to 0 to hide the progress tracker</p>
         </section>
         {% endif %}
 
@@ -443,60 +444,59 @@
         </section>
         {% endif %}
 
-        <!-- Reading Goal Section -->
-        {% if current_user.id == user['id'] %}
+        <!-- Wishlist Section -->
+        {% if are_friends and wishlist_books %}
         <section class="bg-secondary rounded-xl p-6 shadow-lg">
-            <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
-
-            {% if user['reading_goal'] and user['reading_goal'] > 0 %}
-            <div class="space-y-4 mb-6">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-4xl font-bold text-content-primary">
-                            {{ stats.books_read_this_year if stats else 0 }} / {{ user['reading_goal'] }}
-                        </p>
-                        <p class="text-sm text-content-secondary mt-1">books read this year</p>
-                    </div>
-                    <div class="text-right">
-                        {% set progress = ((stats.books_read_this_year / user['reading_goal']) * 100) if (stats and user['reading_goal'] > 0) else 0 %}
-                        <p class="text-3xl font-bold text-accent">{{ "%.0f"|format(progress) }}%</p>
-                        <p class="text-sm text-content-secondary">complete</p>
-                    </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="w-full bg-primary rounded-full h-4 overflow-hidden">
-                    {% set progress_width = progress if progress <= 100 else 100 %}
-                    <div class="h-full bg-accent rounded-full transition-all duration-500"
-                         style="width: {{ progress_width }}%"></div>
-                </div>
-
-                <!-- Encouragement message -->
-                {% if progress >= 100 %}
-                <p class="text-center text-green-400 font-semibold">Congratulations! You've reached your goal!</p>
-                {% elif progress >= 75 %}
-                <p class="text-center text-content-secondary">You're almost there! Keep going!</p>
-                {% elif progress >= 50 %}
-                <p class="text-center text-content-secondary">Halfway to your goal!</p>
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-display text-content-primary">
+                    {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
+                </h2>
+                {% if is_own_profile %}
+                <a href="{{ url_for('wishlist.view_wishlist') }}"
+                   class="text-accent hover:text-accent-hover transition-colors text-sm">
+                    View all →
+                </a>
+                {% else %}
+                <a href="{{ url_for('wishlist.view_user_wishlist', username=user['username']) }}"
+                   class="text-accent hover:text-accent-hover transition-colors text-sm">
+                    View all →
+                </a>
                 {% endif %}
             </div>
-            {% else %}
-            <p class="text-content-secondary mb-4">Set your annual reading goal to track your progress!</p>
-            {% endif %}
 
-            <!-- Update Reading Goal Form -->
-            <form method="POST" action="{{ url_for('user.update_reading_goal') }}" class="flex gap-3">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="number" id="reading_goal" name="reading_goal"
-                       value="{{ user['reading_goal'] or 0 }}" min="0"
-                       placeholder="How many books do you want to read this year?"
-                       class="flex-1 px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                <button type="submit"
-                        class="px-6 py-2 bg-accent text-white rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
-                    Update Goal
-                </button>
-            </form>
-            <p class="text-xs text-content-secondary mt-2">Set to 0 to hide the progress tracker</p>
+            <!-- Book Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                {% for book in wishlist_books %}
+                <div class="book-item group">
+                    <a href="{% if is_own_profile %}{{ url_for('books.show_book', id=book.id) }}{% else %}{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ user['username'] }}{% endif %}"
+                       class="book-link block h-full bg-primary rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                        <div class="book-cover aspect-w-3 aspect-h-4 relative">
+                            {% if book.cover_image_url %}
+                            <img src="{{ url_for('static', filename=book.cover_image_url) }}"
+                                 alt="{{ book.title }}"
+                                 class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />
+                            {% else %}
+                            <div class="flex items-center justify-center h-56 bg-primary text-content-secondary">
+                                <svg class="w-12 h-12 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="book-info p-2">
+                            <h3 class="book-title text-sm font-semibold line-clamp-2 mb-1 text-content-primary">
+                                {{ book.title }}
+                            </h3>
+                            <p class="book-author text-content-secondary text-xs">
+                                {{ book.author }}
+                            </p>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
         </section>
         {% endif %}
 
