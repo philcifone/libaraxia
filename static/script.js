@@ -1058,3 +1058,32 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView(savedView);
     }
 });
+
+// ============================================================================
+// MEMBER FILTER TOGGLE
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleButton = document.getElementById('memberFilterToggle');
+    const filterSection = document.getElementById('memberFilterSection');
+    const chevron = document.getElementById('memberFilterChevron');
+
+    if (toggleButton && filterSection && chevron) {
+        // Check if filter should be open on page load
+        const isOpen = localStorage.getItem('memberFilterOpen') === 'true';
+        if (isOpen) {
+            filterSection.classList.remove('hidden');
+            chevron.classList.add('rotate-180');
+        }
+
+        // Toggle on click
+        toggleButton.addEventListener('click', function() {
+            const isCurrentlyHidden = filterSection.classList.contains('hidden');
+            filterSection.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+
+            // Save state to localStorage
+            localStorage.setItem('memberFilterOpen', isCurrentlyHidden ? 'true' : 'false');
+        });
+    }
+});
