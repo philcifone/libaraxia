@@ -15,3 +15,4 @@ schema.txt
 node_modules/
 docker-compose.yml
 certs/
+goodreads_library_export.csv

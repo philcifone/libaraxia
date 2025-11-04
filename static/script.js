@@ -424,9 +424,66 @@ function toggleDescription() {
     const description = document.getElementById('description');
     const button = description.nextElementSibling;
     const buttonText = button.querySelector('.toggle-text');
+    const arrow = button.querySelector('svg');
 
-    description.classList.toggle('expanded');
-    buttonText.textContent = description.classList.contains('expanded') ? 'Show Less' : 'Show More';
+    if (description.style.maxHeight && description.style.maxHeight !== '12rem') {
+        // Collapse
+        description.style.maxHeight = '12rem';
+        description.style.overflow = 'hidden';
+        buttonText.textContent = 'Show More';
+        arrow.classList.remove('rotate-180');
+    } else {
+        // Expand - set to scrollHeight to show all content
+        description.style.maxHeight = description.scrollHeight + 'px';
+        description.style.overflow = 'visible';
+        buttonText.textContent = 'Show Less';
+        arrow.classList.add('rotate-180');
+    }
+}
+
+// toggle friend review expansion
+function toggleReview(reviewId, button) {
+    const reviewText = document.getElementById(reviewId);
+    const buttonText = button.querySelector('.toggle-text');
+    const arrow = button.querySelector('svg');
+
+    if (reviewText.classList.contains('line-clamp-4')) {
+        // Expand
+        reviewText.classList.remove('line-clamp-4');
+        buttonText.textContent = 'Show Less';
+        arrow.classList.add('rotate-180');
+    } else {
+        // Collapse
+        reviewText.classList.add('line-clamp-4');
+        buttonText.textContent = 'Show More';
+        arrow.classList.remove('rotate-180');
+    }
+}
+
+// Toggle friend review card expansion
+function toggleFriendReview(button) {
+    const card = button.closest('.friend-review-card');
+    const expandedContent = card.querySelector('.review-expanded');
+    const expandIcon = card.querySelector('.expand-icon');
+    const previewText = button.querySelector('.review-preview');
+
+    if (expandedContent.classList.contains('hidden')) {
+        // Expand
+        expandedContent.classList.remove('hidden');
+        expandIcon.style.transform = 'rotate(180deg)';
+        button.classList.remove('hover:bg-secondary-hover');
+        if (previewText) {
+            previewText.classList.add('hidden');
+        }
+    } else {
+        // Collapse
+        expandedContent.classList.add('hidden');
+        expandIcon.style.transform = 'rotate(0deg)';
+        button.classList.add('hover:bg-primary-hover');
+        if (previewText) {
+            previewText.classList.remove('hidden');
+        }
+    }
 }
 
 // toast for collections
@@ -805,8 +862,8 @@ class InfiniteScroll {
             const coverImage = book.cover_image_url
                 ? `<img src="/static/${book.cover_image_url}"
                         alt="${this.escapeHtml(book.title)}"
-                        class="object-cover w-full h-full rounded" />`
-                : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary rounded">
+                        class="book-cover-img object-cover w-full h-full" />`
+                : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
                         <span class="text-xs italic">No Image</span>
                    </div>`;
 
@@ -814,7 +871,7 @@ class InfiniteScroll {
                 <div class="book-item">
                     <a href="/books/book/${book.id}"
                        class="book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4">
-                        <div class="book-cover flex-shrink-0 w-24 h-32">
+                        <div class="book-cover flex-shrink-0 w-24 h-32 overflow-hidden rounded">
                             ${coverImage}
                         </div>
                         <div class="book-info flex-1 flex flex-col justify-center">
@@ -833,16 +890,16 @@ class InfiniteScroll {
             const coverImage = book.cover_image_url
                 ? `<img src="/static/${book.cover_image_url}"
                         alt="${this.escapeHtml(book.title)}"
-                        class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
-                : `<div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
+                        class="book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200" />`
+                : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
                         <span class="text-sm italic">No Image Available</span>
                    </div>`;
 
             return `
                 <div class="book-item group">
                     <a href="/books/book/${book.id}"
-                       class="book-link block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
-                        <div class="book-cover aspect-w-3 aspect-h-4 relative">
+                       class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                        <div class="book-cover w-full h-64 overflow-hidden">
                             ${coverImage}
                         </div>
                         <div class="book-info p-4">
@@ -912,20 +969,24 @@ function switchView(viewType) {
     if (!container) return;
 
     if (viewType === 'grid') {
-        // Grid view
-        container.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mt-12';
+        // Grid view - set container to grid layout
+        container.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6';
 
-        // Update book items for grid view
+        // Update each book item for grid view
         document.querySelectorAll('.book-item').forEach(item => {
             item.className = 'book-item group';
         });
 
         document.querySelectorAll('.book-link').forEach(link => {
-            link.className = 'book-link block h-full bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200';
+            link.className = 'book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200';
         });
 
         document.querySelectorAll('.book-cover').forEach(cover => {
-            cover.className = 'book-cover aspect-w-3 aspect-h-4 relative';
+            cover.className = 'book-cover w-full h-64 overflow-hidden';
+        });
+
+        document.querySelectorAll('.book-cover-img').forEach(img => {
+            img.className = 'book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200';
         });
 
         document.querySelectorAll('.book-info').forEach(info => {
@@ -945,10 +1006,10 @@ function switchView(viewType) {
         listBtn.classList.remove('active', 'bg-accent/30', 'text-accent');
 
     } else {
-        // List view
-        container.className = 'flex flex-col gap-4 mt-12';
+        // List view - set container to flex layout
+        container.className = 'flex flex-col gap-4';
 
-        // Update book items for list view
+        // Update each book item for list view
         document.querySelectorAll('.book-item').forEach(item => {
             item.className = 'book-item';
         });
@@ -958,11 +1019,11 @@ function switchView(viewType) {
         });
 
         document.querySelectorAll('.book-cover').forEach(cover => {
-            cover.className = 'book-cover flex-shrink-0 w-24 h-32';
+            cover.className = 'book-cover flex-shrink-0 w-24 h-32 overflow-hidden rounded';
         });
 
-        document.querySelectorAll('.book-cover img').forEach(img => {
-            img.className = 'object-cover w-full h-72 rounded';
+        document.querySelectorAll('.book-cover-img').forEach(img => {
+            img.className = 'book-cover-img object-cover w-full h-full';
         });
 
         document.querySelectorAll('.book-info').forEach(info => {

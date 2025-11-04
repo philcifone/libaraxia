@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import current_user, login_required
 from functools import wraps
 from utils.database import get_db_connection
-from models import User, admin_required, get_friendship_status, is_friends_with
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with
 from werkzeug.utils import secure_filename
 import bcrypt
 import csv
@@ -275,6 +275,30 @@ def profile(username):
                 """, (user['id'], status)).fetchall()
                 reading_list_covers[status] = [row['cover_image_url'] for row in covers]
 
+        # Check if this user is in current user's shared library
+        in_shared_library = shares_library_with(current_user.id, user['id']) if not is_own_profile else False
+
+        # Get recent reviews/ratings for the user
+        recent_reviews = []
+        if are_friends:
+            reviews_query = """
+                SELECT
+                    r.book_id,
+                    r.rating,
+                    r.comment,
+                    b.title,
+                    b.author,
+                    b.cover_image_url,
+                    rs.date_completed
+                FROM read_data r
+                JOIN books b ON r.book_id = b.id
+                LEFT JOIN reading_sessions rs ON r.user_id = rs.user_id AND r.book_id = rs.book_id
+                WHERE r.user_id = ?
+                ORDER BY rs.date_completed DESC, r.rowid DESC
+                LIMIT 15
+            """
+            recent_reviews = [dict(row) for row in conn.execute(reviews_query, (user['id'],)).fetchall()]
+
         return render_template(
             'user.html',
             user=user,
@@ -288,7 +312,9 @@ def profile(username):
             friends=friends,
             wishlist_books=wishlist_books,
             reading_lists=reading_lists,
-            reading_list_covers=reading_list_covers
+            reading_list_covers=reading_list_covers,
+            in_shared_library=in_shared_library,
+            recent_reviews=recent_reviews
         )
     finally:
         conn.close()
@@ -725,4 +751,327 @@ def export_library():
     finally:
         conn.close()
 
-        
+@user_blueprint.route('/import_goodreads_page')
+@login_required
+def import_goodreads_page():
+    """Display the Goodreads import page with instructions"""
+    return render_template('goodreads_import.html')
+
+def format_goodreads_date(date_str):
+    """Convert Goodreads date format (YYYY/MM/DD) to SQLite format (YYYY-MM-DD)"""
+    if not date_str:
+        return None
+    # Replace forward slashes with dashes for proper SQLite date sorting
+    return date_str.replace('/', '-')
+
+@user_blueprint.route('/import_goodreads', methods=['POST'])
+@login_required
+@rate_limit("3 per hour")
+def import_goodreads():
+    """Import library data from Goodreads CSV export"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        # Check if file was uploaded
+        if 'goodreads_csv' not in request.files:
+            return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+
+        file = request.files['goodreads_csv']
+
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'}), 400
+
+        if not file.filename.endswith('.csv'):
+            return jsonify({'success': False, 'message': 'File must be a CSV'}), 400
+
+        # Read CSV content
+        csv_content = file.read().decode('utf-8')
+        csv_reader = csv.DictReader(StringIO(csv_content))
+
+        conn = get_db_connection()
+        stats = {
+            'books_added': 0,
+            'wishlist_added': 0,
+            'ratings_added': 0,
+            'duplicates_skipped': 0,
+            'collection_added': 0,
+            'sessions_added': 0,
+            'rows_processed': 0,
+            'unknown_shelf': 0,
+            'errors': []
+        }
+
+        try:
+            for row in csv_reader:
+                stats['rows_processed'] += 1
+                try:
+                    # Extract book data from Goodreads CSV
+                    title = row.get('Title', '').strip()
+                    author = row.get('Author', '').strip()
+                    isbn = row.get('ISBN13', '').strip() or row.get('ISBN', '').strip()
+                    isbn = isbn.replace('="', '').replace('"', '').strip()  # Clean ISBN formatting
+
+                    publisher = row.get('Publisher', '').strip()
+                    year = row.get('Year Published', '').strip() or row.get('Original Publication Year', '').strip()
+                    pages = row.get('Number of Pages', '').strip()
+                    my_rating = row.get('My Rating', '').strip()
+                    # Format dates to use dashes instead of slashes for proper SQLite sorting
+                    date_read = format_goodreads_date(row.get('Date Read', '').strip())
+                    date_added = format_goodreads_date(row.get('Date Added', '').strip())
+                    bookshelves = row.get('Bookshelves', '').strip()
+                    exclusive_shelf = row.get('Exclusive Shelf', '').strip()
+                    my_review = row.get('My Review', '').strip()
+
+                    # Skip if no title
+                    if not title:
+                        continue
+
+                    # Determine shelf (use Exclusive Shelf first, then Bookshelves)
+                    shelf = exclusive_shelf or bookshelves
+
+                    # Debug logging
+                    if stats['rows_processed'] <= 3:
+                        logger.info(f"Row {stats['rows_processed']}: Title='{title}', Shelf='{shelf}', Exclusive='{exclusive_shelf}', Bookshelves='{bookshelves}'")
+
+                    # Check if book already exists (by ISBN or title+author)
+                    existing_book = None
+                    if isbn:
+                        existing_book = conn.execute(
+                            'SELECT * FROM books WHERE isbn = ?', (isbn,)
+                        ).fetchone()
+
+                    if not existing_book and title and author:
+                        existing_book = conn.execute(
+                            'SELECT * FROM books WHERE LOWER(title) = LOWER(?) AND LOWER(author) = LOWER(?)',
+                            (title, author)
+                        ).fetchone()
+
+                    # If book doesn't exist, create it
+                    if not existing_book:
+                        # For bulk import, use Goodreads data directly (API calls are too slow)
+                        # Covers can be fetched later via separate feature
+                        final_title = title
+                        final_author = author
+                        final_isbn = isbn
+                        final_publisher = publisher
+                        final_year = year
+                        final_pages = pages
+                        cover_url = ''  # Will fetch covers later
+                        description = ''
+                        subtitle = ''
+                        genre = ''
+
+                        # Insert book into database
+                        cursor = conn.execute('''
+                            INSERT INTO books (title, author, isbn, publisher, publish_year,
+                                             page_count, cover_image_url, description, subtitle,
+                                             genre, added_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (final_title, final_author, final_isbn, final_publisher,
+                              final_year, final_pages, cover_url, description, subtitle,
+                              genre, current_user.id))
+
+                        book_id = cursor.lastrowid
+                        stats['books_added'] += 1
+                    else:
+                        book_id = existing_book['id']
+
+                    # Handle different shelves
+                    if shelf in ['to-read', 'want-to-read']:
+                        # Add to wishlist
+                        existing_wishlist = conn.execute(
+                            'SELECT * FROM wishlist WHERE user_id = ? AND book_id = ?',
+                            (current_user.id, book_id)
+                        ).fetchone()
+
+                        if not existing_wishlist:
+                            conn.execute('''
+                                INSERT INTO wishlist (user_id, book_id, notes, added_at)
+                                VALUES (?, ?, ?, ?)
+                            ''', (current_user.id, book_id, my_review or '', date_added or None))
+                            stats['wishlist_added'] += 1
+                            logger.info(f"Added '{title}' to wishlist")
+
+                    elif shelf in ['read', 'currently-reading']:
+                        # Check if already in collections
+                        existing_collection = conn.execute(
+                            'SELECT * FROM collections WHERE user_id = ? AND book_id = ?',
+                            (current_user.id, book_id)
+                        ).fetchone()
+
+                        if existing_collection:
+                            stats['duplicates_skipped'] += 1
+                            logger.info(f"Skipping '{title}' - already in collections")
+                            continue
+
+                        # Map shelf to collection status
+                        if shelf == 'read':
+                            status = 'read'
+                        elif shelf == 'currently-reading':
+                            status = 'currently reading'
+                        else:
+                            status = 'want to read'
+
+                        # Add to collections (date_added is already formatted)
+                        conn.execute('''
+                            INSERT INTO collections (user_id, book_id, status, created_at)
+                            VALUES (?, ?, ?, ?)
+                        ''', (current_user.id, book_id, status, date_added))
+                        stats['collection_added'] += 1
+                        logger.info(f"Added '{title}' to collections with status '{status}'")
+
+                        # Add rating and review if provided
+                        if my_rating and my_rating != '0':
+                            conn.execute('''
+                                INSERT INTO read_data (user_id, book_id, rating, comment)
+                                VALUES (?, ?, ?, ?)
+                            ''', (current_user.id, book_id, int(my_rating), my_review or ''))
+                            stats['ratings_added'] += 1
+
+                        # Add reading session if date_read is provided (date_read is already formatted)
+                        if date_read and shelf == 'read':
+                            conn.execute('''
+                                INSERT INTO reading_sessions (user_id, book_id, date_started, date_completed)
+                                VALUES (?, ?, ?, ?)
+                            ''', (current_user.id, book_id, None, date_read))
+                            stats['sessions_added'] += 1
+                    else:
+                        stats['unknown_shelf'] += 1
+                        if stats['unknown_shelf'] <= 5:
+                            logger.warning(f"Unknown shelf '{shelf}' for book '{title}'")
+
+                except Exception as row_error:
+                    logger.error(f"Error processing row: {row_error}")
+                    stats['errors'].append(f"Error with book '{title}': {str(row_error)}")
+                    continue
+
+            conn.commit()
+
+            logger.info(f"Import completed: {stats}")
+
+            # Return success with detailed stats
+            result = {
+                'success': True,
+                **stats
+            }
+
+            # If nothing was added, include a warning
+            if stats['books_added'] == 0 and stats['wishlist_added'] == 0 and stats['collection_added'] == 0:
+                result['message'] = f"No items imported. Processed {stats['rows_processed']} rows. Unknown shelves: {stats['unknown_shelf']}. Check logs for details."
+
+            return jsonify(result)
+
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Import error: {str(e)}", exc_info=True)
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+        finally:
+            conn.close()
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@user_blueprint.route('/add_to_shared_library/<int:user_id>', methods=['POST'])
+@login_required
+@rate_limit("20 per hour")
+def add_to_shared_library(user_id):
+    """Add a friend to your shared library"""
+    conn = get_db_connection()
+    try:
+        # Get the friend's info
+        friend = conn.execute(
+            'SELECT username FROM users WHERE id = ?', (user_id,)
+        ).fetchone()
+
+        if not friend:
+            flash('User not found', 'error')
+            return redirect(request.referrer or url_for('base.index'))
+
+        # Check if they are friends
+        if not is_friends_with(current_user.id, user_id):
+            flash('You can only add friends to your shared library', 'error')
+            return redirect(request.referrer or url_for('base.index'))
+
+        # Check if current user already in a library group
+        existing_lib = conn.execute(
+            'SELECT library_id FROM library_members WHERE user_id = ?',
+            (current_user.id,)
+        ).fetchone()
+
+        if existing_lib:
+            library_id = existing_lib['library_id']
+        else:
+            # Create new library group
+            max_lib = conn.execute('SELECT MAX(library_id) as max_id FROM library_members').fetchone()
+            library_id = (max_lib['max_id'] or 0) + 1
+
+            # Add current user to new library
+            conn.execute('''
+                INSERT INTO library_members (library_id, user_id, role, added_by)
+                VALUES (?, ?, 'owner', ?)
+            ''', (library_id, current_user.id, current_user.id))
+
+        # Add friend to library (remove from their current library if they have one)
+        conn.execute('DELETE FROM library_members WHERE user_id = ?', (user_id,))
+        conn.execute('''
+            INSERT INTO library_members (library_id, user_id, role, added_by)
+            VALUES (?, ?, 'member', ?)
+        ''', (library_id, user_id, current_user.id))
+
+        conn.commit()
+        flash(f"{friend['username']} added to your shared library!", 'success')
+        current_app.logger.info(
+            f"User {current_user.username} added {friend['username']} to shared library"
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error adding to shared library: {str(e)}")
+        flash('Error adding to shared library', 'error')
+    finally:
+        conn.close()
+
+    return redirect(request.referrer or url_for('user.profile', username=friend['username']))
+
+
+@user_blueprint.route('/remove_from_shared_library/<int:user_id>', methods=['POST'])
+@login_required
+@rate_limit("20 per hour")
+def remove_from_shared_library(user_id):
+    """Remove a user from your shared library"""
+    conn = get_db_connection()
+    try:
+        # Get the user's info
+        user = conn.execute(
+            'SELECT username FROM users WHERE id = ?', (user_id,)
+        ).fetchone()
+
+        if not user:
+            flash('User not found', 'error')
+            return redirect(request.referrer or url_for('base.index'))
+
+        # Check if they share a library
+        if not shares_library_with(current_user.id, user_id):
+            flash('This user is not in your shared library', 'error')
+            return redirect(request.referrer or url_for('base.index'))
+
+        # Remove from library
+        conn.execute('DELETE FROM library_members WHERE user_id = ?', (user_id,))
+        conn.commit()
+
+        flash(f"{user['username']} removed from your shared library", 'success')
+        current_app.logger.info(
+            f"User {current_user.username} removed {user['username']} from shared library"
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error removing from shared library: {str(e)}")
+        flash('Error removing from shared library', 'error')
+    finally:
+        conn.close()
+
+    return redirect(request.referrer or url_for('user.profile', username=user['username']))
+

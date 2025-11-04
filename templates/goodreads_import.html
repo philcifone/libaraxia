@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <title>Import from Goodreads</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+</head>
+<body class="bg-primary dark:bg-primary light:bg-primary-light min-h-screen">
+    {% include '_sidebar.html' %}
+
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
+        <!-- Back Nav -->
+        <a href="{{ url_for('user.profile', username=current_user.username) }}"
+           class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
+            <span class="mr-2">←</span>
+            <span>Back to Profile</span>
+        </a>
+
+        <!-- Page Title -->
+        <div class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h1 class="text-3xl font-bold text-content-primary mb-2">Import from Goodreads</h1>
+            <p class="text-content-secondary">Import your library from a Goodreads CSV export</p>
+        </div>
+
+        <!-- Important Notice -->
+        <div class="bg-yellow-900/20 border-2 border-yellow-600 rounded-xl p-6 shadow-lg">
+            <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <div class="space-y-2">
+                    <h2 class="text-xl font-semibold text-yellow-400">Please Note</h2>
+                    <p class="text-yellow-100">The Goodreads import is not perfect and will require some manual work:</p>
+                    <ul class="list-disc list-inside space-y-1 text-yellow-100 ml-4">
+                        <li><strong>Book covers will not be imported</strong> - You'll need to fetch them separately using the "Fetch Cover" feature</li>
+                        <li><strong>Missing book details</strong> - Some books may have incomplete information (publisher, page count, etc.)</li>
+                        <li><strong>Review formatting</strong> - Long reviews may need reformatting</li>
+                        <li><strong>Custom shelves</strong> - Only standard Goodreads shelves are recognized</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Where Data Goes -->
+        <div class="bg-secondary rounded-xl p-6 shadow-lg space-y-4">
+            <h2 class="text-2xl font-semibold text-content-primary mb-4">Where Your Goodreads Data Goes</h2>
+
+            <div class="space-y-4">
+                <!-- Wishlist -->
+                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg">
+                    <svg class="w-6 h-6 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold text-content-primary">Wishlist</h3>
+                        <p class="text-content-secondary">Books on your <span class="font-mono text-accent">"to-read"</span> or <span class="font-mono text-accent">"want-to-read"</span> shelves</p>
+                    </div>
+                </div>
+
+                <!-- Collections (Read) -->
+                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg">
+                    <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold text-content-primary">Collections (Read)</h3>
+                        <p class="text-content-secondary">Books on your <span class="font-mono text-accent">"read"</span> shelf</p>
+                        <p class="text-sm text-content-secondary mt-1">Includes: ratings, reviews, and reading completion dates</p>
+                    </div>
+                </div>
+
+                <!-- Collections (Currently Reading) -->
+                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg">
+                    <svg class="w-6 h-6 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold text-content-primary">Collections (Currently Reading)</h3>
+                        <p class="text-content-secondary">Books on your <span class="font-mono text-accent">"currently-reading"</span> shelf</p>
+                    </div>
+                </div>
+
+                <!-- Skipped -->
+                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg opacity-60">
+                    <svg class="w-6 h-6 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold text-content-primary">Not Imported</h3>
+                        <p class="text-content-secondary">Books on custom shelves or other non-standard shelves will be skipped</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How to Export from Goodreads -->
+        <div class="bg-secondary rounded-xl p-6 shadow-lg space-y-4">
+            <h2 class="text-2xl font-semibold text-content-primary mb-4">How to Export from Goodreads</h2>
+            <ol class="list-decimal list-inside space-y-2 text-content-secondary">
+                <li>Go to <a href="https://www.goodreads.com/review/import" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Goodreads Import/Export</a></li>
+                <li>Click "Export Library" at the top of the page</li>
+                <li>Wait for the export to complete (you'll receive an email)</li>
+                <li>Download the CSV file from the link in the email</li>
+                <li>Upload it below</li>
+            </ol>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="bg-secondary rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-semibold text-content-primary mb-4">Upload Your Goodreads Export</h2>
+
+            <div class="flex justify-center">
+                <label for="goodreads-import"
+                       class="inline-flex items-center gap-2 px-8 py-4 bg-green-600 rounded-lg text-white text-lg font-semibold transition-colors hover:bg-green-700 cursor-pointer">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                    </svg>
+                    Choose CSV File
+                </label>
+                <input type="file" id="goodreads-import" accept=".csv" class="hidden" onchange="handleGoodreadsImport(event)">
+            </div>
+
+            <!-- Import Progress/Status -->
+            <div id="import-status" class="hidden mt-6 p-4 bg-primary rounded-lg">
+                <div id="import-progress" class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <svg class="animate-spin h-5 w-5 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-content-primary font-medium">Importing your Goodreads library...</span>
+                    </div>
+                    <p class="text-sm text-content-secondary">This may take a minute. Please don't close this page.</p>
+                </div>
+                <div id="import-result" class="hidden space-y-2">
+                    <p id="import-message" class="text-content-primary"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rate Limit Notice -->
+        <div class="bg-secondary rounded-xl p-4 shadow-lg">
+            <p class="text-sm text-content-secondary text-center">
+                <strong>Note:</strong> You can only import once every 3 attempts per hour to prevent abuse.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Goodreads Import Handler
+        function handleGoodreadsImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Check file type
+            if (!file.name.endsWith('.csv')) {
+                alert('Please select a CSV file');
+                event.target.value = '';
+                return;
+            }
+
+            // Show progress section and disable button
+            const statusContainer = document.getElementById('import-status');
+            const progressDiv = document.getElementById('import-progress');
+            const resultDiv = document.getElementById('import-result');
+            const messageP = document.getElementById('import-message');
+            const importButton = document.querySelector('label[for="goodreads-import"]');
+
+            statusContainer.classList.remove('hidden');
+            progressDiv.classList.remove('hidden');
+            resultDiv.classList.add('hidden');
+
+            // Disable button during import
+            if (importButton) {
+                importButton.classList.add('opacity-50', 'cursor-not-allowed');
+                importButton.style.pointerEvents = 'none';
+            }
+
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('goodreads_csv', file);
+            formData.append('csrf_token', '{{ csrf_token() }}');
+
+            // Send to server
+            fetch('{{ url_for("user.import_goodreads") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide progress, show result
+                progressDiv.classList.add('hidden');
+                resultDiv.classList.remove('hidden');
+
+                if (data.success) {
+                    messageP.innerHTML = `
+                        <div class="space-y-2">
+                            <p class="text-green-400 font-semibold">✓ Import completed successfully!</p>
+                            <div class="text-sm text-content-secondary space-y-1">
+                                <p>• Books added: ${data.stats.books_added}</p>
+                                <p>• Added to wishlist: ${data.stats.wishlist_added}</p>
+                                <p>• Added to collections: ${data.stats.collection_added}</p>
+                                <p>• Ratings imported: ${data.stats.ratings_added}</p>
+                                <p>• Reading sessions: ${data.stats.sessions_added}</p>
+                                <p>• Duplicates skipped: ${data.stats.duplicates_skipped}</p>
+                                ${data.stats.unknown_shelf > 0 ? `<p class="text-yellow-400">• Unknown shelves: ${data.stats.unknown_shelf}</p>` : ''}
+                            </div>
+                            <p class="text-sm text-content-secondary mt-3">
+                                <strong>Next steps:</strong> Use the "Fetch Cover" feature on your books to add missing covers!
+                            </p>
+                            <a href="{{ url_for('user.profile', username=current_user.username) }}"
+                               class="inline-block mt-3 px-4 py-2 bg-accent rounded-lg text-white hover:bg-accent-hover transition-colors">
+                                Return to Profile
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    messageP.innerHTML = `
+                        <p class="text-red-400">✗ Import failed: ${data.message}</p>
+                        <p class="text-sm text-content-secondary mt-2">Please try again or contact support if the issue persists.</p>
+                    `;
+                }
+
+                // Re-enable button
+                if (importButton) {
+                    importButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    importButton.style.pointerEvents = 'auto';
+                }
+
+                // Clear file input
+                event.target.value = '';
+            })
+            .catch(error => {
+                progressDiv.classList.add('hidden');
+                resultDiv.classList.remove('hidden');
+                messageP.innerHTML = `
+                    <p class="text-red-400">✗ Error: ${error.message}</p>
+                    <p class="text-sm text-content-secondary mt-2">Please try again.</p>
+                `;
+
+                // Re-enable button
+                if (importButton) {
+                    importButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    importButton.style.pointerEvents = 'auto';
+                }
+
+                // Clear file input
+                event.target.value = '';
+            });
+        }
+    </script>
+</body>
+</html>

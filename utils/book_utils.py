@@ -363,6 +363,47 @@ def fetch_cover_by_isbn_direct(isbn: str) -> Optional[str]:
 
     return None
 
+def fetch_goodreads_cover(isbn: str = None, title: str = None, author: str = None) -> Optional[str]:
+    """Fetch book cover from Goodreads via BookCover API.
+
+    This uses the free BookCover API that scrapes Goodreads.
+    API: https://github.com/w3slley/bookcover-api
+    Returns JSON: {"url": "https://..."}
+    """
+    try:
+        base_url = "https://bookcover.longitood.com/bookcover"
+
+        # The API requires both book_title and author_name (doesn't support ISBN alone)
+        if title and author:
+            params = {
+                "book_title": title,
+                "author_name": author
+            }
+
+            response = requests.get(base_url, params=params, timeout=10)
+
+            # Check if we got a successful response
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    if 'url' in data and data['url']:
+                        cover_url = data['url']
+                        current_app.logger.info(f"Found Goodreads cover for '{title}' by {author}: {cover_url}")
+                        return cover_url
+                except ValueError:
+                    # Not JSON, might be an error
+                    current_app.logger.debug(f"Goodreads API returned non-JSON response for '{title}'")
+                    return None
+
+        return None
+
+    except requests.Timeout:
+        current_app.logger.warning(f"Goodreads BookCover API timeout for Title: {title}, Author: {author}")
+        return None
+    except Exception as e:
+        current_app.logger.warning(f"Goodreads BookCover API error: {str(e)}")
+        return None
+
 def search_covers_multiple_sources(isbn: str = None, title: str = None, author: str = None) -> list:
     """Search multiple sources for book covers and return all found URLs.
 
@@ -390,7 +431,13 @@ def search_covers_multiple_sources(isbn: str = None, title: str = None, author: 
         if ol_data and ol_data.get("cover_image_url"):
             covers.append((ol_data["cover_image_url"], "Open Library (ISBN)", 3))
 
-    # Source 4: Google Books via title/author search
+    # Source 4: Goodreads via BookCover API (requires both title AND author)
+    if title and author:
+        goodreads_url = fetch_goodreads_cover(title=title, author=author)
+        if goodreads_url:
+            covers.append((goodreads_url, "Goodreads", 4))
+
+    # Source 5: Google Books via title/author search
     if title:
         query = f"{title} {author}".strip() if author else title
         search_results = search_google_books(query, max_results=3)
@@ -410,9 +457,9 @@ def search_covers_multiple_sources(isbn: str = None, title: str = None, author: 
                 if result_isbn and not isbn:  # Only if we didn't already try with main ISBN
                     ol_direct_url = fetch_cover_by_isbn_direct(result_isbn)
                     if ol_direct_url:
-                        covers.append((ol_direct_url, f"Open Library (Search Result #{idx+1})", 4 + idx))
+                        covers.append((ol_direct_url, f"Open Library (Search Result #{idx+1})", 5 + idx))
 
-                covers.append((thumbnail_url, f"Google Books (Search #{idx+1})", 5 + idx))
+                covers.append((thumbnail_url, f"Google Books (Search #{idx+1})", 6 + idx))
 
     # Sort by priority (lower number first)
     covers.sort(key=lambda x: x[2])

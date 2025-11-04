@@ -12,7 +12,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from models import admin_required
+from models import admin_required, shares_library_with, get_library_members
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -160,9 +160,13 @@ def check_duplicates():
         duplicates = []
 
         with get_db_connection() as conn:
-            # Check for exact title match or ISBN match
+            # Get library members to restrict search scope
+            library_member_ids = get_library_members(current_user.id)
+            placeholders = ','.join(['?' for _ in library_member_ids])
+
+            # Check for exact title match or ISBN match (only within library scope)
             query_parts = []
-            params = []
+            params = library_member_ids.copy()
 
             if title:
                 query_parts.append("LOWER(title) = LOWER(?)")
@@ -178,7 +182,7 @@ def check_duplicates():
             if not query_parts:
                 return jsonify({"has_duplicates": False, "duplicates": []})
 
-            query = f"SELECT id, title, author, isbn FROM books WHERE {' '.join(query_parts)}"
+            query = f"SELECT id, title, author, isbn FROM books WHERE added_by IN ({placeholders}) AND ({' '.join(query_parts)})"
             existing_books = conn.execute(query, params).fetchall()
 
             for book in existing_books:
@@ -437,7 +441,8 @@ def show_book(id):
         # Get book details
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
 
-        # Check if we're viewing from someone else's wishlist
+        # Check if ANY user has this book on their wishlist
+        # First, check if there's a specific wishlist_owner parameter from URL
         wishlist_owner = request.args.get('wishlist_owner')
         wishlist_owner_entry = None
         wishlist_owner_user = None
@@ -456,6 +461,31 @@ def show_book(id):
                     FROM wishlist
                     WHERE user_id = ? AND book_id = ?
                 """, (wishlist_owner_user['id'], id)).fetchone()
+
+        # If no specific wishlist_owner was found, check if ANY user has this on their wishlist
+        # This ensures the wishlist section shows when clicking from activity feed
+        if not wishlist_owner_entry:
+            # Get the first user (excluding current user) who has this book on their wishlist
+            any_wishlist_entry = conn.execute("""
+                SELECT w.wishlist_id, w.notes, w.added_at, u.id, u.username
+                FROM wishlist w
+                JOIN users u ON w.user_id = u.id
+                WHERE w.book_id = ? AND w.user_id != ?
+                ORDER BY w.added_at DESC
+                LIMIT 1
+            """, (id, current_user.id)).fetchone()
+
+            if any_wishlist_entry:
+                wishlist_owner_entry = {
+                    'wishlist_id': any_wishlist_entry['wishlist_id'],
+                    'notes': any_wishlist_entry['notes'],
+                    'added_at': any_wishlist_entry['added_at']
+                }
+                wishlist_owner_user = {
+                    'id': any_wishlist_entry['id'],
+                    'username': any_wishlist_entry['username']
+                }
+                wishlist_owner = any_wishlist_entry['username']
 
         # Get reading status and most recent reading session
         read_data = conn.execute("""
@@ -508,6 +538,45 @@ def show_book(id):
 
         collection_status = collection_status['status'] if collection_status else 'untracked'
 
+        # Get library members for transfer functionality
+        library_member_ids = get_library_members(current_user.id)
+        library_members = []
+        if len(library_member_ids) > 1:
+            # Get full user info for library members
+            placeholders = ','.join(['?' for _ in library_member_ids])
+            library_members = conn.execute(
+                f'SELECT id, username FROM users WHERE id IN ({placeholders})',
+                library_member_ids
+            ).fetchall()
+
+        # Get friend reviews for this book
+        # Friends are users who share the library with current user or are connected via friend requests
+        friend_reviews = []
+        if library_member_ids:
+            placeholders = ','.join(['?' for _ in library_member_ids])
+            friend_reviews = conn.execute(f"""
+                SELECT
+                    u.id,
+                    u.username,
+                    u.avatar_url,
+                    rd.rating,
+                    rd.comment,
+                    rs.date_completed,
+                    c.status as reading_status
+                FROM read_data rd
+                JOIN users u ON rd.user_id = u.id
+                LEFT JOIN collections c ON c.user_id = rd.user_id AND c.book_id = rd.book_id
+                LEFT JOIN reading_sessions rs ON rs.user_id = rd.user_id
+                    AND rs.book_id = rd.book_id
+                    AND rs.date_completed IS NOT NULL
+                WHERE rd.book_id = ?
+                    AND rd.user_id IN ({placeholders})
+                    AND rd.user_id != ?
+                    AND (rd.rating IS NOT NULL OR rd.comment IS NOT NULL)
+                GROUP BY u.id
+                ORDER BY MAX(rs.date_completed) DESC, u.username ASC
+            """, [id] + library_member_ids + [current_user.id]).fetchall()
+
         return render_template(
             "book_detail.html",
             book=book,
@@ -520,7 +589,9 @@ def show_book(id):
             in_wishlist=wishlist_entry is not None,
             wishlist_owner=wishlist_owner,
             wishlist_owner_user=wishlist_owner_user,
-            wishlist_owner_entry=wishlist_owner_entry
+            wishlist_owner_entry=wishlist_owner_entry,
+            library_members=library_members,
+            friend_reviews=friend_reviews
         )
     finally:
         conn.close()
@@ -577,14 +648,19 @@ def search():
 
     conn = get_db_connection()
     try:
-        # Simplified query - search books not in wishlist
-        query = '''
+        # Get library members to filter books
+        library_member_ids = get_library_members(current_user.id)
+
+        # Search only books from current user or their library members
+        placeholders = ','.join(['?' for _ in library_member_ids])
+        query = f'''
             SELECT b.* FROM books b
-            WHERE NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id)
+            WHERE b.added_by IN ({placeholders})
+            AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id)
             AND (LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?)
         '''
         search_like = f"%{search_term}%"
-        params = [search_like, search_like, search_like]
+        params = library_member_ids + [search_like, search_like, search_like]
 
         # Apply filters if they exist (simplified)
         if request.args.get('genre'):
@@ -656,3 +732,66 @@ def search():
                              current_page=page)
     finally:
         conn.close()
+
+
+@books_blueprint.route("/transfer/<int:book_id>", methods=["POST"])
+@login_required
+def transfer_book(book_id):
+    """Transfer book ownership to another user in the same library group"""
+    new_owner_id = request.form.get('new_owner_id', type=int)
+
+    if not new_owner_id:
+        flash("Please select a user to transfer the book to", "error")
+        return redirect(request.referrer or url_for('base.index'))
+
+    conn = get_db_connection()
+    try:
+        # Get the book and verify current user owns it or shares library
+        book = conn.execute(
+            'SELECT id, title, added_by FROM books WHERE id = ?',
+            (book_id,)
+        ).fetchone()
+
+        if not book:
+            flash("Book not found", "error")
+            return redirect(url_for('base.index'))
+
+        # Check if current user can transfer (must own it or share library with owner)
+        if book['added_by'] != current_user.id and not shares_library_with(current_user.id, book['added_by']):
+            flash("You don't have permission to transfer this book", "error")
+            return redirect(request.referrer or url_for('base.index'))
+
+        # Check if new owner shares library with current user
+        if not shares_library_with(current_user.id, new_owner_id):
+            flash("You can only transfer books to users in your library group", "error")
+            return redirect(request.referrer or url_for('base.index'))
+
+        # Get new owner's username for flash message
+        new_owner = conn.execute(
+            'SELECT username FROM users WHERE id = ?',
+            (new_owner_id,)
+        ).fetchone()
+
+        if not new_owner:
+            flash("Invalid user selected", "error")
+            return redirect(request.referrer or url_for('base.index'))
+
+        # Transfer the book
+        conn.execute(
+            'UPDATE books SET added_by = ? WHERE id = ?',
+            (new_owner_id, book_id)
+        )
+        conn.commit()
+
+        flash(f"'{book['title']}' transferred to {new_owner['username']}", "success")
+        current_app.logger.info(
+            f"User {current_user.username} transferred book '{book['title']}' to {new_owner['username']}"
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error transferring book: {str(e)}")
+        flash("Error transferring book", "error")
+    finally:
+        conn.close()
+
+    return redirect(request.referrer or url_for('base.index'))

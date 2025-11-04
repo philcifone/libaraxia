@@ -44,7 +44,35 @@ def settings():
             'admin_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0]
         }
 
-        return render_template('admin_settings.html', users=users, stats=stats)
+        # Get library membership info
+        library_members = conn.execute("""
+            SELECT
+                lm.id,
+                lm.library_id,
+                lm.user_id,
+                lm.role,
+                lm.added_at,
+                u.username,
+                u.avatar_url,
+                adder.username as added_by_username
+            FROM library_members lm
+            JOIN users u ON lm.user_id = u.id
+            LEFT JOIN users adder ON lm.added_by = adder.id
+            ORDER BY lm.library_id, lm.added_at
+        """).fetchall()
+
+        # Group members by library_id
+        libraries = {}
+        for member in library_members:
+            lib_id = member['library_id']
+            if lib_id not in libraries:
+                libraries[lib_id] = []
+            libraries[lib_id].append(dict(member))
+
+        return render_template('admin_settings.html',
+                             users=users,
+                             stats=stats,
+                             libraries=libraries)
     finally:
         conn.close()
 
@@ -560,3 +588,197 @@ def cleanup_orphaned_images():
         current_app.logger.error(f"Error cleaning up orphaned images: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('admin.orphaned_images'))
+
+
+@admin_blueprint.route("/missing_covers_count")
+@login_required
+@admin_required
+def missing_covers_count():
+    """Get count of books missing cover images"""
+    conn = get_db_connection()
+    try:
+        count = conn.execute("""
+            SELECT COUNT(*) as missing
+            FROM books
+            WHERE cover_image_url IS NULL OR cover_image_url = ''
+        """).fetchone()['missing']
+
+        return jsonify({'missing': count})
+    except Exception as e:
+        current_app.logger.error(f"Error counting missing covers: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@admin_blueprint.route("/bulk_fetch_covers", methods=["POST"])
+@login_required
+@admin_required
+def bulk_fetch_covers():
+    """Bulk fetch missing book covers from Google Books API"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    conn = get_db_connection()
+    try:
+        # Get all books without covers (limit to 50 at a time to avoid timeout)
+        books = conn.execute("""
+            SELECT id, title, author, isbn
+            FROM books
+            WHERE (cover_image_url IS NULL OR cover_image_url = '')
+            AND isbn IS NOT NULL AND isbn != ''
+            LIMIT 50
+        """).fetchall()
+
+        stats = {
+            'books_processed': 0,
+            'covers_found': 0,
+            'covers_failed': 0
+        }
+
+        from utils.book_utils import fetch_book_details_from_isbn
+
+        for book in books:
+            stats['books_processed'] += 1
+
+            try:
+                logger.info(f"Fetching cover for: {book['title']} (ISBN: {book['isbn']})")
+
+                # Fetch book data from API
+                book_data = fetch_book_details_from_isbn(book['isbn'])
+
+                if book_data and book_data.get('local_cover_url'):
+                    # Update book with new cover URL
+                    conn.execute(
+                        'UPDATE books SET cover_image_url = ? WHERE id = ?',
+                        (book_data['local_cover_url'], book['id'])
+                    )
+                    stats['covers_found'] += 1
+                    logger.info(f"✓ Cover found for: {book['title']}")
+                else:
+                    stats['covers_failed'] += 1
+                    logger.warning(f"✗ No cover found for: {book['title']}")
+
+            except Exception as e:
+                stats['covers_failed'] += 1
+                logger.error(f"Error fetching cover for '{book['title']}': {str(e)}")
+                continue
+
+        conn.commit()
+
+        logger.info(f"Bulk cover fetch complete: {stats}")
+        current_app.logger.info(f"Admin {current_user.username} fetched {stats['covers_found']} covers")
+
+        return jsonify({
+            'success': True,
+            **stats
+        })
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Bulk cover fetch error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@admin_blueprint.route("/add_library_member", methods=["POST"])
+@login_required
+@admin_required
+def add_library_member():
+    """Add a user to a library (household)"""
+    user_id = request.form.get('user_id', type=int)
+    library_id = request.form.get('library_id', type=int)
+
+    if not user_id:
+        flash("User ID is required", "error")
+        return redirect(url_for('admin.settings'))
+
+    conn = get_db_connection()
+    try:
+        # Check if user exists
+        user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
+        if not user:
+            flash("User not found", "error")
+            return redirect(url_for('admin.settings'))
+
+        # Check if user is already in a library
+        existing = conn.execute(
+            'SELECT library_id FROM library_members WHERE user_id = ?', (user_id,)
+        ).fetchone()
+
+        if existing:
+            flash(f"User '{user['username']}' is already in a library group", "warning")
+            return redirect(url_for('admin.settings'))
+
+        # If no library_id provided, create a new library
+        if not library_id:
+            # Find the next available library_id
+            max_lib = conn.execute('SELECT MAX(library_id) as max_id FROM library_members').fetchone()
+            library_id = (max_lib['max_id'] or 0) + 1
+
+        # Add user to library
+        conn.execute("""
+            INSERT INTO library_members (library_id, user_id, role, added_by)
+            VALUES (?, ?, 'member', ?)
+        """, (library_id, user_id, current_user.id))
+
+        conn.commit()
+        flash(f"User '{user['username']}' added to library group {library_id}", "success")
+        current_app.logger.info(
+            f"Admin {current_user.username} added user {user['username']} to library {library_id}"
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error adding library member: {str(e)}")
+        flash("Error adding user to library", "error")
+    finally:
+        conn.close()
+
+    return redirect(url_for('admin.settings'))
+
+
+@admin_blueprint.route("/remove_library_member", methods=["POST"])
+@login_required
+@admin_required
+def remove_library_member():
+    """Remove a user from their library (household)"""
+    user_id = request.form.get('user_id', type=int)
+
+    if not user_id:
+        flash("User ID is required", "error")
+        return redirect(url_for('admin.settings'))
+
+    conn = get_db_connection()
+    try:
+        # Get user info
+        user = conn.execute(
+            'SELECT username FROM users WHERE id = ?', (user_id,)
+        ).fetchone()
+
+        if not user:
+            flash("User not found", "error")
+            return redirect(url_for('admin.settings'))
+
+        # Remove from library
+        result = conn.execute(
+            'DELETE FROM library_members WHERE user_id = ?', (user_id,)
+        )
+
+        if result.rowcount > 0:
+            conn.commit()
+            flash(f"User '{user['username']}' removed from library group", "success")
+            current_app.logger.info(
+                f"Admin {current_user.username} removed user {user['username']} from library"
+            )
+        else:
+            flash(f"User '{user['username']}' was not in any library group", "info")
+
+    except Exception as e:
+        current_app.logger.error(f"Error removing library member: {str(e)}")
+        flash("Error removing user from library", "error")
+    finally:
+        conn.close()
+
+    return redirect(url_for('admin.settings'))
+

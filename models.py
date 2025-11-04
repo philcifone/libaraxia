@@ -98,3 +98,78 @@ def get_friendship_status(current_user_id, target_user_id):
         return 'none'
     finally:
         conn.close()
+
+
+def get_library_members(user_id):
+    """
+    Get all users who share a library with the given user (including the user themselves).
+    Returns a list of user IDs.
+    """
+    conn = get_db_connection()
+    try:
+        # Find the library this user belongs to
+        library = conn.execute('''
+            SELECT library_id FROM library_members
+            WHERE user_id = ?
+        ''', (user_id,)).fetchone()
+
+        if not library:
+            # User is not in any library group, return just themselves
+            return [user_id]
+
+        # Get all members of this library
+        members = conn.execute('''
+            SELECT user_id FROM library_members
+            WHERE library_id = ?
+        ''', (library['library_id'],)).fetchall()
+
+        return [m['user_id'] for m in members]
+    finally:
+        conn.close()
+
+
+def shares_library_with(user_id, other_user_id):
+    """
+    Check if two users share a library (are in the same household).
+    Returns True if they share a library, False otherwise.
+    """
+    if user_id == other_user_id:
+        return True
+
+    library_members = get_library_members(user_id)
+    return other_user_id in library_members
+
+
+def can_view_content(viewer_id, owner_id, privacy_setting):
+    """
+    Check if viewer_id can see content owned by owner_id with given privacy setting.
+
+    Privacy settings:
+    - 'private': Only the owner can see
+    - 'friends': Owner and friends can see
+    - 'public': Everyone can see
+
+    Note: Library members are treated as having full access (overrides privacy)
+    """
+    # Owner can always see their own content
+    if viewer_id == owner_id:
+        return True
+
+    # Library members can see each other's content (household sharing)
+    if shares_library_with(viewer_id, owner_id):
+        return True
+
+    # Public content is visible to everyone
+    if privacy_setting == 'public':
+        return True
+
+    # Private content is only visible to owner (and library members, checked above)
+    if privacy_setting == 'private':
+        return False
+
+    # Friends-only content requires friendship
+    if privacy_setting == 'friends':
+        return is_friends_with(viewer_id, owner_id)
+
+    # Default: deny access
+    return False

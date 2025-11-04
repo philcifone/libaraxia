@@ -15,13 +15,34 @@
     {% include '_flash_messages.html' %}
 
     <!-- Floating Add Button -->
-    <a href="/books/add" 
-       class="fixed bottom-6 right-6 px-6 py-4 bg-accent hover:bg-accent-hover
-              text-white rounded-full font-bold shadow-lg 
+    <a href="/books/add"
+       class="fixed font-display bottom-6 right-6 px-6 py-4 bg-accent hover:bg-accent-hover
+              text-white rounded-full font-bold shadow-lg
               hover:scale-105 transition-all duration-300 z-50
               flex items-center gap-2">
         <span class="text-lg">+ Add Book</span>
     </a>
+
+    <!-- Library View Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
+        <div class="bg-secondary rounded-xl shadow-lg overflow-hidden">
+            <div class="flex items-stretch">
+                <a href="{{ url_for('base.index') }}"
+                   class="flex-1 px-6 py-4 font-medium transition-colors hover:bg-primary focus:outline-none flex items-center justify-center text-content-primary"
+                   style="border-bottom: 3px solid #4f7d19; background-color: rgba(79, 125, 25, 0.1);">
+                    <span class="text-center">My Library</span>
+                </a>
+                <a href="{{ url_for('base.shared_library') }}"
+                   class="flex-1 px-6 py-4 font-medium transition-colors hover:bg-primary focus:outline-none flex items-center justify-center text-content-secondary">
+                    <span class="text-center">Shared Library</span>
+                </a>
+                <a href="{{ url_for('base.friends_libraries') }}"
+                   class="flex-1 px-6 py-4 font-medium transition-colors hover:bg-primary focus:outline-none flex items-center justify-center text-content-secondary">
+                    <span class="text-center">Friends' Libraries</span>
+                </a>
+            </div>
+        </div>
+    </div>
 
     {% include '_search_sort_filter.html' %}
 

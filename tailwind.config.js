@@ -29,7 +29,7 @@ module.exports = {
       },
       fontFamily: {
         primary: ['Outfit Variable', 'sans-serif'],
-        display: ['Crimson Pro Variable', 'serif']
+        display: ['Young Serif', 'serif']
       }
     }
   },

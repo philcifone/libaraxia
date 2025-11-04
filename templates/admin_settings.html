@@ -38,6 +38,8 @@
         <!-- Maintenance Section -->
         <div class="bg-secondary rounded-lg p-6 mb-8">
             <h2 class="text-xl font-semibold text-content-primary mb-4">Maintenance</h2>
+
+            <!-- Orphaned Images -->
             <div class="flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
                 <div>
                     <h3 class="text-content-primary font-medium mb-1">Orphaned Images</h3>
@@ -48,6 +50,72 @@
                     Manage
                 </a>
             </div>
+        </div>
+
+        <!-- Shared Library Groups -->
+        <div class="bg-secondary rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-content-primary mb-4">Shared Library Groups</h2>
+            <p class="text-sm text-content-secondary mb-6">
+                Users can add friends to their shared library via friend profiles. This panel shows all active library groups for monitoring and removal if needed.
+            </p>
+
+            {% if libraries %}
+                <!-- Existing Library Groups -->
+                <div class="space-y-4">
+                    {% for lib_id, members in libraries.items() %}
+                    <div class="bg-primary rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-medium text-content-primary">Shared Library #{{ lib_id }}</h3>
+                            <span class="text-sm text-content-secondary">{{ members|length }} member(s)</span>
+                        </div>
+                        <div class="space-y-2">
+                            {% for member in members %}
+                            <div class="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    {% if member.avatar_url %}
+                                        <img src="{{ url_for('static', filename=member.avatar_url) }}"
+                                             alt="{{ member.username }}"
+                                             class="h-10 w-10 rounded-full object-cover">
+                                    {% else %}
+                                        <div class="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-white font-bold">
+                                            {{ member.username[0].upper() }}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <div class="text-sm font-medium text-content-primary">{{ member.username }}</div>
+                                        <div class="text-xs text-content-secondary">
+                                            {% if member.added_by_username %}
+                                                Added by {{ member.added_by_username }}
+                                            {% else %}
+                                                Member
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <form method="POST" action="{{ url_for('admin.remove_library_member') }}"
+                                      onsubmit="return confirm('Remove {{ member.username }} from this shared library?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="user_id" value="{{ member.user_id }}">
+                                    <button type="submit"
+                                            class="text-red-400 hover:text-red-300 text-sm px-3 py-1 border border-red-400/50 rounded hover:bg-red-900/20 transition-colors">
+                                        Remove
+                                    </button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-primary rounded-lg p-6 text-center">
+                    <svg class="w-12 h-12 mx-auto text-content-secondary mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <p class="text-content-secondary mb-2">No shared library groups yet</p>
+                    <p class="text-xs text-content-secondary">Users can create shared libraries by adding friends on their profile pages</p>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Create/Edit User Panel -->
@@ -561,6 +629,7 @@
                 alert('An error occurred while removing avatar');
             }
         }
+
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

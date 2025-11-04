@@ -1,0 +1,23 @@
+  # Libaraxia - Social Reading Library App
+
+> hello! thank you for helping me so much with my flask application. it looks and feels beautiful. it is one of the
+  nicest things I have ever made, and it is with your help i did it. Thank you for taking such care to keep it as UI/UX
+  friendly and appealing and consistent.
+
+  ## Stack
+  Flask, SQLite, Jinja2 templates, vanilla JS, Tailwind CSS v3,
+
+  ## Key Concepts
+  - Users have personal libraries (books they own/read)
+  - Privacy levels: public/friends-only/private
+  - Friend system with requests and library sharing
+  - Wishlists separate from owned books
+
+  ## Conventions
+  - Blueprint structure: admin, books, user, base
+  - DB migrations in migrations/ folder
+  - Utility functions in utils/
+  - Main DB is library.db in root of project, not in instance/
+  - Almost always use white text
+  - Please refrain from arbitrary hover effects or random color choices for texts
+

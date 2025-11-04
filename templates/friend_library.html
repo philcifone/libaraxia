@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <title>{{ friend.username }}'s Library - libaraxia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+</head>
+
+<body class="bg-primary text-content-primary p-6">
+    {% include '_sidebar.html' %}
+
+    <!-- Flash Messages -->
+    {% include '_flash_messages.html' %}
+
+    <!-- Header with Friend Info -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+        <!-- Back Button -->
+        <a href="{{ url_for('base.friends_libraries') }}"
+           class="inline-flex items-center text-content-secondary hover:text-accent transition-colors mb-6">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back to Friends' Libraries
+        </a>
+
+        <!-- Friend Header Card -->
+        <div class="bg-secondary rounded-lg p-6 mb-8">
+            <div class="flex items-center gap-6">
+                {% if friend.avatar_url %}
+                    <img src="{{ url_for('static', filename=friend.avatar_url) }}"
+                         alt="{{ friend.username }}"
+                         class="h-24 w-24 rounded-full object-cover ring-2 ring-accent">
+                {% else %}
+                    <div class="h-24 w-24 rounded-full bg-accent flex items-center justify-center text-white font-bold text-4xl">
+                        {{ friend.username[0].upper() }}
+                    </div>
+                {% endif %}
+                <div class="flex-1">
+                    <h1 class="text-3xl font-display text-content-primary mb-2">
+                        {{ friend.username }}'s Library
+                    </h1>
+                    {% if friend.bio %}
+                    <p class="text-content-secondary mb-3">{{ friend.bio }}</p>
+                    {% endif %}
+                    <div class="flex gap-4 text-sm text-content-secondary">
+                        <span>{{ book_count }} book{{ 's' if book_count != 1 else '' }}</span>
+                        {% if friend.reading_goal and friend.reading_goal > 0 %}
+                        <span>• Reading Goal: {{ friend.reading_goal }}/year</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter/Shelf Tabs -->
+        <div class="flex gap-2 mb-6 overflow-x-auto">
+            <a href="{{ url_for('base.friend_library', username=friend.username) }}"
+               class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
+                      {% if not shelf %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                All Books
+            </a>
+            <a href="{{ url_for('base.friend_library', username=friend.username, shelf='read') }}"
+               class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
+                      {% if shelf == 'read' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                Read
+            </a>
+            <a href="{{ url_for('base.friend_library', username=friend.username, shelf='currently reading') }}"
+               class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
+                      {% if shelf == 'currently reading' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                Currently Reading
+            </a>
+            <a href="{{ url_for('base.friend_library', username=friend.username, shelf='want to read') }}"
+               class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
+                      {% if shelf == 'want to read' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                Want to Read
+            </a>
+            <a href="{{ url_for('base.friend_library', username=friend.username, shelf='wishlist') }}"
+               class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
+                      {% if shelf == 'wishlist' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                Wishlist
+            </a>
+        </div>
+    </div>
+
+    <!-- Books Grid -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        {% if books %}
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {% for book in books %}
+            <div class="book-item group">
+                <a href="{{ url_for('books.show_book', id=book.id) }}"
+                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                    <div class="book-cover w-full h-64 overflow-hidden">
+                        {% if book.cover_image_url %}
+                        <img src="{{ url_for('static', filename=book.cover_image_url) }}"
+                             alt="{{ book.title }}"
+                             class="book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
+                        {% else %}
+                        <div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
+                            <span class="text-sm italic">No Image Available</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="book-info p-4">
+                        <h3 class="book-title text-lg font-semibold line-clamp-2 mb-2 text-white">
+                            {{ book.title }}
+                        </h3>
+                        <p class="book-author text-content-secondary text-sm italic">
+                            by {{ book.author }}
+                        </p>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-secondary rounded-lg p-12 text-center">
+            <p class="text-content-secondary">
+                {% if shelf == 'wishlist' %}
+                    {{ friend.username }} doesn't have any books in their wishlist yet.
+                {% elif shelf %}
+                    No books in this shelf yet.
+                {% else %}
+                    {{ friend.username }} hasn't added any books to their library yet.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
