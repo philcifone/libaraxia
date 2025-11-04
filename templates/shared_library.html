@@ -55,11 +55,19 @@
                         </svg>
                         <h2 class="text-lg font-semibold text-content-primary">
                             Shared Library with
-                            {% for member in shared_members %}
-                                {% if member.id != current_user.id %}
-                                    {{ member.username }}{% if not loop.last and shared_members|length > 2 %},{% endif %}
-                                {% endif %}
-                            {% endfor %}
+                            {% if member_filter %}
+                                {% for member in shared_members %}
+                                    {% if member.id == member_filter %}
+                                        {{ member.username }}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                {% for member in shared_members %}
+                                    {% if member.id != current_user.id %}
+                                        {{ member.username }}{% if not loop.last and shared_members|length > 2 %},{% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
                         </h2>
                     </div>
                     <button type="button"
