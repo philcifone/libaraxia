@@ -714,13 +714,13 @@ class InfiniteScroll {
     }
 
     init() {
-        // Find the book grid container - use more specific selector to avoid filter grids
-        this.bookGrid = document.querySelector('.container[data-current-page] > .grid');
+        // Find the book grid container by ID - more reliable than class selectors
+        this.bookGrid = document.getElementById('book-container');
         if (!this.bookGrid) return;
 
-        // Get initial state from template data
-        const gridContainer = this.bookGrid.closest('.container');
-        if (gridContainer) {
+        // Get initial state from template data - look for parent container with data attributes
+        const gridContainer = this.bookGrid.parentElement;
+        if (gridContainer && gridContainer.hasAttribute('data-current-page')) {
             this.currentPage = parseInt(gridContainer.dataset.currentPage) || 1;
             this.hasMore = gridContainer.dataset.hasMore === 'true';
         }
@@ -949,9 +949,10 @@ class InfiniteScroll {
 // Initialize infinite scroll when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize on library index and search results pages
-    // Check for the book grid container with pagination data attributes
-    const bookGridContainer = document.querySelector('.container[data-current-page]');
-    if (bookGridContainer && document.querySelector('.container[data-current-page] > .grid')) {
+    // Check for the book container by ID which persists across view changes
+    const bookContainer = document.getElementById('book-container');
+    const dataContainer = document.querySelector('.container[data-current-page]');
+    if (bookContainer && dataContainer) {
         new InfiniteScroll();
     }
 });
