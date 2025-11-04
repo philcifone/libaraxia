@@ -1,6 +1,6 @@
 <!-- Unified Flash Messages Component -->
 <!-- Auto-dismisses after 5 seconds by default, or can be manually closed -->
-<div id="flash-container" class="fixed bottom-4 right-4 z-50 space-y-2 max-w-md">
+<div id="flash-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-md">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -99,7 +99,7 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'flash-container';
-            container.className = 'fixed bottom-4 right-4 z-50 space-y-2 max-w-md';
+            container.className = 'fixed top-4 right-4 z-50 space-y-2 max-w-md';
             document.body.appendChild(container);
         }
 
