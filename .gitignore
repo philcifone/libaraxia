@@ -1,18 +1,55 @@
+# Environment and secrets
 .env
+.env.*
+!.env.example
+*.key
+*.pem
+*.cert
+*.crt
+certs/
+
+# Database files
 library.db
-static/uploads/
 *.db
 *.db.backup*
+*.sqlite
+*.sqlite3
+
+# Uploads and user data
+static/uploads/
+goodreads_library_export.csv
+*.csv
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 instance/
+
+# Backups and temporary files
 *.bak
+*.tmp
+*.log
 styles.css.bak
 *.mermaid
 css_audit*
 schema.txt
+
+# Dependencies
 node_modules/
+
+# Docker and deployment
 docker-compose.yml
-certs/
-goodreads_library_export.csv
+docker-compose.override.yml
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
