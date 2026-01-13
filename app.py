@@ -160,10 +160,13 @@ if __name__ == "__main__":
             use_ssl = True
             print(f"🔒 Running with HTTPS using cert: {cert_file}")
 
+    # Get port from environment variable or default to 5000
+    port = int(os.environ.get('PORT', 5000))
+
     if use_ssl:
-        app.run(host="0.0.0.0", port=5000, debug=True, ssl_context=ssl_context)
+        app.run(host="0.0.0.0", port=port, debug=True, ssl_context=ssl_context)
     else:
         print("⚠️  Running without HTTPS - camera features may not work on mobile")
         print("   To enable HTTPS, generate certificates and run:")
         print("   python3 app.py --cert certs/cert.pem --key certs/key.pem")
-        app.run(host="0.0.0.0", port=5000, debug=True)
+        app.run(host="0.0.0.0", port=port, debug=True)

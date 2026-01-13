@@ -295,7 +295,7 @@ def profile(username):
                 LEFT JOIN reading_sessions rs ON r.user_id = rs.user_id AND r.book_id = rs.book_id
                 WHERE r.user_id = ?
                 ORDER BY rs.date_completed DESC, r.rowid DESC
-                LIMIT 15
+                LIMIT 5
             """
             recent_reviews = [dict(row) for row in conn.execute(reviews_query, (user['id'],)).fetchall()]
 

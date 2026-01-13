@@ -289,9 +289,11 @@
                 <!-- Reading Shelves Section -->
         {% if are_friends and reading_lists %}
         <section class="bg-secondary rounded-xl p-6 shadow-lg">
-            <h2 class="text-2xl font-display text-content-primary mb-6">
-                {% if is_own_profile %}Your Reading Shelves{% else %}{{ user['username'] }}'s Reading Shelves{% endif %}
-            </h2>
+            <a href="{{ url_for('base.friend_library', username=user['username']) }}" class="block mb-6">
+                <h2 class="text-2xl font-display text-content-primary hover:text-accent transition-colors">
+                    {{ user['username'] }}'s Library →
+                </h2>
+            </a>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {% set statuses = [
@@ -545,7 +547,7 @@
                             {% if review.cover_image_url %}
                             <img src="{{ url_for('static', filename=review.cover_image_url) }}"
                                  alt="{{ review.title }}"
-                                 class="w-32 h-64 object-cover rounded-md shadow-sm hover:shadow-md transition-shadow" />
+                                 class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" />
                             {% else %}
                             <div class="w-20 h-28 bg-secondary rounded-md flex items-center justify-center">
                                 <svg class="w-8 h-8 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
