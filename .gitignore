@@ -52,4 +52,4 @@ docker-compose.override.yml
 
 # OS files
 .DS_Store
-Thumbs.db
+Thumbs.dbvenv/
