@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response, jsonify, current_app
 from flask_login import current_user, login_required
-from functools import wraps
 from utils.database import get_db_connection
+from utils.rate_limiting import limiter
 from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with
 from werkzeug.utils import secure_filename
 import bcrypt
@@ -12,25 +12,6 @@ from PIL import Image
 
 # Initialize Blueprint
 user_blueprint = Blueprint('user', __name__)
-
-def rate_limit(limit_string):
-    """
-    Decorator to apply rate limiting to a route.
-
-    Args:
-        limit_string: Rate limit specification (e.g., "20 per hour")
-    """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Get the limiter from app extensions
-            limiter = current_app.extensions.get('limiter')
-            if limiter:
-                # Check the rate limit
-                limiter.limit(limit_string)(lambda: None)()
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
 
 # Allowed extensions for profile pictures
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -321,7 +302,7 @@ def profile(username):
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])
 @login_required
-@rate_limit("20 per hour")
+@limiter.limit("20 per hour")
 def update_reading_goal():
     reading_goal = request.form.get('reading_goal')
 
@@ -353,7 +334,7 @@ def update_reading_goal():
 
 @user_blueprint.route('/update_email', methods=['POST'])
 @login_required
-@rate_limit("20 per hour")
+@limiter.limit("20 per hour")
 def update_email():
     """Update user email via inline editing"""
     try:
@@ -385,7 +366,7 @@ def update_email():
 
 @user_blueprint.route('/update_username', methods=['POST'])
 @login_required
-@rate_limit("20 per hour")
+@limiter.limit("20 per hour")
 def update_username():
     """Update username via inline editing"""
     try:
@@ -424,7 +405,7 @@ def update_username():
 
 @user_blueprint.route('/update_bio', methods=['POST'])
 @login_required
-@rate_limit("20 per hour")
+@limiter.limit("20 per hour")
 def update_bio():
     """Update user bio via inline editing"""
     try:
@@ -454,7 +435,7 @@ def update_bio():
 
 @user_blueprint.route('/update_password', methods=['POST'])
 @login_required
-@rate_limit("10 per hour")
+@limiter.limit("10 per hour")
 def update_password():
     """Update password via inline editing"""
     try:
@@ -470,8 +451,8 @@ def update_password():
         if new_password != confirm_password:
             return jsonify({'success': False, 'message': 'New passwords do not match'}), 400
 
-        if len(new_password) < 6:
-            return jsonify({'success': False, 'message': 'Password must be at least 6 characters long'}), 400
+        if len(new_password) < 8:
+            return jsonify({'success': False, 'message': 'Password must be at least 8 characters long'}), 400
 
         conn = get_db_connection()
         try:
@@ -503,7 +484,7 @@ def update_password():
 
 @user_blueprint.route('/upload_avatar', methods=['POST'])
 @login_required
-@rate_limit("10 per hour")
+@limiter.limit("10 per hour")
 def upload_avatar():
     """Upload and update user profile picture"""
     import logging
@@ -766,7 +747,7 @@ def format_goodreads_date(date_str):
 
 @user_blueprint.route('/import_goodreads', methods=['POST'])
 @login_required
-@rate_limit("3 per hour")
+@limiter.limit("3 per hour")
 def import_goodreads():
     """Import library data from Goodreads CSV export"""
     import logging
@@ -977,7 +958,7 @@ def import_goodreads():
 
 @user_blueprint.route('/add_to_shared_library/<int:user_id>', methods=['POST'])
 @login_required
-@rate_limit("20 per hour")
+@limiter.limit("20 per hour")
 def add_to_shared_library(user_id):
     """Add a friend to your shared library"""
     conn = get_db_connection()
@@ -1039,7 +1020,7 @@ def add_to_shared_library(user_id):
 
 @user_blueprint.route('/remove_from_shared_library/<int:user_id>', methods=['POST'])
 @login_required
-@rate_limit("20 per hour")
+@limiter.limit("20 per hour")
 def remove_from_shared_library(user_id):
     """Remove a user from your shared library"""
     conn = get_db_connection()

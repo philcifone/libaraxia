@@ -1,41 +1,26 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from functools import wraps
 import bcrypt
 import sqlite3
 from utils.database import get_db_connection
 from utils.email_utils import send_verification_email, verify_token, resend_verification_email
+from utils.rate_limiting import limiter
 from models import admin_required, User
 
 auth_blueprint = Blueprint('auth', __name__, template_folder='templates')
 
-def rate_limit_post(limit_string):
-    """
-    Decorator to apply rate limiting only to POST requests.
-
-    Args:
-        limit_string: Rate limit specification (e.g., "10 per hour")
-    """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if request.method == 'POST':
-                # Get the limiter from app extensions
-                limiter = current_app.extensions.get('limiter')
-                if limiter:
-                    # Check the rate limit
-                    limiter.limit(limit_string)(lambda: None)()
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
 @auth_blueprint.route('/register', methods=['GET', 'POST'])
-@rate_limit_post("5 per hour")
+@limiter.limit("5 per hour", methods=["POST"])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
+
+        # Validate password strength
+        if len(password) < 8:
+            flash('Password must be at least 8 characters long.', 'danger')
+            return render_template('register.html', first_run=False)
 
         # Ensure password is hashed using bcrypt
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -94,7 +79,7 @@ def register():
     return render_template('register.html', first_run=first_run)
 
 @auth_blueprint.route('/login', methods=['GET', 'POST'])
-@rate_limit_post("10 per hour")
+@limiter.limit("10 per hour", methods=["POST"])
 def login():
     if request.method == 'POST':
         email = request.form['email']
@@ -115,16 +100,22 @@ def login():
                     flash('Please verify your email address before logging in. Check your inbox for the verification link.', 'warning')
                     return render_template('login.html', show_resend_link=True, user_email=user_dict['email'])
 
+                # Check if account is deactivated
+                if not user_dict.get('is_active', 1):
+                    flash('Your account has been deactivated. Please contact an administrator.', 'danger')
+                    return render_template('login.html')
+
                 # Password matches and email is verified (or not required)
+                remember = request.form.get('remember_me') == 'on'
                 user_obj = User(
                     id=user_dict['id'],
                     username=user_dict['username'],
                     email=user_dict['email'],
-                    is_active=user_dict.get('is_active', 0) == 1,
+                    is_active=True,
                     is_admin=user_dict.get('is_admin', 0) == 1,
                     email_verified=email_verified
                 )
-                login_user(user_obj)
+                login_user(user_obj, remember=remember)
                 flash(f"Welcome, {user_obj.username}!", 'success')
 
                 # Check for unread notifications and display them
@@ -175,7 +166,7 @@ def verify_email(token):
         return redirect(url_for('auth.resend_verification'))
 
 @auth_blueprint.route('/resend_verification', methods=['GET', 'POST'])
-@rate_limit_post("3 per hour")
+@limiter.limit("3 per hour", methods=["POST"])
 def resend_verification():
     """Resend verification email"""
     if request.method == 'POST':

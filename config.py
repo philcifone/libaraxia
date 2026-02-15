@@ -1,12 +1,22 @@
 import os
 
 class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY', 'default-dev-secret-key')
     DEBUG = False
     TESTING = False
     DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///library.db')
     UPLOAD_FOLDER = os.path.join('static', 'uploads')  # Default path
     MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20MB max upload size
+
+    # Session cookie security
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = False  # Overridden in production
+
+    # Remember me cookie settings
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_SECURE = False  # Overridden in production
+    REMEMBER_COOKIE_DURATION = 30 * 24 * 60 * 60  # 30 days in seconds
 
     # Rate Limiting Configuration
     RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')
@@ -36,6 +46,9 @@ class ProductionConfig(Config):
     DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:////home/phil/library-catalog/library-prod.db')
     # Production uploads folder should be absolute
     UPLOAD_FOLDER = '/home/phil/library-catalog/static/uploads'  # Adjust this path
+    # HTTPS-only cookies in production
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
 
 class TestingConfig(Config):
     TESTING = True

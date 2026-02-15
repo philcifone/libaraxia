@@ -1,34 +1,15 @@
 from flask import Blueprint, request, jsonify, flash, redirect, url_for, render_template, current_app
 from flask_login import login_required, current_user
-from functools import wraps
 from utils.database import get_db_connection
+from utils.rate_limiting import limiter
 import sqlite3
 
 friends_blueprint = Blueprint('friends', __name__, url_prefix='/friends')
 
-def rate_limit(limit_string):
-    """
-    Decorator to apply rate limiting to a route.
-
-    Args:
-        limit_string: Rate limit specification (e.g., "30 per hour")
-    """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Get the limiter from app extensions
-            limiter = current_app.extensions.get('limiter')
-            if limiter:
-                # Check the rate limit
-                limiter.limit(limit_string)(lambda: None)()
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
 
 @friends_blueprint.route('/send_request/<username>', methods=['POST'])
 @login_required
-@rate_limit("30 per hour")
+@limiter.limit("30 per hour")
 def send_request(username):
     """Send a friend request to another user"""
     conn = get_db_connection()
@@ -118,7 +99,7 @@ def send_request(username):
 
 @friends_blueprint.route('/accept/<int:request_id>', methods=['POST'])
 @login_required
-@rate_limit("50 per hour")
+@limiter.limit("50 per hour")
 def accept_request(request_id):
     """Accept a friend request"""
     conn = get_db_connection()

@@ -13,10 +13,7 @@
     {% include '_flash_messages.html' %}
 
     <!-- Add Book Button -->
-    <a href="/books/add" 
-       class="fixed bottom-6 right-6 flex items-center justify-center w-44 h-14 bg-accent hover:bg-accent-hover text-white rounded-full shadow-lg transform hover:scale-105 transition-all duration-200 z-50">
-        <span class="text-xl font-semibold">+ Add Book</span>
-    </a>
+    {% include '_add_book_fab.html' %}
 
     {% include '_search_sort_filter.html' %}
 

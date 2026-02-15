@@ -3,8 +3,6 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 import os, logging, bcrypt
 from dotenv import load_dotenv
@@ -25,6 +23,7 @@ from blueprints.wishlist import wishlist_blueprint
 from blueprints.friends import friends_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User
+from utils.rate_limiting import limiter
 
 def create_app():
     # Create the Flask app instance
@@ -33,8 +32,6 @@ def create_app():
     # Load environment variables first
     load_dotenv()
 
-    # App Configuration - Load config FIRST
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback-secret-key')
     env = os.getenv('FLASK_ENV', 'development')
 
     # Load environment-specific configuration
@@ -42,6 +39,18 @@ def create_app():
         app.config.from_object(ProductionConfig)
     else:
         app.config.from_object(DevelopmentConfig)
+
+    # Get SECRET_KEY - REQUIRE it in production
+    secret_key = os.environ.get('SECRET_KEY')
+
+    if env == 'production' and not secret_key:
+        raise RuntimeError("SECRET_KEY must be set in production! Add it to your .env file.")
+
+    if not secret_key:
+        print("WARNING: No SECRET_KEY set, using fallback (dev only)")
+        secret_key = 'fallback-secret-key'
+
+    app.config['SECRET_KEY'] = secret_key
 
     # Initialize CSRF Protection
     csrf = CSRFProtect(app)
@@ -55,18 +64,8 @@ def create_app():
         """Make CSRF token available for JavaScript"""
         return response
 
-    # Initialize Rate Limiter
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"],
-        storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
-        strategy=app.config.get('RATELIMIT_STRATEGY', 'fixed-window'),
-        headers_enabled=app.config.get('RATELIMIT_HEADERS_ENABLED', True)
-    )
-
-    # Make limiter available globally
-    app.extensions['limiter'] = limiter
+    # Initialize Rate Limiter (shared instance from utils/rate_limiting.py)
+    limiter.init_app(app)
 
     # Initialize Flask-Mail
     mail = Mail(app)
@@ -131,7 +130,7 @@ def create_app():
     app.register_blueprint(feed_blueprint, url_prefix='/feed')
     app.register_blueprint(wishlist_blueprint, url_prefix='/wishlist')
     app.register_blueprint(friends_blueprint, url_prefix='/friends')
-    
+
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)
     
