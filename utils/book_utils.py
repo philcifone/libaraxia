@@ -1,10 +1,13 @@
 from flask import current_app
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
+from io import BytesIO
+import re
 import requests
 import os
 import time
-from typing import Optional, Dict, Any
+import uuid
+from typing import Optional, Dict, Any, List, Iterable
 from utils.database import get_db_connection
 from flask_login import current_user
 
@@ -12,356 +15,303 @@ from flask_login import current_user
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 MAX_IMAGE_SIZE = (500, 1000)
 
-from typing import Optional, Dict, Any, List
-from flask import current_app
-import requests
-from urllib.parse import quote_plus
+GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
+OPEN_LIBRARY_URL = "https://openlibrary.org"
+HTTP_TIMEOUT = 8
+RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
+# Anything smaller than this is a placeholder (e.g. Open Library's 1x1 gif)
+MIN_COVER_DIMENSION = 50
+# A cover at least this wide is good enough; stop looking for a bigger one
+GOOD_COVER_WIDTH = 300
+MAX_COVER_BYTES = 10 * 1024 * 1024
+# After Google Books fails, skip it for this long instead of retrying every lookup
+GOOGLE_COOLDOWN_SECONDS = 60
+_google_down_until = 0.0
+
+_session = requests.Session()
+_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (compatible; Libaraxia/1.0; personal library catalog)'
+})
+
+
+# ---------------------------------------------------------------------------
+# ISBN helpers
+# ---------------------------------------------------------------------------
+
+def normalize_isbn(isbn: Optional[str]) -> str:
+    """Strip hyphens/spaces so '978-0-670-67190-8' becomes '9780670671908'."""
+    return re.sub(r'[^0-9X]', '', (isbn or '').upper())
+
+def isbn_variants(isbn: str) -> List[str]:
+    """Return the ISBN plus its ISBN-10/ISBN-13 counterpart when one exists.
+
+    APIs often index an edition under only one form, so trying both helps.
+    """
+    isbn = normalize_isbn(isbn)
+    variants = [isbn] if isbn else []
+    if len(isbn) == 10 and isbn[:9].isdigit():
+        core = '978' + isbn[:9]
+        check = (10 - sum((1 if i % 2 == 0 else 3) * int(d) for i, d in enumerate(core)) % 10) % 10
+        variants.append(core + str(check))
+    elif len(isbn) == 13 and isbn.startswith('978') and isbn.isdigit():
+        core = isbn[3:12]
+        check = (11 - sum((10 - i) * int(d) for i, d in enumerate(core)) % 11) % 11
+        variants.append(core + ('X' if check == 10 else str(check)))
+    return variants
+
+
+# ---------------------------------------------------------------------------
+# HTTP
+# ---------------------------------------------------------------------------
+
+def _get_json(url: str, params: Optional[dict] = None, retries: int = 1) -> Optional[Any]:
+    """GET a JSON API, retrying on rate limits and server errors.
+
+    Returns None on failure. Google Books in particular returns intermittent
+    503s, so a couple of quick retries make lookups far more reliable.
+    """
+    for attempt in range(retries + 1):
+        try:
+            response = _session.get(url, params=params, timeout=HTTP_TIMEOUT)
+            if response.status_code in RETRY_STATUS_CODES and attempt < retries:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            response.raise_for_status()
+            return response.json()
+        except (requests.RequestException, ValueError) as e:
+            if attempt < retries:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            # Log the base URL only so the API key never ends up in logs
+            current_app.logger.warning(f"Request to {url} failed: {e.__class__.__name__}")
+            return None
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Google Books
+# ---------------------------------------------------------------------------
+
+def _google_volumes(query: str, max_results: int = 10) -> Optional[List[dict]]:
+    """Query Google Books. Returns a list of items, or None if the API failed."""
+    global _google_down_until
+    if time.time() < _google_down_until:
+        return None
+
+    params = {"q": query, "maxResults": max(1, min(max_results, 40))}
+    api_key = os.getenv('GOOGLE_BOOKS_API_KEY')
+    if api_key:
+        params["key"] = api_key
+
+    data = _get_json(GOOGLE_BOOKS_URL, params)
+    if data is None or "error" in data:
+        if data:
+            current_app.logger.error(f"Google Books API error: {data['error'].get('message', 'Unknown API error')}")
+        current_app.logger.warning(f"Google Books unavailable, using Open Library for {GOOGLE_COOLDOWN_SECONDS}s")
+        _google_down_until = time.time() + GOOGLE_COOLDOWN_SECONDS
+        return None
+    return data.get("items", [])
+
+def _google_cover_urls(volume_info: dict) -> List[str]:
+    """All Google cover URLs for a volume, largest first."""
+    urls = []
+    image_links = volume_info.get("imageLinks", {})
+    for size in ["extraLarge", "large", "medium", "small", "thumbnail", "smallThumbnail"]:
+        url = image_links.get(size)
+        if url:
+            url = (url.replace('http:', 'https:')
+                      .split('&zoom=')[0]
+                      .split('&edge=')[0])
+            if url not in urls:
+                urls.append(url)
+    return urls
 
 def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any]]:
-    """Search Google Books API by title/author and return formatted results."""
-    api_url = f"https://www.googleapis.com/books/v1/volumes?q={quote_plus(query)}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
-    try:
-        http_response = requests.get(api_url)
-        http_response.raise_for_status()  # Raise exception for bad status codes
-        response = http_response.json()
+    """Search for books by title/author and return Google-Books-shaped results.
 
-        # Check for API errors
-        if "error" in response:
-            error_msg = response.get("error", {}).get("message", "Unknown API error")
-            current_app.logger.error(f"Google Books API error: {error_msg}")
-            raise Exception(f"Google Books API error: {error_msg}")
+    Falls back to Open Library search when Google fails or finds nothing.
+    """
+    items = _google_volumes(query, max_results)
+    if not items:
+        current_app.logger.info(f"Google Books returned no results for '{query}', trying Open Library")
+        return search_open_library(query, max_results)
 
-        if "items" not in response:
-            current_app.logger.debug("No items found in Google Books response")
-            return []
+    processed_items = []
+    for item in items[:max_results]:
+        volume_info = item.get("volumeInfo", {})
+        cover_urls = _google_cover_urls(volume_info)
 
-        processed_items = []
-        for item in response["items"][:max_results]:
-            volume_info = item.get("volumeInfo", {})
+        isbn = next((
+            identifier.get("identifier")
+            for identifier in volume_info.get("industryIdentifiers", [])
+            if identifier.get("type") in ["ISBN_13", "ISBN_10"]
+        ), None)
 
-            # Get highest quality image URL
-            image_links = volume_info.get("imageLinks", {})
-            thumbnail_url = (
-                image_links.get("extraLarge") or
-                image_links.get("large") or
-                image_links.get("medium") or
-                image_links.get("small") or
-                image_links.get("thumbnail")
-            )
-
-            if thumbnail_url:
-                thumbnail_url = (thumbnail_url.replace('http:', 'https:')
-                               .split('&zoom=')[0]
-                               .split('&edge=')[0])
-
-            # Get ISBN
-            isbn = next((
-                identifier.get("identifier")
-                for identifier in volume_info.get("industryIdentifiers", [])
-                if identifier.get("type") in ["ISBN_13", "ISBN_10"]
-            ), None)
-
-            # Create processed item
-            processed_item = {
-                "volumeInfo": {
-                    "title": volume_info.get("title", ""),
-                    "subtitle": volume_info.get("subtitle", ""),
-                    "authors": volume_info.get("authors", []),
-                    "publisher": volume_info.get("publisher", ""),
-                    "publishedDate": volume_info.get("publishedDate", ""),
-                    "description": volume_info.get("description", ""),
-                    "pageCount": volume_info.get("pageCount", 0),
-                    "categories": volume_info.get("categories", []),
-                    "industryIdentifiers": [
-                        {"type": "ISBN_13" if isbn else "OTHER", "identifier": isbn or ""}
-                    ] if isbn else [],
-                    "imageLinks": {"thumbnail": thumbnail_url} if thumbnail_url else {}
-                }
+        processed_items.append({
+            "volumeInfo": {
+                "title": volume_info.get("title", ""),
+                "subtitle": volume_info.get("subtitle", ""),
+                "authors": volume_info.get("authors", []),
+                "publisher": volume_info.get("publisher", ""),
+                "publishedDate": volume_info.get("publishedDate", ""),
+                "description": volume_info.get("description", ""),
+                "pageCount": volume_info.get("pageCount", 0),
+                "categories": volume_info.get("categories", []),
+                "industryIdentifiers": [{"type": "ISBN_13", "identifier": isbn}] if isbn else [],
+                "imageLinks": {"thumbnail": cover_urls[0]} if cover_urls else {}
             }
-            processed_items.append(processed_item)
+        })
 
-        return processed_items
-
-    except Exception as e:
-        current_app.logger.error(f"Google Books search error: {str(e)}")
-        return []
+    return processed_items
 
 def fetch_google_books(isbn: str) -> Optional[Dict[str, Any]]:
-    """Fetch book details from Google Books API with highest resolution cover."""
-    api_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key={os.getenv('GOOGLE_BOOKS_API_KEY')}"
-    try:
-        http_response = requests.get(api_url)
-        http_response.raise_for_status()
-        response = http_response.json()
-
-        # Check for API errors
-        if "error" in response:
-            error_msg = response.get("error", {}).get("message", "Unknown API error")
-            current_app.logger.error(f"Google Books API error: {error_msg}")
-            return None
-
-        if "items" not in response:
-            return None
-
-        book_data = response["items"][0]["volumeInfo"]
-
-        # Get all available image URLs in order of quality
-        cover_urls = []
-        if "imageLinks" in book_data:
-            for size in ["extraLarge", "large", "medium", "small", "thumbnail"]:
-                if size in book_data["imageLinks"]:
-                    url = book_data["imageLinks"][size]
-                    # Clean up URL to get highest resolution
-                    url = (url.replace('http:', 'https:')
-                              .split('&zoom=')[0]
-                              .split('&edge=')[0])
-                    cover_urls.append(url)
-
-        # Primary URL is the highest quality available
-        cover_url = cover_urls[0] if cover_urls else None
-        # Fallback URLs are the rest
-        fallback_urls = cover_urls[1:] if len(cover_urls) > 1 else None
-
-        return {
-            "title": book_data.get("title", ""),
-            "subtitle": book_data.get("subtitle", ""),
-            "author": ", ".join(book_data.get("authors", [])),
-            "publisher": book_data.get("publisher", ""),
-            "year": book_data.get("publishedDate", "").split("-")[0],
-            "isbn": isbn,
-            "page_count": book_data.get("pageCount", 0),
-            "description": book_data.get("description", ""),
-            "cover_image_url": cover_url,
-            "cover_fallback_urls": fallback_urls,  # Store fallback URLs for download function
-            "genre": ", ".join(book_data.get("categories", [])),
-            "source": "Google Books"
-        }
-    except Exception as e:
-        current_app.logger.error(f"Google Books API error: {str(e)}")
+    """Fetch book details from Google Books by ISBN (tries ISBN-10 and -13)."""
+    items = None
+    for variant in isbn_variants(isbn):
+        items = _google_volumes(f"isbn:{variant}", 1)
+        # None means the API itself failed; no point trying the other form
+        if items is None or items:
+            break
+    if not items:
         return None
+
+    book_data = items[0]["volumeInfo"]
+    cover_urls = _google_cover_urls(book_data)
+
+    return {
+        "title": book_data.get("title", ""),
+        "subtitle": book_data.get("subtitle", ""),
+        "author": ", ".join(book_data.get("authors", [])),
+        "publisher": book_data.get("publisher", ""),
+        "year": book_data.get("publishedDate", "").split("-")[0],
+        "isbn": normalize_isbn(isbn),
+        "page_count": book_data.get("pageCount", 0),
+        "description": book_data.get("description", ""),
+        "cover_image_url": cover_urls[0] if cover_urls else None,
+        "cover_candidates": cover_urls,
+        "genre": ", ".join(book_data.get("categories", [])),
+        "source": "Google Books"
+    }
+
+
+# ---------------------------------------------------------------------------
+# Open Library
+# ---------------------------------------------------------------------------
+
+def _names(items) -> List[str]:
+    """Open Library returns authors/publishers/subjects as [{"name": ...}]."""
+    return [item.get("name", "") if isinstance(item, dict) else str(item) for item in items or []]
+
+def _text(value) -> str:
+    """Open Library text fields are either a string or {"type": ..., "value": ...}."""
+    if isinstance(value, dict):
+        return value.get("value", "")
+    return value or ""
+
+def _open_library_cover_url(cover_id) -> Optional[str]:
+    return f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else None
+
+def _open_library_work_description(isbn: str) -> str:
+    """The edition record rarely has a description; the work record usually does."""
+    edition = _get_json(f"{OPEN_LIBRARY_URL}/isbn/{isbn}.json", retries=0)
+    works = (edition or {}).get("works") or []
+    if not works:
+        return ""
+    work = _get_json(f"{OPEN_LIBRARY_URL}{works[0]['key']}.json", retries=0)
+    return _text((work or {}).get("description"))
 
 def fetch_open_library(isbn: str) -> Optional[Dict[str, Any]]:
-    """Fetch book details from Open Library API."""
-    api_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
-    try:
-        response = requests.get(api_url).json()
-        book_key = f"ISBN:{isbn}"
-
-        if book_key not in response:
-            return None
-
-        book_data = response[book_key]
-
-        # Extract subjects/genres from Open Library data
-        subjects = book_data.get("subjects", [])
-        genres = [subject for subject in subjects if isinstance(subject, str)]
-
-        # Get all available cover sizes from Open Library
-        cover_urls = []
-        cover_data = book_data.get("cover", {})
-        for size in ["large", "medium", "small"]:
-            if cover_data.get(size):
-                url = cover_data[size].replace("http:", "https:")
-                # Also try upgrading resolution by replacing size suffixes
-                url_large = url.replace("-S.", "-L.").replace("-M.", "-L.")
-                if url_large != url and url_large not in cover_urls:
-                    cover_urls.append(url_large)
-                if url not in cover_urls:
-                    cover_urls.append(url)
-
-        cover_url = cover_urls[0] if cover_urls else None
-        fallback_urls = cover_urls[1:] if len(cover_urls) > 1 else None
-
-        return {
-            "title": book_data.get("title", ""),
-            "subtitle": book_data.get("subtitle", ""),
-            "author": ", ".join(author.get("name", "") for author in book_data.get("authors", [])),
-            "publisher": ", ".join(book_data.get("publishers", [""])),
-            "year": book_data.get("publish_date", "").split()[-1],
-            "isbn": isbn,
-            "page_count": book_data.get("number_of_pages", 0),
-            "description": book_data.get("notes", ""),
-            "cover_image_url": cover_url,
-            "cover_fallback_urls": fallback_urls,
-            "genre": ", ".join(genres[:3]),
-            "source": "Open Library"
-        }
-    except Exception as e:
-        current_app.logger.error(f"Open Library API error: {str(e)}")
+    """Fetch book details from the Open Library Books API by ISBN."""
+    for variant in isbn_variants(isbn):
+        data = _get_json(f"{OPEN_LIBRARY_URL}/api/books",
+                         {"bibkeys": f"ISBN:{variant}", "format": "json", "jscmd": "data"})
+        book_data = (data or {}).get(f"ISBN:{variant}")
+        if book_data:
+            break
+    else:
         return None
 
-def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
-    """Try multiple APIs to fetch book details with high-res covers and fallback support."""
-    book_details = fetch_google_books(isbn)
+    cover_data = book_data.get("cover", {})
+    cover_urls = [cover_data[size].replace("http:", "https:")
+                  for size in ["large", "medium", "small"] if cover_data.get(size)]
 
-    if not book_details:
-        book_details = fetch_open_library(isbn)
+    year_match = re.search(r'\d{4}', book_data.get("publish_date", ""))
+    description = _text(book_data.get("notes")) or _open_library_work_description(variant)
 
-    if book_details and book_details.get("cover_image_url"):
-        # Download cover with fallback URL support
-        primary_url = book_details["cover_image_url"]
-        fallback_urls = book_details.get("cover_fallback_urls")
+    return {
+        "title": book_data.get("title", ""),
+        "subtitle": book_data.get("subtitle", ""),
+        "author": ", ".join(_names(book_data.get("authors"))),
+        "publisher": ", ".join(_names(book_data.get("publishers"))),
+        "year": year_match.group(0) if year_match else "",
+        "isbn": normalize_isbn(isbn),
+        "page_count": book_data.get("number_of_pages", 0),
+        "description": description,
+        "cover_image_url": cover_urls[0] if cover_urls else None,
+        "cover_candidates": cover_urls,
+        "genre": ", ".join(_names(book_data.get("subjects"))[:3]),
+        "source": "Open Library"
+    }
 
-        local_cover_url = download_and_save_cover(primary_url, fallback_urls)
-        if local_cover_url:
-            book_details["local_cover_url"] = local_cover_url
-            book_details["thumbnail_url"] = primary_url
-        else:
-            current_app.logger.warning(f"Failed to download any cover images for ISBN {isbn}")
+def search_open_library(query: str = None, max_results: int = 15,
+                        title: str = None, author: str = None) -> List[Dict[str, Any]]:
+    """Search Open Library and return results in the same shape as search_google_books.
 
-    return book_details
-
-def allowed_file(filename: str) -> bool:
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def process_image(image_file, existing_url: Optional[str] = None) -> Optional[str]:
-    """Process and save uploaded image."""
-    if not image_file or image_file.filename == '':
-        return existing_url
-        
-    if image_file and allowed_file(image_file.filename):
-        filename = secure_filename(image_file.filename)
-        timestamp = int(time.time())
-        unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
-        
-        # Use absolute path for saving but return relative path for database
-        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
-        
-        # Ensure upload directory exists
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        
-        img = Image.open(image_file)
-        img.thumbnail(MAX_IMAGE_SIZE)
-        img = ImageOps.exif_transpose(img)
-        img.save(save_path)
-        
-        # Return relative path for database storage
-        return os.path.join('uploads', unique_filename)
-    return existing_url
-
-def download_and_save_cover(url: str, fallback_urls: Optional[list] = None) -> Optional[str]:
-    """Download and save cover image from URL with fallback support.
-
-    Args:
-        url: Primary image URL to download
-        fallback_urls: Optional list of fallback URLs to try if primary fails
-
-    Returns:
-        Relative path to saved image or None if all attempts fail
+    Pass `query` for a free-text search, or `title`/`author` for a fielded one.
     """
-    if not url:
-        current_app.logger.debug("No URL provided for cover download")
-        return None
+    params = {
+        "limit": max_results,
+        "fields": "title,subtitle,author_name,publisher,first_publish_year,"
+                  "number_of_pages_median,isbn,cover_i,subject"
+    }
+    # Open Library uses Lucene syntax, where "Stop-Time" means "Stop NOT Time"
+    clean = lambda text: re.sub(r'[-:!(){}\[\]^"~*?\\/+]', ' ', text)
+    if title:
+        params["title"] = clean(title)
+        if author:
+            params["author"] = clean(author)
+    else:
+        params["q"] = clean(query or "")
+    data = _get_json(f"{OPEN_LIBRARY_URL}/search.json", params)
+    if not data:
+        return []
 
-    # Create list of URLs to try (primary + fallbacks)
-    urls_to_try = [url]
-    if fallback_urls:
-        urls_to_try.extend(fallback_urls)
+    processed_items = []
+    for doc in data.get("docs", [])[:max_results]:
+        isbns = doc.get("isbn", [])
+        isbn = next((i for i in isbns if len(i) == 13), isbns[0] if isbns else None)
+        cover_url = _open_library_cover_url(doc.get("cover_i"))
 
-    # Create a session with headers to mimic a browser
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    })
+        processed_items.append({
+            "volumeInfo": {
+                "title": doc.get("title", ""),
+                "subtitle": doc.get("subtitle", ""),
+                "authors": doc.get("author_name", []),
+                "publisher": (doc.get("publisher") or [""])[0],
+                "publishedDate": str(doc.get("first_publish_year", "")),
+                "description": "",
+                "pageCount": doc.get("number_of_pages_median") or 0,
+                "categories": doc.get("subject", [])[:3],
+                "industryIdentifiers": [{"type": "ISBN_13", "identifier": isbn}] if isbn else [],
+                "imageLinks": {"thumbnail": cover_url} if cover_url else {}
+            }
+        })
 
-    # Try each URL in order
-    for attempt_num, attempt_url in enumerate(urls_to_try, 1):
-        try:
-            current_app.logger.debug(f"Download attempt {attempt_num}/{len(urls_to_try)} from: {attempt_url}")
+    return processed_items
 
-            # Try to get the image with a timeout
-            response = session.get(attempt_url, stream=True, timeout=10)
-            response.raise_for_status()  # Raise an exception for bad status codes
+def fetch_cover_by_isbn_direct(isbn: str) -> List[str]:
+    """Open Library Covers API URLs for an ISBN (both ISBN-10 and -13 forms).
 
-            if response.status_code != 200:
-                current_app.logger.warning(f"Attempt {attempt_num} failed. Status code: {response.status_code}")
-                continue  # Try next URL
-
-            # Generate unique filename
-            timestamp = int(time.time())
-            filename = f"cover_{timestamp}_{attempt_num}.jpg"
-
-            # Ensure the upload directory exists
-            upload_folder = current_app.config['UPLOAD_FOLDER']
-            os.makedirs(upload_folder, exist_ok=True)
-
-            save_path = os.path.join(upload_folder, filename)
-            current_app.logger.debug(f"Will save image to: {save_path}")
-
-            # Save the raw image data first
-            with open(save_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-
-            # Now process with Pillow
-            try:
-                with Image.open(save_path) as img:
-                    # Convert to RGB if necessary
-                    if img.mode in ('RGBA', 'P'):
-                        img = img.convert('RGB')
-
-                    # Resize while maintaining aspect ratio
-                    img.thumbnail(MAX_IMAGE_SIZE)
-
-                    # Handle EXIF orientation
-                    img = ImageOps.exif_transpose(img)
-
-                    # Save with optimal settings
-                    img.save(save_path, 'JPEG', quality=85, optimize=True)
-
-                relative_path = os.path.join('uploads', filename)
-                resolution = "primary" if attempt_num == 1 else f"fallback #{attempt_num - 1}"
-                current_app.logger.info(f"Successfully saved image ({resolution}) at: {relative_path}")
-                return relative_path
-
-            except Exception as e:
-                current_app.logger.warning(f"Error processing image from attempt {attempt_num}: {str(e)}")
-                # Try to remove the failed file
-                if os.path.exists(save_path):
-                    os.remove(save_path)
-                continue  # Try next URL
-
-        except requests.RequestException as e:
-            current_app.logger.warning(f"Request error on attempt {attempt_num}: {str(e)}")
-            continue  # Try next URL
-        except Exception as e:
-            current_app.logger.warning(f"Unexpected error on attempt {attempt_num}: {str(e)}")
-            continue  # Try next URL
-
-    # All attempts failed
-    current_app.logger.error(f"Failed to download cover after {len(urls_to_try)} attempts")
-    return None
-
-def fetch_cover_by_isbn_direct(isbn: str) -> Optional[str]:
-    """Try to fetch cover directly from Open Library Covers API using ISBN.
-
-    This is a direct cover API that doesn't require the book to be in their database.
-    Returns the highest quality cover URL available.
+    Works even when the book isn't in Open Library's catalog. `default=false`
+    makes missing covers 404 instead of returning a 1x1 placeholder.
     """
-    if not isbn:
-        return None
+    return [f"https://covers.openlibrary.org/b/isbn/{variant}-L.jpg?default=false"
+            for variant in isbn_variants(isbn)]
 
-    # Clean ISBN (remove hyphens)
-    clean_isbn = isbn.replace("-", "").replace(" ", "")
 
-    # Try different sizes, starting with largest
-    for size in ["L", "M", "S"]:
-        url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-{size}.jpg"
-        try:
-            # Check if the cover exists (Open Library returns a 1x1 pixel for missing covers)
-            response = requests.head(url, timeout=5, allow_redirects=True)
-            if response.status_code == 200:
-                # Check content length to avoid tiny placeholder images
-                content_length = int(response.headers.get('content-length', 0))
-                if content_length > 1000:  # More than 1KB suggests real cover
-                    current_app.logger.info(f"Found Open Library cover (size {size}): {url}")
-                    return url
-        except Exception as e:
-            current_app.logger.debug(f"Open Library cover check failed for {url}: {str(e)}")
-            continue
-
-    return None
+# ---------------------------------------------------------------------------
+# Goodreads (via BookCover API)
+# ---------------------------------------------------------------------------
 
 def fetch_goodreads_cover(isbn: str = None, title: str = None, author: str = None) -> Optional[str]:
     """Fetch book cover from Goodreads via BookCover API.
@@ -370,39 +320,34 @@ def fetch_goodreads_cover(isbn: str = None, title: str = None, author: str = Non
     API: https://github.com/w3slley/bookcover-api
     Returns JSON: {"url": "https://..."}
     """
-    try:
-        base_url = "https://bookcover.longitood.com/bookcover"
-
-        # The API requires both book_title and author_name (doesn't support ISBN alone)
-        if title and author:
-            params = {
-                "book_title": title,
-                "author_name": author
-            }
-
-            response = requests.get(base_url, params=params, timeout=10)
-
-            # Check if we got a successful response
-            if response.status_code == 200:
-                try:
-                    data = response.json()
-                    if 'url' in data and data['url']:
-                        cover_url = data['url']
-                        current_app.logger.info(f"Found Goodreads cover for '{title}' by {author}: {cover_url}")
-                        return cover_url
-                except ValueError:
-                    # Not JSON, might be an error
-                    current_app.logger.debug(f"Goodreads API returned non-JSON response for '{title}'")
-                    return None
-
+    # The API requires both book_title and author_name (doesn't support ISBN alone)
+    if not (title and author):
         return None
 
-    except requests.Timeout:
-        current_app.logger.warning(f"Goodreads BookCover API timeout for Title: {title}, Author: {author}")
-        return None
-    except Exception as e:
-        current_app.logger.warning(f"Goodreads BookCover API error: {str(e)}")
-        return None
+    data = _get_json("https://bookcover.longitood.com/bookcover",
+                     {"book_title": title, "author_name": author}, retries=0)
+    cover_url = (data or {}).get("url")
+    if cover_url:
+        current_app.logger.info(f"Found Goodreads cover for '{title}' by {author}: {cover_url}")
+    return cover_url
+
+
+# ---------------------------------------------------------------------------
+# Cover candidates
+# ---------------------------------------------------------------------------
+
+def _title_cover_urls(title: str, author: Optional[str] = None) -> Iterable[str]:
+    """Cover URLs found by title/author, for books whose ISBN has no cover.
+
+    A generator so the slower lookups only run if the earlier ones fail.
+    """
+    for result in search_open_library(title=title, author=author, max_results=3):
+        url = result["volumeInfo"]["imageLinks"].get("thumbnail")
+        if url:
+            yield url
+    goodreads_url = fetch_goodreads_cover(title=title, author=author)
+    if goodreads_url:
+        yield goodreads_url
 
 def search_covers_multiple_sources(isbn: str = None, title: str = None, author: str = None) -> list:
     """Search multiple sources for book covers and return all found URLs.
@@ -412,59 +357,210 @@ def search_covers_multiple_sources(isbn: str = None, title: str = None, author: 
         Priority: lower number = better quality/more reliable
     """
     covers = []
+    seen = set()
 
-    # Source 1: Open Library direct ISBN lookup (often best quality)
-    if isbn:
-        ol_direct_url = fetch_cover_by_isbn_direct(isbn)
-        if ol_direct_url:
-            covers.append((ol_direct_url, "Open Library Direct", 1))
+    def add(url, source):
+        if url and url not in seen:
+            seen.add(url)
+            covers.append((url, source, len(covers) + 1))
 
-    # Source 2: Google Books via ISBN
     if isbn:
+        for url in fetch_cover_by_isbn_direct(isbn):
+            add(url, "Open Library (ISBN)")
+
         google_data = fetch_google_books(isbn)
-        if google_data and google_data.get("cover_image_url"):
-            covers.append((google_data["cover_image_url"], "Google Books (ISBN)", 2))
+        if google_data and google_data["cover_candidates"]:
+            add(google_data["cover_candidates"][0], "Google Books (ISBN)")
 
-    # Source 3: Open Library Books API via ISBN
-    if isbn:
         ol_data = fetch_open_library(isbn)
-        if ol_data and ol_data.get("cover_image_url"):
-            covers.append((ol_data["cover_image_url"], "Open Library (ISBN)", 3))
+        if ol_data and ol_data["cover_candidates"]:
+            add(ol_data["cover_candidates"][0], "Open Library (edition)")
 
-    # Source 4: Goodreads via BookCover API (requires both title AND author)
-    if title and author:
-        goodreads_url = fetch_goodreads_cover(title=title, author=author)
-        if goodreads_url:
-            covers.append((goodreads_url, "Goodreads", 4))
-
-    # Source 5: Google Books via title/author search
     if title:
-        query = f"{title} {author}".strip() if author else title
-        search_results = search_google_books(query, max_results=3)
+        if author:
+            add(fetch_goodreads_cover(title=title, author=author), "Goodreads")
 
-        for idx, result in enumerate(search_results):
-            thumbnail_url = result.get("volumeInfo", {}).get("imageLinks", {}).get("thumbnail")
-            if thumbnail_url:
-                # Try to get ISBN from search result for Open Library lookup
-                result_isbn = None
-                identifiers = result.get("volumeInfo", {}).get("industryIdentifiers", [])
-                for identifier in identifiers:
-                    if identifier.get("type") in ["ISBN_13", "ISBN_10"]:
-                        result_isbn = identifier.get("identifier")
-                        break
+        for idx, result in enumerate(search_open_library(title=title, author=author, max_results=3), 1):
+            add(result["volumeInfo"]["imageLinks"].get("thumbnail"), f"Open Library (search #{idx})")
 
-                # If we found an ISBN in the search result, try Open Library direct
-                if result_isbn and not isbn:  # Only if we didn't already try with main ISBN
-                    ol_direct_url = fetch_cover_by_isbn_direct(result_isbn)
-                    if ol_direct_url:
-                        covers.append((ol_direct_url, f"Open Library (Search Result #{idx+1})", 5 + idx))
-
-                covers.append((thumbnail_url, f"Google Books (Search #{idx+1})", 6 + idx))
-
-    # Sort by priority (lower number first)
-    covers.sort(key=lambda x: x[2])
+        query = f"intitle:{title} inauthor:{author}" if author else f"intitle:{title}"
+        google_results = _google_volumes(query, 3) or []
+        for idx, item in enumerate(google_results, 1):
+            urls = _google_cover_urls(item.get("volumeInfo", {}))
+            if urls:
+                add(urls[0], f"Google Books (search #{idx})")
 
     return covers
+
+
+# ---------------------------------------------------------------------------
+# Book lookup
+# ---------------------------------------------------------------------------
+
+def _is_missing_details(details: Optional[dict]) -> bool:
+    if not details or not details.get("cover_candidates"):
+        return True
+    return any(not details.get(field) for field in ("author", "publisher", "year", "page_count", "description"))
+
+def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
+    """Look a book up by ISBN across Google Books and Open Library.
+
+    Google is tried first; Open Library fills in anything Google is missing
+    (or everything, when Google is down). The best available cover is then
+    downloaded, falling back to title/author cover searches if needed.
+    """
+    isbn = normalize_isbn(isbn)
+    if not isbn:
+        return None
+
+    google = fetch_google_books(isbn)
+    open_library = fetch_open_library(isbn) if _is_missing_details(google) else None
+
+    if google and open_library:
+        book_details = dict(google)
+        for field, value in open_library.items():
+            if not book_details.get(field) and value:
+                book_details[field] = value
+        book_details["source"] = "Google Books + Open Library"
+    else:
+        book_details = google or open_library
+    if not book_details:
+        return None
+
+    cover_urls = (
+        (google or {}).get("cover_candidates", []) +
+        (open_library or {}).get("cover_candidates", []) +
+        fetch_cover_by_isbn_direct(isbn)
+    )
+    local_cover_url = save_best_cover(cover_urls)
+    if not local_cover_url and book_details.get("title"):
+        current_app.logger.info(f"No ISBN cover for {isbn}, searching by title/author")
+        local_cover_url = save_best_cover(_title_cover_urls(book_details["title"], book_details.get("author")))
+
+    book_details.pop("cover_candidates", None)
+    if local_cover_url:
+        book_details["cover_image_url"] = local_cover_url
+        book_details["local_cover_url"] = local_cover_url
+        book_details["thumbnail_url"] = f"/static/{local_cover_url}"
+    else:
+        # Never store a hotlinked remote URL; the UI falls back to no-cover.png
+        book_details["cover_image_url"] = None
+        current_app.logger.warning(f"Failed to download any cover images for ISBN {isbn}")
+
+    return book_details
+
+
+# ---------------------------------------------------------------------------
+# Images
+# ---------------------------------------------------------------------------
+
+def allowed_file(filename: str) -> bool:
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def process_image(image_file, existing_url: Optional[str] = None) -> Optional[str]:
+    """Process and save uploaded image."""
+    if not image_file or image_file.filename == '':
+        return existing_url
+
+    if image_file and allowed_file(image_file.filename):
+        filename = secure_filename(image_file.filename)
+        timestamp = int(time.time())
+        unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
+
+        # Use absolute path for saving but return relative path for database
+        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
+
+        # Ensure upload directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        img = Image.open(image_file)
+        img.thumbnail(MAX_IMAGE_SIZE)
+        img = ImageOps.exif_transpose(img)
+        img.save(save_path)
+
+        # Return relative path for database storage
+        return os.path.join('uploads', unique_filename)
+    return existing_url
+
+def _fetch_image(url: str) -> Optional[Image.Image]:
+    """Download a URL and return it as a PIL image, or None if it isn't a real cover."""
+    try:
+        response = _session.get(url, stream=True, timeout=HTTP_TIMEOUT)
+        if response.status_code != 200:
+            current_app.logger.debug(f"Cover {url} returned {response.status_code}")
+            return None
+        content = response.raw.read(MAX_COVER_BYTES + 1, decode_content=True)
+        if len(content) > MAX_COVER_BYTES:
+            current_app.logger.debug(f"Cover {url} is too large, skipping")
+            return None
+        img = Image.open(BytesIO(content))
+        img.load()
+    except Exception as e:
+        current_app.logger.debug(f"Cover {url} could not be loaded: {e}")
+        return None
+
+    if img.width < MIN_COVER_DIMENSION or img.height < MIN_COVER_DIMENSION:
+        current_app.logger.debug(f"Cover {url} is a {img.width}x{img.height} placeholder, skipping")
+        return None
+    return img
+
+def _save_cover_image(img: Image.Image) -> str:
+    """Normalize, resize and save a cover image. Returns the path relative to static/."""
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ('RGBA', 'LA', 'P'):
+        img = img.convert('RGBA')
+        background = Image.new('RGB', img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[-1])
+        img = background
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+    img.thumbnail(MAX_IMAGE_SIZE)
+
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_folder, exist_ok=True)
+    filename = f"cover_{uuid.uuid4().hex}.jpg"
+    img.save(os.path.join(upload_folder, filename), 'JPEG', quality=85, optimize=True)
+    return os.path.join('uploads', filename)
+
+def save_best_cover(urls: Iterable[str]) -> Optional[str]:
+    """Download candidate cover URLs in order and save the best one.
+
+    Stops at the first cover that is at least GOOD_COVER_WIDTH wide; otherwise
+    keeps the largest valid image seen. Placeholders and broken images are
+    skipped. Returns the saved path relative to static/, or None.
+    """
+    best = None
+    tried = set()
+    for url in urls:
+        if not url or url in tried:
+            continue
+        tried.add(url)
+        img = _fetch_image(url)
+        if img is None:
+            continue
+        current_app.logger.debug(f"Cover candidate {img.width}x{img.height}: {url}")
+        if best is None or img.width > best.width:
+            best = img
+        if img.width >= GOOD_COVER_WIDTH:
+            break
+
+    if best is None:
+        return None
+    relative_path = _save_cover_image(best)
+    current_app.logger.info(f"Saved {best.width}x{best.height} cover at: {relative_path}")
+    return relative_path
+
+def download_and_save_cover(url: str, fallback_urls: Optional[list] = None) -> Optional[str]:
+    """Download and save a cover image, trying fallback URLs if the primary fails.
+
+    Returns:
+        Relative path to saved image or None if all attempts fail
+    """
+    if not url:
+        current_app.logger.debug("No URL provided for cover download")
+        return None
+    return save_best_cover([url] + (fallback_urls or []))
+
 
 # filter options
 def get_filter_options():
