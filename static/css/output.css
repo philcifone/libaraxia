@@ -1502,6 +1502,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   max-height: 600px;
 }
 
+.min-h-\[2\.75em\] {
+  min-height: 2.75em;
+}
+
 .min-h-full {
   min-height: 100%;
 }
@@ -2437,6 +2441,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   line-height: 1.625;
 }
 
+.leading-snug {
+  line-height: 1.375;
+}
+
 .tracking-wide {
   letter-spacing: 0.025em;
 }
@@ -3152,6 +3160,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
   .sm\:gap-2 {
     gap: 0.5rem;
+  }
+
+  .sm\:p-4 {
+    padding: 1rem;
   }
 
   .sm\:px-10 {

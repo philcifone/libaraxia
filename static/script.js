@@ -909,11 +909,11 @@ class InfiniteScroll {
                         <div class="book-cover w-full h-64 overflow-hidden bg-primary">
                             ${coverImage}
                         </div>
-                        <div class="book-info p-4">
-                            <h3 class="book-title text-base font-semibold line-clamp-2 mb-2 text-white">
+                        <div class="book-info p-3 sm:p-4">
+                            <h3 class="book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white">
                                 ${this.escapeHtml(book.title)}
                             </h3>
-                            <p class="book-author text-content-secondary text-sm italic">
+                            <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
                                 by ${this.escapeHtml(book.author)}
                             </p>
                         </div>
@@ -996,15 +996,15 @@ function switchView(viewType) {
         });
 
         document.querySelectorAll('.book-info').forEach(info => {
-            info.className = 'book-info p-4';
+            info.className = 'book-info p-3 sm:p-4';
         });
 
         document.querySelectorAll('.book-title').forEach(title => {
-            title.className = 'book-title text-base font-semibold line-clamp-2 mb-2 text-white';
+            title.className = 'book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white';
         });
 
         document.querySelectorAll('.book-author').forEach(author => {
-            author.className = 'book-author text-content-secondary text-sm italic';
+            author.className = 'book-author text-content-secondary text-xs sm:text-sm italic truncate';
         });
 
         // Update button states
