@@ -1,3 +1,10 @@
+// Escape text for use inside HTML, including attribute values
+function escapeHtml(text) {
+    return String(text ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+}
+
 // CSRF Token Helper Functions
 function getCSRFToken() {
     const tokenInput = document.querySelector('input[name="csrf_token"]');
@@ -93,8 +100,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateTagsList(tags) {
         tagsList.innerHTML = tags.map(tag => `
             <span class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 mr-2 mb-2">
-                ${tag}
-                <button class="tag-remove ml-1.5 text-gray-400 hover:text-gray-900 focus:outline-none" data-tag="${tag}">
+                ${escapeHtml(tag)}
+                <button class="tag-remove ml-1.5 text-gray-400 hover:text-gray-900 focus:outline-none" data-tag="${escapeHtml(tag)}">
                     <svg class="w-4 h-4" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>

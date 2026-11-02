@@ -5,6 +5,21 @@ import os
 from flask import current_app
 
 
+def is_safe_upload_path(image_path):
+    """
+    Check that a stored image path points inside static/uploads/.
+
+    Cover and avatar paths come back from the browser in hidden form fields,
+    so they must be validated before being saved or later passed to os.remove.
+    """
+    if not image_path or not isinstance(image_path, str):
+        return False
+    if image_path.startswith('/') or '\\' in image_path or ':' in image_path:
+        return False
+    normalized = os.path.normpath(image_path).replace(os.sep, '/')
+    return normalized.startswith('uploads/') and '..' not in normalized.split('/')
+
+
 def delete_image_file(image_path):
     """
     Safely delete an image file given its relative path from static directory
@@ -18,8 +33,16 @@ def delete_image_file(image_path):
     if not image_path:
         return False
 
-    # Build full path: app_root/static/image_path
-    full_path = os.path.join(current_app.root_path, 'static', image_path)
+    if not is_safe_upload_path(image_path):
+        current_app.logger.warning(f"Refusing to delete image outside uploads: {image_path!r}")
+        return False
+
+    # Build full path: app_root/static/image_path, and make sure it really is inside uploads/
+    uploads_root = os.path.realpath(os.path.join(current_app.root_path, 'static', 'uploads'))
+    full_path = os.path.realpath(os.path.join(current_app.root_path, 'static', image_path))
+    if not full_path.startswith(uploads_root + os.sep):
+        current_app.logger.warning(f"Refusing to delete image outside uploads: {image_path!r}")
+        return False
 
     if os.path.exists(full_path):
         try:

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>{{ book[1] }} - Details</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
 <body class="bg-primary min-h-screen">
@@ -231,19 +230,22 @@
                     <div class="grid grid-cols-2 gap-4">
                         <a href="/books/edit/{{ book[0] }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors">
-                            <svg class="w42 h-4" viewBox="0 0 20 20" fill="currentColor">
+                            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
                             </svg>
                             Edit Book
                         </a>
-                        <a href="/books/delete/{{ book[0] }}"
-                           onclick="return confirm('This will remove the book from the database. Are you sure?')"
-                           class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">
-                            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
-                            </svg>
-                            Delete Book
-                        </a>
+                        <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST" class="flex"
+                              onsubmit="return confirm('This will remove the book from the database. Are you sure?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                    class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">
+                                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
+                                </svg>
+                                Delete Book
+                            </button>
+                        </form>
                     </div>
 
                     <!-- Transfer Book (only if in library group with other members) -->

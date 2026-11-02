@@ -1,267 +1,141 @@
 # Libaraxia
 
-(New screenshots coming soon!)
+A self-hosted library catalogue for the books you own, the ones you've read and the ones you want. Built with Flask and SQLite, it keeps your reading life on your own server, away from the prying eyes of corporations and AI.
 
-![Libaraxia](https://github.com/user-attachments/assets/053d99b4-52a8-4028-baf3-47355afe4960)
-![Sidebar](https://github.com/user-attachments/assets/e4f59385-6287-4d0f-b4fe-f9770c441e16)
-![Book Details](https://github.com/user-attachments/assets/a877d0e7-e9cd-4670-b66a-4c4bf4c9ed07)
-![Rate & Review](https://github.com/user-attachments/assets/f60deec5-b7ef-42e6-8114-e10187f1489a)
-![Book Details](https://github.com/user-attachments/assets/94deca5c-70d7-4c87-828f-c563e735e68a)
+![Library grid](docs/screenshots/library.webp)
 
-# 📚 Project Overview
+What started as a hobby project is now a full personal library manager: scan or search to add books, track what you're reading, rate and review, keep a wishlist, and share a household library with the people you live with.
 
-Libaraxia is a modern web application designed to help you catalog and manage your personal library with style and efficiency. Built with Flask and SQLite, it offers a seamless interface for organizing your book collection, tracking your reading progress, and maintaining your literary life away from the prying eyes of corporations and AI. 
+## Screenshots
 
-What started as a hobbyist project has evolved into a feature-rich library management system. While it's still growing and improving, it's already a robust and portable solution for personal library organization.
+| | |
+|---|---|
+| ![Book detail](docs/screenshots/book-detail.webp) **Book detail.** Metadata, description, edit and transfer. | ![Rate and review](docs/screenshots/rate-review.webp) **Rate & review.** Star rating, review and reading sessions. |
+| ![Reading shelves](docs/screenshots/collections.webp) **Shelves.** Reading status plus your own custom collections. | ![Profile](docs/screenshots/profile.webp) **Profile.** Bio, settings and your shelves at a glance. |
+| ![Wishlist](docs/screenshots/wishlist.webp) **Wishlist.** Search, ISBN or barcode; move to library when bought. | ![Shared library](docs/screenshots/shared-library.webp) **Shared library.** One catalogue for the whole household. |
+| ![Add book](docs/screenshots/add-book.webp) **Add a book.** Title/author search, ISBN lookup or camera barcode scan. | ![Activity feed](docs/screenshots/feed.webp) **Activity feed.** What your friends are adding and reading. |
 
-## 🛠️ Installation 
+<p>
+  <img src="docs/screenshots/mobile-library.webp" alt="Library on a phone" width="260">
+  <img src="docs/screenshots/mobile-book-detail.webp" alt="Book detail on a phone" width="260">
+</p>
 
-Currently, Libaraxia is in active development, not stable, and not recommended for production use. However, if you're feeling adventurous and want to help me beta test; the below instructions should, in theory, work. You can now install using docker if you know your way around it!
+## ✨ Features
 
-### Docker install:
+**Cataloguing**
+- Add books by title/author search, ISBN lookup or camera barcode scan (Google Books and Open Library)
+- Automatic cover download, or upload your own; bulk cover fetch for books missing one
+- Edit, delete and transfer books; duplicate detection when adding
+- Library grid with search, sort, filters and infinite scroll
+- Per-user tags and custom collections
+- CSV export, and **Goodreads CSV import** for any user
 
-1. git clone the repository and cd into it 
+**Reading**
+- Reading status: read, currently reading, want to read, did not finish
+- Star ratings and reviews
+- Reading sessions with start/finish dates, so re-reads are tracked
+- Reading stats on your profile
 
-```shell
-git clone https://github.com/philcifone/libaraxia
+**People**
+- Multi-user with login, remember-me and optional email verification
+- Friends: requests, notifications, and browsing friends' libraries, wishlists and reviews
+- Household **shared library**: members see one combined catalogue
+- Activity feed with likes
+- Admin panel: users, avatars, orphaned image cleanup, household membership
 
-cd libaraxia
-```
+**Security**
+- CSRF protection on every form and API call, bcrypt passwords, rate limiting on auth and imports
+- Hardened image handling (uploads confined to `static/uploads/`, SSRF-guarded cover downloads)
+- Self-registration can be closed after the first (admin) account
 
-2. Create a Google Books API Key from https://console.cloud.google.com and add it to the .env.example file (.env.example included) while you also change SECRET_KEY and then run:
+## 🛠️ Installation
 
-```shell
-mv .env.example .env
+Libaraxia is a hobby project under active development. It runs my own library every day, but expect rough edges. Production runs under **gunicorn directly**; the Docker files are kept for reference and aren't currently maintained.
 
-mv docker-compose.yml.example docker-compose.yml # you shouldn't need to update this
-```
+**Requirements:** Python 3.11+, `sqlite3`, and Node.js only if you want to rebuild the CSS.
 
-3. Build
-
-```shell
-sudo docker compose build --no-cache
-
-# -d for detached mode or keep it off to watch the console
-sudo docker compose up -d 
-```
-
-4. Access via the browser at localhost:5000 (local ip can be accessed after it is accessed from local host, no idea why yet.)
-
-If needed (i.e running headless on the same network) you can use the docker container IP
-
-Run:
-
-```shell
-sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' libaraxia-web-1
-```
-and copy and paste the ip address followed by :5000 in your browser.
-
-5. Register admin account upon initial startup.
-
-
-6. Use the Add Book button in the bottom right to start adding books via search or ISBN (no barcode scanner yet) and start tracking your own digital library!
-
-
-### If you want to build it from the repo directly it should also be pretty easy:
-
-1. git clone the repository and cd into it 
+### 1. Get the code and install dependencies
 
 ```shell
 git clone https://github.com/philcifone/libaraxia
-
 cd libaraxia
-```
-
-2. Install required packages with the requirements.txt
-
-```shell
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. To initialize SQLite database with the provided create_database.sql file run the following command:
+### 2. Configure
 
 ```shell
-sqlite3 your_database.db < create_database.sql
-``` 
-
-4. Configure your environment variables:
-
-```shell
-### EXAMPLE ###
-
-SECRET_KEY=your_secret_key
-
-DATABASE_URI=sqlite:///library.db
-
-FLASK_APP=app:create_app
-
-GOOGLE_BOOKS_API_KEY=get_yours_at_https://console.cloud.google.com
+cp .env.example .env
+python3 -c "import secrets; print(secrets.token_hex(32))"   # paste into SECRET_KEY
 ```
 
-5. Run in project root with flask/gunicorn/python, whichever. python3 is easiest for a development server, for a production server I use gunicorn as a systemd service in an LXC container. So this will depend on your use-case I think. Happy to help if needed.
+Edit `.env`:
+
+| Variable | What it does |
+|---|---|
+| `SECRET_KEY` | **Required.** Session signing key. Use the random value above. |
+| `GOOGLE_BOOKS_API_KEY` | Book lookups. Get one at [console.cloud.google.com](https://console.cloud.google.com). |
+| `FLASK_ENV` | `development` or `production`. Production makes cookies `Secure`, so it needs HTTPS. |
+| `ALLOW_REGISTRATION` | Set to `False` once your accounts exist, so strangers can't sign up. |
+| `TRUSTED_PROXY_COUNT` | Set to `1` if you run behind nginx/Caddy, so rate limits see real client IPs. |
+| `EMAIL_VERIFICATION_REQUIRED`, `MAIL_*` | Optional email verification. |
+
+> **Note:** `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` are currently read before `.env` is loaded. Set them as real environment variables (e.g. in your systemd unit) rather than in `.env`. The database defaults to `library.db` in the working directory.
+
+### 3. Create the database
+
+`create_database.sql` doesn't contain the full schema yet, so run it **and then every migration in order**:
 
 ```shell
-python3 app.py
+sqlite3 library.db < create_database.sql
+for f in migrations/0*.sql; do sqlite3 library.db < "$f"; done
 ```
 
-6. Access via the browser at localhost:5000 (local ip can be accessed after it is accessed from local host, no idea why yet.)
+On a fresh database, migrations 001, 004 and 006 print `duplicate column` errors. That's expected and harmless. See [`migrations/README.md`](migrations/README.md).
 
-### ✨ Features
+**Upgrading an existing install:** back up first (`sqlite3 library.db ".backup library.db.bak"`), then run only the migrations you haven't applied yet.
 
-- Tiled library view
-- Add/edit/delete book
-- ISBN fetch auto fill
-- Book title and author search & autofill
-- Catalog search
-- Catalog sort
-- Catalog filter
-- User cover upload
-- Account register (admin only)
-- Multi-user login & authentication
-- Email and Password update
-- Library & user stats
-- csv export
-- Custom book tags per user
-- Custom collections per user
-- Rating & comment system per user
+### 4. Run
 
-### 🚧 Future Feature Ideas
+```shell
+python3 app.py                                      # development server on :5000
+gunicorn -w 4 -b 0.0.0.0:5000 'app:create_app()'    # production
+```
 
-- Barcode scanner - still in development
-- Admin & user settings
-- Library Activity Feed
+Open `http://localhost:5000`. With no users yet, you're sent to registration, and **the first account becomes the admin**.
 
-### 💡 Contributing 
+**Barcode scanning on a phone** needs HTTPS. For local testing, run `./generate-cert.sh`, then `python3 app.py --cert certs/cert.pem --key certs/key.pem`. See [docs/HTTPS-SETUP.md](docs/HTTPS-SETUP.md).
 
-Found a bug? Have a feature idea? Contributions are welcome! While this started as a personal project, I believe in the power of community-driven development, and I am not a trained developer. This has been the product of a lot of AI collaboration, and I'd love for experienced human eyes to check this out. ***PLEASE*** feel free to: 
+### Rebuilding the CSS
 
-- Open issues for bugs or feature requests 
-- Submit pull requests (I've never made it this far with github so bear with me as I learn to do more than commit/push/pull)
-- Share your ideas and feedback 
+The compiled Tailwind file `static/css/output.css` is committed. Rebuild it only if you change templates or `static/styles.css`:
+
+```shell
+npm install
+npm run build:css     # or: npm run watch:css
+```
+
+## 🗺️ Roadmap
+
+Planned work, in order, is in **[ROADMAP.md](ROADMAP.md)**. In short: a design refresh to match [philcifone.com](https://philcifone.com) and [negativeearth.net](https://negativeearth.net) (Gruvbox light and dark, Courier Prime + Young Serif, square corners; same UI, new skin) first, then production hardening and data-integrity fixes, finishing the Goodreads import, a page-layout refactor and design polish, and VHS/UPC barcode support.
+
+The original dev diary and to-do list are in [docs/DEVLOG.md](docs/DEVLOG.md).
+
+## 💡 Contributing
+
+Found a bug? Have a feature idea? Contributions are welcome! This started as a personal project, and I'm not a trained developer. A lot of it was built in collaboration with AI, and I'd love for experienced human eyes to look it over. **Please** feel free to:
+
+- Open issues for bugs or feature requests
+- Submit pull requests
+- Share ideas and feedback
 - Help with documentation
 
-### 📝 To Do:
+Developer notes (architecture, conventions, security rules) are in [CLAUDE.md](CLAUDE.md).
 
-- [x] Backup project files!!
-- [x] Have fun!!!!!
-#### Frontend
-- [x] Fix tile text alignment
-- [x] Add Author to tile
-- [x] Add better back to list on search page inside search container
-- [x] Fix add book button
-- [x] Style main page search bar add sort
-- [x] Heading on Add Book page
-- [x] Update book details style to match
-- [x] Hamburger menu and side bar
-- [x] Add book floating button
-- [x] View more button for description 
-- [x] Fix collections toolbar (show read state)
-- [x] Added tailwind css
-- [x] Better search bar functionality
-- [x] Better back to catalog button
-- [x] Refactor styles.css
-- [x] Make add & edit book pages prettier!!
-- [x] Better fonts
-- [x] better mobile on book details page
-- [ ] Side scroll of books on collections page
-- [ ] separate recent books/reviews feed/list?
-- [x] Test Docker packaging
-- [x] Release docker packaging
+## License
 
-#### Backend
-- [x] Fetch book descriptions
-- [x] Multi-user creation & login authentication
-- [x] Sort catalog feature
-- [x] Admin only access to CRUD functions
-- [x] Search function
-- [x] Version Control
-- [x] Fix image upload in add_image route
-- [x] Image resize/optimize during upload
-- [x] Refactor code, add blueprints
-- [x] secret key to server/dev env instead of codebase
-- [x] Remove books table read column (will be a future user table column)
-- [x] Add rating & comments
-- [x] Improve & fix bookshelves (collections, now reading lists)
-- [x] auto image download
-- [x] Cover image fetch script/button (auto fetch during add but user can replace in add and edit) - revisit
-- [x] User book details
-- [x] User profile
-- [x] Add "DNF" section to reading status & list
-- [x] Genre & subtitle add to API fetch & book details
-- [x] Filter options!!! (year read, year published, page count, genre, is_read, etc.)
-- [x] Export to spreadsheet/csv
-- [x] User created bookshelves/collections
-- [ ] Admin & user settings
+[GPL-3.0](LICENSE)
 
-### 📅 2024-12-30
-
-#### Updated a lot of frontend
- - tailwind css - added but not used
- - vanishing header bar
- - hamburger menu and sidebar
- - moved "collections" to "user profile", switching name to "reading list"
- - need to create ability for users to create their own collections for collections page
-
-### 📅 2025-01-01
-#### Switched to Claude AI for troubleshooting, more frontend updates, some backend
-- Better refactoring of blueprints.books.py to utils.book_utils.py
-- Fixed cover fetch
-- Layouts for book details and rate & review are much cleaner and polished
-- More symbols/icons in use for UX/UI
-- Better sidebar features
-- User profile password and email update
-
-### 📅 2025-01-05 
-
-#### Lots of search and filtering advancements today, plus csv export
-
-- Implemented title/author search functionality 
-- Added CSV library & user info export
-- Enhanced book addition with auto-fill  
-- Improved cover image fetching and quality 
-- Refined UI/UX with smoother transitions 
-- Added reading statistics dashboard 
-- Enhanced filter and sort capabilities 
-- Implemented tag management system
-- Created custom collections
-- Started barcode scanner feature
-
-### 📅 2025-01-22 
-
-#### Been awhile since I updated after starting other projects. I started to rebuild this in React but realized it would be easier to simply add tailwindcss since the backend seems to function quite well here.
- - Updated tailwindcss for:
-   - search/sort/filter
-   - sidebar
-   - add book
-   - book details
-   - index
-- Added google books api key to book utils and books route - unsure if working!
-
-needs addressed:
-- better mobile style on book details - centered
-- api title search and display on add book, need to test! - javascript??
-- search bar inside top navbar, sort/filter dropdown.
-  - sort reset button instead of on change?
-- untracked read status not resetting? others work, low priority
-
-#### Finished with changing all the templates to tailwind css and fixed the  api!
-- Commited and pulled from repo to prod server and works!
-- Tried updating search/navbar/sidebar into something more modern but couldn't get it.
-- almost forgot to add the google api key :)
-
-### 📅 2025-01-23
-#### Images werent being added from the title/author search selection
- - mostly fixed after excruciating debugging.
- - Author and genre info are not fetching from the json data, see console, utils, and books.py.
- - see diff between old and new add_books.js, and old scripts.js (comment: populate data, fillBookForm)??
- - need to add "selected" javascript to button once the book data is fetched and populated below
- - need to add "no-cover.png" to prod server, or just do text placement. JavaScript goes brrrrr looking for it if it isn't there.
-- WOOHOO fixed the search, cover fetch, and info fetch. Updated styles, working on fonts. Cant quite get it.
-   
-### 📅 2025-03-26
-#### Docker packaging!
-- Been awhile since any meaningful updates! Happy to have docker packaging figured out.
-- trying to add github workflows, might be helpful.
-
---- 
+---
 Built with ☕ and 🥃 by a 📖 lover, for 📚 lovers.

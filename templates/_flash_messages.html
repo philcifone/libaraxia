@@ -115,13 +115,14 @@
         flashDiv.className = `flash-message mb-2 px-4 py-3 rounded-lg shadow-lg text-white flex items-start gap-3 animate-slide-in ${bgClass}`;
 
         flashDiv.innerHTML = `
-            <div class="flex-1">${message}</div>
+            <div class="flex-1"></div>
             <button onclick="dismissFlash(this)" class="flex-shrink-0 text-white hover:text-content-secondary transition-colors focus:outline-none" aria-label="Close message">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         `;
+        flashDiv.querySelector('.flex-1').textContent = message;
 
         container.appendChild(flashDiv);
 

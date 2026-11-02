@@ -86,7 +86,7 @@
                                 {% if in_shared_library %}
                                 <form method="POST" action="{{ url_for('user.remove_from_shared_library', user_id=user['id']) }}" class="inline-block">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition-colors flex items-center gap-1.5" onclick="return confirm('Remove {{ user['username'] }} from your shared library?')">
+                                    <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition-colors flex items-center gap-1.5" onclick='return confirm({{ ("Remove " ~ user["username"] ~ " from your shared library?")|tojson }})'>
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                         </svg>
@@ -110,7 +110,7 @@
                                 <!-- Remove Friend -->
                                 <form method="POST" action="{{ url_for('friends.remove_friend', friend_id=user['id']) }}" class="inline-block">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 text-xs text-content-secondary hover:text-red-500 transition-colors border border-content-secondary hover:border-red-500 rounded" onclick="return confirm('Remove {{ user['username'] }} from friends?')">
+                                    <button type="submit" class="px-3 py-2 text-xs text-content-secondary hover:text-red-500 transition-colors border border-content-secondary hover:border-red-500 rounded" onclick='return confirm({{ ("Remove " ~ user["username"] ~ " from friends?")|tojson }})'>
                                         Remove Friend
                                     </button>
                                 </form>
@@ -1099,7 +1099,7 @@
                         const newImg = document.createElement('img');
                         newImg.id = 'avatar-image';
                         newImg.src = data.avatar_url;
-                        newImg.alt = '{{ user["username"] }}';
+                        newImg.alt = {{ user["username"]|tojson }};
                         newImg.className = 'w-full h-full rounded-full object-cover';
                         newImg.style.width = '64px';
                         newImg.style.height = '64px';
@@ -1163,7 +1163,7 @@
             const display = document.getElementById('bio-display');
 
             // Reset textarea to original value
-            input.value = '{{ user["bio"] if user["bio"] else "" }}'.replace(/&#34;/g, '"').replace(/&#39;/g, "'");
+            input.value = {{ (user["bio"] or "")|tojson }};
 
             displayContainer.classList.remove('hidden');
             editContainer.classList.add('hidden');
@@ -1274,10 +1274,13 @@
                             if (users.length === 0) {
                                 searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">No users found</p>';
                             } else {
+                                const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
                                 searchResults.innerHTML = users.map(user => {
+                                    const username = esc(user.username);
+                                    const userPath = esc(encodeURIComponent(user.username));
                                     const avatarHtml = user.avatar_url
-                                        ? `<img src="/static/${user.avatar_url}" alt="${user.username}" class="w-10 h-10 rounded-full object-cover">`
-                                        : `<div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-white">${user.username[0].toUpperCase()}</div>`;
+                                        ? `<img src="/static/${esc(user.avatar_url)}" alt="${username}" class="w-10 h-10 rounded-full object-cover">`
+                                        : `<div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-white">${esc(user.username[0].toUpperCase())}</div>`;
 
                                     let actionHtml = '';
                                     if (user.friendship_status === 'friends') {
@@ -1287,7 +1290,7 @@
                                     } else if (user.friendship_status === 'request_received') {
                                         actionHtml = '<span class="text-sm text-blue-500">Request Received</span>';
                                     } else {
-                                        actionHtml = `<form method="POST" action="/friends/send_request/${user.username}" class="inline">
+                                        actionHtml = `<form method="POST" action="/friends/send_request/${userPath}" class="inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="px-3 py-1 text-white rounded text-sm transition-colors" style="background-color: #4f7d19;" onmouseover="this.style.backgroundColor='#6a9839'" onmouseout="this.style.backgroundColor='#4f7d19'">
                                                 Add Friend
@@ -1298,10 +1301,10 @@
                                     return `
                                         <div class="p-2 mt-2 hover:bg-primary transition-colors rounded-lg">
                                             <div class="flex items-center justify-between gap-3">
-                                                <a href="/user/${user.username}" class="flex items-center gap-3 flex-1">
+                                                <a href="/user/${userPath}" class="flex items-center gap-3 flex-1">
                                                     ${avatarHtml}
                                                     <div>
-                                                        <p class="text-content-primary font-medium">${user.username}</p>
+                                                        <p class="text-content-primary font-medium">${username}</p>
                                                     </div>
                                                 </a>
                                                 <div class="flex-shrink-0">

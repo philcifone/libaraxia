@@ -1,3 +1,10 @@
+// Escape text for use inside HTML, including attribute values
+function escapeHtml(text) {
+    return String(text ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+}
+
 // CSRF Token Helper Functions (copied from script.js)
 function getCSRFToken() {
     const tokenInput = document.querySelector('input[name="csrf_token"]');
@@ -357,9 +364,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const bookCard = document.createElement('div');
         bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200';
 
-        const coverImageUrl = book.cover_image_url ? `/static/${book.cover_image_url}` : '';
+        const coverImageUrl = book.cover_image_url ? `/static/${escapeHtml(book.cover_image_url)}` : '';
         const coverHTML = book.cover_image_url
-            ? `<img src="${coverImageUrl}" alt="${book.title}" class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
+            ? `<img src="${coverImageUrl}" alt="${escapeHtml(book.title)}" class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
             : `<div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
                    <span class="text-sm italic">No Image Available</span>
                </div>`;
@@ -373,12 +380,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="p-4 pb-2">
                     <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
-                        ${book.title}
+                        ${escapeHtml(book.title)}
                     </h3>
                     <p class="text-content-secondary text-sm italic mb-2">
-                        by ${book.author}
+                        by ${escapeHtml(book.author)}
                     </p>
-                    ${book.notes ? `<p class="text-xs text-content-secondary italic line-clamp-1 mb-2">"${book.notes}"</p>` : ''}
+                    ${book.notes ? `<p class="text-xs text-content-secondary italic line-clamp-1 mb-2">"${escapeHtml(book.notes)}"</p>` : ''}
                 </div>
             </a>
             <div class="px-4 pb-4">

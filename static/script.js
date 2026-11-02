@@ -14,6 +14,13 @@ function getCSRFToken() {
     return null;
 }
 
+// Escape text for use inside HTML, including attribute values
+function escapeHtml(text) {
+    return String(text ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+}
+
 // Helper function to add CSRF token to FormData
 function addCSRFToFormData(formData) {
     const token = getCSRFToken();
@@ -303,8 +310,8 @@ function updateActiveFilters() {
     if (activeFilters.length > 0) {
         pillsContainer.innerHTML = activeFilters.map(filter => `
             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-accent/20 text-accent border border-accent/30">
-                <span class="opacity-75">${filter.label}:</span>
-                <span class="ml-1">${filter.value}</span>
+                <span class="opacity-75">${escapeHtml(filter.label)}:</span>
+                <span class="ml-1">${escapeHtml(filter.value)}</span>
             </span>
         `).join('');
         displayContainer.classList.remove('hidden');
@@ -860,7 +867,7 @@ class InfiniteScroll {
         if (isListView || currentView === 'list') {
             // List view card
             const coverImage = book.cover_image_url
-                ? `<img src="/static/${book.cover_image_url}"
+                ? `<img src="/static/${this.escapeHtml(book.cover_image_url)}"
                         alt="${this.escapeHtml(book.title)}"
                         class="book-cover-img object-cover w-full h-full" />`
                 : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
@@ -888,7 +895,7 @@ class InfiniteScroll {
         } else {
             // Grid view card
             const coverImage = book.cover_image_url
-                ? `<img src="/static/${book.cover_image_url}"
+                ? `<img src="/static/${this.escapeHtml(book.cover_image_url)}"
                         alt="${this.escapeHtml(book.title)}"
                         class="book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200" />`
                 : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
@@ -917,9 +924,7 @@ class InfiniteScroll {
     }
 
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return escapeHtml(text);
     }
 
     showLoading() {

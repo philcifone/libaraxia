@@ -12,6 +12,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
+from utils.image_utils import delete_image_file, is_safe_upload_path
 from models import admin_required, shares_library_with, get_library_members
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
@@ -387,13 +388,11 @@ def edit_book(id):
                 if request.files.get("image") and request.files.get("image").filename != '':
                     # User uploaded a new image - delete old cover first
                     if current_cover:
-                        from utils.image_utils import delete_image_file
                         delete_image_file(current_cover)
                     cover_image_url = process_image(request.files.get("image"), current_cover)
-                elif fetched_cover:
+                elif is_safe_upload_path(fetched_cover):
                     # User fetched a new cover - delete old cover first
                     if current_cover and current_cover != fetched_cover:
-                        from utils.image_utils import delete_image_file
                         delete_image_file(current_cover)
                     cover_image_url = fetched_cover
                 else:
@@ -596,7 +595,7 @@ def show_book(id):
     finally:
         conn.close()
 
-@books_blueprint.route("/delete/<int:id>")
+@books_blueprint.route("/delete/<int:id>", methods=["POST"])
 @login_required
 def delete_book(id):
     with get_db_connection() as conn:
@@ -611,7 +610,6 @@ def delete_book(id):
         if current_user.is_admin or book['added_by'] == current_user.id:
             # Delete the cover image file if it exists
             if book['cover_image_url']:
-                from utils.image_utils import delete_image_file
                 delete_image_file(book['cover_image_url'])
 
             conn.execute("DELETE FROM books WHERE id = ?", (id,))
@@ -746,7 +744,7 @@ def transfer_book(book_id):
 
     conn = get_db_connection()
     try:
-        # Get the book and verify current user owns it or shares library
+        # Get the book and verify current user owns it
         book = conn.execute(
             'SELECT id, title, added_by FROM books WHERE id = ?',
             (book_id,)
@@ -756,8 +754,8 @@ def transfer_book(book_id):
             flash("Book not found", "error")
             return redirect(url_for('base.index'))
 
-        # Check if current user can transfer (must own it or share library with owner)
-        if book['added_by'] != current_user.id and not shares_library_with(current_user.id, book['added_by']):
+        # Only the book's owner (or an admin) can give it away
+        if book['added_by'] != current_user.id and not current_user.is_admin:
             flash("You don't have permission to transfer this book", "error")
             return redirect(request.referrer or url_for('base.index'))
 

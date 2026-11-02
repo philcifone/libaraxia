@@ -1,8 +1,17 @@
 from flask_login import UserMixin
 from functools import wraps
+import re
 from flask import abort, redirect, url_for
 from flask_login import current_user
 from utils.database import get_db_connection
+
+# Usernames appear in URLs and in HTML/JS, so keep them to a safe character set
+USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]{3,30}$')
+USERNAME_RULES = 'Username must be 3-30 characters: letters, numbers, dots, dashes or underscores.'
+
+def is_valid_username(username):
+    return bool(username) and USERNAME_PATTERN.match(username) is not None
+
 
 class User(UserMixin):
     def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None, email_verified=True, bio=None):

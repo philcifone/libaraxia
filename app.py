@@ -1,10 +1,9 @@
 from flask import Flask, redirect, url_for
-from werkzeug.utils import secure_filename
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
-import os, logging, bcrypt
+import os, logging
 from dotenv import load_dotenv
 
 # Custom imports
@@ -49,19 +48,33 @@ def create_app():
     if not secret_key:
         print("WARNING: No SECRET_KEY set, using fallback (dev only)")
         secret_key = 'fallback-secret-key'
+    elif 'CHANGE-ME' in secret_key:
+        print("WARNING: SECRET_KEY is still the placeholder from .env.example - generate a real one!")
 
     app.config['SECRET_KEY'] = secret_key
 
+    # Open self-registration (the very first account can always register)
+    app.config['ALLOW_REGISTRATION'] = os.getenv('ALLOW_REGISTRATION', 'True').lower() == 'true'
+
+    # Behind a reverse proxy (nginx etc.), trust X-Forwarded-* from this many proxies
+    # so rate limiting and logs see the real client IP instead of the proxy's
+    trusted_proxies = int(os.getenv('TRUSTED_PROXY_COUNT', '0') or 0)
+    if trusted_proxies > 0:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=trusted_proxies, x_proto=trusted_proxies,
+                                x_host=trusted_proxies, x_prefix=trusted_proxies)
+
     # Initialize CSRF Protection
-    csrf = CSRFProtect(app)
+    CSRFProtect(app)
 
     # Configure CSRF to accept tokens from headers (for AJAX requests)
     app.config['WTF_CSRF_CHECK_DEFAULT'] = True
     app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
 
     @app.after_request
-    def set_csrf_cookie(response):
-        """Make CSRF token available for JavaScript"""
+    def set_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Referrer-Policy', 'same-origin')
         return response
 
     # Initialize Rate Limiter (shared instance from utils/rate_limiting.py)
@@ -163,9 +176,9 @@ if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
 
     if use_ssl:
-        app.run(host="0.0.0.0", port=port, debug=True, ssl_context=ssl_context)
+        app.run(host="0.0.0.0", port=port, debug=app.config['DEBUG'], ssl_context=ssl_context)
     else:
         print("⚠️  Running without HTTPS - camera features may not work on mobile")
         print("   To enable HTTPS, generate certificates and run:")
         print("   python3 app.py --cert certs/cert.pem --key certs/key.pem")
-        app.run(host="0.0.0.0", port=port, debug=True)
+        app.run(host="0.0.0.0", port=port, debug=app.config['DEBUG'])

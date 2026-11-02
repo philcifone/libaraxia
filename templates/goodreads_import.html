@@ -197,19 +197,30 @@
                 progressDiv.classList.add('hidden');
                 resultDiv.classList.remove('hidden');
 
+                const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
+
                 if (data.success) {
+                    // The server returns the counts at the top level of the response
+                    const stats = data.stats || data;
+                    const errors = stats.errors || [];
                     messageP.innerHTML = `
                         <div class="space-y-2">
                             <p class="text-green-400 font-semibold">✓ Import completed successfully!</p>
                             <div class="text-sm text-content-secondary space-y-1">
-                                <p>• Books added: ${data.stats.books_added}</p>
-                                <p>• Added to wishlist: ${data.stats.wishlist_added}</p>
-                                <p>• Added to collections: ${data.stats.collection_added}</p>
-                                <p>• Ratings imported: ${data.stats.ratings_added}</p>
-                                <p>• Reading sessions: ${data.stats.sessions_added}</p>
-                                <p>• Duplicates skipped: ${data.stats.duplicates_skipped}</p>
-                                ${data.stats.unknown_shelf > 0 ? `<p class="text-yellow-400">• Unknown shelves: ${data.stats.unknown_shelf}</p>` : ''}
+                                <p>• Books added: ${stats.books_added}</p>
+                                <p>• Added to wishlist: ${stats.wishlist_added}</p>
+                                <p>• Added to collections: ${stats.collection_added}</p>
+                                <p>• Ratings imported: ${stats.ratings_added}</p>
+                                <p>• Reading sessions: ${stats.sessions_added}</p>
+                                <p>• Duplicates skipped: ${stats.duplicates_skipped}</p>
+                                ${stats.unknown_shelf > 0 ? `<p class="text-yellow-400">• Unknown shelves: ${stats.unknown_shelf}</p>` : ''}
                             </div>
+                            ${data.message ? `<p class="text-sm text-yellow-400">${esc(data.message)}</p>` : ''}
+                            ${errors.length ? `
+                                <details class="text-sm text-red-400">
+                                    <summary>${errors.length} row${errors.length !== 1 ? 's' : ''} had errors</summary>
+                                    <ul class="mt-1 space-y-1">${errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul>
+                                </details>` : ''}
                             <p class="text-sm text-content-secondary mt-3">
                                 <strong>Next steps:</strong> Use the "Fetch Cover" feature on your books to add missing covers!
                             </p>
@@ -221,7 +232,7 @@
                     `;
                 } else {
                     messageP.innerHTML = `
-                        <p class="text-red-400">✗ Import failed: ${data.message}</p>
+                        <p class="text-red-400">✗ Import failed: ${esc(data.message)}</p>
                         <p class="text-sm text-content-secondary mt-2">Please try again or contact support if the issue persists.</p>
                     `;
                 }
@@ -239,7 +250,7 @@
                 progressDiv.classList.add('hidden');
                 resultDiv.classList.remove('hidden');
                 messageP.innerHTML = `
-                    <p class="text-red-400">✗ Error: ${error.message}</p>
+                    <p class="text-red-400">✗ Error: ${String(error.message).replace(/</g, '&lt;')}</p>
                     <p class="text-sm text-content-secondary mt-2">Please try again.</p>
                 `;
 

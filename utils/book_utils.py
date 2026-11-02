@@ -5,11 +5,15 @@ from io import BytesIO
 import re
 import requests
 import os
+import ipaddress
+import socket
 import time
 import uuid
 from typing import Optional, Dict, Any, List, Iterable
 from utils.database import get_db_connection
 from flask_login import current_user
+from urllib.parse import urljoin, urlparse
+from utils.image_utils import is_safe_upload_path
 
 # Constants
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -459,6 +463,10 @@ def allowed_file(filename: str) -> bool:
 
 def process_image(image_file, existing_url: Optional[str] = None) -> Optional[str]:
     """Process and save uploaded image."""
+    # existing_url comes from a hidden form field, so only accept paths inside uploads/
+    if not is_safe_upload_path(existing_url):
+        existing_url = None
+
     if not image_file or image_file.filename == '':
         return existing_url
 
@@ -482,10 +490,48 @@ def process_image(image_file, existing_url: Optional[str] = None) -> Optional[st
         return os.path.join('uploads', unique_filename)
     return existing_url
 
+MAX_REDIRECTS = 3
+
+def _is_public_http_url(url: str) -> bool:
+    """True if url is http(s) and its host resolves only to public IP addresses.
+
+    Cover URLs can come from the browser, so this stops the server from being
+    used to reach localhost or machines on the home network.
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+            return False
+        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
+    except (ValueError, socket.gaierror, UnicodeError):
+        return False
+    for address in addresses:
+        ip = ipaddress.ip_address(address[4][0].split('%')[0])
+        if not ip.is_global:
+            return False
+    return True
+
+def _get_public(url: str) -> Optional[requests.Response]:
+    """GET a URL, following redirects by hand so every hop is checked with _is_public_http_url."""
+    for _ in range(MAX_REDIRECTS + 1):
+        if not _is_public_http_url(url):
+            current_app.logger.warning(f"Blocked cover download from non-public URL: {url}")
+            return None
+        response = _session.get(url, stream=True, timeout=HTTP_TIMEOUT, allow_redirects=False)
+        if response.is_redirect:
+            url = urljoin(url, response.headers.get('Location', ''))
+            response.close()
+            continue
+        return response
+    current_app.logger.debug(f"Too many redirects fetching cover: {url}")
+    return None
+
 def _fetch_image(url: str) -> Optional[Image.Image]:
     """Download a URL and return it as a PIL image, or None if it isn't a real cover."""
     try:
-        response = _session.get(url, stream=True, timeout=HTTP_TIMEOUT)
+        response = _get_public(url)
+        if response is None:
+            return None
         if response.status_code != 200:
             current_app.logger.debug(f"Cover {url} returned {response.status_code}")
             return None

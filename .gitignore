@@ -52,4 +52,9 @@ docker-compose.override.yml
 
 # OS files
 .DS_Store
-Thumbs.dbvenv/
+Thumbs.db
+
+# Local virtualenv and personal Claude notes
+venv/
+.claude/init
+

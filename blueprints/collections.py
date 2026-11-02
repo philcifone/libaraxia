@@ -303,6 +303,15 @@ def manage_book_collections():
 
     conn = get_db_connection()
     try:
+        # Verify the collection belongs to the user
+        owns_collection = conn.execute('''
+            SELECT 1 FROM user_collections
+            WHERE collection_id = ? AND user_id = ?
+        ''', (collection_id, current_user.id)).fetchone()
+        if not owns_collection:
+            flash('Collection not found', 'error')
+            return redirect(request.referrer or url_for('collections.view_collections'))
+
         # Check if book is already in collection
         existing = conn.execute('''
             SELECT 1 FROM collection_books 

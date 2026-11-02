@@ -1,21 +1,35 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import login_user, logout_user
 import bcrypt
 import sqlite3
 from utils.database import get_db_connection
 from utils.email_utils import send_verification_email, verify_token, resend_verification_email
 from utils.rate_limiting import limiter
-from models import admin_required, User
+from models import User, is_valid_username, USERNAME_RULES
 
 auth_blueprint = Blueprint('auth', __name__, template_folder='templates')
 
 @auth_blueprint.route('/register', methods=['GET', 'POST'])
 @limiter.limit("5 per hour", methods=["POST"])
 def register():
+    if not current_app.config.get('ALLOW_REGISTRATION', True):
+        conn = get_db_connection()
+        try:
+            has_users = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0] > 0
+        finally:
+            conn.close()
+        if has_users:
+            flash('Registration is closed. Ask the library admin for an account.', 'warning')
+            return redirect(url_for('auth.login'))
+
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username'].strip()
         email = request.form['email']
         password = request.form['password']
+
+        if not is_valid_username(username):
+            flash(USERNAME_RULES, 'danger')
+            return render_template('register.html', first_run=False)
 
         # Validate password strength
         if len(password) < 8:

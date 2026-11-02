@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import current_user, login_required
 from utils.database import get_db_connection
 from utils.rate_limiting import limiter
-from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES
 from werkzeug.utils import secure_filename
 import bcrypt
 import csv
@@ -377,8 +377,8 @@ def update_username():
             return jsonify({'success': False, 'message': 'Username cannot be empty'}), 400
 
         # Username validation
-        if len(new_username) < 3:
-            return jsonify({'success': False, 'message': 'Username must be at least 3 characters'}), 400
+        if not is_valid_username(new_username):
+            return jsonify({'success': False, 'message': USERNAME_RULES}), 400
 
         conn = get_db_connection()
         try:
@@ -996,8 +996,18 @@ def add_to_shared_library(user_id):
                 VALUES (?, ?, 'owner', ?)
             ''', (library_id, current_user.id, current_user.id))
 
-        # Add friend to library (remove from their current library if they have one)
-        conn.execute('DELETE FROM library_members WHERE user_id = ?', (user_id,))
+        # Don't silently pull someone out of a library they already belong to
+        friend_lib = conn.execute(
+            'SELECT library_id FROM library_members WHERE user_id = ?', (user_id,)
+        ).fetchone()
+        if friend_lib:
+            if friend_lib['library_id'] != library_id:
+                flash(f"{friend['username']} is already in another shared library. They need to leave it first.", 'error')
+            else:
+                flash(f"{friend['username']} is already in your shared library", 'info')
+            conn.rollback()
+            return redirect(request.referrer or url_for('user.profile', username=friend['username']))
+
         conn.execute('''
             INSERT INTO library_members (library_id, user_id, role, added_by)
             VALUES (?, ?, 'member', ?)

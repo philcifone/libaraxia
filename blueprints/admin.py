@@ -5,7 +5,7 @@ import bcrypt
 import os
 from datetime import datetime
 from utils.database import get_db_connection
-from models import admin_required
+from models import admin_required, is_valid_username, USERNAME_RULES
 from PIL import Image
 
 admin_blueprint = Blueprint('admin', __name__, template_folder='templates')
@@ -94,6 +94,10 @@ def create_user():
 
     if len(password) < 6:
         flash("Password must be at least 6 characters", "error")
+        return redirect(url_for('admin.settings'))
+
+    if not is_valid_username(username):
+        flash(USERNAME_RULES, "error")
         return redirect(url_for('admin.settings'))
 
     conn = get_db_connection()
