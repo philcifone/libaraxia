@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      class="w-full h-72 rounded-lg shadow-md mb-2"
                      loading="lazy">
                 <p class="text-xs text-content-secondary text-center mb-2">${cover.source}</p>
-                <button type="button" class="w-full bg-accent hover:bg-accent-hover text-white text-xs py-1 px-2 rounded transition-colors duration-200">
+                <button type="button" class="w-full bg-accent hover:bg-accent-hover text-on-accent text-xs py-1 px-2 rounded transition-colors duration-200">
                     Select
                 </button>
             `;

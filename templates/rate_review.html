@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-primary-bg">
+<html lang="en" class="bg-primary-bg" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <style>
         .rating-group {
@@ -53,14 +53,14 @@
                          alt="Book Cover"
                          class="w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]">
                 {% else %}
-                    <div class="aspect-[2/3] bg-secondary-bg rounded-lg flex items-center justify-center">
+                    <div class="aspect-[2/3] bg-secondary-bg rounded-lg flex items-center justify-center border border-card">
                         <span class="text-content-secondary italic">No Image Available</span>
                     </div>
                 {% endif %}
             </div>
 
             <!-- Review Form -->
-            <div class="bg-secondary-bg rounded-lg p-6 md:p-8">
+            <div class="bg-secondary-bg rounded-lg p-6 md:p-8 border border-card">
                 <h2 class="font-display text-2xl mb-8 text-center">Rate & Review</h2>
 
                 <form method="post" class="space-y-8" id="review-form">
@@ -73,7 +73,7 @@
                             <h3 class="font-medium text-content-secondary">Reading History</h3>
                             <button type="button"
                                     onclick="showAddSessionForm()"
-                                    class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-white rounded transition-colors">
+                                    class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors">
                                 Add Session
                             </button>
                         </div>
@@ -89,7 +89,7 @@
                                     </label>
                                     <input type="date"
                                            id="inline_date_started"
-                                           class="w-full bg-secondary-bg border border-gray-600 rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                           class="w-full bg-secondary-bg border border-rule-strong rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                                 </div>
 
                                 <div>
@@ -98,13 +98,13 @@
                                     </label>
                                     <input type="date"
                                            id="inline_date_completed"
-                                           class="w-full bg-secondary-bg border border-gray-600 rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                           class="w-full bg-secondary-bg border border-rule-strong rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                                 </div>
 
                                 <div class="flex gap-2 pt-2 justify-center">
                                     <button type="button"
                                             onclick="saveInlineSession()"
-                                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded transition-colors text-sm">
+                                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors text-sm">
                                         Save Session
                                     </button>
                                     <button type="button"
@@ -203,7 +203,7 @@
                         <textarea id="comment" 
                                   name="comment"
                                   rows="6"
-                                  class="w-full bg-primary-bg border border-gray-600 rounded-md px-4 py-2
+                                  class="w-full bg-primary-bg border border-rule-strong rounded-md px-4 py-2
                                          focus:outline-none focus:ring-2 focus:ring-accent resize-y"
                         >{{ read_data.comment if read_data else '' }}</textarea>
                     </div>
@@ -211,7 +211,7 @@
                     <!-- Submit Button -->
                     <div class="flex justify-center pt-4">
                         <button type="submit"
-                                class="bg-accent hover:bg-accent-hover text-white px-8 py-3 rounded-md
+                                class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-md
                                        transition-colors duration-200 font-medium text-lg">
                             Submit Review
                         </button>

@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Import from Goodreads</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
@@ -22,7 +22,7 @@
         </a>
 
         <!-- Page Title -->
-        <div class="bg-secondary rounded-xl p-6 shadow-lg">
+        <div class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <h1 class="text-3xl font-bold text-content-primary mb-2">Import from Goodreads</h1>
             <p class="text-content-secondary">Import your library from a Goodreads CSV export</p>
         </div>
@@ -47,7 +47,7 @@
         </div>
 
         <!-- Where Data Goes -->
-        <div class="bg-secondary rounded-xl p-6 shadow-lg space-y-4">
+        <div class="bg-secondary rounded-xl p-6 shadow-lg space-y-4 border border-card">
             <h2 class="text-2xl font-semibold text-content-primary mb-4">Where Your Goodreads Data Goes</h2>
 
             <div class="space-y-4">
@@ -99,7 +99,7 @@
         </div>
 
         <!-- How to Export from Goodreads -->
-        <div class="bg-secondary rounded-xl p-6 shadow-lg space-y-4">
+        <div class="bg-secondary rounded-xl p-6 shadow-lg space-y-4 border border-card">
             <h2 class="text-2xl font-semibold text-content-primary mb-4">How to Export from Goodreads</h2>
             <ol class="list-decimal list-inside space-y-2 text-content-secondary">
                 <li>Go to <a href="https://www.goodreads.com/review/import" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Goodreads Import/Export</a></li>
@@ -111,12 +111,12 @@
         </div>
 
         <!-- Upload Section -->
-        <div class="bg-secondary rounded-xl p-6 shadow-lg">
+        <div class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <h2 class="text-2xl font-semibold text-content-primary mb-4">Upload Your Goodreads Export</h2>
 
             <div class="flex justify-center">
                 <label for="goodreads-import"
-                       class="inline-flex items-center gap-2 px-8 py-4 bg-green-600 rounded-lg text-white text-lg font-semibold transition-colors hover:bg-green-700 cursor-pointer">
+                       class="inline-flex items-center gap-2 px-8 py-4 bg-green-600 rounded-lg text-on-accent text-lg font-semibold transition-colors hover:bg-green-700 cursor-pointer">
                     <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 8l-5-5-5 5M12 3v12"/>
                     </svg>
@@ -144,7 +144,7 @@
         </div>
 
         <!-- Rate Limit Notice -->
-        <div class="bg-secondary rounded-xl p-4 shadow-lg">
+        <div class="bg-secondary rounded-xl p-4 shadow-lg border border-card">
             <p class="text-sm text-content-secondary text-center">
                 <strong>Note:</strong> You can only import once every 3 attempts per hour to prevent abuse.
             </p>
@@ -225,7 +225,7 @@
                                 <strong>Next steps:</strong> Use the "Fetch Cover" feature on your books to add missing covers!
                             </p>
                             <a href="{{ url_for('user.profile', username=current_user.username) }}"
-                               class="inline-block mt-3 px-4 py-2 bg-accent rounded-lg text-white hover:bg-accent-hover transition-colors">
+                               class="inline-block mt-3 px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover transition-colors">
                                 Return to Profile
                             </a>
                         </div>

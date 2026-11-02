@@ -19,7 +19,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 4 | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
 | 5 | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
-| 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Theme toggle, film-frame covers, page fixes, a11y |
+| 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Film-frame covers, page fixes, a11y (theme toggle done early) |
 | 8 | [VHS / UPC support](#phase-8-vhs--upc-support) | Built in the new style | A VHS can be scanned or entered, filtered and displayed |
 | 9 | [Fork (parked)](#phase-9-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
@@ -49,13 +49,13 @@ This is core Libaraxia work with no dependency on the fork. Token values were ta
 A few small bug fixes ride along (0.6). They fix how existing elements behave; they don't add or remove anything.
 
 ### 0.1 Before you start
-- [ ] **Phil commits the 2026-10-28 security pass** (plus the README/screenshot/roadmap changes) once it's complete. Start the refresh from that commit, so it's its own reviewable diff.
-- [ ] The "before" screenshots are in `docs/screenshots/` (2026-11-02). Use them for the side-by-side check in 0.7.
+- [x] **Phil commits the 2026-10-28 security pass** (plus the README/screenshot/roadmap changes) once it's complete. Start the refresh from that commit, so it's its own reviewable diff.
+- [x] The "before" screenshots are in `docs/screenshots/` (2026-11-02). Use them for the side-by-side check in 0.7.
 
 ### 0.2 Colours: Gruvbox, light and dark
-- [ ] Define the colours as CSS variables in `static/styles.css`. Light values go in `:root`, dark values in `@media (prefers-color-scheme: dark)`, so the app **follows the system** like philcifone.com.
-- [ ] Store each variable as RGB channels (`--paper: 29 32 33`) and point Tailwind at `rgb(var(--paper) / <alpha-value>)`. Then opacity modifiers like the sidebar's `hover:bg-primary/20` keep working.
-- [ ] Point the existing Tailwind names at the variables. Also override Tailwind's default `white`, `gray`, `red`, `yellow`, `green` and `blue` (only the shades below are used), so ~600 class uses follow the theme without template edits:
+- [x] Define the colours as CSS variables in `static/styles.css`. Light values go in `:root`, dark values in `@media (prefers-color-scheme: dark)`, so the app **follows the system** like philcifone.com.
+- [x] Store each variable as RGB channels (`--paper: 29 32 33`) and point Tailwind at `rgb(var(--paper) / <alpha-value>)`. Then opacity modifiers like the sidebar's `hover:bg-primary/20` keep working.
+- [x] Point the existing Tailwind names at the variables. Also override Tailwind's default `white`, `gray`, `red`, `yellow`, `green` and `blue` (only the shades below are used), so ~600 class uses follow the theme without template edits:
 
 | Tailwind name | Used for | Light | Dark |
 |---|---|---|---|
@@ -76,47 +76,49 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 | `green-*` | status | `#79740e` | `#b8bb26` |
 | `blue-600` | "Edit" links | `#076678` | `#83a598` |
 
-- [ ] **Text on coloured buttons:** today it's `text-white` / `text-content-primary`. Once `white` follows the theme, that text would be dark-on-green in light mode and light-on-green in dark mode, and the dark-mode version fails contrast (about 2.2:1). Switch text on accent and red fills to `text-on-accent` (about 4.6:1 light, 5.3:1 dark). This is the one template-wide find-and-replace in this phase.
-- [ ] Replace the 10 hard-coded greens (`#4f7d19` ×8, `#6a9839` ×2) and their `onmouseover` swaps, mostly in `user.html`, with `bg-accent hover:bg-accent-hover`. Otherwise they ignore the theme.
+- [x] **Text on coloured buttons:** today it's `text-white` / `text-content-primary`. Once `white` follows the theme, that text would be dark-on-green in light mode and light-on-green in dark mode, and the dark-mode version fails contrast (about 2.2:1). Switch text on accent and red fills to `text-on-accent` (about 4.6:1 light, 5.3:1 dark). This is the one template-wide find-and-replace in this phase.
+- [x] Replace the 10 hard-coded greens (`#4f7d19` ×8, `#6a9839` ×2) and their `onmouseover` swaps, mostly in `user.html`, with `bg-accent hover:bg-accent-hover`. Otherwise they ignore the theme.
 - [ ] Check `no-cover.png` and the wishlist/feed cover placeholders on the light background.
-- [ ] **No toggle for now.** The theme follows the system. A manual toggle would be a new sidebar element, so it waits for Phase 7.
+- [x] **No toggle for now.** The theme follows the system. A manual toggle would be a new sidebar element, so it waits for Phase 7. *(Superseded 2026-11-02: Profile → Appearance now has Style and Mode settings; see Phase 7.)*
 
 ### 0.3 Fonts: Courier Prime first
-- [ ] Add **Courier Prime** 400, 700 and 400 italic to `static/fonts/` (OFL licence) with `@font-face` in `styles.css`. The italic is for the "by Author" lines. Young Serif is already there.
-- [ ] **Make Courier Prime the default font** by pointing `font-primary` (today Outfit) at it. That switches nearly all text at once: sidebar, tabs, buttons, labels, inputs, card titles, author lines, metadata, counts, descriptions and reviews.
-- [ ] **Keep Young Serif** (`font-display`, 40 uses) for the wordmark, page headings ("Activity Feed", "Reading Shelves") and the big title on the book detail page. That's the same split as the sites: serif headlines, typewriter for everything else.
+- [x] Add **Courier Prime** 400, 700 and 400 italic to `static/fonts/` (OFL licence) with `@font-face` in `styles.css`. The italic is for the "by Author" lines. Young Serif is already there.
+- [x] **Make Courier Prime the default font** by pointing `font-primary` (today Outfit) at it. That switches nearly all text at once: sidebar, tabs, buttons, labels, inputs, card titles, author lines, metadata, counts, descriptions and reviews.
+- [x] **Keep Young Serif** (`font-display`, 40 uses) for the wordmark, page headings ("Activity Feed", "Reading Shelves") and the big title on the book detail page. That's the same split as the sites: serif headlines, typewriter for everything else.
 - [ ] **Judge the long text by eye.** Descriptions and reviews in Courier Prime are the sites' voice, but monospace paragraphs run wide. Cap them at about `66ch`. If they still feel heavy, switch just those two blocks to Young Serif.
-- [ ] **Weights:** Courier Prime only has 400 and 700, so `font-medium` (127 uses) renders as 400 and `font-semibold` (53) as 700. That's fine, but check that headings and card titles still read as intended. Courier is also wider than Outfit, so check that grid titles, tabs and buttons don't wrap or overflow. Drop a size step where needed.
-- [ ] Remove **Outfit** and **Crimson Pro**: the `@font-face` rules, the files in `static/fonts/`, and the two `@fontsource-variable/*` npm deps. No template links them directly. The wordmark keeps its text and spacing, in Young Serif.
+- [x] **Weights:** Courier Prime only has 400 and 700, so `font-medium` (127 uses) renders as 400 and `font-semibold` (53) as 700. That's fine, but check that headings and card titles still read as intended. Courier is also wider than Outfit, so check that grid titles, tabs and buttons don't wrap or overflow. Drop a size step where needed.
+- [x] Remove **Outfit** and **Crimson Pro**: the `@font-face` rules, the files in `static/fonts/`, and the two `@fontsource-variable/*` npm deps. No template links them directly. The wordmark keeps its text and spacing, in Young Serif.
 
 ### 0.4 Corners, borders, shadows
-- [ ] **Square corners:** in `tailwind.config.js`, **replace** (not `extend`) `borderRadius` so every size is `0`. That squares off all ~384 `rounded-*` uses at once. Keep `full` for avatars and any status dots.
-- [ ] **Strong borders:** cards are `bg-secondary` boxes with no outline today. Add `border border-rule-strong` to the ~94 `bg-secondary` / `bg-secondary-bg` containers. It's a mechanical find-and-replace, then a by-eye check. Use the same 1px strong border on inputs, buttons, tabs, the top bar's bottom edge and the sidebar's edge. Use `rule` (lighter) for dividers *inside* cards.
-- [ ] **Shadows:** replace `boxShadow` the same way. The soft blurs (`shadow-sm` … `shadow-xl`, 94 uses) become `none`. Only the FAB, dropdowns and modals get the sites' hard offset: `4px 4px 0` in the text colour.
-- [ ] **Focus:** a global `2px solid` accent outline, offset `3px`, on links, buttons and inputs.
+- [x] **Square corners:** in `tailwind.config.js`, **replace** (not `extend`) `borderRadius` so every size is `0`. That squares off all ~384 `rounded-*` uses at once. Keep `full` for avatars and any status dots.
+- [x] **Strong borders:** cards are `bg-secondary` boxes with no outline today. Add `border border-rule-strong` to the ~94 `bg-secondary` / `bg-secondary-bg` containers. It's a mechanical find-and-replace, then a by-eye check. Use the same 1px strong border on inputs, buttons, tabs, the top bar's bottom edge and the sidebar's edge. Use `rule` (lighter) for dividers *inside* cards.
+- [x] **Shadows:** replace `boxShadow` the same way. The soft blurs (`shadow-sm` … `shadow-xl`, 94 uses) become `none`. Only the FAB, dropdowns and modals get the sites' hard offset: `4px 4px 0` in the text colour.
+- [x] **Focus:** a global `2px solid` accent outline, offset `3px`, on links, buttons and inputs.
 
 ### 0.5 Styling details (same elements, new look)
-- [ ] **Sidebar and tabs:** the same links, icons and order. The active item gets accent text and a 2px accent **underline** (philcifone.com style) instead of the current filled background.
-- [ ] **Links:** accent with a 1px underline offset `.2em`, 2px on hover.
-- [ ] **Labels** (`PUBLISHER`, `ISBN`, form labels; most are already uppercase): Courier Prime, `letter-spacing: .08em`, muted colour, a `rule` hairline underneath. One utility class in `styles.css`.
-- [ ] **Badges** (the shelf counts): kept, now square and in Courier Prime.
-- [ ] **Buttons and the FAB:** the same buttons. Square, 1px border, Courier Prime label; the FAB keeps its spot and gets the hard shadow.
+- [x] **Sidebar and tabs:** the same links, icons and order. The active item gets accent text and a 2px accent **underline** (philcifone.com style) instead of the current filled background.
+- [x] **Links:** accent with a 1px underline offset `.2em`, 2px on hover.
+- [x] **Labels** (`PUBLISHER`, `ISBN`, form labels; most are already uppercase): Courier Prime, `letter-spacing: .08em`, muted colour, a `rule` hairline underneath. One utility class in `styles.css`.
+- [x] **Badges** (the shelf counts): kept, now square and in Courier Prime.
+- [x] **Buttons and the FAB:** the same buttons. Square, 1px border, Courier Prime label; the FAB keeps its spot and gets the hard shadow.
 
 ### 0.6 Small bug fixes while in there (no element changes)
-- [ ] **Covers cropped in the grid:** `object-cover` cuts off the tops of covers (*11/22/63*, *Alaska*, *Anthem*). Keep the same card size, but fit the whole cover inside it (`object-contain` on the card fill).
-- [ ] **The FAB covers the last card's author line** on mobile. Add bottom padding to the grid.
-- [ ] **Library tabs wrap onto two lines** on a phone. Tighten the padding and text size so they fit on one line.
-- [ ] **Viewport:** `initial-scale=.8` → `1` in the 19 templates (a one-line `sed`). Otherwise the new type is judged at the wrong size on phones.
+- [x] **Covers cropped in the grid:** `object-cover` cuts off the tops of covers (*11/22/63*, *Alaska*, *Anthem*). Keep the same card size, but fit the whole cover inside it (`object-contain` on the card fill).
+- [x] **The FAB covers the last card's author line** on mobile. Add bottom padding to the grid.
+- [x] **Library tabs wrap onto two lines** on a phone. Tighten the padding and text size so they fit on one line.
+- [x] **Viewport:** `initial-scale=.8` → `1` in the 19 templates (a one-line `sed`). Otherwise the new type is judged at the wrong size on phones.
 
 ### 0.7 Build and check
-- [ ] `npm run build:css`, and commit `static/css/output.css`.
-- [ ] Click through every page in **light and dark**, at phone and desktop widths, side by side with the 2026-11-02 screenshots:
+- [x] `npm run build:css`, and commit `static/css/output.css`.
+- [x] Click through every page in **light and dark**, at phone and desktop widths, side by side with the 2026-11-02 screenshots:
   - library, shared and friends' libraries
   - detail, add, edit
   - rate/review, collections, profile
   - wishlist, feed, notifications
   - admin, login/register, Goodreads import
-- [ ] Retake the README screenshots in both themes, from an **anonymised copy** of the DB (rename other users, clear their emails/bios/avatars/review text), never the live one.
+- [ ] Retake the README screenshots in both themes, from an **anonymised copy** of the DB (rename other users, clear their emails/bios/avatars/review text), never the live one. *(Deferred 2026-11-02: Phil will retake them after Phase 8, once the app is fully presentable.)*
+
+**Status 2026-11-02:** landed on branch `phase-0-design-refresh` (commit `35c2b13`). Headless screenshots of every page in light + dark looked right. Phil's phone pass is done (2026-11-02). Still open: the `no-cover.png` / long-text checks; the README screenshots are deferred to after Phase 8. Deviations from the token table, made for contrast: light `accent-hover` is `#5f5b0b` (`#98971a` under light text is 2.9:1) and dark `red-strong` is `#fb4934` (`#cc241d` under dark text is 3.0:1). Phone tab labels shorten to "Shared" / "Friends'" so they fit on one line.
 
 **Done when:**
 - Every page renders in both themes with Courier Prime + Young Serif, square corners, strong 1px borders and no soft shadows.
@@ -125,7 +127,7 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 - Nothing references Outfit/Crimson.
 - The README screenshots are retaken.
 
-**Not in this phase (→ Phase 7):** a manual theme toggle, deleting the now-inert `rounded-*` / `shadow-*` classes, film-frame "contact sheet" covers, page layout changes, the styled confirm modal, the a11y sweep.
+**Not in this phase (→ Phase 7):** a manual theme toggle, film-frame "contact sheet" covers, page layout changes, the styled confirm modal, the a11y sweep.
 
 ---
 
@@ -136,6 +138,14 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 **Goal:** a known prod DB path and no known-vulnerable dependencies, so things stay safe if Access is ever loosened.
 
 ### 1.1 Production `.env` (no code changes) 🟠
+
+**Deploying this branch to prod (order matters):** prod needs the new code first, since `requirements.txt` and `migrations/013_add_theme_preferences.sql` only exist on `phase-0-design-refresh`. Merge it into `main` and push, then on prod:
+1. Optional: take a manual ZFS snapshot.
+2. `git pull`
+3. `pip install -r requirements.txt` in prod's venv.
+4. `sqlite3 <prod DB path> < migrations/013_add_theme_preferences.sql` (find the path first, see below). Without it, pages still load with the default theme, but saving Profile → Appearance fails.
+5. Check `.env` (the items below), then restart gunicorn.
+
 - [ ] **Close self-registration:** `ALLOW_REGISTRATION=False`. Only Access-approved people can reach the site today, so this is defence in depth. 🟢
 - [ ] **Rate limiting behind the tunnel:** every request reaches gunicorn from `cloudflared` on localhost, so all users share **one IP** for rate limiting. That includes the global 50/hour default (see Phase 4), so one busy browsing session can 429 everyone. Set `TRUSTED_PROXY_COUNT=1` so the limiter uses the client IP that Cloudflare forwards in `X-Forwarded-For`, then confirm it in the logs. (`CF-Connecting-IP` is the other option, but it needs a small `key_func` change.)
 - [ ] **`SECRET_KEY`** is a real random value (`python3 -c "import secrets; print(secrets.token_hex(32))"`), not the `.env.example` placeholder. The app logs a warning if it is.
@@ -161,13 +171,14 @@ pip install -U gunicorn Jinja2 requests urllib3 pillow Flask Werkzeug Flask-Limi
 pip install pip-audit && pip-audit
 pip freeze > requirements.txt   # then hand-trim to direct deps if you prefer
 ```
-- [ ] Upgrade, `pip-audit` clean, update `requirements.txt`.
-- [ ] Manual smoke test: login, library grid, add book by ISBN, edit cover, Goodreads import.
+- [x] Upgrade, `pip-audit` clean, update `requirements.txt`.
+- [x] Manual smoke test: login, library grid, add book by ISBN, edit cover, Goodreads import.
+- **2026-11-02:** venv upgraded and `requirements.txt` re-pinned (Flask 3.1.3, Werkzeug 3.1.9, gunicorn 26.2.0, pillow 13.0.0, requests 2.34.2, urllib3 2.8.0, idna 3.20). `pip-audit` reports no known vulnerabilities. The smoke test passed against a copy of the DB; the edit page was only checked for loading, not for a cover change. **On prod:** `pip install -r requirements.txt` in its venv, then restart gunicorn.
 
 ### 1.3 Quick production hygiene 🟠
-- [ ] `app.py` forces `logging.DEBUG`. Use INFO in production.
-- [ ] Remove the `console.log` of the CSRF token and other debug logs in `add_book.js` / `wishlist.js`.
-- [ ] Remove debug `print()` statements from `blueprints/collections.py`.
+- [x] `app.py` forces `logging.DEBUG`. Use INFO in production.
+- [x] Remove the `console.log` of the CSRF token and other debug logs in `add_book.js` / `wishlist.js`.
+- [x] Remove debug `print()` statements from `blueprints/collections.py`.
 
 **Done when:** prod `.env` is checked, the prod DB path is recorded above, deps are upgraded, and `pip-audit` reports nothing.
 
@@ -197,7 +208,7 @@ SQLite only enforces foreign keys when each connection runs `PRAGMA foreign_keys
 
 Visible symptom: your profile says **131** books read, while the Reading Shelves page says **129**. The profile counts `collections` rows; the shelves page joins to `books`.
 
-- [ ] Migration `013_cleanup_orphans.sql`: delete rows that `foreign_key_check` reports (after backup).
+- [ ] Migration `014_cleanup_orphans.sql`: delete rows that `foreign_key_check` reports (after backup).
 - [ ] Turn on `PRAGMA foreign_keys = ON` in `get_db_connection()`.
 - [ ] ⚠️ **Before enabling, review every FK action.** 13 FKs to `users` are `ON DELETE CASCADE`, so deleting a user will now really delete their data. `books.added_by REFERENCES users(id)` has **no** action, so deleting a user who owns books will start *failing* with a constraint error. Decide what admin "delete user" should do with their books (transfer to a household member? `SET NULL`?) and make the code do that first.
 - [ ] Add a check to the test suite that `PRAGMA foreign_key_check` is empty after the delete flows.
@@ -331,8 +342,9 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 **Goal:** finish what the Phase 0 refresh deliberately left out, now that every page extends `base.html` (Phase 6) and edits happen in one place. Phase 0 is the house-style reference.
 
 ### 7.1 Finish the house style
-- [ ] **Theme toggle** (optional): a sidebar control that overrides the system light/dark setting (stored per browser). Phase 0 follows the system only.
-- [ ] Delete the now-inert `rounded-*` / `shadow-*` classes from templates and `static/*.js` page by page. Decide whether avatars go square (framed like photos).
+- [x] **Theme toggle** (done early, 2026-11-02): Profile → Appearance has **Style** (House = Gruvbox/square/bold lines, Classic = the original 2024 look, with a new light version) and **Mode** (System/Light/Dark), saved per user (migration 013). Styles are CSS-variable sets on `<html data-style data-mode>`. To add a style: one shape block and a light + dark palette in `static/styles.css`, plus a line in `THEME_STYLES` in `models.py`.
+- [ ] Optional: a quick sidebar shortcut for Mode, so it doesn't need a trip to the profile.
+- [x] ~~Delete the now-inert `rounded-*` / `shadow-*` classes from templates and `static/*.js` page by page. Decide whether avatars go square (framed like photos).~~ **Won't do (2026-11-02):** these classes now drive the Classic style, so they must stay.
 - [ ] **Film-frame covers:** a `--film` border with a mono "edge" caption under the cover (`▸ 9780670671908`), contact-sheet style.
 - [ ] Remaining details from the sites:
   - zero-padded numbered markers (`01 — TITLE`)
@@ -362,6 +374,17 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 ## Phase 8: VHS / UPC support
 
 A core Libaraxia feature. The design notes were written alongside the fork plan, in [FORK-SPEC §5](FORK-SPEC.md#5-phase-2-core-change-b-vhs-support), but nothing here needs the fork.
+
+### 8.0 Fix the barcode scanner first 🆕
+Reported by Phil (2026-11-02): it often takes the barcode too early (wrong number), seems to work with only one camera, and is generally flaky. VHS scanning builds on this, so fix it before the rest of the phase. The scanner code is duplicated in `add_book.js` and `wishlist.js`; fix it once in a shared module (ideally `common.js` from Phase 6) and use it from both.
+- [ ] **Misreads (takes the code too early):** `onDetected` accepts the very first frame whose code is 10 or 13 digits, with no checksum and no confirmation. Validate the EAN/ISBN check digit, and only accept a code after it's read the same way on several frames in a row (e.g. 3), or reject reads whose average decoder error is high.
+- [ ] **Only one camera:** the stream is hard-coded to `facingMode: "environment"` at 640×480. Add a camera picker (`enumerateDevices()`, select by `deviceId`, remember the choice in `localStorage`) and fall back cleanly on devices without a back camera (laptops, desktops). On phones with several back lenses (wide/ultra-wide/macro), the default can be one that won't focus up close, so the picker matters there too.
+- [ ] **Resolution/focus:** ask for a higher resolution (e.g. 1280×720 ideal) and continuous autofocus where supported; 640×480 is too coarse for small barcodes.
+- [ ] **Camera not released:** `stopScanner()` only calls `Quagga.stop()` when `Quagga.initialized` is true, which isn't a Quagga API property. Check whether the camera light stays on after a scan or when switching tabs, and stop the stream unconditionally.
+- [ ] **Swap Quagga 0.12.1 for `@ericblade/quagga2`** (the maintained fork), vendored into `static/` (this also covers the Phase 4 SRI item). Or evaluate the browser's native `BarcodeDetector` where available, with quagga2 as the fallback.
+- [ ] **UPC-A is rejected:** the code-format check only allows 10 or 13 digits, so 12-digit UPC-A (most VHS tapes) is dropped silently. Needed for the scanner dispatch below.
+- [ ] **Feedback:** a visible target box, a beep/vibrate on a confirmed read, and a styled error instead of `alert()` (pairs with Phase 7).
+- [ ] Test on Phil's phone(s) and at least one laptop webcam, over HTTPS.
 
 - [ ] **Scanner dispatch:** an EAN-13 starting `978`/`979`, or a valid ISBN-10, takes the book path; any other UPC/EAN takes the media path. Store UPC-A as EAN-13.
 - [ ] **Migration** `NNN_add_media_type.sql`: `media_type`, `barcode`, `catalog_number`, `runtime_minutes` on `books`, appended at the end; indexes; folded into `create_database.sql`.

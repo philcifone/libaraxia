@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>
         {% if is_custom %}
             {{ collection.name }} Collection
@@ -52,7 +52,7 @@
 
             {% if not books %}
             <div class="col-span-full py-16 text-center">
-                <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto">
+                <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto border border-card">
                     <p class="text-content-secondary text-lg italic">
                         No books in this collection yet.
                     </p>

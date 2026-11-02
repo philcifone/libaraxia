@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Notifications</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
@@ -25,7 +25,7 @@
 
         <!-- Friend Requests Section -->
         {% if friend_requests %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <h2 class="text-xl font-display text-content-primary mb-4 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -41,7 +41,7 @@
                          alt="{{ request.username }}"
                          class="w-16 h-16 rounded-full object-cover flex-shrink-0">
                     {% else %}
-                    <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-white text-2xl font-semibold flex-shrink-0">
+                    <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-on-accent text-2xl font-semibold flex-shrink-0">
                         {{ request.username[0].upper() }}
                     </div>
                     {% endif %}
@@ -57,7 +57,7 @@
                     <div class="flex gap-3 flex-shrink-0">
                         <form method="POST" action="{{ url_for('friends.accept_request', request_id=request.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg font-medium transition-colors">
+                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium transition-colors">
                                 Accept
                             </button>
                         </form>
@@ -75,7 +75,7 @@
         {% endif %}
 
         <!-- Recent Activity Section -->
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-display text-content-primary flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +104,7 @@
                          alt="{{ notif.from_username }}"
                          class="w-10 h-10 rounded-full object-cover">
                     {% elif notif.from_username %}
-                    <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-semibold">
+                    <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-on-accent font-semibold">
                         {{ notif.from_username[0].upper() }}
                     </div>
                     {% else %}

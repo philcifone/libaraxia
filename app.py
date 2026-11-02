@@ -1,6 +1,6 @@
 from flask import Flask, redirect, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user as _current_user
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
 import os, logging
@@ -21,7 +21,7 @@ from blueprints.feed import feed_blueprint
 from blueprints.wishlist import wishlist_blueprint
 from blueprints.friends import friends_blueprint
 from config import DevelopmentConfig, ProductionConfig
-from models import User
+from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES
 from utils.rate_limiting import limiter
 
 def create_app():
@@ -108,7 +108,9 @@ def create_app():
                 is_admin=user_dict.get('is_admin', 0) == 1,
                 avatar_url=user_dict.get('avatar_url'),
                 email_verified=user_dict.get('email_verified', 1) == 1,
-                bio=user_dict.get('bio')
+                bio=user_dict.get('bio'),
+                theme_style=user_dict.get('theme_style'),
+                theme_mode=user_dict.get('color_mode'),
             )
         return None
 
@@ -146,9 +148,21 @@ def create_app():
 
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)
+
+    # Appearance: every template puts these on <html data-style data-mode>
+    @app.context_processor
+    def inject_theme():
+        user = _current_user
+        signed_in = getattr(user, 'is_authenticated', False)
+        return {
+            'theme_style': user.theme_style if signed_in else DEFAULT_THEME_STYLE,
+            'theme_mode': user.theme_mode if signed_in else DEFAULT_THEME_MODE,
+            'theme_styles': THEME_STYLES,
+            'theme_modes': THEME_MODES,
+        }
     
     # Configure Logging
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG if app.config.get('DEBUG') else logging.INFO)
     
     return app
 

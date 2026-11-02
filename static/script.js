@@ -181,7 +181,7 @@ function getCSRFHeaders() {
 //     container.innerHTML = '';
 //     Object.entries(activeFilters).forEach(([key, value]) => {
 //         const pill = document.createElement('span');
-//         pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-sm bg-accent/10 text-accent';
+//         pill.className = 'inline-flex items-center px-2 py-1 rounded-pill text-sm bg-accent/10 text-accent';
 //         pill.innerHTML = `
 //             ${key}: ${value}
 //             <button onclick="removeFilter('${key}')" class="ml-1 hover:text-accent-hover">×</button>
@@ -228,7 +228,7 @@ function showLoadingIndicator(message = 'Loading...') {
         overlay.id = 'loading-overlay';
         overlay.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center';
         overlay.innerHTML = `
-            <div class="bg-secondary-bg rounded-lg px-6 py-4 shadow-xl flex items-center gap-3">
+            <div class="bg-secondary-bg rounded-lg px-6 py-4 shadow-hard flex items-center gap-3 border border-card">
                 <svg class="animate-spin h-6 w-6 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -309,7 +309,7 @@ function updateActiveFilters() {
     // Update display
     if (activeFilters.length > 0) {
         pillsContainer.innerHTML = activeFilters.map(filter => `
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-accent/20 text-accent border border-accent/30">
+            <span class="inline-flex items-center px-3 py-1 rounded-pill text-xs font-medium bg-accent/20 text-accent border border-accent/30">
                 <span class="opacity-75">${escapeHtml(filter.label)}:</span>
                 <span class="ml-1">${escapeHtml(filter.value)}</span>
             </span>
@@ -877,7 +877,7 @@ class InfiniteScroll {
             return `
                 <div class="book-item">
                     <a href="/books/book/${book.id}"
-                       class="book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4">
+                       class="book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4 border border-card">
                         <div class="book-cover flex-shrink-0 w-24 h-32 overflow-hidden rounded">
                             ${coverImage}
                         </div>
@@ -897,7 +897,7 @@ class InfiniteScroll {
             const coverImage = book.cover_image_url
                 ? `<img src="/static/${this.escapeHtml(book.cover_image_url)}"
                         alt="${this.escapeHtml(book.title)}"
-                        class="book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200" />`
+                        class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />`
                 : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
                         <span class="text-sm italic">No Image Available</span>
                    </div>`;
@@ -905,15 +905,15 @@ class InfiniteScroll {
             return `
                 <div class="book-item group">
                     <a href="/books/book/${book.id}"
-                       class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
-                        <div class="book-cover w-full h-64 overflow-hidden">
+                       class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
+                        <div class="book-cover w-full h-64 overflow-hidden bg-primary">
                             ${coverImage}
                         </div>
-                        <div class="book-info p-4">
-                            <h3 class="book-title text-lg font-semibold line-clamp-2 mb-2 text-white">
+                        <div class="book-info p-3 sm:p-4">
+                            <h3 class="book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white">
                                 ${this.escapeHtml(book.title)}
                             </h3>
-                            <p class="book-author text-content-secondary text-sm italic">
+                            <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
                                 by ${this.escapeHtml(book.author)}
                             </p>
                         </div>
@@ -984,27 +984,27 @@ function switchView(viewType) {
         });
 
         document.querySelectorAll('.book-link').forEach(link => {
-            link.className = 'book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200';
+            link.className = 'book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card';
         });
 
         document.querySelectorAll('.book-cover').forEach(cover => {
-            cover.className = 'book-cover w-full h-64 overflow-hidden';
+            cover.className = 'book-cover w-full h-64 overflow-hidden bg-primary';
         });
 
         document.querySelectorAll('.book-cover-img').forEach(img => {
-            img.className = 'book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200';
+            img.className = 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200';
         });
 
         document.querySelectorAll('.book-info').forEach(info => {
-            info.className = 'book-info p-4';
+            info.className = 'book-info p-3 sm:p-4';
         });
 
         document.querySelectorAll('.book-title').forEach(title => {
-            title.className = 'book-title text-lg font-semibold line-clamp-2 mb-2 text-white';
+            title.className = 'book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white';
         });
 
         document.querySelectorAll('.book-author').forEach(author => {
-            author.className = 'book-author text-content-secondary text-sm italic';
+            author.className = 'book-author text-content-secondary text-xs sm:text-sm italic truncate';
         });
 
         // Update button states
@@ -1021,7 +1021,7 @@ function switchView(viewType) {
         });
 
         document.querySelectorAll('.book-link').forEach(link => {
-            link.className = 'book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4';
+            link.className = 'book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4 border border-card';
         });
 
         document.querySelectorAll('.book-cover').forEach(cover => {
