@@ -1,17 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 
-// Colours come from the Gruvbox CSS variables in static/styles.css (light in :root,
-// dark under prefers-color-scheme). Stored as RGB channels so `bg-accent/20` etc. work.
+// Everything that differs between styles and modes comes from CSS variables
+// in static/styles.css. <html data-style="house|classic" data-mode="system|light|dark">
+// picks the set. Colours are stored as RGB channels so `bg-accent/20` etc. work.
 const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 
-// Every square: replace (not extend) radius and shadow scales.
-const square = {
-  none: '0', sm: '0', DEFAULT: '0', md: '0', lg: '0', xl: '0', '2xl': '0', '3xl': '0',
-  full: '9999px', // avatars and status dots only
+// Corner radius per style: House is square, Classic uses Tailwind's defaults.
+const radius = {
+  none: '0',
+  sm: 'var(--r-sm)', DEFAULT: 'var(--r)', md: 'var(--r-md)', lg: 'var(--r-lg)',
+  xl: 'var(--r-xl)', '2xl': 'var(--r-2xl)', '3xl': 'var(--r-3xl)',
+  pill: 'var(--r-pill)', // badges and the FAB: round in Classic, square in House
+  full: '9999px',        // avatars and status dots, always round
 };
-const flat = {
-  sm: 'none', DEFAULT: 'none', md: 'none', lg: 'none', xl: 'none', '2xl': 'none', inner: 'none', none: 'none',
-  hard: '4px 4px 0 rgb(var(--ink))', // FAB, dropdowns, modals
+// Shadows per style: House has none (plus a hard offset), Classic has soft blurs.
+const shadow = {
+  sm: 'var(--sh-sm)', DEFAULT: 'var(--sh)', md: 'var(--sh-md)', lg: 'var(--sh-lg)',
+  xl: 'var(--sh-xl)', '2xl': 'var(--sh-2xl)', inner: 'var(--sh-inner)', none: 'none',
+  hard: 'var(--sh-hard)', // FAB and modals
 };
 
 module.exports = {
@@ -20,8 +26,8 @@ module.exports = {
     "./static/**/*.js",
   ],
   theme: {
-    borderRadius: square,
-    boxShadow: flat,
+    borderRadius: radius,
+    boxShadow: shadow,
     extend: {
       colors: {
         primary: { bg: v('paper'), DEFAULT: v('paper'), hover: v('fill') },
@@ -29,6 +35,7 @@ module.exports = {
         accent: { DEFAULT: v('accent'), hover: v('accent-hover'), transparent: 'rgb(var(--accent) / 0.25)' },
         content: { primary: v('ink'), secondary: v('ink-2'), tertiary: v('faint') },
         rule: { DEFAULT: v('rule'), strong: v('rule-strong') },
+        card: 'var(--card-border)', // card/bar/button outlines: strong in House, invisible in Classic
         'on-accent': v('on-accent'),
         muted: v('muted'),
 
@@ -51,13 +58,13 @@ module.exports = {
           400: v('green'), 500: v('green'), 600: v('accent'), 700: v('accent-hover'), 900: v('green'),
         },
         blue: {
-          300: v('blue'), 400: v('blue'), 500: v('blue'), 600: v('blue'), 700: v('blue'),
+          300: v('blue'), 400: v('blue'), 500: v('blue'), 600: v('blue-strong'), 700: v('blue-strong'),
         },
         orange: { 600: v('orange'), 700: v('orange') },
         purple: { 400: v('purple'), 500: v('purple') },
       },
       fontFamily: {
-        primary: ['"Courier Prime"', '"Courier New"', 'monospace'],
+        primary: 'var(--font-body)',
         display: ['"Young Serif"', 'serif'],
       },
     },

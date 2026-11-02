@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Create book card
         const bookCard = document.createElement('div');
-        bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-rule-strong';
+        bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card';
 
         const coverImageUrl = book.cover_image_url ? `/static/${escapeHtml(book.cover_image_url)}` : '';
         const coverHTML = book.cover_image_url

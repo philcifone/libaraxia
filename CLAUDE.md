@@ -91,7 +91,7 @@ Two gotchas (both scheduled in ROADMAP.md):
 
 ### Frontend
 - **No base layout.** Each page template is standalone and `{% include %}`s `_sidebar.html`, `_flash_messages.html`, and where relevant `_search_sort_filter.html`, `_book_grid.html` and `_add_book_fab.html`.
-- Dark-only theme defined in `tailwind.config.js` (a Gruvbox/house-style refresh is ROADMAP Phase 0). Fonts are served from `static/fonts/`.
+- **Themes:** two per-user settings on `<html data-style=… data-mode=…>` (injected by a context processor in `app.py`, edited at Profile → Appearance, stored in `users.theme_style` / `users.color_mode`). Style `house` = Gruvbox, Courier Prime, square, strong borders; `classic` = the original look (Outfit, rounded, soft shadows). Mode `system|light|dark`. Every colour, radius, shadow and the body font are CSS variables in `static/styles.css`; `tailwind.config.js` maps Tailwind names onto them. Use the semantic classes (`bg-secondary`, `text-content-primary`, `bg-accent text-on-accent`, `border-card` for card outlines, `rounded-pill` for badges) rather than raw colours. Fonts are served from `static/fonts/`.
 - **Vanilla JS in `/static/`:**
   - `script.js`: library grid, filters, infinite scroll, status updates; defines `escapeHtml()` and `getCSRFToken()`.
   - `add_book.js`: add form, ISBN/title search, barcode scanning via Quagga from cdnjs.

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -21,7 +21,7 @@
          <span>Back to Catalog</span>
      </a>
         <!-- Profile Info -->
-        <section class="bg-secondary rounded-xl p-4 shadow-lg border border-rule-strong">
+        <section class="bg-secondary rounded-xl p-4 shadow-lg border border-card">
             <div class="flex items-center gap-4 p-4">
                 <!-- Avatar with Upload on Hover -->
                 {% if current_user.id == user['id'] %}
@@ -276,13 +276,38 @@
                     <p class="label text-sm pb-1">Admin Status</p>
                     <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
                 </div>
+
+                <!-- Appearance -->
+                <div class="space-y-3 col-span-2" id="appearance-settings">
+                    <p class="label text-sm pb-1">Appearance</p>
+                    <div class="flex flex-wrap gap-x-8 gap-y-3">
+                        {% for kind, label, options, current in [
+                            ('style', 'Style', theme_styles, theme_style),
+                            ('mode', 'Mode', theme_modes, theme_mode)
+                        ] %}
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-content-secondary w-12">{{ label }}</span>
+                            <div class="flex" role="group" aria-label="{{ label }}">
+                                {% for key, name in options.items() %}
+                                <button type="button"
+                                        class="theme-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
+                                        data-kind="{{ kind }}" data-value="{{ key }}"
+                                        aria-pressed="{{ 'true' if key == current else 'false' }}">
+                                    {{ name }}
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
                 {% endif %}
             </div>
         </section>
 
                 <!-- Reading Shelves Section -->
         {% if are_friends and reading_lists %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <a href="{{ url_for('base.friend_library', username=user['username']) }}" class="block mb-6">
                 <h2 class="text-2xl font-display text-content-primary hover:text-accent transition-colors">
                     {{ user['username'] }}'s Library →
@@ -305,7 +330,7 @@
                             {% if reading_lists %}
                                 {% for list in reading_lists %}
                                     {% if list['status'] == status %}
-                                        <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-none text-sm">
+                                        <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm">
                                             {{ list['book_count'] }}
                                         </span>
                                     {% endif %}
@@ -340,7 +365,7 @@
 
         <!-- Reading Goal Section -->
         {% if current_user.id == user['id'] %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
 
             {% if user['reading_goal'] and user['reading_goal'] > 0 %}
@@ -397,13 +422,13 @@
 
         <!-- Friends List Section -->
         {% if are_friends %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Friends{% else %}{{ user['username'] }}'s Friends{% endif %}
                 </h2>
                 {% if is_own_profile %}
-                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent border border-rule-strong transition-colors" title="Find new friends">
+                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent border border-card transition-colors" title="Find new friends">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -468,7 +493,7 @@
 
         <!-- Wishlist Section -->
         {% if are_friends and wishlist_books %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
@@ -524,7 +549,7 @@
 
         <!-- Recently Read/Reviewed Section -->
         {% if are_friends and recent_reviews %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Recent Reviews{% else %}{{ user['username'] }}'s Recent Reviews{% endif %}
@@ -543,7 +568,7 @@
                                  alt="{{ review.title }}"
                                  class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" />
                             {% else %}
-                            <div class="w-20 h-28 bg-secondary rounded-md flex items-center justify-center border border-rule-strong">
+                            <div class="w-20 h-28 bg-secondary rounded-md flex items-center justify-center border border-card">
                                 <svg class="w-8 h-8 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
@@ -646,7 +671,7 @@
 
         <!-- Statistics Tabs Section -->
         {% if stats %}
-        <section class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-rule-strong">
+        <section class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-card">
             <!-- Tab Navigation -->
             <div class="flex">
                 <button onclick="switchTab('overview')" id="tab-overview" class="tab tab-button active text-content-primary">
@@ -699,7 +724,7 @@
                         {% if stats.top_genres and stats.top_genres|length > 0 %}
                         <div class="space-y-3">
                             {% for genre in stats.top_genres %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-rule-strong">
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-card">
                                 <div class="flex-1">
                                     <p class="font-medium text-content-primary">{{ genre.genre }}</p>
                                 </div>
@@ -720,7 +745,7 @@
                         {% if stats.collection_status and stats.collection_status|length > 0 %}
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {% for status in stats.collection_status %}
-                            <div class="bg-secondary rounded-lg p-4 text-center border border-rule-strong">
+                            <div class="bg-secondary rounded-lg p-4 text-center border border-card">
                                 <p class="text-sm text-content-secondary mb-1">{{ status.status.capitalize() }}</p>
                                 <p class="text-3xl font-bold text-accent">{{ status.count }}</p>
                             </div>
@@ -737,7 +762,7 @@
                         {% if stats.top_authors and stats.top_authors|length > 0 %}
                         <div class="space-y-3">
                             {% for author in stats.top_authors %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-rule-strong">
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-card">
                                 <div class="flex-1">
                                     <p class="font-medium text-content-primary">{{ author.author }}</p>
                                     <p class="text-sm text-content-secondary">{{ author.books_count }} book{{ 's' if author.books_count > 1 else '' }}</p>
@@ -1286,7 +1311,7 @@
                                     } else {
                                         actionHtml = `<form method="POST" action="/friends/send_request/${userPath}" class="inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent border border-rule-strong text-sm transition-colors">
+                                            <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent border border-card text-sm transition-colors">
                                                 Add Friend
                                             </button>
                                         </form>`;
@@ -1317,6 +1342,36 @@
                 }, 300);
             });
         }
+    </script>
+    <script>
+        // Appearance picker: apply instantly, then save; revert if the save fails.
+        document.querySelectorAll('#appearance-settings .theme-opt').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const kind = btn.dataset.kind;          // 'style' or 'mode'
+                const root = document.documentElement;
+                const previous = root.dataset[kind];
+                const group = btn.parentElement.querySelectorAll('.theme-opt');
+                const press = value => group.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
+
+                if (btn.dataset.value === previous) return;
+                root.dataset[kind] = btn.dataset.value;
+                press(btn.dataset.value);
+
+                try {
+                    const response = await fetch('/user/update_theme', {
+                        method: 'POST',
+                        headers: getCSRFHeaders(),
+                        body: JSON.stringify({ [kind]: btn.dataset.value })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.message);
+                } catch (err) {
+                    root.dataset[kind] = previous;
+                    press(previous);
+                    showFlashMessage('error', 'Could not save appearance settings.');
+                }
+            });
+        });
     </script>
 </body>
 </html>

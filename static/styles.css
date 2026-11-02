@@ -34,6 +34,13 @@
     src: url('/static/fonts/courier-prime/courier-prime-latin-700-italic.woff2') format('woff2');
 }
 @font-face {
+    font-family: 'Outfit Variable';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/static/fonts/outfit/outfit-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
     font-family: 'Young Serif';
     font-style: normal;
     font-weight: 400;
@@ -41,56 +48,195 @@
     src: url('/static/fonts/young-serif/young-serif-latin.woff2') format('woff2');
 }
 
-/* ---------- Gruvbox tokens (RGB channels, so Tailwind alpha modifiers work) ---------- */
+/* ---------- Themes ----------
+   Two independent settings on <html>, saved per user (Profile → Appearance):
+     data-style = house (Gruvbox, square, bold lines) | classic (the original look)
+     data-mode  = system (follow the OS) | light | dark
+   Colours are RGB channels so Tailwind alpha modifiers (bg-accent/20) work.
+   To add a style: add a shape block and a light + dark palette below, then add
+   it to THEME_STYLES in models.py. */
 @layer base {
+    /* ---- Shape and type per style ---- */
+    :root {
+        --font-body: "Courier Prime", "Courier New", monospace;
+        --r-sm: 0; --r: 0; --r-md: 0; --r-lg: 0; --r-xl: 0; --r-2xl: 0; --r-3xl: 0; --r-pill: 0;
+        --sh-sm: none; --sh: none; --sh-md: none; --sh-lg: none; --sh-xl: none; --sh-2xl: none; --sh-inner: none;
+        --sh-hard: 4px 4px 0 rgb(var(--ink));
+        --card-border: rgb(var(--rule-strong));
+    }
+    :root[data-style="classic"] {
+        --font-body: "Outfit Variable", system-ui, sans-serif;
+        --r-sm: .125rem; --r: .25rem; --r-md: .375rem; --r-lg: .5rem; --r-xl: .75rem; --r-2xl: 1rem; --r-3xl: 1.5rem; --r-pill: 9999px;
+        --sh-sm: 0 1px 2px 0 rgb(0 0 0 / .05);
+        --sh: 0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1);
+        --sh-md: 0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1);
+        --sh-lg: 0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1);
+        --sh-xl: 0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1);
+        --sh-2xl: 0 25px 50px -12px rgb(0 0 0 / .25);
+        --sh-inner: inset 0 2px 4px 0 rgb(0 0 0 / .05);
+        --sh-hard: var(--sh-lg);
+        --card-border: transparent;
+    }
+
+    /* ---- House palette (Gruvbox). Light is the default for any style-less page. ---- */
+
+
     :root {
         color-scheme: light;
-        --paper: 251 248 241;        /* #fbf8f1 page background */
-        --surface: 242 237 225;      /* #f2ede1 top bar, sidebar, cards */
-        --fill: 235 219 178;         /* #ebdbb2 inputs, hover fills */
-        --rule: 213 196 161;         /* #d5c4a1 hairlines */
-        --rule-strong: 60 56 54;     /* #3c3836 card/input/button borders */
-        --accent: 121 116 14;        /* #79740e */
-        --accent-hover: 95 91 11;    /* #5f5b0b (darker olive: #98971a fails 4.5:1 under light text) */
-        --on-accent: 251 248 241;    /* #fbf8f1 text on accent/red fills */
-        --ink: 40 40 40;             /* #282828 main text */
-        --ink-2: 60 56 54;           /* #3c3836 secondary text */
-        --muted: 90 82 76;           /* #5a524c labels, metadata */
-        --faint: 124 111 100;        /* #7c6f64 */
-        --red: 157 0 6;              /* #9d0006 */
-        --red-strong: 204 36 29;     /* #cc241d */
-        --yellow: 181 118 20;        /* #b57614 */
-        --green: 121 116 14;         /* #79740e */
-        --blue: 7 102 120;           /* #076678 */
-        --orange: 175 58 3;          /* #af3a03 */
-        --purple: 143 63 113;        /* #8f3f71 */
-        --black: 29 32 33;           /* #1d2021 overlays */
+        --paper: 251 248 241;       /* #fbf8f1 */
+        --surface: 242 237 225;     /* #f2ede1 */
+        --fill: 235 219 178;        /* #ebdbb2 */
+        --rule: 213 196 161;        /* #d5c4a1 */
+        --rule-strong: 60 56 54;    /* #3c3836 */
+        --accent: 121 116 14;       /* #79740e */
+        --accent-hover: 95 91 11;   /* #5f5b0b */
+        --on-accent: 251 248 241;   /* #fbf8f1 */
+        --ink: 40 40 40;            /* #282828 */
+        --ink-2: 60 56 54;          /* #3c3836 */
+        --muted: 90 82 76;          /* #5a524c */
+        --faint: 124 111 100;       /* #7c6f64 */
+        --red: 157 0 6;             /* #9d0006 */
+        --red-strong: 204 36 29;    /* #cc241d */
+        --yellow: 181 118 20;       /* #b57614 */
+        --green: 121 116 14;        /* #79740e */
+        --blue: 7 102 120;          /* #076678 */
+        --blue-strong: 7 102 120;   /* #076678 */
+        --orange: 175 58 3;         /* #af3a03 */
+        --purple: 143 63 113;       /* #8f3f71 */
+        --black: 29 32 33;          /* #1d2021 */
     }
 
     @media (prefers-color-scheme: dark) {
-        :root {
+        :root:not([data-mode="light"]) {
             color-scheme: dark;
-            --paper: 29 32 33;           /* #1d2021 */
-            --surface: 40 40 40;         /* #282828 */
-            --fill: 60 56 54;            /* #3c3836 */
-            --rule: 80 73 69;            /* #504945 */
-            --rule-strong: 124 111 100;  /* #7c6f64 */
-            --accent: 152 151 26;        /* #98971a */
-            --accent-hover: 184 187 38;  /* #b8bb26 */
-            --on-accent: 29 32 33;       /* #1d2021 */
-            --ink: 235 219 178;          /* #ebdbb2 */
-            --ink-2: 213 196 161;        /* #d5c4a1 */
-            --muted: 168 153 132;        /* #a89984 */
-            --faint: 146 131 116;        /* #928374 */
-            --red: 251 73 52;            /* #fb4934 */
-            --red-strong: 251 73 52;     /* #fb4934 (#cc241d under dark text is only 3:1) */
-            --yellow: 250 189 47;        /* #fabd2f */
-            --green: 184 187 38;         /* #b8bb26 */
-            --blue: 131 165 152;         /* #83a598 */
-            --orange: 254 128 25;        /* #fe8019 */
-            --purple: 211 134 155;       /* #d3869b */
-            --black: 0 0 0;
+            --paper: 29 32 33;          /* #1d2021 */
+            --surface: 40 40 40;        /* #282828 */
+            --fill: 60 56 54;           /* #3c3836 */
+            --rule: 80 73 69;           /* #504945 */
+            --rule-strong: 124 111 100; /* #7c6f64 */
+            --accent: 152 151 26;       /* #98971a */
+            --accent-hover: 184 187 38; /* #b8bb26 */
+            --on-accent: 29 32 33;      /* #1d2021 */
+            --ink: 235 219 178;         /* #ebdbb2 */
+            --ink-2: 213 196 161;       /* #d5c4a1 */
+            --muted: 168 153 132;       /* #a89984 */
+            --faint: 146 131 116;       /* #928374 */
+            --red: 251 73 52;           /* #fb4934 */
+            --red-strong: 251 73 52;    /* #fb4934 */
+            --yellow: 250 189 47;       /* #fabd2f */
+            --green: 184 187 38;        /* #b8bb26 */
+            --blue: 131 165 152;        /* #83a598 */
+            --blue-strong: 131 165 152; /* #83a598 */
+            --orange: 254 128 25;       /* #fe8019 */
+            --purple: 211 134 155;      /* #d3869b */
+            --black: 0 0 0;             /* #000000 */
         }
+    }
+
+    :root[data-mode="dark"] {
+        color-scheme: dark;
+        --paper: 29 32 33;          /* #1d2021 */
+        --surface: 40 40 40;        /* #282828 */
+        --fill: 60 56 54;           /* #3c3836 */
+        --rule: 80 73 69;           /* #504945 */
+        --rule-strong: 124 111 100; /* #7c6f64 */
+        --accent: 152 151 26;       /* #98971a */
+        --accent-hover: 184 187 38; /* #b8bb26 */
+        --on-accent: 29 32 33;      /* #1d2021 */
+        --ink: 235 219 178;         /* #ebdbb2 */
+        --ink-2: 213 196 161;       /* #d5c4a1 */
+        --muted: 168 153 132;       /* #a89984 */
+        --faint: 146 131 116;       /* #928374 */
+        --red: 251 73 52;           /* #fb4934 */
+        --red-strong: 251 73 52;    /* #fb4934 */
+        --yellow: 250 189 47;       /* #fabd2f */
+        --green: 184 187 38;        /* #b8bb26 */
+        --blue: 131 165 152;        /* #83a598 */
+        --blue-strong: 131 165 152; /* #83a598 */
+        --orange: 254 128 25;       /* #fe8019 */
+        --purple: 211 134 155;      /* #d3869b */
+        --black: 0 0 0;             /* #000000 */
+    }
+
+
+    /* ---- Classic palette. Dark is the original 2024 theme; light is its inverse.
+       (Selectors are one class more specific than House's so they always win.) ---- */
+
+    :root[data-style="classic"] {
+        color-scheme: light;
+        --paper: 238 238 238;       /* #eeeeee */
+        --surface: 255 255 255;     /* #ffffff */
+        --fill: 224 224 224;        /* #e0e0e0 */
+        --rule: 209 213 219;        /* #d1d5db */
+        --rule-strong: 156 163 175; /* #9ca3af */
+        --accent: 79 125 25;        /* #4f7d19 */
+        --accent-hover: 63 102 20;  /* #3f6614 */
+        --on-accent: 255 255 255;   /* #ffffff */
+        --ink: 33 33 33;            /* #212121 */
+        --ink-2: 66 66 66;          /* #424242 */
+        --muted: 107 114 128;       /* #6b7280 */
+        --faint: 117 117 117;       /* #757575 */
+        --red: 220 38 38;           /* #dc2626 */
+        --red-strong: 220 38 38;    /* #dc2626 */
+        --yellow: 202 138 4;        /* #ca8a04 */
+        --green: 21 128 61;         /* #15803d */
+        --blue: 37 99 235;          /* #2563eb */
+        --blue-strong: 37 99 235;   /* #2563eb */
+        --orange: 194 65 12;        /* #c2410c */
+        --purple: 126 34 206;       /* #7e22ce */
+        --black: 0 0 0;             /* #000000 */
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root[data-style="classic"]:not([data-mode="light"]) {
+            color-scheme: dark;
+            --paper: 66 66 66;          /* #424242 */
+            --surface: 44 44 44;        /* #2c2c2c */
+            --fill: 96 96 96;           /* #606060 */
+            --rule: 75 85 99;           /* #4b5563 */
+            --rule-strong: 75 85 99;    /* #4b5563 */
+            --accent: 79 125 25;        /* #4f7d19 */
+            --accent-hover: 106 152 57; /* #6a9839 */
+            --on-accent: 255 255 255;   /* #ffffff */
+            --ink: 255 255 255;         /* #ffffff */
+            --ink-2: 238 238 238;       /* #eeeeee */
+            --muted: 156 163 175;       /* #9ca3af */
+            --faint: 170 170 170;       /* #aaaaaa */
+            --red: 248 113 113;         /* #f87171 */
+            --red-strong: 220 38 38;    /* #dc2626 */
+            --yellow: 250 204 21;       /* #facc15 */
+            --green: 34 197 94;         /* #22c55e */
+            --blue: 96 165 250;         /* #60a5fa */
+            --blue-strong: 37 99 235;   /* #2563eb */
+            --orange: 234 88 12;        /* #ea580c */
+            --purple: 192 132 252;      /* #c084fc */
+            --black: 0 0 0;             /* #000000 */
+        }
+    }
+
+    :root[data-style="classic"][data-mode="dark"] {
+        color-scheme: dark;
+        --paper: 66 66 66;          /* #424242 */
+        --surface: 44 44 44;        /* #2c2c2c */
+        --fill: 96 96 96;           /* #606060 */
+        --rule: 75 85 99;           /* #4b5563 */
+        --rule-strong: 75 85 99;    /* #4b5563 */
+        --accent: 79 125 25;        /* #4f7d19 */
+        --accent-hover: 106 152 57; /* #6a9839 */
+        --on-accent: 255 255 255;   /* #ffffff */
+        --ink: 255 255 255;         /* #ffffff */
+        --ink-2: 238 238 238;       /* #eeeeee */
+        --muted: 156 163 175;       /* #9ca3af */
+        --faint: 170 170 170;       /* #aaaaaa */
+        --red: 248 113 113;         /* #f87171 */
+        --red-strong: 220 38 38;    /* #dc2626 */
+        --yellow: 250 204 21;       /* #facc15 */
+        --green: 34 197 94;         /* #22c55e */
+        --blue: 96 165 250;         /* #60a5fa */
+        --blue-strong: 37 99 235;   /* #2563eb */
+        --orange: 234 88 12;        /* #ea580c */
+        --purple: 192 132 252;      /* #c084fc */
+        --black: 0 0 0;             /* #000000 */
     }
 
     html {
@@ -167,6 +313,26 @@
         border-bottom-color: rgb(var(--accent));
         font-weight: 700;
     }
+
+    /* Classic keeps the original details: filled active tab, plain labels */
+    [data-style="classic"] .tab + .tab { border-left: 0; }
+    [data-style="classic"] .tab-active,
+    [data-style="classic"] .tab-button.active {
+        color: rgb(var(--ink));
+        border-bottom: 3px solid rgb(var(--accent));
+        background-color: rgb(var(--accent) / .1);
+        font-weight: 500;
+    }
+    [data-style="classic"] .nav-link.nav-active { border-bottom-color: transparent; }
+    [data-style="classic"] .label {
+        color: rgb(var(--ink-2));
+        letter-spacing: .05em;
+        border-bottom: 0;
+    }
+
+    /* Appearance picker (profile): pressed option is filled */
+    .theme-opt { @apply text-content-secondary hover:bg-primary-hover; }
+    .theme-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
 
     /* Long-form text (descriptions, reviews): keep monospace lines readable */
     .measure {

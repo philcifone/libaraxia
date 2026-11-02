@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,7 +26,7 @@
         <div class="space-y-6">
             {% if activities %}
                 {% for activity in activities %}
-                    <div class="bg-secondary rounded-lg shadow-md p-6 pb-16 hover:shadow-xl transition-shadow relative border border-rule-strong">
+                    <div class="bg-secondary rounded-lg shadow-md p-6 pb-16 hover:shadow-xl transition-shadow relative border border-card">
                         <!-- Action buttons in top right -->
                         <div class="absolute top-4 right-4 flex gap-3 items-center">
                             <!-- Dismiss button (only for user's own activities) -->

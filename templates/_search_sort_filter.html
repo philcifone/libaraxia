@@ -4,7 +4,7 @@
             search-form-container z-30">
 
     <!-- Search and Sort Container -->
-    <div class="flex flex-col lg:flex-row gap-4 items-stretch bg-secondary-bg rounded-lg p-4 shadow-lg border border-rule-strong">
+    <div class="flex flex-col lg:flex-row gap-4 items-stretch bg-secondary-bg rounded-lg p-4 shadow-lg border border-card">
         <!-- Search Form -->
         <form method="GET" action="{{ url_for('books.search') }}" class="flex-1" onsubmit="showLoadingIndicator('Searching...')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -82,7 +82,7 @@
 
     <!-- Active Filters Display -->
     <div id="active-filters-display" class="hidden">
-        <div class="bg-secondary-bg rounded-lg px-4 py-2 shadow-md border border-rule-strong">
+        <div class="bg-secondary-bg rounded-lg px-4 py-2 shadow-md border border-card">
             <div class="flex flex-wrap items-center gap-2">
                 <span class="text-content-secondary text-sm font-medium">Active filters:</span>
                 <div id="active-filter-pills" class="flex flex-wrap gap-2"></div>
@@ -95,7 +95,7 @@
     </div>
 
     <!-- Filter Section - Collapsible -->
-    <div class="bg-secondary-bg rounded-lg shadow-lg overflow-hidden border border-rule-strong">
+    <div class="bg-secondary-bg rounded-lg shadow-lg overflow-hidden border border-card">
         <!-- Filter Toggle Button -->
         <button onclick="toggleFilters()"
                 type="button"
@@ -106,7 +106,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 <span class="font-medium">Advanced Filters</span>
-                <span id="filter-count-badge" class="hidden px-2 py-0.5 bg-accent text-on-accent text-xs rounded-none"></span>
+                <span id="filter-count-badge" class="hidden px-2 py-0.5 bg-accent text-on-accent text-xs rounded-pill"></span>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg"
                  class="h-5 w-5 transform transition-transform duration-200 group-hover:text-accent"

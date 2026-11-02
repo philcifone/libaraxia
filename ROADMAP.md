@@ -19,7 +19,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 4 | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
 | 5 | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
-| 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Theme toggle, film-frame covers, page fixes, a11y |
+| 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Film-frame covers, page fixes, a11y (theme toggle done early) |
 | 8 | [VHS / UPC support](#phase-8-vhs--upc-support) | Built in the new style | A VHS can be scanned or entered, filtered and displayed |
 | 9 | [Fork (parked)](#phase-9-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
@@ -79,7 +79,7 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 - [x] **Text on coloured buttons:** today it's `text-white` / `text-content-primary`. Once `white` follows the theme, that text would be dark-on-green in light mode and light-on-green in dark mode, and the dark-mode version fails contrast (about 2.2:1). Switch text on accent and red fills to `text-on-accent` (about 4.6:1 light, 5.3:1 dark). This is the one template-wide find-and-replace in this phase.
 - [x] Replace the 10 hard-coded greens (`#4f7d19` ×8, `#6a9839` ×2) and their `onmouseover` swaps, mostly in `user.html`, with `bg-accent hover:bg-accent-hover`. Otherwise they ignore the theme.
 - [ ] Check `no-cover.png` and the wishlist/feed cover placeholders on the light background.
-- [x] **No toggle for now.** The theme follows the system. A manual toggle would be a new sidebar element, so it waits for Phase 7.
+- [x] **No toggle for now.** The theme follows the system. A manual toggle would be a new sidebar element, so it waits for Phase 7. *(Superseded 2026-11-02: Profile → Appearance now has Style and Mode settings; see Phase 7.)*
 
 ### 0.3 Fonts: Courier Prime first
 - [x] Add **Courier Prime** 400, 700 and 400 italic to `static/fonts/` (OFL licence) with `@font-face` in `styles.css`. The italic is for the "by Author" lines. Young Serif is already there.
@@ -200,7 +200,7 @@ SQLite only enforces foreign keys when each connection runs `PRAGMA foreign_keys
 
 Visible symptom: your profile says **131** books read, while the Reading Shelves page says **129**. The profile counts `collections` rows; the shelves page joins to `books`.
 
-- [ ] Migration `013_cleanup_orphans.sql`: delete rows that `foreign_key_check` reports (after backup).
+- [ ] Migration `014_cleanup_orphans.sql`: delete rows that `foreign_key_check` reports (after backup).
 - [ ] Turn on `PRAGMA foreign_keys = ON` in `get_db_connection()`.
 - [ ] ⚠️ **Before enabling, review every FK action.** 13 FKs to `users` are `ON DELETE CASCADE`, so deleting a user will now really delete their data. `books.added_by REFERENCES users(id)` has **no** action, so deleting a user who owns books will start *failing* with a constraint error. Decide what admin "delete user" should do with their books (transfer to a household member? `SET NULL`?) and make the code do that first.
 - [ ] Add a check to the test suite that `PRAGMA foreign_key_check` is empty after the delete flows.
@@ -334,7 +334,8 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 **Goal:** finish what the Phase 0 refresh deliberately left out, now that every page extends `base.html` (Phase 6) and edits happen in one place. Phase 0 is the house-style reference.
 
 ### 7.1 Finish the house style
-- [ ] **Theme toggle** (optional): a sidebar control that overrides the system light/dark setting (stored per browser). Phase 0 follows the system only.
+- [x] **Theme toggle** (done early, 2026-11-02): Profile → Appearance has **Style** (House = Gruvbox/square/bold lines, Classic = the original 2024 look, with a new light version) and **Mode** (System/Light/Dark), saved per user (migration 013). Styles are CSS-variable sets on `<html data-style data-mode>`. To add a style: one shape block and a light + dark palette in `static/styles.css`, plus a line in `THEME_STYLES` in `models.py`.
+- [ ] Optional: a quick sidebar shortcut for Mode, so it doesn't need a trip to the profile.
 - [ ] Delete the now-inert `rounded-*` / `shadow-*` classes from templates and `static/*.js` page by page. Decide whether avatars go square (framed like photos).
 - [ ] **Film-frame covers:** a `--film` border with a mono "edge" caption under the cover (`▸ 9780670671908`), contact-sheet style.
 - [ ] Remaining details from the sites:

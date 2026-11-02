@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,7 +15,7 @@
 
     <!-- Library View Tabs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
-        <div class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-rule-strong">
+        <div class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-card">
             <div class="flex items-stretch">
                 <a href="{{ url_for('base.index') }}"
                    class="tab">
@@ -41,7 +41,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for friend in friends %}
             <a href="{{ url_for('base.friend_library', username=friend.username) }}"
-               class="bg-secondary rounded-lg p-6 hover:bg-secondary/80 transition-all hover:scale-105 cursor-pointer group border border-rule-strong">
+               class="bg-secondary rounded-lg p-6 hover:bg-secondary/80 transition-all hover:scale-105 cursor-pointer group border border-card">
                 <div class="flex items-center gap-4">
                     {% if friend.avatar_url %}
                         <img src="{{ url_for('static', filename=friend.avatar_url) }}"
@@ -71,7 +71,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="bg-secondary rounded-lg p-12 text-center border border-rule-strong">
+        <div class="bg-secondary rounded-lg p-12 text-center border border-card">
             <svg class="w-16 h-16 mx-auto text-content-secondary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
             </svg>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,7 +25,7 @@
         </a>
 
         <!-- Friend Header Card -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 border border-rule-strong">
+        <div class="bg-secondary rounded-lg p-6 mb-8 border border-card">
             <div class="flex items-center gap-6">
                 {% if friend.avatar_url %}
                     <img src="{{ url_for('static', filename=friend.avatar_url) }}"
@@ -90,7 +90,7 @@
             {% for book in books %}
             <div class="book-item group">
                 <a href="{{ url_for('books.show_book', id=book.id) }}"
-                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-rule-strong">
+                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
                     <div class="book-cover w-full h-64 overflow-hidden bg-primary">
                         {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book.cover_image_url) }}"
@@ -116,7 +116,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="bg-secondary rounded-lg p-12 text-center border border-rule-strong">
+        <div class="bg-secondary rounded-lg p-12 text-center border border-card">
             <p class="text-content-secondary">
                 {% if shelf == 'wishlist' %}
                     {{ friend.username }} doesn't have any books in their wishlist yet.

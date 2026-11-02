@@ -13,8 +13,17 @@ def is_valid_username(username):
     return bool(username) and USERNAME_PATTERN.match(username) is not None
 
 
+# Appearance settings (see the Themes section in static/styles.css).
+# To add a style, add its CSS blocks there and its key + label here.
+THEME_STYLES = {'house': 'House', 'classic': 'Classic'}
+THEME_MODES = {'system': 'System', 'light': 'Light', 'dark': 'Dark'}
+DEFAULT_THEME_STYLE = 'house'
+DEFAULT_THEME_MODE = 'system'
+
+
 class User(UserMixin):
-    def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None, email_verified=True, bio=None):
+    def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None, email_verified=True, bio=None,
+                 theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE):
         self.id = id
         self.username = username
         self.email = email
@@ -23,6 +32,8 @@ class User(UserMixin):
         self.avatar_url = avatar_url
         self.email_verified = email_verified
         self.bio = bio
+        self.theme_style = theme_style if theme_style in THEME_STYLES else DEFAULT_THEME_STYLE
+        self.theme_mode = theme_mode if theme_mode in THEME_MODES else DEFAULT_THEME_MODE
 
     def get_id(self):
         return str(self.id)

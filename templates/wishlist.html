@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
@@ -23,7 +23,7 @@
         </div>
 
         <!-- Search Methods Tabs -->
-        <div class="bg-secondary rounded-lg shadow-lg overflow-hidden mb-8 border border-rule-strong">
+        <div class="bg-secondary rounded-lg shadow-lg overflow-hidden mb-8 border border-card">
             <div class="flex border-b border-gray-700">
                 <button class="search-method-btn flex-1 px-6 py-4 text-content-primary hover:bg-primary transition-colors duration-200 text-center font-medium border-b-2 border-transparent data-[active=true]:border-accent" data-method="search" data-active="true">
                     <span class="inline-flex items-center">
@@ -139,7 +139,7 @@
         </div>
 
         <!-- Book Form (Hidden by default, shown when book details are fetched) -->
-        <div id="book-form-container" class="bg-secondary-bg rounded-xl shadow-lg p-8 m-8 hidden border border-rule-strong">
+        <div id="book-form-container" class="bg-secondary-bg rounded-xl shadow-lg p-8 m-8 hidden border border-card">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">Add Book to Wishlist</h2>
                 <button type="button"
@@ -252,7 +252,7 @@
         <div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl bg-primary
                     transform -translate-y-full transition-all duration-300 ease-in-out opacity-0 invisible
                     wishlist-search-container z-30">
-            <div class="bg-secondary-bg rounded-lg p-4 shadow-lg border border-rule-strong">
+            <div class="bg-secondary-bg rounded-lg p-4 shadow-lg border border-card">
                 <div class="relative">
                     <input type="text"
                            id="wishlist-search"
@@ -279,7 +279,7 @@
             <div class="container mx-auto px-4 py-8">
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="wishlist-grid">
                     {% for book in wishlist_books %}
-                    <div class="group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-rule-strong">
+                    <div class="group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
                         <a href="/books/book/{{ book.id }}"
                            class="block flex-1">
                             <div class="aspect-w-3 aspect-h-4 relative">

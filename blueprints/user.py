@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import current_user, login_required
 from utils.database import get_db_connection
 from utils.rate_limiting import limiter
-from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES
 from werkzeug.utils import secure_filename
 import bcrypt
 import csv
@@ -432,6 +432,31 @@ def update_bio():
 
     except Exception as e:
         return jsonify({'success': False, 'message': 'An error occurred while updating bio'}), 500
+
+@user_blueprint.route('/update_theme', methods=['POST'])
+@login_required
+@limiter.limit("60 per hour")
+def update_theme():
+    """Save the Appearance settings (style + light/dark mode)."""
+    data = request.get_json(silent=True) or {}
+    style = data.get('style', current_user.theme_style)
+    mode = data.get('mode', current_user.theme_mode)
+    if style not in THEME_STYLES or mode not in THEME_MODES:
+        return jsonify({'success': False, 'message': 'Unknown theme setting'}), 400
+
+    conn = get_db_connection()
+    try:
+        conn.execute('UPDATE users SET theme_style = ?, color_mode = ? WHERE id = ?',
+                     (style, mode, current_user.id))
+        conn.commit()
+    except Exception:
+        current_app.logger.exception('Error saving theme settings')
+        return jsonify({'success': False, 'message': 'Could not save appearance settings'}), 500
+    finally:
+        conn.close()
+
+    current_user.theme_style, current_user.theme_mode = style, mode
+    return jsonify({'success': True, 'style': style, 'mode': mode})
 
 @user_blueprint.route('/update_password', methods=['POST'])
 @login_required

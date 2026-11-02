@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="h-full bg-primary-bg">
+<html class="h-full bg-primary-bg" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,7 +24,7 @@
         </div>
 
         <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-            <div class="bg-secondary-bg py-8 px-4 shadow-xl rounded-lg sm:px-10 border border-rule-strong">
+            <div class="bg-secondary-bg py-8 px-4 shadow-xl rounded-lg sm:px-10 border border-card">
                 <form method="POST" action="{{ url_for('auth.resend_verification') }}" class="space-y-6">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
@@ -57,7 +57,7 @@
                             <div class="w-full border-t border-gray-600"></div>
                         </div>
                         <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-secondary-bg text-content-tertiary border border-rule-strong">Or</span>
+                            <span class="px-2 bg-secondary-bg text-content-tertiary border border-card">Or</span>
                         </div>
                     </div>
 

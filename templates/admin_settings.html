@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
@@ -17,26 +17,26 @@
 
         <!-- System Stats Grid -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div class="bg-secondary rounded-lg p-6 border border-rule-strong">
+            <div class="bg-secondary rounded-lg p-6 border border-card">
                 <div class="text-sm font-medium text-content-secondary mb-2">Total Users</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.total_users }}</div>
             </div>
-            <div class="bg-secondary rounded-lg p-6 border border-rule-strong">
+            <div class="bg-secondary rounded-lg p-6 border border-card">
                 <div class="text-sm font-medium text-content-secondary mb-2">Active Users</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.active_users }}</div>
             </div>
-            <div class="bg-secondary rounded-lg p-6 border border-rule-strong">
+            <div class="bg-secondary rounded-lg p-6 border border-card">
                 <div class="text-sm font-medium text-content-secondary mb-2">Admin Users</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.admin_users }}</div>
             </div>
-            <div class="bg-secondary rounded- p-6 border border-rule-strong">
+            <div class="bg-secondary rounded- p-6 border border-card">
                 <div class="text-sm font-medium text-content-secondary mb-2">Total Books</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.total_books }}</div>
             </div>
         </div>
 
         <!-- Maintenance Section -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 border border-rule-strong">
+        <div class="bg-secondary rounded-lg p-6 mb-8 border border-card">
             <h2 class="text-xl font-semibold text-content-primary mb-4">Maintenance</h2>
 
             <!-- Orphaned Images -->
@@ -53,7 +53,7 @@
         </div>
 
         <!-- Shared Library Groups -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 border border-rule-strong">
+        <div class="bg-secondary rounded-lg p-6 mb-8 border border-card">
             <h2 class="text-xl font-semibold text-content-primary mb-4">Shared Library Groups</h2>
             <p class="text-sm text-content-secondary mb-6">
                 Users can add friends to their shared library via friend profiles. This panel shows all active library groups for monitoring and removal if needed.
@@ -70,7 +70,7 @@
                         </div>
                         <div class="space-y-2">
                             {% for member in members %}
-                            <div class="flex items-center justify-between p-3 bg-secondary rounded-lg border border-rule-strong">
+                            <div class="flex items-center justify-between p-3 bg-secondary rounded-lg border border-card">
                                 <div class="flex items-center gap-3">
                                     {% if member.avatar_url %}
                                         <img src="{{ url_for('static', filename=member.avatar_url) }}"
@@ -119,7 +119,7 @@
         </div>
 
         <!-- Create/Edit User Panel -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 border border-rule-strong" id="user-form-panel">
+        <div class="bg-secondary rounded-lg p-6 mb-8 border border-card" id="user-form-panel">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-content-primary" id="form-title">Create New User</h2>
                 <button type="button" onclick="resetToCreateForm()" id="cancel-edit-btn" class="hidden text-content-secondary hover:text-accent transition-colors text-sm">
@@ -268,7 +268,7 @@
         </div>
 
         <!-- User Management Table -->
-        <div class="bg-secondary rounded-lg overflow-hidden border border-rule-strong">
+        <div class="bg-secondary rounded-lg overflow-hidden border border-card">
             <div class="px-4 sm:px-6 py-4 border-b border-gray-700">
                 <h2 class="text-xl font-semibold text-content-primary">User Management</h2>
             </div>
@@ -313,16 +313,16 @@
                             </td>
                             <td class="px-3 sm:px-6 py-4">
                                 {% if user.is_active %}
-                                    <span class="px-2 py-1 text-xs rounded-none bg-green-900/50 text-accent">Active</span>
+                                    <span class="px-2 py-1 text-xs rounded-pill bg-green-900/50 text-accent">Active</span>
                                 {% else %}
-                                    <span class="px-2 py-1 text-xs rounded-none bg-red-900/50 text-content-primary">Inactive</span>
+                                    <span class="px-2 py-1 text-xs rounded-pill bg-red-900/50 text-content-primary">Inactive</span>
                                 {% endif %}
                             </td>
                             <td class="px-3 sm:px-6 py-4">
                                 {% if user.is_admin %}
-                                    <span class="px-2 py-1 text-xs rounded-none bg-accent/20 text-accent">Admin</span>
+                                    <span class="px-2 py-1 text-xs rounded-pill bg-accent/20 text-accent">Admin</span>
                                 {% else %}
-                                    <span class="px-2 py-1 text-xs rounded-none bg-gray-700 text-content-secondary">User</span>
+                                    <span class="px-2 py-1 text-xs rounded-pill bg-gray-700 text-content-secondary">User</span>
                                 {% endif %}
                             </td>
                             <td class="px-3 sm:px-6 py-4 text-sm">

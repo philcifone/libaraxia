@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
@@ -38,7 +38,7 @@
             <div class="container mx-auto px-4 py-8">
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     {% for book in wishlist_books %}
-                    <div class="group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-rule-strong">
+                    <div class="group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
                         <a href="{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ target_username }}"
                            class="block flex-1">
                             <div class="aspect-w-3 aspect-h-4 relative">
@@ -100,7 +100,7 @@
         </div>
         {% else %}
         <div class="text-center py-16">
-            <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto border border-rule-strong">
+            <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto border border-card">
                 <p class="text-content-secondary text-lg">
                     {{ target_username.capitalize() }}'s wishlist is empty.
                 </p>

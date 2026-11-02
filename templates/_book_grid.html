@@ -7,7 +7,7 @@
             {% for book in books %}
             <div class="book-item group">
                 <a href="/books/book/{{ book[0] }}"
-                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-rule-strong">
+                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
                     <div class="book-cover w-full h-64 overflow-hidden bg-primary">
                         {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book['cover_image_url']) }}"

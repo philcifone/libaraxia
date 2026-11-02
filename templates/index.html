@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,7 +18,7 @@
 
     <!-- Library View Tabs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
-        <div class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-rule-strong">
+        <div class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-card">
             <div class="flex items-stretch">
                 <a href="{{ url_for('base.index') }}"
                    class="tab tab-active" aria-current="page">

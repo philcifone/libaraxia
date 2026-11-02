@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-primary-bg">
+<html lang="en" class="bg-primary-bg" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
 <head>
     <style>
         .rating-group {
@@ -53,14 +53,14 @@
                          alt="Book Cover"
                          class="w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]">
                 {% else %}
-                    <div class="aspect-[2/3] bg-secondary-bg rounded-lg flex items-center justify-center border border-rule-strong">
+                    <div class="aspect-[2/3] bg-secondary-bg rounded-lg flex items-center justify-center border border-card">
                         <span class="text-content-secondary italic">No Image Available</span>
                     </div>
                 {% endif %}
             </div>
 
             <!-- Review Form -->
-            <div class="bg-secondary-bg rounded-lg p-6 md:p-8 border border-rule-strong">
+            <div class="bg-secondary-bg rounded-lg p-6 md:p-8 border border-card">
                 <h2 class="font-display text-2xl mb-8 text-center">Rate & Review</h2>
 
                 <form method="post" class="space-y-8" id="review-form">

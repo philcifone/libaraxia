@@ -22,6 +22,7 @@ sqlite3 library.db < migrations/009_add_friend_requests.sql
 sqlite3 library.db < migrations/010_add_email_verification.sql
 sqlite3 library.db < migrations/011_add_bio.sql
 sqlite3 library.db < migrations/012_add_library_members_and_privacy.sql
+sqlite3 library.db < migrations/013_add_theme_preferences.sql
 ```
 
 ## Migration History
@@ -37,4 +38,5 @@ sqlite3 library.db < migrations/012_add_library_members_and_privacy.sql
 - `009_add_friend_requests.sql`
 - `010_add_email_verification.sql`
 - `011_add_bio.sql`
-- `012_add_library_members_and_privacy.sql` - Adds library_members table for household sharing and privacy columns for social features   
+- `012_add_library_members_and_privacy.sql` - Adds library_members table for household sharing and privacy columns for social features
+- `013_add_theme_preferences.sql` - Adds `theme_style` (house/classic) and `color_mode` (system/light/dark) to users for Profile → Appearance. The older `theme_mode`/`accent_color` columns are unused legacy.
