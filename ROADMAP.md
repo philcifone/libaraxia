@@ -110,15 +110,15 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 
 ### 0.7 Build and check
 - [x] `npm run build:css`, and commit `static/css/output.css`.
-- [ ] Click through every page in **light and dark**, at phone and desktop widths, side by side with the 2026-11-02 screenshots:
+- [x] Click through every page in **light and dark**, at phone and desktop widths, side by side with the 2026-11-02 screenshots:
   - library, shared and friends' libraries
   - detail, add, edit
   - rate/review, collections, profile
   - wishlist, feed, notifications
   - admin, login/register, Goodreads import
-- [ ] Retake the README screenshots in both themes, from an **anonymised copy** of the DB (rename other users, clear their emails/bios/avatars/review text), never the live one.
+- [ ] Retake the README screenshots in both themes, from an **anonymised copy** of the DB (rename other users, clear their emails/bios/avatars/review text), never the live one. *(Deferred 2026-11-02: Phil will retake them after Phase 8, once the app is fully presentable.)*
 
-**Status 2026-11-02:** landed on branch `phase-0-design-refresh` (commit `35c2b13`). Headless screenshots of every page in light + dark looked right. Still open: Phil's by-eye pass on a phone, the `no-cover.png` / long-text checks, and the README screenshots. Deviations from the token table, made for contrast: light `accent-hover` is `#5f5b0b` (`#98971a` under light text is 2.9:1) and dark `red-strong` is `#fb4934` (`#cc241d` under dark text is 3.0:1). Phone tab labels shorten to "Shared" / "Friends'" so they fit on one line.
+**Status 2026-11-02:** landed on branch `phase-0-design-refresh` (commit `35c2b13`). Headless screenshots of every page in light + dark looked right. Phil's phone pass is done (2026-11-02). Still open: the `no-cover.png` / long-text checks; the README screenshots are deferred to after Phase 8. Deviations from the token table, made for contrast: light `accent-hover` is `#5f5b0b` (`#98971a` under light text is 2.9:1) and dark `red-strong` is `#fb4934` (`#cc241d` under dark text is 3.0:1). Phone tab labels shorten to "Shared" / "Friends'" so they fit on one line.
 
 **Done when:**
 - Every page renders in both themes with Courier Prime + Young Serif, square corners, strong 1px borders and no soft shadows.
@@ -138,6 +138,14 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 **Goal:** a known prod DB path and no known-vulnerable dependencies, so things stay safe if Access is ever loosened.
 
 ### 1.1 Production `.env` (no code changes) 🟠
+
+**Deploying this branch to prod (order matters):** prod needs the new code first, since `requirements.txt` and `migrations/013_add_theme_preferences.sql` only exist on `phase-0-design-refresh`. Merge it into `main` and push, then on prod:
+1. Optional: take a manual ZFS snapshot.
+2. `git pull`
+3. `pip install -r requirements.txt` in prod's venv.
+4. `sqlite3 <prod DB path> < migrations/013_add_theme_preferences.sql` (find the path first, see below). Without it, pages still load with the default theme, but saving Profile → Appearance fails.
+5. Check `.env` (the items below), then restart gunicorn.
+
 - [ ] **Close self-registration:** `ALLOW_REGISTRATION=False`. Only Access-approved people can reach the site today, so this is defence in depth. 🟢
 - [ ] **Rate limiting behind the tunnel:** every request reaches gunicorn from `cloudflared` on localhost, so all users share **one IP** for rate limiting. That includes the global 50/hour default (see Phase 4), so one busy browsing session can 429 everyone. Set `TRUSTED_PROXY_COUNT=1` so the limiter uses the client IP that Cloudflare forwards in `X-Forwarded-For`, then confirm it in the logs. (`CF-Connecting-IP` is the other option, but it needs a small `key_func` change.)
 - [ ] **`SECRET_KEY`** is a real random value (`python3 -c "import secrets; print(secrets.token_hex(32))"`), not the `.env.example` placeholder. The app logs a warning if it is.
@@ -366,6 +374,17 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 ## Phase 8: VHS / UPC support
 
 A core Libaraxia feature. The design notes were written alongside the fork plan, in [FORK-SPEC §5](FORK-SPEC.md#5-phase-2-core-change-b-vhs-support), but nothing here needs the fork.
+
+### 8.0 Fix the barcode scanner first 🆕
+Reported by Phil (2026-11-02): it often takes the barcode too early (wrong number), seems to work with only one camera, and is generally flaky. VHS scanning builds on this, so fix it before the rest of the phase. The scanner code is duplicated in `add_book.js` and `wishlist.js`; fix it once in a shared module (ideally `common.js` from Phase 6) and use it from both.
+- [ ] **Misreads (takes the code too early):** `onDetected` accepts the very first frame whose code is 10 or 13 digits, with no checksum and no confirmation. Validate the EAN/ISBN check digit, and only accept a code after it's read the same way on several frames in a row (e.g. 3), or reject reads whose average decoder error is high.
+- [ ] **Only one camera:** the stream is hard-coded to `facingMode: "environment"` at 640×480. Add a camera picker (`enumerateDevices()`, select by `deviceId`, remember the choice in `localStorage`) and fall back cleanly on devices without a back camera (laptops, desktops). On phones with several back lenses (wide/ultra-wide/macro), the default can be one that won't focus up close, so the picker matters there too.
+- [ ] **Resolution/focus:** ask for a higher resolution (e.g. 1280×720 ideal) and continuous autofocus where supported; 640×480 is too coarse for small barcodes.
+- [ ] **Camera not released:** `stopScanner()` only calls `Quagga.stop()` when `Quagga.initialized` is true, which isn't a Quagga API property. Check whether the camera light stays on after a scan or when switching tabs, and stop the stream unconditionally.
+- [ ] **Swap Quagga 0.12.1 for `@ericblade/quagga2`** (the maintained fork), vendored into `static/` (this also covers the Phase 4 SRI item). Or evaluate the browser's native `BarcodeDetector` where available, with quagga2 as the fallback.
+- [ ] **UPC-A is rejected:** the code-format check only allows 10 or 13 digits, so 12-digit UPC-A (most VHS tapes) is dropped silently. Needed for the scanner dispatch below.
+- [ ] **Feedback:** a visible target box, a beep/vibrate on a confirmed read, and a styled error instead of `alert()` (pairs with Phase 7).
+- [ ] Test on Phil's phone(s) and at least one laptop webcam, over HTTPS.
 
 - [ ] **Scanner dispatch:** an EAN-13 starting `978`/`979`, or a valid ISBN-10, takes the book path; any other UPC/EAN takes the media path. Store UPC-A as EAN-13.
 - [ ] **Migration** `NNN_add_media_type.sql`: `media_type`, `barcode`, `catalog_number`, `runtime_minutes` on `books`, appended at the end; indexes; folded into `create_database.sql`.
