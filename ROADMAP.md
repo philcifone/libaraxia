@@ -173,7 +173,7 @@ pip freeze > requirements.txt   # then hand-trim to direct deps if you prefer
 ```
 - [x] Upgrade, `pip-audit` clean, update `requirements.txt`.
 - [x] Manual smoke test: login, library grid, add book by ISBN, edit cover, Goodreads import.
-- **2026-11-02:** venv upgraded and `requirements.txt` re-pinned (Flask 3.1.3, Werkzeug 3.1.9, gunicorn 26.2.0, pillow 13.0.0, requests 2.34.2, urllib3 2.8.0, idna 3.20). `pip-audit` reports no known vulnerabilities. The smoke test passed against a copy of the DB; the edit page was only checked for loading, not for a cover change. **On prod:** `pip install -r requirements.txt` in its venv, then restart gunicorn.
+- **2026-11-02:** venv upgraded and `requirements.txt` re-pinned (Flask 3.1.3, Werkzeug 3.1.9, gunicorn 26.2.0, pillow 13.0.0, requests 2.34.2, urllib3 2.8.0, idna 3.20). `pip-audit` reports no known vulnerabilities. The smoke test passed against a copy of the DB; the edit page was only checked for loading, not for a cover change. **Deployed to prod 2026-11-02:** `git pull`, `pip install -r requirements.txt`, migration 013 applied to `library.db`, gunicorn restarted.
 
 ### 1.3 Quick production hygiene 🟠
 - [x] `app.py` forces `logging.DEBUG`. Use INFO in production.
@@ -193,7 +193,7 @@ pip freeze > requirements.txt   # then hand-trim to direct deps if you prefer
 
 ### 2.2 Migration runner 🟠
 - [ ] `python3 manage.py migrate` keeps a `schema_migrations(name, applied_at)` ledger and applies each unapplied file in `migrations/` inside a transaction. It **backs up the DB first**.
-- [ ] A `--baseline` flag marks 001–012 as applied on existing databases.
+- [ ] A `--baseline` flag marks 001–013 as applied on existing databases (prod is at 013 as of 2026-11-02).
 
 ### 2.3 Referential integrity 🆕 🟠
 SQLite only enforces foreign keys when each connection runs `PRAGMA foreign_keys = ON`, and `get_db_connection()` never does. So the schema's `ON DELETE CASCADE` rules have never fired, and deleting a book leaves its rows behind. `PRAGMA foreign_key_check` on `library.db` (2026-11-02) finds **10 orphaned rows**:
