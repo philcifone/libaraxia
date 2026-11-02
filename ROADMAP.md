@@ -127,7 +127,7 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 - Nothing references Outfit/Crimson.
 - The README screenshots are retaken.
 
-**Not in this phase (→ Phase 7):** a manual theme toggle, deleting the now-inert `rounded-*` / `shadow-*` classes, film-frame "contact sheet" covers, page layout changes, the styled confirm modal, the a11y sweep.
+**Not in this phase (→ Phase 7):** a manual theme toggle, film-frame "contact sheet" covers, page layout changes, the styled confirm modal, the a11y sweep.
 
 ---
 
@@ -336,7 +336,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 ### 7.1 Finish the house style
 - [x] **Theme toggle** (done early, 2026-11-02): Profile → Appearance has **Style** (House = Gruvbox/square/bold lines, Classic = the original 2024 look, with a new light version) and **Mode** (System/Light/Dark), saved per user (migration 013). Styles are CSS-variable sets on `<html data-style data-mode>`. To add a style: one shape block and a light + dark palette in `static/styles.css`, plus a line in `THEME_STYLES` in `models.py`.
 - [ ] Optional: a quick sidebar shortcut for Mode, so it doesn't need a trip to the profile.
-- [ ] Delete the now-inert `rounded-*` / `shadow-*` classes from templates and `static/*.js` page by page. Decide whether avatars go square (framed like photos).
+- [x] ~~Delete the now-inert `rounded-*` / `shadow-*` classes from templates and `static/*.js` page by page. Decide whether avatars go square (framed like photos).~~ **Won't do (2026-11-02):** these classes now drive the Classic style, so they must stay.
 - [ ] **Film-frame covers:** a `--film` border with a mono "edge" caption under the cover (`▸ 9780670671908`), contact-sheet style.
 - [ ] Remaining details from the sites:
   - zero-padded numbered markers (`01 — TITLE`)
