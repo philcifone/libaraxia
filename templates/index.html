@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>libaraxia</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
@@ -18,20 +18,19 @@
 
     <!-- Library View Tabs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
-        <div class="bg-secondary rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-rule-strong">
             <div class="flex items-stretch">
                 <a href="{{ url_for('base.index') }}"
-                   class="flex-1 px-6 py-4 font-medium transition-colors hover:bg-primary focus:outline-none flex items-center justify-center text-content-primary"
-                   style="border-bottom: 3px solid #4f7d19; background-color: rgba(79, 125, 25, 0.1);">
+                   class="tab tab-active" aria-current="page">
                     <span class="text-center">My Library</span>
                 </a>
                 <a href="{{ url_for('base.shared_library') }}"
-                   class="flex-1 px-6 py-4 font-medium transition-colors hover:bg-primary focus:outline-none flex items-center justify-center text-content-secondary">
-                    <span class="text-center">Shared Library</span>
+                   class="tab">
+                    <span class="text-center">Shared<span class="hidden sm:inline"> Library</span></span>
                 </a>
                 <a href="{{ url_for('base.friends_libraries') }}"
-                   class="flex-1 px-6 py-4 font-medium transition-colors hover:bg-primary focus:outline-none flex items-center justify-center text-content-secondary">
-                    <span class="text-center">Friends' Libraries</span>
+                   class="tab">
+                    <span class="text-center">Friends'<span class="hidden sm:inline"> Libraries</span></span>
                 </a>
             </div>
         </div>

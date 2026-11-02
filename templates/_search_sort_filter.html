@@ -4,7 +4,7 @@
             search-form-container z-30">
 
     <!-- Search and Sort Container -->
-    <div class="flex flex-col lg:flex-row gap-4 items-stretch bg-secondary-bg rounded-lg p-4 shadow-lg">
+    <div class="flex flex-col lg:flex-row gap-4 items-stretch bg-secondary-bg rounded-lg p-4 shadow-lg border border-rule-strong">
         <!-- Search Form -->
         <form method="GET" action="{{ url_for('books.search') }}" class="flex-1" onsubmit="showLoadingIndicator('Searching...')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -14,7 +14,7 @@
                        name="search_term"
                        placeholder="Search by title, author, year..."
                        value="{{ request.args.get('search_term', '') }}"
-                       class="w-full pl-4 pr-10 py-2.5 bg-primary-bg border border-gray-600 rounded-lg
+                       class="w-full pl-4 pr-10 py-2.5 bg-primary-bg border border-rule-strong rounded-lg
                               focus:ring-2 focus:ring-accent focus:border-transparent
                               placeholder-gray-400 text-content-primary transition-all">
                 <button type="submit"
@@ -61,7 +61,7 @@
             <select name="sort_by"
                     id="sort_by"
                     onchange="submitSortForm()"
-                    class="bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                    class="bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                            focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
                 <option value="title" {% if sort_by=="title" %}selected{% endif %}>Title</option>
                 <option value="author" {% if sort_by=="author" %}selected{% endif %}>Author</option>
@@ -72,7 +72,7 @@
             <select name="sort_order"
                     id="sort_order"
                     onchange="submitSortForm()"
-                    class="bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                    class="bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                            focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
                 <option value="asc" {% if sort_order=="asc" %}selected{% endif %}>A-Z</option>
                 <option value="desc" {% if sort_order=="desc" %}selected{% endif %}>Z-A</option>
@@ -82,7 +82,7 @@
 
     <!-- Active Filters Display -->
     <div id="active-filters-display" class="hidden">
-        <div class="bg-secondary-bg rounded-lg px-4 py-2 shadow-md">
+        <div class="bg-secondary-bg rounded-lg px-4 py-2 shadow-md border border-rule-strong">
             <div class="flex flex-wrap items-center gap-2">
                 <span class="text-content-secondary text-sm font-medium">Active filters:</span>
                 <div id="active-filter-pills" class="flex flex-wrap gap-2"></div>
@@ -95,7 +95,7 @@
     </div>
 
     <!-- Filter Section - Collapsible -->
-    <div class="bg-secondary-bg rounded-lg shadow-lg overflow-hidden">
+    <div class="bg-secondary-bg rounded-lg shadow-lg overflow-hidden border border-rule-strong">
         <!-- Filter Toggle Button -->
         <button onclick="toggleFilters()"
                 type="button"
@@ -106,7 +106,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 <span class="font-medium">Advanced Filters</span>
-                <span id="filter-count-badge" class="hidden px-2 py-0.5 bg-accent text-white text-xs rounded-full"></span>
+                <span id="filter-count-badge" class="hidden px-2 py-0.5 bg-accent text-on-accent text-xs rounded-none"></span>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg"
                  class="h-5 w-5 transform transition-transform duration-200 group-hover:text-accent"
@@ -130,7 +130,7 @@
                         <label for="genre" class="block text-sm font-medium text-content-secondary">Genre</label>
                         <select name="genre" id="genre"
                                 onchange="updateActiveFilters()"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Genres</option>
                             {% for genre in filter_options.genres %}
@@ -146,7 +146,7 @@
                         <label for="read_status" class="block text-sm font-medium text-content-secondary">Read Status</label>
                         <select name="read_status" id="read_status"
                                 onchange="updateActiveFilters()"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Statuses</option>
                             {% for status in filter_options.read_statuses %}
@@ -162,7 +162,7 @@
                         <label for="rating" class="block text-sm font-medium text-content-secondary">Minimum Rating</label>
                         <select name="rating" id="rating"
                                 onchange="updateActiveFilters()"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-gray-600 px-3 py-2
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Ratings</option>
                             {% for rating in range(1, 6) %}
@@ -187,7 +187,7 @@
                                        value="{{ tag }}"
                                        onchange="updateActiveFilters()"
                                        {% if tag in request.args.getlist('tags[]') %}checked{% endif %}
-                                       class="form-checkbox text-accent rounded border-gray-600
+                                       class="form-checkbox text-accent rounded border-rule-strong
                                               focus:ring-accent focus:ring-offset-0 cursor-pointer">
                                 <span class="text-content-primary text-sm">{{ tag }}</span>
                             </label>
@@ -207,7 +207,7 @@
                     </button>
                     <button type="submit"
                             onclick="showLoadingIndicator('Applying filters...')"
-                            class="px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg
+                            class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg
                                    transition-all font-medium shadow-md hover:shadow-lg">
                         Apply Filters
                     </button>

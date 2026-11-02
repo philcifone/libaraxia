@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Create book card
         const bookCard = document.createElement('div');
-        bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200';
+        bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-rule-strong';
 
         const coverImageUrl = book.cover_image_url ? `/static/${escapeHtml(book.cover_image_url)}` : '';
         const coverHTML = book.cover_image_url
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <form action="/wishlist/move_to_library/${book.id}" method="POST">
                     <input type="hidden" name="csrf_token" value="${csrfToken}"/>
                     <button type="submit"
-                            class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-white text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
+                            class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>

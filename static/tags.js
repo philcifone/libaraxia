@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateTagsList(tags) {
         tagsList.innerHTML = tags.map(tag => `
-            <span class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 mr-2 mb-2">
+            <span class="inline-flex items-center px-3 py-0.5 rounded-none text-sm font-medium bg-gray-100 text-gray-800 mr-2 mb-2">
                 ${escapeHtml(tag)}
                 <button class="tag-remove ml-1.5 text-gray-400 hover:text-gray-900 focus:outline-none" data-tag="${escapeHtml(tag)}">
                     <svg class="w-4 h-4" stroke="currentColor" fill="none" viewBox="0 0 24 24">

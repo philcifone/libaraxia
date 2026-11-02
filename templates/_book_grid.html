@@ -1,5 +1,5 @@
     <!-- Book Grid/List -->
-    <div class="container mx-auto px-4 py-8"
+    <div class="container mx-auto px-4 pt-8 pb-32"
          data-current-page="{{ current_page | default(1) }}"
          data-has-more="{{ has_more | default(false) | lower }}"
          data-total-count="{{ total_count | default(0) }}">
@@ -7,12 +7,12 @@
             {% for book in books %}
             <div class="book-item group">
                 <a href="/books/book/{{ book[0] }}"
-                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
-                    <div class="book-cover w-full h-64 overflow-hidden">
+                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-rule-strong">
+                    <div class="book-cover w-full h-64 overflow-hidden bg-primary">
                         {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                              alt="{{ book[1] }}"
-                             class="book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
+                             class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
                         {% else %}
                         <div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
                             <span class="text-sm italic">No Image Available</span>
@@ -21,7 +21,7 @@
                     </div>
 
                     <div class="book-info p-4">
-                        <h3 class="book-title text-lg font-semibold line-clamp-2 mb-2 text-white">
+                        <h3 class="book-title text-base font-semibold line-clamp-2 mb-2 text-white">
                             {{ book[1] }}
                         </h3>
                         <p class="book-author text-content-secondary text-sm italic">

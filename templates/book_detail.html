@@ -36,7 +36,7 @@
         {% endif %}
 
         <!-- Main Book Content Section -->
-        <div class="bg-secondary rounded-xl p-4 md:p-8 mb-8">
+        <div class="bg-secondary rounded-xl p-4 md:p-8 mb-8 border border-rule-strong">
             <!-- Book Header -->
             <header class="mb-8 text-center">
                 <h1 class="text-4xl font-display text-content-primary mb-2">
@@ -77,7 +77,7 @@
                                 ('Genre', book['genre'])
                             ] %}
                             <div class="space-y-1">
-                                <span class="text-sm uppercase tracking-wider text-content-secondary">{{ item[0] }}</span>
+                                <span class="label text-sm pb-1">{{ item[0] }}</span>
                                 <p class="text-content-primary font-medium break-words">{{ item[1] }}</p>
                             </div>
                             {% endfor %}
@@ -89,7 +89,7 @@
                         <h2 class="text-xl font-display text-content-primary mb-4">About this Book</h2>
                         <div class="relative">
                             {% if book['description'] and book['description'].strip() %}
-                            <div class="text-content-secondary prose prose-invert max-h-48 overflow-hidden transition-all duration-300" id="description">
+                            <div class="measure text-content-secondary prose prose-invert max-h-48 overflow-hidden transition-all duration-300" id="description">
                                 {{ book['description'] }}
                             </div>
                             {% if book['description']|length > 300 %}
@@ -138,7 +138,7 @@
                                 <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-on-accent text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
                                    title="Search on ThriftBooks">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
@@ -148,7 +148,7 @@
                                 <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-on-accent text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
                                    title="Search on Bookshop.org">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
@@ -182,7 +182,7 @@
                                 <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-on-accent text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
                                    title="Search on ThriftBooks">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -192,7 +192,7 @@
                                 <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-on-accent text-sm rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
                                    title="Search on Bookshop.org">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -206,7 +206,7 @@
                             <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit"
-                                        class="w-full px-4 py-3 bg-accent text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium">
+                                        class="w-full px-4 py-3 bg-accent text-on-accent rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium">
                                     Add to Library
                                 </button>
                             </form>
@@ -229,7 +229,7 @@
                     {% if current_user.is_admin or book['added_by'] == current_user.id %}
                     <div class="grid grid-cols-2 gap-4">
                         <a href="/books/edit/{{ book[0] }}"
-                           class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors">
+                           class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-on-accent text-sm rounded-lg hover:bg-accent-hover transition-colors">
                             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
                             </svg>
@@ -239,7 +239,7 @@
                               onsubmit="return confirm('This will remove the book from the database. Are you sure?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit"
-                                    class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">
+                                    class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-on-accent text-sm rounded-lg hover:bg-red-700 transition-colors">
                                 <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
                                 </svg>
@@ -284,7 +284,7 @@
                                     {% endfor %}
                                 </select>
                                 <button type="submit"
-                                        class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-white text-sm rounded-lg transition-colors"
+                                        class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
                                         onclick="return confirm('Transfer ownership of this book? The new owner will be responsible for it.')">
                                     Transfer Book
                                 </button>
@@ -300,7 +300,7 @@
         <!-- Friend Reviews Section -->
         {% if friend_reviews and not in_wishlist %}
         <div class="max-w-4xl mx-auto px-4 py-6">
-            <div class="bg-secondary rounded-lg p-4 md:p-6">
+            <div class="bg-secondary rounded-lg p-4 md:p-6 border border-rule-strong">
                 <h2 class="text-xl md:text-2xl font-display text-content-primary mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5 md:w-6 md:h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
@@ -323,7 +323,7 @@
                                      alt="{{ review.username }}"
                                      class="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-accent">
                                 {% else %}
-                                <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-accent flex items-center justify-center text-white font-bold text-lg border-2 border-accent">
+                                <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold text-lg border-2 border-accent">
                                     {{ review.username[0]|upper }}
                                 </div>
                                 {% endif %}
@@ -367,8 +367,8 @@
                         <div class="review-expanded hidden border-t border-primary-hover">
                             <div class="p-3 space-y-3">
                                 {% if review.comment %}
-                                <div class="bg-secondary rounded p-3">
-                                    <p class="text-content-secondary leading-relaxed text-sm whitespace-pre-wrap">{{ review.comment }}</p>
+                                <div class="bg-secondary rounded p-3 border border-rule-strong">
+                                    <p class="measure text-content-secondary leading-relaxed text-sm whitespace-pre-wrap">{{ review.comment }}</p>
                                 </div>
                                 {% endif %}
                             </div>
@@ -383,12 +383,12 @@
         <!-- Reading Info Section (Hidden for wishlist books) -->
         {% if not in_wishlist %}
         <div class="max-w-4xl mx-auto px-4 py-8">
-            <div class="bg-secondary rounded-lg p-6 space-y-8">
+            <div class="bg-secondary rounded-lg p-6 space-y-8 border border-rule-strong">
                 <h2 class="text-2xl font-display text-content-primary text-center">
                     {{ current_user.username.capitalize() }}'s Reading Info
                 </h2>
             
-            <div class="bg-secondary rounded-lg space-y-8">
+            <div class="bg-secondary rounded-lg space-y-8 border border-rule-strong">
                 <!-- Reading Status Form -->
                 <form action="{{ url_for('collections.add_to_status_collection') }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -404,7 +404,7 @@
                             <option value="did not finish" {% if collection_status == "did not finish" %}selected{% endif %}>Did Not Finish</option>
                         </select>
                         <button type="submit" 
-                                class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors">
                             Update Status
                         </button>
                     </div>
@@ -425,7 +425,7 @@
                                    class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                    required>
                             <button type="submit" 
-                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors">
                                 Create
                             </button>
                         </div>
@@ -447,7 +447,7 @@
                                 {% endfor %}
                             </select>
                             <button type="submit" 
-                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors">
                                 Update Collection
                             </button>
                         </div>
@@ -457,16 +457,16 @@
                 <hr class="border-gray-700">
 
             <!-- Reading Stats -->
-            <div class="bg-secondary rounded-lg p-6">
+            <div class="bg-secondary rounded-lg p-6 border border-rule-strong">
                 {% if read_data %}
 
                 <!-- Reading History -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm uppercase tracking-wider text-content-secondary">Reading History</h3>
+                        <h3 class="label text-sm pb-1">Reading History</h3>
                         <button type="button"
                                 onclick="showAddSessionForm()"
-                                class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-white rounded transition-colors">
+                                class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors">
                             Add Session
                         </button>
                     </div>
@@ -502,7 +502,7 @@
 
                                 <div class="flex gap-2 pt-2">
                                     <button type="submit"
-                                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded transition-colors text-sm">
+                                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors text-sm">
                                         Save Session
                                     </button>
                                     <button type="button"
@@ -566,7 +566,7 @@
 
                 <div class="grid sm:grid-cols-2 gap-8 mb-6">
                     <div class="space-y-2">
-                        <span class="text-sm uppercase tracking-wider text-content-secondary">Your Rating</span>
+                        <span class="label text-sm pb-1">Your Rating</span>
                         <div class="flex items-center gap-4">
                             <span class="text-lg text-content-primary">{{ read_data['rating'] }} / 5</span>
                             <div class="flex items-center">
@@ -582,8 +582,8 @@
                 </div>
                 {% if read_data['comment'] %}
                     <div class="space-y-2">
-                        <span class="text-sm uppercase tracking-wider text-content-secondary">Your Review</span>
-                        <p class="text-content-primary bg-primary rounded-lg p-4 whitespace-pre-wrap">{{ read_data['comment'] }}</p>
+                        <span class="label text-sm pb-1">Your Review</span>
+                        <p class="measure text-content-primary bg-primary rounded-lg p-4 whitespace-pre-wrap border border-rule">{{ read_data['comment'] }}</p>
                     </div>
                 {% endif %}
                 {% else %}
@@ -592,7 +592,7 @@
 
                 <div class="flex justify-center mt-6">
                     <a href="{{ url_for('read.rate_review', book_id=book.id) }}" 
-                       class="inline-flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                       class="inline-flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors">
                         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
                         </svg>
@@ -602,7 +602,7 @@
             </div>
 
             <!-- Tags Section -->
-            <div class="bg-secondary rounded-lg p-6" data-book-id="{{ book.id }}">
+            <div class="bg-secondary rounded-lg p-6 border border-rule-strong" data-book-id="{{ book.id }}">
                 <h2 class="text-xl font-display text-content-primary mb-4">
                     {{ current_user.username.capitalize() }}'s Book Tags
                 </h2>
@@ -613,7 +613,7 @@
                                placeholder="Add tags (separate by comma)" 
                                class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                         <button type="button" 
-                                class="add-tag-btn px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors">
+                                class="add-tag-btn px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors">
                             Add
                         </button>
                     </div>

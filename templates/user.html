@@ -2,15 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=.8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>User Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-    <style>
-        .tab-button.active {
-            border-bottom: 3px solid #4f7d19;
-            background-color: rgba(79, 125, 25, 0.1);
-        }
-    </style>
 </head>
 <body class="bg-primary dark:bg-primary light:bg-primary-light min-h-screen">
     {% include '_sidebar.html' %}
@@ -27,7 +21,7 @@
          <span>Back to Catalog</span>
      </a>
         <!-- Profile Info -->
-        <section class="bg-secondary rounded-xl p-4 shadow-lg">
+        <section class="bg-secondary rounded-xl p-4 shadow-lg border border-rule-strong">
             <div class="flex items-center gap-4 p-4">
                 <!-- Avatar with Upload on Hover -->
                 {% if current_user.id == user['id'] %}
@@ -40,7 +34,7 @@
                                      class="w-full h-full rounded-full object-cover"
                                      style="width: 64px; height: 64px;">
                             {% else %}
-                                <div id="avatar-placeholder" class="w-full h-full rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-white"
+                                <div id="avatar-placeholder" class="w-full h-full rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-on-accent"
                                      style="width: 64px; height: 64px;">
                                     {{ user['username'][0].upper() }}
                                 </div>
@@ -64,7 +58,7 @@
                              class="rounded-full object-cover"
                              style="width: 64px; height: 64px; min-width: 64px; min-height: 64px;">
                     {% else %}
-                        <div class="rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-white"
+                        <div class="rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-on-accent"
                              style="width: 64px; height: 64px;">
                             {{ user['username'][0].upper() }}
                         </div>
@@ -86,7 +80,7 @@
                                 {% if in_shared_library %}
                                 <form method="POST" action="{{ url_for('user.remove_from_shared_library', user_id=user['id']) }}" class="inline-block">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition-colors flex items-center gap-1.5" onclick='return confirm({{ ("Remove " ~ user["username"] ~ " from your shared library?")|tojson }})'>
+                                    <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm transition-colors flex items-center gap-1.5" onclick='return confirm({{ ("Remove " ~ user["username"] ~ " from your shared library?")|tojson }})'>
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                         </svg>
@@ -97,7 +91,7 @@
                                 {% else %}
                                 <form method="POST" action="{{ url_for('user.add_to_shared_library', user_id=user['id']) }}" class="inline-block">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-white rounded text-sm transition-colors flex items-center gap-1.5">
+                                    <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm transition-colors flex items-center gap-1.5">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                                         </svg>
@@ -121,7 +115,7 @@
                             <div class="flex gap-2">
                                 <form method="POST" action="{{ url_for('friends.accept_request', request_id=friend_request_id) }}" class="inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">
+                                    <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-on-accent rounded text-sm transition-colors">
                                         Accept Friend Request
                                     </button>
                                 </form>
@@ -135,7 +129,7 @@
                         {% else %}
                             <form method="POST" action="{{ url_for('friends.send_request', username=user['username']) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded transition-colors">
+                                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors">
                                     Add Friend
                                 </button>
                             </form>
@@ -152,7 +146,7 @@
                 <!-- Editable Bio for Own Profile -->
                 <div class="space-y-2">
                     <div class="flex items-center justify-between">
-                        <p class="text-sm uppercase tracking-wider text-content-secondary">Bio</p>
+                        <p class="label text-sm pb-1">Bio</p>
                         <button id="bio-edit-btn" class="text-content-secondary hover:text-accent transition-colors" onclick="editBio()" title="Edit bio">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
@@ -167,7 +161,7 @@
                         <div class="flex items-center justify-between mt-2">
                             <span id="bio-char-count" class="text-xs text-content-secondary">0 / 500</span>
                             <div class="flex gap-2">
-                                <button id="bio-save-btn" class="px-3 py-1 bg-accent hover:bg-accent-hover text-white rounded transition-colors" onclick="saveBio()">
+                                <button id="bio-save-btn" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors" onclick="saveBio()">
                                     Save
                                 </button>
                                 <button id="bio-cancel-btn" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors" onclick="cancelBioEdit()">
@@ -180,7 +174,7 @@
                 {% elif user['bio'] %}
                 <!-- Display Bio for Other Users -->
                 <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Bio</p>
+                    <p class="label text-sm pb-1">Bio</p>
                     <p class="text-content-primary whitespace-pre-wrap">{{ user['bio'] }}</p>
                 </div>
                 {% endif %}
@@ -203,7 +197,7 @@
                 {% if current_user.id == user['id'] %}
                 <!-- Email (Editable) -->
                 <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Email</p>
+                    <p class="label text-sm pb-1">Email</p>
                     <div class="flex items-center gap-2 group">
                         <p id="email-display" class="text-content-primary">{{ user['email'] }}</p>
                         <input type="email" id="email-input" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['email'] }}">
@@ -227,7 +221,7 @@
 
                 <!-- Username (Editable) -->
                 <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Username</p>
+                    <p class="label text-sm pb-1">Username</p>
                     <div class="flex items-center gap-2 group">
                         <p id="username-display" class="text-content-primary">{{ user['username'] }}</p>
                         <input type="text" id="username-input" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['username'] }}">
@@ -251,7 +245,7 @@
 
                 <!-- Password (Editable) -->
                 <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Password</p>
+                    <p class="label text-sm pb-1">Password</p>
                     <div class="flex items-center gap-2 group">
                         <p id="password-display" class="text-content-primary">••••••••</p>
                         <div id="password-inputs" class="hidden flex-1 space-y-2">
@@ -279,7 +273,7 @@
 
                 <!-- Admin Status -->
                 <div class="space-y-2">
-                    <p class="text-sm uppercase tracking-wider text-content-secondary">Admin Status</p>
+                    <p class="label text-sm pb-1">Admin Status</p>
                     <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
                 </div>
                 {% endif %}
@@ -288,7 +282,7 @@
 
                 <!-- Reading Shelves Section -->
         {% if are_friends and reading_lists %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
             <a href="{{ url_for('base.friend_library', username=user['username']) }}" class="block mb-6">
                 <h2 class="text-2xl font-display text-content-primary hover:text-accent transition-colors">
                     {{ user['username'] }}'s Library →
@@ -311,7 +305,7 @@
                             {% if reading_lists %}
                                 {% for list in reading_lists %}
                                     {% if list['status'] == status %}
-                                        <span class="bg-accent text-white font-semibold px-3 py-1 rounded-full text-sm">
+                                        <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-none text-sm">
                                             {{ list['book_count'] }}
                                         </span>
                                     {% endif %}
@@ -346,7 +340,7 @@
 
         <!-- Reading Goal Section -->
         {% if current_user.id == user['id'] %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
             <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
 
             {% if user['reading_goal'] and user['reading_goal'] > 0 %}
@@ -393,7 +387,7 @@
                        placeholder="How many books do you want to read this year?"
                        class="flex-1 px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                 <button type="submit"
-                        class="px-6 py-2 bg-accent text-white rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
+                        class="px-6 py-2 bg-accent text-on-accent rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
                     Update Goal
                 </button>
             </form>
@@ -403,13 +397,13 @@
 
         <!-- Friends List Section -->
         {% if are_friends %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Friends{% else %}{{ user['username'] }}'s Friends{% endif %}
                 </h2>
                 {% if is_own_profile %}
-                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors" style="background-color: #4f7d19;" onmouseover="this.style.backgroundColor='#6a9839'" onmouseout="this.style.backgroundColor='#4f7d19'" title="Find new friends">
+                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent border border-rule-strong transition-colors" title="Find new friends">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -452,7 +446,7 @@
                              alt="{{ friend.username }}"
                              class="w-10 h-10 rounded-full object-cover flex-shrink-0">
                     {% else %}
-                        <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-white flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-on-accent flex-shrink-0">
                             {{ friend.username[0].upper() }}
                         </div>
                     {% endif %}
@@ -474,7 +468,7 @@
 
         <!-- Wishlist Section -->
         {% if are_friends and wishlist_books %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
@@ -530,7 +524,7 @@
 
         <!-- Recently Read/Reviewed Section -->
         {% if are_friends and recent_reviews %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg">
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-rule-strong">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Recent Reviews{% else %}{{ user['username'] }}'s Recent Reviews{% endif %}
@@ -549,7 +543,7 @@
                                  alt="{{ review.title }}"
                                  class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" />
                             {% else %}
-                            <div class="w-20 h-28 bg-secondary rounded-md flex items-center justify-center">
+                            <div class="w-20 h-28 bg-secondary rounded-md flex items-center justify-center border border-rule-strong">
                                 <svg class="w-8 h-8 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
@@ -652,16 +646,16 @@
 
         <!-- Statistics Tabs Section -->
         {% if stats %}
-        <section class="bg-secondary rounded-xl shadow-lg overflow-hidden">
+        <section class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-rule-strong">
             <!-- Tab Navigation -->
             <div class="flex">
-                <button onclick="switchTab('overview')" id="tab-overview" class="tab-button active flex-1 px-6 py-4 text-content-primary font-medium transition-colors hover:bg-primary focus:outline-none">
+                <button onclick="switchTab('overview')" id="tab-overview" class="tab tab-button active text-content-primary">
                     Overview
                 </button>
-                <button onclick="switchTab('insights')" id="tab-insights" class="tab-button flex-1 px-6 py-4 text-content-secondary font-medium transition-colors hover:bg-primary focus:outline-none">
+                <button onclick="switchTab('insights')" id="tab-insights" class="tab tab-button text-content-secondary">
                     Insights
                 </button>
-                <button onclick="switchTab('library')" id="tab-library" class="tab-button flex-1 px-6 py-4 text-content-secondary font-medium transition-colors hover:bg-primary focus:outline-none">
+                <button onclick="switchTab('library')" id="tab-library" class="tab tab-button text-content-secondary">
                     Library
                 </button>
             </div>
@@ -705,7 +699,7 @@
                         {% if stats.top_genres and stats.top_genres|length > 0 %}
                         <div class="space-y-3">
                             {% for genre in stats.top_genres %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg">
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-rule-strong">
                                 <div class="flex-1">
                                     <p class="font-medium text-content-primary">{{ genre.genre }}</p>
                                 </div>
@@ -726,7 +720,7 @@
                         {% if stats.collection_status and stats.collection_status|length > 0 %}
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {% for status in stats.collection_status %}
-                            <div class="bg-secondary rounded-lg p-4 text-center">
+                            <div class="bg-secondary rounded-lg p-4 text-center border border-rule-strong">
                                 <p class="text-sm text-content-secondary mb-1">{{ status.status.capitalize() }}</p>
                                 <p class="text-3xl font-bold text-accent">{{ status.count }}</p>
                             </div>
@@ -743,7 +737,7 @@
                         {% if stats.top_authors and stats.top_authors|length > 0 %}
                         <div class="space-y-3">
                             {% for author in stats.top_authors %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg">
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-rule-strong">
                                 <div class="flex-1">
                                     <p class="font-medium text-content-primary">{{ author.author }}</p>
                                     <p class="text-sm text-content-secondary">{{ author.books_count }} book{{ 's' if author.books_count > 1 else '' }}</p>
@@ -799,7 +793,7 @@
         {% if is_own_profile %}
         <div class="flex justify-center gap-4 flex-wrap">
             <a href="{{ url_for('user.export_library') }}"
-               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-white transition-colors hover:bg-accent-hover">
+               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent transition-colors hover:bg-accent-hover">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                 </svg>
@@ -807,7 +801,7 @@
             </a>
 
             <a href="{{ url_for('user.import_goodreads_page') }}"
-               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-white transition-colors hover:bg-accent-hover">
+               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent transition-colors hover:bg-accent-hover">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 8l-5-5-5 5M12 3v12"/>
                 </svg>
@@ -1280,7 +1274,7 @@
                                     const userPath = esc(encodeURIComponent(user.username));
                                     const avatarHtml = user.avatar_url
                                         ? `<img src="/static/${esc(user.avatar_url)}" alt="${username}" class="w-10 h-10 rounded-full object-cover">`
-                                        : `<div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-white">${esc(user.username[0].toUpperCase())}</div>`;
+                                        : `<div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-on-accent">${esc(user.username[0].toUpperCase())}</div>`;
 
                                     let actionHtml = '';
                                     if (user.friendship_status === 'friends') {
@@ -1292,7 +1286,7 @@
                                     } else {
                                         actionHtml = `<form method="POST" action="/friends/send_request/${userPath}" class="inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="px-3 py-1 text-white rounded text-sm transition-colors" style="background-color: #4f7d19;" onmouseover="this.style.backgroundColor='#6a9839'" onmouseout="this.style.backgroundColor='#4f7d19'">
+                                            <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent border border-rule-strong text-sm transition-colors">
                                                 Add Friend
                                             </button>
                                         </form>`;

@@ -1,8 +1,178 @@
-/* styles.css */
+/* styles.css — Tailwind input. Build: npm run build:css */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------- Fonts ---------- */
+@font-face {
+    font-family: 'Courier Prime';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/courier-prime/courier-prime-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Courier Prime';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/courier-prime/courier-prime-latin-400-italic.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Courier Prime';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/static/fonts/courier-prime/courier-prime-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Courier Prime';
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/static/fonts/courier-prime/courier-prime-latin-700-italic.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Young Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/young-serif/young-serif-latin.woff2') format('woff2');
+}
+
+/* ---------- Gruvbox tokens (RGB channels, so Tailwind alpha modifiers work) ---------- */
+@layer base {
+    :root {
+        color-scheme: light;
+        --paper: 251 248 241;        /* #fbf8f1 page background */
+        --surface: 242 237 225;      /* #f2ede1 top bar, sidebar, cards */
+        --fill: 235 219 178;         /* #ebdbb2 inputs, hover fills */
+        --rule: 213 196 161;         /* #d5c4a1 hairlines */
+        --rule-strong: 60 56 54;     /* #3c3836 card/input/button borders */
+        --accent: 121 116 14;        /* #79740e */
+        --accent-hover: 95 91 11;    /* #5f5b0b (darker olive: #98971a fails 4.5:1 under light text) */
+        --on-accent: 251 248 241;    /* #fbf8f1 text on accent/red fills */
+        --ink: 40 40 40;             /* #282828 main text */
+        --ink-2: 60 56 54;           /* #3c3836 secondary text */
+        --muted: 90 82 76;           /* #5a524c labels, metadata */
+        --faint: 124 111 100;        /* #7c6f64 */
+        --red: 157 0 6;              /* #9d0006 */
+        --red-strong: 204 36 29;     /* #cc241d */
+        --yellow: 181 118 20;        /* #b57614 */
+        --green: 121 116 14;         /* #79740e */
+        --blue: 7 102 120;           /* #076678 */
+        --orange: 175 58 3;          /* #af3a03 */
+        --purple: 143 63 113;        /* #8f3f71 */
+        --black: 29 32 33;           /* #1d2021 overlays */
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            color-scheme: dark;
+            --paper: 29 32 33;           /* #1d2021 */
+            --surface: 40 40 40;         /* #282828 */
+            --fill: 60 56 54;            /* #3c3836 */
+            --rule: 80 73 69;            /* #504945 */
+            --rule-strong: 124 111 100;  /* #7c6f64 */
+            --accent: 152 151 26;        /* #98971a */
+            --accent-hover: 184 187 38;  /* #b8bb26 */
+            --on-accent: 29 32 33;       /* #1d2021 */
+            --ink: 235 219 178;          /* #ebdbb2 */
+            --ink-2: 213 196 161;        /* #d5c4a1 */
+            --muted: 168 153 132;        /* #a89984 */
+            --faint: 146 131 116;        /* #928374 */
+            --red: 251 73 52;            /* #fb4934 */
+            --red-strong: 251 73 52;     /* #fb4934 (#cc241d under dark text is only 3:1) */
+            --yellow: 250 189 47;        /* #fabd2f */
+            --green: 184 187 38;         /* #b8bb26 */
+            --blue: 131 165 152;         /* #83a598 */
+            --orange: 254 128 25;        /* #fe8019 */
+            --purple: 211 134 155;       /* #d3869b */
+            --black: 0 0 0;
+        }
+    }
+
+    html {
+        background-color: rgb(var(--paper));
+    }
+
+    body {
+        @apply font-primary bg-primary text-content-primary;
+    }
+
+    /* Links in running text: accent, underlined (philcifone.com style).
+       Only bare links (no class) so nav, buttons and cards keep their look. */
+    a:not([class]) {
+        color: rgb(var(--accent));
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: .2em;
+    }
+    a:not([class]):hover {
+        text-decoration-thickness: 2px;
+    }
+
+    /* Focus: 2px accent outline everywhere */
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [tabindex]:focus-visible {
+        outline: 2px solid rgb(var(--accent));
+        outline-offset: 3px;
+    }
+
+    /* Form controls get the strong 1px border by default */
+    input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+    input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
+    select, textarea {
+        border-width: 1px;
+        border-color: rgb(var(--rule-strong));
+    }
+}
+
+@layer components {
+    /* Uppercase metadata labels (PUBLISHER, ISBN, form labels) */
+    .label {
+        @apply block font-primary uppercase text-muted;
+        letter-spacing: .08em;
+        border-bottom: 1px solid rgb(var(--rule));
+    }
+
+    /* Tabs (library views, profile): accent text + 2px accent underline when active */
+    .tab {
+        @apply flex-1 flex items-center justify-center whitespace-nowrap
+               px-2 py-3 text-sm sm:px-6 sm:py-4 sm:text-base
+               text-content-secondary transition-colors hover:bg-primary;
+        border-bottom: 2px solid transparent;
+    }
+    .tab + .tab {
+        border-left: 1px solid rgb(var(--rule));
+    }
+    .tab-active,
+    .tab-button.active {
+        color: rgb(var(--accent));
+        border-bottom-color: rgb(var(--accent));
+        font-weight: 700;
+    }
+
+    /* Sidebar links: active page gets accent text + 2px accent underline */
+    .nav-link {
+        border-bottom: 2px solid transparent;
+    }
+    .nav-link.nav-active {
+        color: rgb(var(--accent));
+        border-bottom-color: rgb(var(--accent));
+        font-weight: 700;
+    }
+
+    /* Long-form text (descriptions, reviews): keep monospace lines readable */
+    .measure {
+        max-width: 66ch;
+    }
+}
 
 @layer utilities {
     #description {
@@ -15,25 +185,5 @@
 
     #description.expanded + button svg {
         @apply rotate-180;
-    }
-}
-
-@font-face {
-    font-family: 'Outfit Variable';
-    src: url('/static/fonts/outfit-latin-wght-normal.woff2') format('woff2-variations');
-    font-weight: 100 900;
-}
-  
-@font-face {
-    font-family: 'Young Serif';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('/static/fonts/young-serif/young-serif-latin.woff2') format('woff2');
-}
-
-@layer base {
-    body {
-      @apply font-primary;
     }
 }

@@ -21,7 +21,7 @@
         </a>
 
         <!-- Reading Lists Section -->
-        <section class="bg-secondary rounded-lg p-8 mb-8">
+        <section class="bg-secondary rounded-lg p-8 mb-8 border border-rule-strong">
             <h1 class="text-2xl font-display text-content-primary mb-6">Reading Shelves</h1>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -40,7 +40,7 @@
                             {% if reading_lists %}
                                 {% for list in reading_lists %}
                                     {% if list['status'] == status %}
-                                        <span class="bg-accent text-white font-semibold px-3 py-1 rounded-full text-sm">
+                                        <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-none text-sm">
                                             {{ list['book_count'] }}
                                         </span>
                                     {% endif %}
@@ -73,7 +73,7 @@
         </section>
 
         <!-- Custom Collections Section -->
-        <section class="bg-secondary rounded-lg p-8">
+        <section class="bg-secondary rounded-lg p-8 border border-rule-strong">
             <h1 class="text-2xl font-display text-content-primary mb-6">Custom Shelves</h1>
             
             <!-- Create Collection Form -->
@@ -89,7 +89,7 @@
                               border border-primary-hover focus:border-accent
                               outline-none transition-colors">
                 <button type="submit" 
-                        class="bg-accent hover:bg-accent-hover text-content-primary px-6 py-2 
+                        class="bg-accent hover:bg-accent-hover text-on-accent px-6 py-2
                                rounded-lg transition-colors">
                     Create Collection
                 </button>
@@ -105,7 +105,7 @@
                                       transition-all duration-300">
                                 <div class="flex items-center justify-between mb-3">
                                     <span class="text-content-primary">{{ collection['name'] }}</span>
-                                    <span class="bg-accent text-white font-semibold px-3 py-1 rounded-full text-sm">
+                                    <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-none text-sm">
                                         {{ collection['book_count'] }}
                                     </span>
                                 </div>
