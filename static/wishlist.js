@@ -70,12 +70,10 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        console.log('Starting search for:', query);
 
         // Use wishlist search endpoint
         fetch(`/wishlist/search_books?q=${encodeURIComponent(query)}`)
             .then(response => {
-                console.log('Search response status:', response.status);
                 if (!response.ok) {
                     return response.json().then(err => {
                         throw new Error(err.error || `HTTP error! status: ${response.status}`);
@@ -104,7 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displaySearchResults(books) {
-        console.log('Displaying search results:', books);
         resultsContainer.innerHTML = '';
 
         if (!books || books.length === 0) {
@@ -117,7 +114,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         books.forEach(book => {
-            console.log('Processing book:', book);
             const template = document.getElementById('search-result-template');
             if (!template) {
                 console.error('Template not found!');
@@ -185,7 +181,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         isbn: isbn,
                         thumbnail: volumeInfo.imageLinks?.thumbnail || null
                     };
-                    console.log('Selected book data:', bookData);
                     selectBook(bookData, selectButton);
                 });
             }
@@ -251,17 +246,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function selectBook(bookData, button) {
         try {
-            console.log('Sending book data to backend:', bookData);
 
             // Check for duplicates first
             const duplicateCheck = await checkForDuplicates(bookData);
 
             if (duplicateCheck.has_duplicates) {
-                console.log('Found duplicates:', duplicateCheck.duplicates);
                 const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
 
                 if (!userConfirmed) {
-                    console.log('User cancelled due to duplicates');
                     return;
                 }
             }
@@ -292,7 +284,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const data = await response.json();
             if (data.success) {
-                console.log('Book added to wishlist:', data.book);
 
                 // Update button to show success
                 button.innerHTML = `
@@ -319,19 +310,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function addBookToWishlistGrid(book) {
-        console.log('Adding book to wishlist grid:', book);
 
         // Find the wishlist grid using ID selector (most reliable)
         let wishlistGrid = document.getElementById('wishlist-grid');
 
         if (!wishlistGrid) {
-            console.log('No grid found, creating new wishlist section');
             // If no grid exists, we need to create the entire wishlist section
             const mainContainer = document.querySelector('.max-w-7xl');
             const emptyMessage = document.querySelector('.text-center.py-16');
 
             if (emptyMessage) {
-                console.log('Removing empty message');
                 emptyMessage.remove();
             }
 
@@ -347,7 +335,6 @@ document.addEventListener('DOMContentLoaded', function() {
             mainContainer.appendChild(wishlistSection);
             wishlistGrid = document.getElementById('wishlist-grid');
         } else {
-            console.log('Grid found, updating count');
             // Update count in the heading
             const heading = document.querySelector('.mt-12.mb-8 h2');
             if (heading) {
@@ -402,18 +389,14 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        console.log('Inserting book card into grid');
         // Insert at the beginning of the grid
         wishlistGrid.insertBefore(bookCard, wishlistGrid.firstChild);
 
-        console.log('Scrolling to book card');
         // Scroll to the wishlist section
         bookCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function fillBookForm(bookDetails) {
-        console.log('Filling form with book details:', bookDetails);
-        console.log('Book details structure:', JSON.stringify(bookDetails, null, 2));
 
         // Show the form container
         const formContainer = document.getElementById('book-form-container');
@@ -436,7 +419,6 @@ document.addEventListener('DOMContentLoaded', function() {
         Object.entries(fields).forEach(([fieldId, value]) => {
             const element = document.getElementById(fieldId);
             if (element) {
-                console.log(`Setting ${fieldId} to:`, value);
                 element.value = value;
             } else {
                 console.warn(`Element not found for field: ${fieldId}`);
@@ -453,13 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const coverUrl = bookDetails.local_cover_url || bookDetails.cover_image_url;
         const thumbnailUrl = bookDetails.thumbnail_url || bookDetails.thumbnail;
 
-        console.log('Cover URL options:', {
-            local_cover_url: bookDetails.local_cover_url,
-            cover_image_url: bookDetails.cover_image_url,
-            thumbnail_url: bookDetails.thumbnail_url,
-            thumbnail: bookDetails.thumbnail,
-            chosen: coverUrl
-        });
 
         if (coverUrl) {
             // Construct the correct image path
@@ -478,7 +453,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 imagePath = coverUrl;
             }
 
-            console.log('Displaying cover image at:', imagePath);
 
             coverPreview.innerHTML = `
                 <img src="${imagePath}"
@@ -502,10 +476,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Store the relative path (uploads/...) for database
             coverUrlInput.value = coverUrl.replace('/static/', '');
-            console.log('Set hidden input value:', coverUrlInput.value);
         } else if (thumbnailUrl) {
             // Fallback to thumbnail if no local cover
-            console.log('No local cover, using thumbnail:', thumbnailUrl);
             coverPreview.innerHTML = `
                 <img src="${thumbnailUrl}"
                      alt="Book cover"
@@ -542,7 +514,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Barcode Scanner Functionality
     function startScanner() {
-        console.log('Initializing barcode scanner...');
 
         Quagga.init({
             inputStream: {
@@ -578,28 +549,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 isScanning = false;
                 return;
             }
-            console.log('Scanner started successfully');
             Quagga.start();
         });
 
         Quagga.onDetected(function(result) {
             if (isProcessingBarcode) {
-                console.log('Already processing a barcode, ignoring...');
                 return;
             }
 
             const code = result.codeResult.code;
-            console.log('Barcode detected:', code);
 
             if (/^\d{10}(\d{3})?$/.test(code)) {
                 isProcessingBarcode = true;
                 stopScanner();
-                console.log(`Valid ISBN detected: ${code}, fetching details...`);
                 fetchBookByISBN(code).finally(() => {
                     isProcessingBarcode = false;
                 });
             } else {
-                console.log('Invalid ISBN format:', code);
             }
         });
     }
@@ -631,11 +597,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (duplicateCheck.has_duplicates) {
-                    console.log('Found duplicates:', duplicateCheck.duplicates);
                     const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
 
                     if (!userConfirmed) {
-                        console.log('User cancelled due to duplicates');
                         interactive.innerHTML = `
                             <div class="flex items-center justify-center h-full">
                                 <div class="text-white text-center">
@@ -688,7 +652,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (scannerBtn) {
                 scannerBtn.textContent = 'Start Scanner';
             }
-            console.log('Scanner stopped');
         }
     }
 
@@ -758,11 +721,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
 
                     if (duplicateCheck.has_duplicates) {
-                        console.log('Found duplicates:', duplicateCheck.duplicates);
                         const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
 
                         if (!userConfirmed) {
-                            console.log('User cancelled due to duplicates');
                             isbnFetchBtn.innerHTML = originalButtonHTML;
                             isbnFetchBtn.disabled = false;
                             return;
@@ -813,7 +774,6 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsContainer.innerHTML = '';
         }
 
-        console.log('Form cleared and hidden');
     };
 
     // ============================================================================

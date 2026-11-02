@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for, flash, render_template, g, jsonify
+from flask import current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify
 from utils.database import get_db_connection
 from flask_login import login_required, current_user
 
@@ -92,15 +92,11 @@ def create_custom_collection():
 @collections_blueprint.route('/collections/<int:collection_id>/add', methods=['POST'])
 @login_required
 def add_to_custom_collection(collection_id):
-    print(f"Received add request for collection {collection_id}")
-    print("Form data:", request.form)
     
     book_id = request.form.get('book_id')
     if not book_id:
-        print("No book_id provided")
         return jsonify({'success': False, 'error': 'Missing book ID'}), 400
     
-    print(f"Adding book {book_id} to collection {collection_id}")
     conn = get_db_connection()
     try:
         # Verify the collection belongs to the user
@@ -109,36 +105,29 @@ def add_to_custom_collection(collection_id):
             WHERE collection_id = ? AND user_id = ?
         ''', (collection_id, current_user.id))
         if not cursor.fetchone():
-            print(f"Collection {collection_id} not found for user {current_user.id}")
             return jsonify({'success': False, 'error': 'Collection not found'}), 404
         
         # Add book to collection
-        print("Inserting into collection_books")
         conn.execute('''
             INSERT OR REPLACE INTO collection_books (collection_id, book_id)
             VALUES (?, ?)
         ''', (collection_id, book_id))
         conn.commit()
-        print("Successfully added book to collection")
         return jsonify({'success': True})
     except Exception as e:
-        print(f"Error adding book to collection: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.exception('Error adding book to collection')
+        return jsonify({'success': False, 'error': 'Could not update collection'}), 500
     finally:
         conn.close()
 
 @collections_blueprint.route('/collections/<int:collection_id>/remove', methods=['POST'])
 @login_required
 def remove_from_custom_collection(collection_id):
-    print(f"Received remove request for collection {collection_id}")
-    print("Form data:", request.form)
     
     book_id = request.form.get('book_id')
     if not book_id:
-        print("No book_id provided")
         return jsonify({'success': False, 'error': 'Missing book ID'}), 400
     
-    print(f"Removing book {book_id} from collection {collection_id}")
     conn = get_db_connection()
     try:
         # Verify the collection belongs to the user
@@ -147,21 +136,18 @@ def remove_from_custom_collection(collection_id):
             WHERE collection_id = ? AND user_id = ?
         ''', (collection_id, current_user.id))
         if not cursor.fetchone():
-            print(f"Collection {collection_id} not found for user {current_user.id}")
             return jsonify({'success': False, 'error': 'Collection not found'}), 404
         
         # Remove book from collection
-        print("Deleting from collection_books")
         conn.execute('''
             DELETE FROM collection_books 
             WHERE collection_id = ? AND book_id = ?
         ''', (collection_id, book_id))
         conn.commit()
-        print("Successfully removed book from collection")
         return jsonify({'success': True})
     except Exception as e:
-        print(f"Error removing book from collection: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.exception('Error removing book from collection')
+        return jsonify({'success': False, 'error': 'Could not update collection'}), 500
     finally:
         conn.close()
 
@@ -335,7 +321,8 @@ def manage_book_collections():
         
         conn.commit()
     except Exception as e:
-        flash(f'Error managing collection: {str(e)}', 'error')
+        current_app.logger.exception('Error managing collection')
+        flash('Error managing collection.', 'error')
     finally:
         conn.close()
 
@@ -362,7 +349,8 @@ def delete_collection(collection_id):
             flash('Collection not found', 'error')
             
     except Exception as e:
-        flash(f'Error deleting collection: {str(e)}', 'error')
+        current_app.logger.exception('Error deleting collection')
+        flash('Error deleting collection.', 'error')
     finally:
         conn.close()
     

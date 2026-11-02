@@ -63,11 +63,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     
-        console.log('Starting search for:', query);
     
         fetch(`/books/search_books?q=${encodeURIComponent(query)}`)
             .then(response => {
-                console.log('Search response status:', response.status);
                 if (!response.ok) {
                     return response.json().then(err => {
                         throw new Error(err.error || `HTTP error! status: ${response.status}`);
@@ -96,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displaySearchResults(books) {
-        console.log('Displaying search results:', books);
         resultsContainer.innerHTML = '';
     
         if (!books || books.length === 0) {
@@ -109,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     
         books.forEach(book => {
-            console.log('Processing book:', book);
             const template = document.getElementById('search-result-template');
             if (!template) {
                 console.error('Template not found!');
@@ -177,7 +173,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         isbn: isbn,
                         thumbnail: volumeInfo.imageLinks?.thumbnail || null
                     };
-                    console.log('Selected book data:', bookData);
                     selectBook(bookData, selectButton);
                 });
             }
@@ -243,17 +238,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function selectBook(bookData, button) {
         try {
-            console.log('Sending book data to backend:', bookData);
 
             // Check for duplicates first
             const duplicateCheck = await checkForDuplicates(bookData);
 
             if (duplicateCheck.has_duplicates) {
-                console.log('Found duplicates:', duplicateCheck.duplicates);
                 const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
 
                 if (!userConfirmed) {
-                    console.log('User cancelled due to duplicates');
                     return;
                 }
             }
@@ -272,7 +264,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const data = await response.json();
             if (data.success) {
-                console.log('Received book details from backend:', data.book_details);
                 fillBookForm(data.book_details);
                 button.textContent = "Book info fetched!";
             } else {
@@ -286,8 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function fillBookForm(bookDetails) {
-        console.log('Filling form with book details:', bookDetails);
-        console.log('Book details structure:', JSON.stringify(bookDetails, null, 2));
 
         const fields = {
             'title': bookDetails.title || '',
@@ -304,7 +293,6 @@ document.addEventListener('DOMContentLoaded', function() {
         Object.entries(fields).forEach(([fieldId, value]) => {
             const element = document.getElementById(fieldId);
             if (element) {
-                console.log(`Setting ${fieldId} to:`, value);
                 element.value = value;
             } else {
                 console.warn(`Element not found for field: ${fieldId}`);
@@ -321,13 +309,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const coverUrl = bookDetails.local_cover_url || bookDetails.cover_image_url;
         const thumbnailUrl = bookDetails.thumbnail_url || bookDetails.thumbnail;
 
-        console.log('Cover URL options:', {
-            local_cover_url: bookDetails.local_cover_url,
-            cover_image_url: bookDetails.cover_image_url,
-            thumbnail_url: bookDetails.thumbnail_url,
-            thumbnail: bookDetails.thumbnail,
-            chosen: coverUrl
-        });
 
         if (coverUrl) {
             // Construct the correct image path
@@ -346,7 +327,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 imagePath = coverUrl;
             }
 
-            console.log('Displaying cover image at:', imagePath);
 
             coverPreview.innerHTML = `
                 <img src="${imagePath}"
@@ -370,10 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Store the relative path (uploads/...) for database
             coverUrlInput.value = coverUrl.replace('/static/', '');
-            console.log('Set hidden input value:', coverUrlInput.value);
         } else if (thumbnailUrl) {
             // Fallback to thumbnail if no local cover
-            console.log('No local cover, using thumbnail:', thumbnailUrl);
             coverPreview.innerHTML = `
                 <img src="${thumbnailUrl}"
                      alt="Book cover"
@@ -406,7 +384,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Barcode Scanner Functionality
     function startScanner() {
-        console.log('Initializing barcode scanner...');
 
         Quagga.init({
             inputStream: {
@@ -442,19 +419,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 isScanning = false;
                 return;
             }
-            console.log('Scanner started successfully');
             Quagga.start();
         });
 
         Quagga.onDetected(function(result) {
             // Prevent multiple detections
             if (isProcessingBarcode) {
-                console.log('Already processing a barcode, ignoring...');
                 return;
             }
 
             const code = result.codeResult.code;
-            console.log('Barcode detected:', code);
 
             // Validate it looks like an ISBN (10 or 13 digits)
             if (/^\d{10}(\d{3})?$/.test(code)) {
@@ -465,7 +439,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 stopScanner();
 
                 // Show feedback to user (remove alert, just use visual feedback)
-                console.log(`Valid ISBN detected: ${code}, fetching details...`);
 
                 // Fetch book details using the code
                 fetchBookByISBN(code).finally(() => {
@@ -473,7 +446,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     isProcessingBarcode = false;
                 });
             } else {
-                console.log('Invalid ISBN format:', code);
                 // Continue scanning for valid ISBN
             }
         });
@@ -507,11 +479,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (duplicateCheck.has_duplicates) {
-                    console.log('Found duplicates:', duplicateCheck.duplicates);
                     const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
 
                     if (!userConfirmed) {
-                        console.log('User cancelled due to duplicates');
                         interactive.innerHTML = `
                             <div class="flex items-center justify-center h-full">
                                 <div class="text-white text-center">
@@ -565,7 +535,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             isScanning = false;
             scannerBtn.textContent = 'Start Scanner';
-            console.log('Scanner stopped');
         }
     }
 

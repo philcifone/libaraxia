@@ -148,7 +148,7 @@ def create_app():
     app.register_error_handler(401, unauthorized)
     
     # Configure Logging
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG if app.config.get('DEBUG') else logging.INFO)
     
     return app
 
