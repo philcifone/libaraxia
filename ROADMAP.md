@@ -78,14 +78,14 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 
 - [x] **Text on coloured buttons:** today it's `text-white` / `text-content-primary`. Once `white` follows the theme, that text would be dark-on-green in light mode and light-on-green in dark mode, and the dark-mode version fails contrast (about 2.2:1). Switch text on accent and red fills to `text-on-accent` (about 4.6:1 light, 5.3:1 dark). This is the one template-wide find-and-replace in this phase.
 - [x] Replace the 10 hard-coded greens (`#4f7d19` ×8, `#6a9839` ×2) and their `onmouseover` swaps, mostly in `user.html`, with `bg-accent hover:bg-accent-hover`. Otherwise they ignore the theme.
-- [ ] Check `no-cover.png` and the wishlist/feed cover placeholders on the light background.
+- [x] Check `no-cover.png` and the wishlist/feed cover placeholders on the light background. *(2026-11-02: the grid and detail page use a themed text placeholder, which is fine in both modes. The wishlist's white "image not available" tiles are saved placeholder images, see 3.2. `no-cover.png` itself is a watermarked Depositphotos stock photo; replacement added to 3.2.)*
 - [x] **No toggle for now.** The theme follows the system. A manual toggle would be a new sidebar element, so it waits for Phase 7. *(Superseded 2026-11-02: Profile → Appearance now has Style and Mode settings; see Phase 7.)*
 
 ### 0.3 Fonts: Courier Prime first
 - [x] Add **Courier Prime** 400, 700 and 400 italic to `static/fonts/` (OFL licence) with `@font-face` in `styles.css`. The italic is for the "by Author" lines. Young Serif is already there.
 - [x] **Make Courier Prime the default font** by pointing `font-primary` (today Outfit) at it. That switches nearly all text at once: sidebar, tabs, buttons, labels, inputs, card titles, author lines, metadata, counts, descriptions and reviews.
 - [x] **Keep Young Serif** (`font-display`, 40 uses) for the wordmark, page headings ("Activity Feed", "Reading Shelves") and the big title on the book detail page. That's the same split as the sites: serif headlines, typewriter for everything else.
-- [ ] **Judge the long text by eye.** Descriptions and reviews in Courier Prime are the sites' voice, but monospace paragraphs run wide. Cap them at about `66ch`. If they still feel heavy, switch just those two blocks to Young Serif.
+- [x] **Judge the long text by eye.** *(Phil, 2026-11-02: paragraphs read fine, no change.)* Descriptions and reviews in Courier Prime are the sites' voice, but monospace paragraphs run wide. Cap them at about `66ch`. If they still feel heavy, switch just those two blocks to Young Serif.
 - [x] **Weights:** Courier Prime only has 400 and 700, so `font-medium` (127 uses) renders as 400 and `font-semibold` (53) as 700. That's fine, but check that headings and card titles still read as intended. Courier is also wider than Outfit, so check that grid titles, tabs and buttons don't wrap or overflow. Drop a size step where needed.
 - [x] Remove **Outfit** and **Crimson Pro**: the `@font-face` rules, the files in `static/fonts/`, and the two `@fontsource-variable/*` npm deps. No template links them directly. The wordmark keeps its text and spacing, in Young Serif.
 
@@ -146,9 +146,9 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 4. `sqlite3 <prod DB path> < migrations/013_add_theme_preferences.sql` (find the path first, see below). Without it, pages still load with the default theme, but saving Profile → Appearance fails.
 5. Check `.env` (the items below), then restart gunicorn.
 
-- [ ] **Close self-registration:** `ALLOW_REGISTRATION=False`. Only Access-approved people can reach the site today, so this is defence in depth. 🟢
-- [ ] **Rate limiting behind the tunnel:** every request reaches gunicorn from `cloudflared` on localhost, so all users share **one IP** for rate limiting. That includes the global 50/hour default (see Phase 4), so one busy browsing session can 429 everyone. Set `TRUSTED_PROXY_COUNT=1` so the limiter uses the client IP that Cloudflare forwards in `X-Forwarded-For`, then confirm it in the logs. (`CF-Connecting-IP` is the other option, but it needs a small `key_func` change.)
-- [ ] **`SECRET_KEY`** is a real random value (`python3 -c "import secrets; print(secrets.token_hex(32))"`), not the `.env.example` placeholder. The app logs a warning if it is.
+- [x] **Close self-registration:** `ALLOW_REGISTRATION=False`. Only Access-approved people can reach the site today, so this is defence in depth. 🟢
+- [x] **Rate limiting behind the tunnel:** every request reaches gunicorn from `cloudflared` on localhost, so all users share **one IP** for rate limiting. That includes the global 50/hour default (see Phase 4), so one busy browsing session can 429 everyone. Set `TRUSTED_PROXY_COUNT=1` so the limiter uses the client IP that Cloudflare forwards in `X-Forwarded-For`, then confirm it in the logs. (`CF-Connecting-IP` is the other option, but it needs a small `key_func` change.)
+- [x] **`SECRET_KEY`** is a real random value (`python3 -c "import secrets; print(secrets.token_hex(32))"`), not the `.env.example` placeholder. The app logs a warning if it is.
 - [x] **Find out which DB file prod opens.** Run `ls -la` in the gunicorn working dir and grep the prod `.env` / systemd unit for `DATABASE_PATH`. Write the answer down here, because Phase 2.4 depends on it. → *prod DB path:* **`/home/phil/library-catalog/library.db`** (confirmed 2026-11-02). No `DATABASE_PATH` is set in `.env` or the systemd unit `library-catalog.service` (WorkingDirectory `/home/phil/library-catalog`, gunicorn on `:8000`, venv Python 3.12.3), so the `library.db` default applies. The `DATABASE_URI` line in prod's `.env` is read by nothing. `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` in that dir are leftovers; review them in Phase 2.5 before deleting. Optional: pin it explicitly with `Environment=DATABASE_PATH=...` via `systemctl edit library-catalog`.
 - [x] **Backups:** prod runs in a Linux container on Proxmox, with a daily ZFS backup job. Snapshots can be rolled back from the Proxmox UI or with `zfs rollback`, and SQLite restores cleanly from them. Optional: take a manual snapshot right before Phase 2's first migration, so the rollback point is minutes old rather than up to a day.
 
@@ -261,6 +261,7 @@ They show in the grid (see the library screenshot), count as "has a cover" so bu
 - [ ] **Detect at download:** in `download_and_save_cover` / `_fetch_image`, reject known placeholder hashes (keep a small set of SHA-256s in `book_utils`), and request Open Library covers with `?default=false` so a miss is a 404, not a placeholder.
 - [ ] **One-off cleanup** (script or admin button): for books whose cover file hashes to a placeholder, set `cover_image_url = NULL`, remove the files via `delete_image_file()`, then rerun the admin bulk cover fetch.
 - [ ] Use the existing `no-cover.png` / an empty state for books with no cover, not a white tile.
+- [ ] **Replace `static/no-cover.png`:** it's a stock photo with a visible Depositphotos watermark (not licensed for use). It's only the JS fallback in `add_book.js` / `wishlist.js` (and the admin orphaned-images page) when a cover fails to load. Swap it for the same themed "No Image Available" text box the grid uses (CSS, no image), or a small in-house SVG.
 
 ### 3.3 Wishlist books live in the `books` table 🆕 🟠
 A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260 of 415** rows. The library grid keeps them out with `AND NOT EXISTS (SELECT 1 FROM wishlist ...)`, so every query that forgets this clause leaks wishlist books (3.1 is one example).
@@ -357,7 +358,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 ### 7.3 Quick wins and accessibility
 - [ ] Replace `alert()` / `confirm()` with the toast and a small styled confirm modal.
-- [ ] Cover loading skeletons; consistent no-cover styling (pairs with 3.2).
+- [ ] Cover loading skeletons; consistent no-cover styling (pairs with 3.2). Today it's a "No Image Available" text box (grid, detail, friend library, wishlists, rate/review), a book icon (feed, profile), and omitted (collections thumbnails). Make one `_no_cover.html` partial and use it everywhere; Phil to pick text or icon.
 - [ ] Collections shelves as horizontal scroll-snap rows.
 - [ ] Book detail: larger framed cover, tidy metadata grid, reviews as cards, smoother "read more".
 - [ ] Empty states for an empty library, wishlist, feed and search.
