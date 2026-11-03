@@ -168,7 +168,7 @@ row = conn.execute('SELECT * FROM table WHERE id = ?', (id,)).fetchone()
 conn.execute('UPDATE ...', (...))
 conn.commit()          # explicit; roll back in an except that swallows a failed write
 ```
-Outside a request (manage.py, scripts) use `get_db_connection()` in try/finally and close it. Many older routes still open their own connection that way; that's correct, just verbose, and can move to `get_db()` when you're in the file anyway (ROADMAP → Loose ends). Never use `with get_db_connection() as conn:` (it commits but doesn't close).
+Outside a request (manage.py, scripts) use `get_db_connection()` in try/finally and close it. Many older routes still open their own connection that way; that's correct, just verbose, and move to `get_db()` in ROADMAP Phase 6. Never use `with get_db_connection() as conn:` (it commits but doesn't close).
 
 #### API Response Pattern
 ```python

@@ -36,7 +36,6 @@ Housekeeping that doesn't belong to a phase and shouldn't hold one open: mostly 
   - in `/home/phil/library-catalog`, delete `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` (pre-Phase-2 leftovers nothing opens), and the `library.db.backup-20261102-*` files `manage.py` made during the Phase 2 deploy;
   - ~~delete the manual ZFS snapshot taken before the Phase 2 deploy~~ (done 2026-11-02).
 - [ ] **Dev machine:** delete the stray DB files in the repo root (all git-ignored, none opened by anything; checked 2026-11-02, see 2.6): `libaraxia.db`, `instance/library.db`, `library.db.backup_20251018_191333`, `library.db.backup_20261102_pre013`.
-- [ ] **Code, opportunistically:** about 85 routes still open their own connection with `get_db_connection()` + try/finally. That's correct, just verbose. When you're in a file anyway, switch it to `get_db()`; the test suite (2.8) will catch mistakes.
 
 ---
 
@@ -379,8 +378,9 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 - [ ] **Named row access in templates:** replace `book[0]`, `book[8]` with names, so adding columns (VHS in Phase 8) can't break pages.
 - [ ] **Rebuild Tailwind** (`npm run build:css`). The committed `output.css` is from Nov 2025, so classes added since may silently not exist.
 - [ ] **Content-Security-Policy**, once the inline scripts are gone (no `'unsafe-inline'`).
+- [ ] **Switch routes to `get_db()`** while each page is being moved onto `base.html`. 83 call sites still open their own connection with `get_db_connection()` (admin 13, friends 11, user 11, collections 10, auth 6, base 5, models 4, email_utils 4, feed 4, books 3, read 3, tags 3, app 2, book_utils 1; counted 2026-11-02). It's tidiness, not a bug: about 75 already close in `finally`. Eight close without `finally` (`read.py`: `rate_review`, `manage_session`, `delete_reading_session`; `collections.get_book_collections`; `models.admin_required`; `app.py`: `load_user`, `root`), which only matters on an error and is cleaned up by Python anyway. Code outside a request (`manage.py`, scripts) keeps `get_db_connection()`. Run `pytest` after each file.
 
-**Done when:** every page extends `base.html`; no inline `<script>` over ~20 lines remains; CSP is on without `'unsafe-inline'`; smoke tests pass.
+**Done when:** every page extends `base.html`; no inline `<script>` over ~20 lines remains; CSP is on without `'unsafe-inline'`; routes use `get_db()`; tests pass.
 
 ---
 
