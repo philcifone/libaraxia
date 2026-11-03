@@ -86,10 +86,12 @@ Edit `.env`:
 ### 3. Create the database
 
 ```shell
-sqlite3 library.db < create_database.sql
+python3 manage.py migrate
 ```
 
-**Upgrading an existing install:** back up first (`sqlite3 library.db ".backup library.db.bak"`), then run only the migrations you haven't applied yet.
+This builds `library.db` from `create_database.sql`. Later, after `git pull`, the same command backs up the database and applies any new migrations. `python3 manage.py status` shows where you are. See [`migrations/README.md`](migrations/README.md).
+
+**Upgrading an install from before `manage.py` existed:** run `python3 manage.py migrate --baseline` once, then `python3 manage.py migrate`.
 
 ### 4. Run
 

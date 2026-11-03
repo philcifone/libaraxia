@@ -193,8 +193,9 @@ pip freeze > requirements.txt   # then hand-trim to direct deps if you prefer
   - **2026-11-02:** rewritten as a clean schema equal to old schema + 001–013 (checked column-by-column, FKs, indexes and CHECKs). It also creates `schema_migrations` with 001–013 marked applied, for the 2.2 runner. A fresh DB from it registers, logs in and adds a book. `docker-entrypoint.sh` already loads it. Prod differs only in leftovers no migration created: `users.theme_mode`/`accent_color`, the `discovered_books` table, and `collections.created_at/updated_at` with no default (2.6).
 
 ### 2.2 Migration runner 🟠
-- [ ] `python3 manage.py migrate` keeps a `schema_migrations(name, applied_at)` ledger and applies each unapplied file in `migrations/` inside a transaction. It **backs up the DB first**.
-- [ ] A `--baseline` flag marks 001–013 as applied on existing databases (prod is at 013 as of 2026-11-02).
+- [x] `python3 manage.py migrate` keeps a `schema_migrations(name, applied_at)` ledger and applies each unapplied file in `migrations/` inside a transaction. It **backs up the DB first**.
+- [x] A `--baseline` flag marks 001–013 as applied on existing databases (prod is at 013 as of 2026-11-02).
+  - **2026-11-02:** `manage.py` has `status`, `migrate [--dry-run] [--baseline] [-y]` and `backup`, plus `--db PATH`. An empty DB is built from `create_database.sql`. A DB with tables but no ledger is refused until `--baseline`, which first checks that `users.theme_style` exists. Each file runs in its own transaction with FKs off and is rolled back on error or new `foreign_key_check` violations. Backups use the online backup API, are integrity-checked and never overwrite each other. `docker-entrypoint.sh` now runs `manage.py migrate --yes`. Tested on scratch copies: fresh, prod copy, idempotent re-run, rollback, triggers.
 
 ### 2.3 Referential integrity 🆕 🟠
 SQLite only enforces foreign keys when each connection runs `PRAGMA foreign_keys = ON`, and `get_db_connection()` never does. So the schema's `ON DELETE CASCADE` rules have never fired, and deleting a book leaves its rows behind. `PRAGMA foreign_key_check` on `library.db` (2026-11-02) finds **10 orphaned rows**:

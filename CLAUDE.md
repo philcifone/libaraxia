@@ -20,11 +20,13 @@ cp .env.example .env              # then set SECRET_KEY and GOOGLE_BOOKS_API_KEY
 ```
 
 ### Database Management
-`create_database.sql` is the complete schema for a **new** database (every migration up to 013 folded in, plus a `schema_migrations` ledger marking them applied):
+Use `manage.py` (see `migrations/README.md`):
 ```bash
-sqlite3 library.db < create_database.sql
+python3 manage.py migrate             # new DB: built from create_database.sql; existing: backup + pending migrations
+python3 manage.py status              # applied / pending
+python3 manage.py --db /tmp/x.db migrate   # any other file
 ```
-Never run it against an existing database. See `migrations/README.md` for history. Always back up and check which DB file you're touching before running a migration.
+`create_database.sql` is the complete schema for a **new** database (001–013 folded in, plus the `schema_migrations` ledger). A database created before the runner needs `manage.py migrate --baseline` once; plain `migrate` refuses a DB with tables but no ledger. Migration files must not contain BEGIN/COMMIT; each runs in its own transaction with FKs off and is rolled back if it adds `foreign_key_check` violations. Always check which DB file you're touching.
 
 ### Running the Application
 ```bash
@@ -128,8 +130,8 @@ Two gotchas (both scheduled in ROADMAP.md):
 - `app.py` sets `UPLOAD_FOLDER = static/uploads` (relative to the working dir), overriding the paths in config.py.
 
 ### Database Migrations
-- Manual SQL files in `/migrations/`, run in numerical order. See `migrations/README.md`.
-- When adding a migration, also consider folding it into `create_database.sql` (see ROADMAP.md Phase 2.1).
+- SQL files in `/migrations/` (`NNN_name.sql`), applied in order by `manage.py migrate`, tracked in `schema_migrations`. See `migrations/README.md`.
+- When adding a migration, either fold it into `create_database.sql` (and add its name to the ledger INSERT there) or leave it for `migrate` to apply after the schema.
 
 ### Environment Variables
 Read via python-dotenv from `.env`:

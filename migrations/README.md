@@ -1,29 +1,26 @@
 # Database Migrations
 
-This directory contains SQL migration files for updating the database schema.
+SQL files in this directory, applied in name order by `manage.py`, which keeps a ledger in the `schema_migrations` table.
 
-## Running Migrations
-
-**Important:** Check where your database file is located first!
-
-Run migrations in order:
+**Check which database you're touching first.** `manage.py` uses `--db PATH`, or else the same path as the app (`DATABASE_PATH`, default `library.db` in the working directory), and prints the absolute path before it does anything.
 
 ```bash
-# If database is in project root (check with: ls library.db)
-sqlite3 library.db < migrations/001_add_added_by_column.sql
-sqlite3 library.db < migrations/002_add_avatar_url.sql
-sqlite3 library.db < migrations/003_add_wishlist_table.sql
-sqlite3 library.db < migrations/004_add_collection_timestamps.sql
-sqlite3 library.db < migrations/005_add_dismissed_activities.sql
-sqlite3 library.db < migrations/006_add_reading_sessions.sql
-sqlite3 library.db < migrations/007_add_activity_likes.sql
-sqlite3 library.db < migrations/008_add_notifications.sql
-sqlite3 library.db < migrations/009_add_friend_requests.sql
-sqlite3 library.db < migrations/010_add_email_verification.sql
-sqlite3 library.db < migrations/011_add_bio.sql
-sqlite3 library.db < migrations/012_add_library_members_and_privacy.sql
-sqlite3 library.db < migrations/013_add_theme_preferences.sql
+python3 manage.py status              # applied / pending
+python3 manage.py migrate --dry-run   # what would run
+python3 manage.py migrate             # back up, then apply pending (asks first)
 ```
+
+- **New database:** `manage.py migrate` on a missing or empty file builds it from `create_database.sql` (which already contains 001–013) and then applies anything newer.
+- **Existing database from before the runner** (created by hand, at 013): run `python3 manage.py migrate --baseline` **once**. It records 001–013 as applied without running them. Plain `migrate` refuses to touch a database that has tables but no ledger.
+- **Backups:** before changing anything, `migrate` writes `<db>.backup-YYYYMMDD-HHMMSS` next to the database using SQLite's online backup API, and checks it with `integrity_check`. `manage.py backup` does just that step.
+- **Transactions:** each file runs in one transaction together with its ledger row, so it applies completely or not at all. Don't put `BEGIN`/`COMMIT` in a migration file; the runner refuses those.
+- **Foreign keys** are off while a migration runs, so tables can be rebuilt (SQLite's 12-step `ALTER TABLE` procedure). The migration is rolled back if it leaves any `PRAGMA foreign_key_check` violations that weren't there before.
+
+## Writing a migration
+
+1. Add `migrations/NNN_short_name.sql` with the next number.
+2. Test it on a **copy**: `cp library.db /tmp/x.db && python3 manage.py --db /tmp/x.db migrate`.
+3. Either fold the change into `create_database.sql` and add the file name to its `schema_migrations` INSERT, or leave it out and let `migrate` apply it after the schema. Folding keeps fresh installs to one file. Check the result matches with a fresh DB: `manage.py --db /tmp/new.db migrate`.
 
 ## Migration History
 
