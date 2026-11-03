@@ -99,6 +99,9 @@ def create_app():
         logging.debug("Database connections successful")
         user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         conn.close()
+        if user and not user['is_active']:
+            # Deactivated: end any existing session / remember-me login too
+            return None
         if user:
             user_dict = dict(user)
             return User(

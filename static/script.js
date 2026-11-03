@@ -300,6 +300,12 @@ function updateActiveFilters() {
         activeFilters.push({ label: 'Rating', value: rating.options[rating.selectedIndex].text });
     }
 
+    // Check "include removed books"
+    const showRemoved = document.getElementById('show_removed');
+    if (showRemoved && showRemoved.checked) {
+        activeFilters.push({ label: 'Showing', value: 'removed books' });
+    }
+
     // Check tags
     const checkedTags = document.querySelectorAll('input[name="tags[]"]:checked');
     checkedTags.forEach(tag => {
@@ -329,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const arrow = document.getElementById('filterArrow');
 
     // Check if there are any filter parameters (excluding sort, page, csrf)
-    const filterParams = ['genre', 'read_status', 'rating', 'tags[]'];
+    const filterParams = ['genre', 'read_status', 'rating', 'tags[]', 'show_removed'];
     const hasFilters = filterParams.some(param => urlParams.has(param));
 
     // Show filters if any filter parameters are present
@@ -863,6 +869,10 @@ class InfiniteScroll {
         const currentView = localStorage.getItem('libraryView') || 'grid';
         const container = document.getElementById('book-container');
         const isListView = container && container.className.includes('flex-col');
+        // Deaccessioned books only appear with "Include removed books" on
+        const removedBadge = book.removed
+            ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>'
+            : '';
 
         if (isListView || currentView === 'list') {
             // List view card
@@ -878,7 +888,8 @@ class InfiniteScroll {
                 <div class="book-item">
                     <a href="/books/book/${book.id}"
                        class="book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4 border border-card">
-                        <div class="book-cover flex-shrink-0 w-24 h-32 overflow-hidden rounded">
+                        <div class="book-cover relative flex-shrink-0 w-24 h-32 overflow-hidden rounded">
+                            ${removedBadge}
                             ${coverImage}
                         </div>
                         <div class="book-info flex-1 flex flex-col justify-center">
@@ -906,7 +917,8 @@ class InfiniteScroll {
                 <div class="book-item group">
                     <a href="/books/book/${book.id}"
                        class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
-                        <div class="book-cover w-full h-64 overflow-hidden bg-primary">
+                        <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
+                            ${removedBadge}
                             ${coverImage}
                         </div>
                         <div class="book-info p-3 sm:p-4">
@@ -1092,3 +1104,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+// ---- Account deactivate/delete dialog (templates/_account_removal.html) ----
+// Delegated so it also works for the fragment the admin page loads into a <dialog>.
+document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('account-removal-choice')) return;
+    const form = e.target.closest('form.account-removal');
+    const del = e.target.value === 'delete' && e.target.checked;
+    form.querySelector('.account-removal-delete').classList.toggle('hidden', !del);
+    form.querySelector('.account-removal-submit').textContent = del ? 'Delete permanently' : 'Deactivate';
+});
+document.addEventListener('click', function (e) {
+    if (!e.target.closest || !e.target.closest('.account-removal-cancel')) return;
+    const dialog = e.target.closest('dialog');
+    if (dialog) dialog.close();
+});
+document.addEventListener('submit', function (e) {
+    const form = e.target;
+    if (!form.classList || !form.classList.contains('account-removal')) return;
+    const choice = form.querySelector('input[name="action"]:checked');
+    if (!choice || choice.value !== 'delete') return;
+    const booksTo = form.querySelector('select[name="books_to"]');
+    if (booksTo && !booksTo.value) {
+        e.preventDefault();
+        alert('Choose who gets the books first.');
+        booksTo.focus();
+        return;
+    }
+    if (!confirm('Delete this account permanently? This cannot be undone.')) e.preventDefault();
+});
+
+// Open the dialog with server-rendered content from `url` (admin page).
+async function openAccountRemoval(url) {
+    const dialog = document.getElementById('account-removal-dialog');
+    const body = document.getElementById('account-removal-body');
+    body.textContent = 'Loading…';
+    dialog.showModal();
+    try {
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!res.ok) throw new Error(res.status);
+        body.innerHTML = await res.text();  // trusted: our own template, values autoescaped by Jinja
+    } catch (err) {
+        body.textContent = 'Could not load this account. Reload the page and try again.';
+    }
+}

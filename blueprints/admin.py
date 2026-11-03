@@ -4,8 +4,9 @@ from werkzeug.utils import secure_filename
 import bcrypt
 import os
 from datetime import datetime
-from utils.database import get_db_connection
-from models import admin_required, is_valid_username, USERNAME_RULES, other_users_with_book_data
+from utils.database import get_db_connection, get_db
+from models import admin_required, is_valid_username, USERNAME_RULES
+from utils.accounts import removal_context, deactivate_account, delete_account, AccountError
 from PIL import Image
 
 admin_blueprint = Blueprint('admin', __name__, template_folder='templates')
@@ -41,7 +42,8 @@ def settings():
             'total_users': conn.execute('SELECT COUNT(*) FROM users').fetchone()[0],
             'active_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_active = 1').fetchone()[0],
             'total_books': conn.execute('SELECT COUNT(*) FROM books').fetchone()[0],
-            'admin_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0]
+            'admin_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0],
+            'unowned_books': conn.execute('SELECT COUNT(*) FROM books WHERE added_by IS NULL').fetchone()[0],
         }
 
         # Get library membership info
@@ -177,99 +179,66 @@ def toggle_user():
     return redirect(url_for('admin.settings'))
 
 
+@admin_blueprint.route("/users/<int:user_id>/removal")
+@login_required
+@admin_required
+def user_removal_dialog(user_id):
+    """Dialog content (HTML fragment) for deactivating/deleting a user."""
+    if user_id == current_user.id:
+        return '<p class="text-content-primary">To leave, use Profile → Account on your own profile.</p>' \
+               '<div class="flex justify-end pt-4"><button type="button" class="account-removal-cancel px-4 py-2 border border-card">Close</button></div>'
+    ctx = removal_context(get_db(), user_id, viewer_is_admin=True)
+    if not ctx:
+        return '<p class="text-content-primary">User not found.</p>', 404
+    return render_template('_account_removal.html', ctx=ctx, is_self=False,
+                           action_url=url_for('admin.delete_user'),
+                           export_url=url_for('user.export_data', user_id=user_id))
+
+
 @admin_blueprint.route("/delete_user", methods=["POST"])
 @login_required
 @admin_required
 def delete_user():
-    """Delete a user account"""
+    """Deactivate or permanently delete another user (see utils/accounts.py)."""
     user_id = request.form.get('user_id', type=int)
+    action = request.form.get('action', 'delete')
 
-    # Prevent admin from deleting themselves
     if user_id == current_user.id:
-        flash("You cannot delete your own account", "error")
+        flash("Use Profile → Account to deactivate or delete your own account.", "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
+    ctx = removal_context(conn, user_id, viewer_is_admin=True)
+    if not ctx:
+        flash("User not found", "error")
+        return redirect(url_for('admin.settings'))
+    if ctx['last_admin']:
+        flash("Cannot remove the last admin user", "error")
+        return redirect(url_for('admin.settings'))
+
+    username = ctx['user']['username']
+    if action == 'deactivate':
+        deactivate_account(conn, user_id)
+        flash(f"'{username}' deactivated. Everything is kept; reactivate them any time.", "success")
+        current_app.logger.warning(f"Admin {current_user.username} deactivated user: {username}")
+        return redirect(url_for('admin.settings'))
+
     try:
-        user = conn.execute('SELECT username, is_admin, avatar_url FROM users WHERE id = ?', (user_id,)).fetchone()
+        username, owned, new_owner, files = delete_account(conn, user_id, request.form.get('books_to'))
+    except AccountError as e:
+        conn.rollback()
+        flash(str(e), "error")
+        return redirect(url_for('admin.settings'))
 
-        if not user:
-            flash("User not found", "error")
-            return redirect(url_for('admin.settings'))
-
-        # Prevent deleting the last admin
-        if user['is_admin']:
-            admin_count = conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0]
-            if admin_count <= 1:
-                flash("Cannot delete the last admin user", "error")
-                return redirect(url_for('admin.settings'))
-
-        username = user['username']
-
-        # Books are records other people's reviews hang on, so they are never
-        # deleted with their owner: they go to another user or become unowned.
-        # Wishlist entries (rows in books with a wishlist row of this user) are
-        # not owned copies; they're deleted unless someone else has data on them.
-        wishlist_books = conn.execute('''
-            SELECT b.id, b.cover_image_url FROM books b
-            WHERE b.added_by = ?
-              AND EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?)
-        ''', (user_id, user_id)).fetchall()
-        wishlist_ids = {b['id'] for b in wishlist_books}
-        owned_count = conn.execute('SELECT COUNT(*) FROM books WHERE added_by = ?',
-                                   (user_id,)).fetchone()[0] - len(wishlist_ids)
-
-        books_to = request.form.get('books_to', '')
-        new_owner_id = None
-        if owned_count:
-            if books_to == 'none':
-                new_owner_id = None
-            elif books_to.isdigit() and int(books_to) != user_id and conn.execute(
-                    'SELECT 1 FROM users WHERE id = ?', (int(books_to),)).fetchone():
-                new_owner_id = int(books_to)
-            else:
-                flash(f"'{username}' owns {owned_count} book(s). Choose who gets them "
-                      "(another user, or no owner) before deleting.", "error")
-                return redirect(url_for('admin.settings'))
-
-        covers_to_delete = []
-        for b in wishlist_books:
-            if other_users_with_book_data(conn, b['id'], user_id):
-                conn.execute('UPDATE books SET added_by = NULL WHERE id = ?', (b['id'],))
-            else:
-                conn.execute('DELETE FROM books WHERE id = ?', (b['id'],))
-                if b['cover_image_url']:
-                    covers_to_delete.append(b['cover_image_url'])
-
-        conn.execute('UPDATE books SET added_by = ? WHERE added_by = ?', (new_owner_id, user_id))
-
-        # Everything else of theirs (reviews, statuses, sessions, tags, shelves,
-        # wishlist, friendships, requests, notifications, likes, household
-        # membership, tokens) goes with the account via ON DELETE CASCADE.
-        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
-        conn.commit()
-
-        from utils.image_utils import delete_image_file
-        if user['avatar_url']:
-            delete_image_file(user['avatar_url'])
-        for path in covers_to_delete:
-            delete_image_file(path)
-
-        if owned_count:
-            dest = f"user #{new_owner_id}" if new_owner_id else "no owner"
-            flash(f"User '{username}' deleted; their {owned_count} book(s) went to {dest}", "success")
-        else:
-            flash(f"User '{username}' and all associated data deleted", "success")
-        current_app.logger.warning(
-            f"Admin {current_user.username} deleted user: {username} "
-            f"(books -> {new_owner_id if owned_count else 'n/a'})")
-
-    except Exception as e:
-        current_app.logger.error(f"Error deleting user: {str(e)}")
-        flash("Error deleting user", "error")
-    finally:
-        conn.close()
-
+    from utils.image_utils import delete_image_file
+    for path in files:
+        delete_image_file(path)
+    if owned:
+        flash(f"User '{username}' deleted. Their {owned} book(s) went to {new_owner or 'no owner'}.", "success")
+    else:
+        flash(f"User '{username}' and their data deleted.", "success")
+    current_app.logger.warning(
+        f"Admin {current_user.username} deleted user: {username} (books -> {new_owner or 'none'})")
     return redirect(url_for('admin.settings'))
 
 
@@ -578,6 +547,47 @@ def remove_user_avatar():
     except Exception as e:
         current_app.logger.error(f"Error removing avatar: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+
+
+@admin_blueprint.route("/unowned_books")
+@login_required
+@admin_required
+def unowned_books():
+    """Books with no owner (their owner's account was deleted with "no owner",
+    or they predate ownership). They show in no library until reassigned."""
+    conn = get_db()
+    books = conn.execute('''
+        SELECT b.id, b.title, b.author, b.cover_image_url, b.removed_at,
+               (SELECT COUNT(*) FROM read_data r WHERE r.book_id = b.id
+                  AND (r.rating IS NOT NULL OR r.comment IS NOT NULL)) AS reviews,
+               EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id) AS wishlisted
+        FROM books b WHERE b.added_by IS NULL
+        ORDER BY LOWER(b.title)
+    ''').fetchall()
+    users = conn.execute('SELECT id, username FROM users ORDER BY username').fetchall()
+    return render_template('admin/unowned_books.html', books=books, users=users)
+
+
+@admin_blueprint.route("/reassign_books", methods=["POST"])
+@login_required
+@admin_required
+def reassign_books():
+    """Give unowned books to a user: one (book_id) or all of them (all=1)."""
+    conn = get_db()
+    new_owner = conn.execute('SELECT id, username FROM users WHERE id = ?',
+                             (request.form.get('new_owner_id', type=int),)).fetchone()
+    if not new_owner:
+        flash("Choose a user to give the books to.", "error")
+        return redirect(url_for('admin.unowned_books'))
+    if request.form.get('all') == '1':
+        n = conn.execute('UPDATE books SET added_by = ? WHERE added_by IS NULL', (new_owner['id'],)).rowcount
+    else:
+        n = conn.execute('UPDATE books SET added_by = ? WHERE id = ? AND added_by IS NULL',
+                         (new_owner['id'], request.form.get('book_id', type=int))).rowcount
+    conn.commit()
+    flash(f"{n} book(s) given to {new_owner['username']}.", "success" if n else "error")
+    current_app.logger.info(f"Admin {current_user.username} reassigned {n} unowned book(s) to {new_owner['username']}")
+    return redirect(url_for('admin.unowned_books'))
 
 
 @admin_blueprint.route("/orphaned_images")

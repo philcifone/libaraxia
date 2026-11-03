@@ -833,6 +833,32 @@
                 Import from Goodreads
             </a>
         </div>
+
+        <!-- Account: export everything, deactivate or delete -->
+        <section id="account" class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+            <h2 class="text-2xl font-display text-content-primary mb-4">Account</h2>
+            <div class="flex flex-wrap gap-4 items-center justify-between">
+                <p class="text-sm text-content-secondary max-w-xl">
+                    Download everything of yours (library, reviews, reading sessions, shelves, wishlist) as CSV files,
+                    or deactivate or delete your account.
+                </p>
+                <div class="flex flex-wrap gap-3">
+                    <a href="{{ url_for('user.export_data') }}"
+                       class="inline-flex items-center gap-2 px-4 py-2 border border-card bg-primary text-content-primary hover:bg-primary-hover">
+                        Export My Data (ZIP)
+                    </a>
+                    <button type="button" onclick="document.getElementById('account-removal-dialog').showModal()"
+                            class="px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400">
+                        Deactivate or Delete Account…
+                    </button>
+                </div>
+            </div>
+        </section>
+        <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 bg-secondary text-content-primary border border-card backdrop:bg-black/60">
+            {% with ctx=account_removal, is_self=True, action_url=url_for('user.delete_account_self'), export_url=url_for('user.export_data') %}
+            {% include '_account_removal.html' %}
+            {% endwith %}
+        </dialog>
         {% endif %}
     </div>
 

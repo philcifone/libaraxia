@@ -1,12 +1,15 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response, jsonify, current_app
-from flask_login import current_user, login_required
-from utils.database import get_db_connection
+from flask_login import current_user, login_required, logout_user
+from utils.database import get_db_connection, get_db
+from utils.accounts import removal_context, deactivate_account, delete_account, AccountError
+from utils.export import library_csv, data_zip
 from utils.rate_limiting import limiter
 from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES
 from werkzeug.utils import secure_filename
 import bcrypt
 import csv
 import os
+from datetime import datetime
 from io import StringIO
 from PIL import Image
 
@@ -295,7 +298,9 @@ def profile(username):
             reading_lists=reading_lists,
             reading_list_covers=reading_list_covers,
             in_shared_library=in_shared_library,
-            recent_reviews=recent_reviews
+            recent_reviews=recent_reviews,
+            account_removal=(removal_context(conn, current_user.id, viewer_is_admin=False)
+                             if is_own_profile else None),
         )
     finally:
         conn.close()
@@ -674,88 +679,87 @@ def calculate_library_stats(conn):
        stats['longest_pages'] = "{:,}".format(int(stats['longest_pages'] or 0))
    return stats
 
+def _export_target():
+    """Whose data to export: yourself, or (admins only) ?user_id=N."""
+    target_id = request.args.get('user_id', type=int) or current_user.id
+    if target_id != current_user.id and not current_user.is_admin:
+        return None
+    return get_db().execute('SELECT id, username FROM users WHERE id = ?', (target_id,)).fetchone()
+
+
 @user_blueprint.route('/export_library')
 @login_required
 def export_library():
-    conn = get_db_connection()
+    """CSV of the books you own or have your own data on (status, review, sessions, tags)."""
+    target = _export_target()
+    if not target:
+        return redirect(url_for('user.export_library'))
+    output = make_response(library_csv(get_db(), target['id']))
+    output.headers["Content-Disposition"] = f"attachment; filename=library_export_{target['username']}.csv"
+    output.headers["Content-type"] = "text/csv; charset=utf-8"
+    return output
+
+
+@user_blueprint.route('/export_data')
+@login_required
+def export_data():
+    """ZIP of CSVs with everything of yours: library, reviews, sessions, shelves, wishlist, profile."""
+    target = _export_target()
+    if not target:
+        return redirect(url_for('user.export_data'))
+    output = make_response(data_zip(get_db(), target['id']))
+    output.headers["Content-Disposition"] = f"attachment; filename=libaraxia_{target['username']}_{datetime.now():%Y%m%d}.zip"
+    output.headers["Content-type"] = "application/zip"
+    return output
+
+
+@user_blueprint.route('/delete_account', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def delete_account_self():
+    """Deactivate or delete your own account (see utils/accounts.py)."""
+    conn = get_db()
+    ctx = removal_context(conn, current_user.id, viewer_is_admin=False)
+    back = redirect(url_for('user.profile', username=current_user.username))
+    if ctx['last_admin']:
+        flash("You're the only admin. Make someone else an admin first.", "error")
+        return back
+
+    username = current_user.username
+    if request.form.get('action') == 'deactivate':
+        deactivate_account(conn, current_user.id)
+        logout_user()
+        current_app.logger.warning(f"User {username} deactivated their own account")
+        flash("Your account is deactivated. Ask an admin if you want it back.", "success")
+        return redirect(url_for('auth.login'))
+
+    row = conn.execute('SELECT password FROM users WHERE id = ?', (current_user.id,)).fetchone()
+    password = request.form.get('password', '')
+    if not password or not bcrypt.checkpw(password.encode('utf-8'), row['password'].encode('utf-8')):
+        flash("Password is incorrect; nothing was deleted.", "error")
+        return back
+
+    books_to = request.form.get('books_to')
+    # Users can only hand books to their household (or nobody); admins choose anyone in the admin page.
+    if books_to not in (None, '', 'none') and not (
+            books_to.isdigit() and any(m['id'] == int(books_to) for m in ctx['household'])):
+        flash("You can only give your books to a household member, or to no one.", "error")
+        return back
     try:
-        # Get all books with their statuses and ratings for the current user
-        query = '''
-            SELECT
-                b.id as book_id,
-                b.title,
-                b.subtitle,
-                b.author,
-                b.publisher,
-                b.publish_year,
-                b.isbn,
-                b.page_count,
-                b.genre,
-                c.status as reading_status,
-                c.created_at as date_added_to_collection,
-                r.rating,
-                (SELECT MIN(date_started) FROM reading_sessions
-                 WHERE book_id = b.id AND user_id = ?) as date_started,
-                (SELECT MAX(date_completed) FROM reading_sessions
-                 WHERE book_id = b.id AND user_id = ?) as date_completed,
-                (SELECT COUNT(*) FROM reading_sessions
-                 WHERE book_id = b.id AND user_id = ? AND date_completed IS NOT NULL) as reread_count,
-                r.comment as review,
-                GROUP_CONCAT(DISTINCT t.tag_name) as tags,
-                GROUP_CONCAT(DISTINCT uc.name) as custom_collections
-            FROM books b
-            LEFT JOIN collections c ON b.id = c.book_id AND c.user_id = ?
-            LEFT JOIN read_data r ON b.id = r.book_id AND r.user_id = ?
-            LEFT JOIN book_tags t ON b.id = t.book_id AND t.user_id = ?
-            LEFT JOIN collection_books cb ON b.id = cb.book_id
-            LEFT JOIN user_collections uc ON cb.collection_id = uc.collection_id AND uc.user_id = ?
-            GROUP BY b.id
-            ORDER BY b.title
-        '''
-        books = conn.execute(query, (current_user.id, current_user.id, current_user.id,
-                                     current_user.id, current_user.id, current_user.id,
-                                     current_user.id)).fetchall()
+        username, owned, new_owner, files = delete_account(conn, current_user.id, books_to)
+    except AccountError as e:
+        conn.rollback()
+        flash(str(e), "error")
+        return back
 
-        # Create CSV in memory
-        si = StringIO()
-        writer = csv.writer(si)
+    logout_user()
+    from utils.image_utils import delete_image_file
+    for path in files:
+        delete_image_file(path)
+    current_app.logger.warning(f"User {username} deleted their own account (books -> {new_owner or 'none'})")
+    flash("Your account has been deleted." + (f" Your books went to {new_owner}." if owned and new_owner else ""), "success")
+    return redirect(url_for('auth.login'))
 
-        # Write headers
-        writer.writerow(['Book ID', 'Title', 'Subtitle', 'Author', 'Publisher', 'Year', 'ISBN', 'Pages',
-                        'Genre', 'Reading Status', 'Date Added to Collection', 'Date Started',
-                        'Date Completed', 'Reread Count', 'Rating', 'Review', 'Tags', 'Custom Collections'])
-
-        # Write data
-        for book in books:
-            writer.writerow([
-                book['book_id'],
-                book['title'],
-                book['subtitle'],
-                book['author'],
-                book['publisher'],
-                book['publish_year'],
-                book['isbn'],
-                book['page_count'],
-                book['genre'],
-                book['reading_status'] or 'Untracked',
-                book['date_added_to_collection'],
-                book['date_started'],
-                book['date_completed'],
-                book['reread_count'] or 0,
-                book['rating'],
-                book['review'],
-                book['tags'],
-                book['custom_collections']
-            ])
-
-        # Create the response
-        output = make_response(si.getvalue())
-        output.headers["Content-Disposition"] = f"attachment; filename=library_export_{current_user.username}.csv"
-        output.headers["Content-type"] = "text/csv"
-        return output
-
-    finally:
-        conn.close()
 
 @user_blueprint.route('/import_goodreads_page')
 @login_required

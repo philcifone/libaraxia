@@ -1118,6 +1118,18 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   max-width: 66ch;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .pointer-events-none {
   pointer-events: none;
 }
@@ -1162,6 +1174,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   left: 0px;
 }
 
+.left-2 {
+  left: 0.5rem;
+}
+
 .right-0 {
   right: 0px;
 }
@@ -1188,6 +1204,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .top-16 {
   top: 4rem;
+}
+
+.top-2 {
+  top: 0.5rem;
 }
 
 .top-4 {
@@ -1578,12 +1598,20 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   min-width: 0px;
 }
 
+.min-w-\[12rem\] {
+  min-width: 12rem;
+}
+
 .max-w-2xl {
   max-width: 42rem;
 }
 
 .max-w-4xl {
   max-width: 56rem;
+}
+
+.max-w-5xl {
+  max-width: 64rem;
 }
 
 .max-w-6xl {
@@ -1606,8 +1634,16 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   max-width: 300px;
 }
 
+.max-w-lg {
+  max-width: 32rem;
+}
+
 .max-w-md {
   max-width: 28rem;
+}
+
+.max-w-xl {
+  max-width: 36rem;
 }
 
 .max-w-xs {
@@ -1844,6 +1880,12 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   --tw-space-y-reverse: 0;
   margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
   margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+}
+
+.space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(1.25rem * var(--tw-space-y-reverse));
 }
 
 .space-y-6 > :not([hidden]) ~ :not([hidden]) {
@@ -2315,6 +2357,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .pl-4 {
   padding-left: 1rem;
+}
+
+.pl-6 {
+  padding-left: 1.5rem;
 }
 
 .pr-10 {
@@ -2812,6 +2858,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .file\:text-white::file-selector-button {
   --tw-text-opacity: 1;
   color: rgb(var(--ink) / var(--tw-text-opacity, 1));
+}
+
+.backdrop\:bg-black\/60::backdrop {
+  background-color: rgb(var(--black) / 0.6);
 }
 
 .first\:ml-0:first-child {

@@ -114,6 +114,14 @@
                         </div>
                     </div>
 
+                    {% if book['removed_at'] %}
+                    <!-- Deaccessioned -->
+                    <div class="bg-primary rounded-lg p-4 border border-card text-sm text-content-primary">
+                        <strong>Removed from the library</strong> on {{ book['removed_at'][:10] }}{% if book['removed_note'] %} ({{ book['removed_note'] }}){% endif %}.
+                        <span class="text-content-secondary">Reviews and reading history are kept.</span>
+                    </div>
+                    {% endif %}
+
                     <!-- Wishlist Section -->
                     {% if wishlist_owner and wishlist_owner_entry %}
                     <!-- Viewing someone else's wishlist -->
@@ -225,8 +233,8 @@
                     {% elif collection_status == 'untracked' %}
                     {% endif %}
 
-                    <!-- Action Buttons (only show if user is admin or added the book) -->
-                    {% if current_user.is_admin or book['added_by'] == current_user.id %}
+                    <!-- Owner / admin actions -->
+                    {% if can_manage %}
                     <div class="grid grid-cols-2 gap-4">
                         <a href="/books/edit/{{ book[0] }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-on-accent text-sm rounded-lg hover:bg-accent-hover transition-colors">
@@ -235,20 +243,64 @@
                             </svg>
                             Edit Book
                         </a>
-                        <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST" class="flex"
-                              onsubmit="return confirm('This will remove the book from the database. Are you sure?')">
+                        {% if book['removed_at'] %}
+                        <form action="{{ url_for('books.restore_book', id=book['id']) }}" method="POST" class="flex">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit"
-                                    class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-on-accent text-sm rounded-lg hover:bg-red-700 transition-colors">
-                                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
-                                </svg>
-                                Delete Book
+                                    class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary border border-card text-sm rounded-lg hover:bg-primary-hover transition-colors">
+                                Put Back in Library
                             </button>
                         </form>
+                        {% elif not in_wishlist %}
+                        <button type="button" onclick="document.getElementById('remove-book-panel').classList.toggle('hidden')"
+                                class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary border border-card text-sm rounded-lg hover:bg-primary-hover transition-colors">
+                            Remove from Library
+                        </button>
+                        {% endif %}
                     </div>
 
-                    <!-- Transfer Book (only if in library group with other members) -->
+                    {% if not book['removed_at'] and not in_wishlist %}
+                    <form id="remove-book-panel" action="{{ url_for('books.remove_book', id=book['id']) }}" method="POST"
+                          class="hidden mt-4 p-4 bg-primary border border-card rounded-lg space-y-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <p class="text-sm text-content-primary">The book leaves your library (given away, sold, lost). It stops showing on your shelves, but its record stays, with everyone's reviews, ratings and reading history. You can put it back any time.</p>
+                        <label for="removed_note" class="block text-xs text-content-secondary">Where did it go? (optional)</label>
+                        <input type="text" name="removed_note" id="removed_note" maxlength="200" placeholder="e.g. Little Free Library"
+                               class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                        <button type="submit" class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors">
+                            Remove from Library
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Permanent delete: for mistakes (duplicates, bad scans) -->
+                    <details class="mt-4 pt-4 border-t border-gray-700 group">
+                        <summary class="cursor-pointer text-sm text-content-secondary hover:text-accent transition-colors">Delete permanently…</summary>
+                        <div class="mt-3 space-y-3">
+                            {% if others_with_data %}
+                            <p class="text-sm text-content-secondary">
+                                Can't delete: {{ others_with_data|join(', ') }} {{ 'has' if others_with_data|length == 1 else 'have' }}
+                                reviews or reading history on this book, and deleting would erase them.
+                                {% if not in_wishlist %}Use <em>Remove from Library</em> instead.{% endif %}
+                            </p>
+                            {% else %}
+                            <p class="text-sm text-content-secondary">For entries added by mistake. This erases the book and your own status, review and history for it. If the book just left the house, use <em>Remove from Library</em> instead.</p>
+                            <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST"
+                                  onsubmit='return confirm({{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.")|tojson }})'>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit"
+                                        class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-on-accent text-sm rounded-lg hover:bg-red-700 transition-colors">
+                                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
+                                    </svg>
+                                    Delete Permanently
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </details>
+
+                    <!-- Transfer Book (household members; admins: anyone) -->
                     {% if library_members and library_members|length > 1 %}
                     <div class="mt-4 pt-4 border-t border-gray-700">
                         <details class="group">
@@ -264,13 +316,7 @@
                                 <!-- Show current owner -->
                                 <div class="text-xs">
                                     <span class="text-content-secondary">Current Owner: </span>
-                                    <span class="text-white font-medium">
-                                        {% for member in library_members %}
-                                            {% if member.id == book['added_by'] %}
-                                                {{ member.username }}
-                                            {% endif %}
-                                        {% endfor %}
-                                    </span>
+                                    <span class="text-white font-medium">{{ owner_username or 'No owner' }}</span>
                                 </div>
 
                                 <p class="text-xs text-content-secondary">Transfer this book to another member of your library group:</p>

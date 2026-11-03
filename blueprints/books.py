@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
+from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify, abort
 from flask_login import login_required, current_user
 from typing import Optional, Dict, Any
 from utils.database import get_db_connection, get_db
@@ -441,6 +441,8 @@ def show_book(id):
     try:
         # Get book details
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
+        if not book:
+            abort(404)
 
         # Check if ANY user has this book on their wishlist
         # First, check if there's a specific wishlist_owner parameter from URL
@@ -539,10 +541,17 @@ def show_book(id):
 
         collection_status = collection_status['status'] if collection_status else 'untracked'
 
+        can_manage = current_user.is_admin or book['added_by'] == current_user.id
+        owner = (conn.execute('SELECT username FROM users WHERE id = ?', (book['added_by'],)).fetchone()
+                 if book['added_by'] is not None else None)
+
         # Get library members for transfer functionality
         library_member_ids = get_library_members(current_user.id)
         library_members = []
-        if len(library_member_ids) > 1:
+        if current_user.is_admin:
+            # Admins can give a book to anyone (e.g. unowned books after a user was deleted)
+            library_members = conn.execute('SELECT id, username FROM users ORDER BY username').fetchall()
+        elif len(library_member_ids) > 1:
             # Get full user info for library members
             placeholders = ','.join(['?' for _ in library_member_ids])
             library_members = conn.execute(
@@ -592,10 +601,51 @@ def show_book(id):
             wishlist_owner_user=wishlist_owner_user,
             wishlist_owner_entry=wishlist_owner_entry,
             library_members=library_members,
-            friend_reviews=friend_reviews
+            friend_reviews=friend_reviews,
+            owner_username=owner['username'] if owner else None,
+            # Who else has reviews/history on it: a hard delete is refused while
+            # anyone does (only computed for people who can delete)
+            others_with_data=(other_users_with_book_data(conn, id, book['added_by'])
+                              if can_manage else []),
+            can_manage=can_manage,
         )
     finally:
         conn.close()
+
+@books_blueprint.route("/remove/<int:id>", methods=["POST"])
+@login_required
+def remove_book(id):
+    """Deaccession: the book has left the house (given away, sold, lost).
+
+    It disappears from library views but the record stays, with everyone's
+    reviews, ratings and reading history. Owner or admin; reversible.
+    """
+    conn = get_db()
+    book = conn.execute("SELECT title, added_by FROM books WHERE id = ?", (id,)).fetchone()
+    if not book or not (current_user.is_admin or book['added_by'] == current_user.id):
+        flash("You don't have permission to remove this book.", "error")
+        return redirect(url_for('base.index'))
+    note = (request.form.get('removed_note') or '').strip()[:200] or None
+    conn.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP, removed_note = ? WHERE id = ?", (note, id))
+    conn.commit()
+    flash(f"'{book['title']}' removed from the library. Reviews and reading history are kept.", "success")
+    return redirect(url_for('books.show_book', id=id))
+
+
+@books_blueprint.route("/restore/<int:id>", methods=["POST"])
+@login_required
+def restore_book(id):
+    """Undo a removal: the book is back on the shelf."""
+    conn = get_db()
+    book = conn.execute("SELECT title, added_by FROM books WHERE id = ?", (id,)).fetchone()
+    if not book or not (current_user.is_admin or book['added_by'] == current_user.id):
+        flash("You don't have permission to restore this book.", "error")
+        return redirect(url_for('base.index'))
+    conn.execute("UPDATE books SET removed_at = NULL, removed_note = NULL WHERE id = ?", (id,))
+    conn.commit()
+    flash(f"'{book['title']}' is back in the library.", "success")
+    return redirect(url_for('books.show_book', id=id))
+
 
 @books_blueprint.route("/delete/<int:id>", methods=["POST"])
 @login_required
@@ -672,6 +722,10 @@ def search():
         search_like = f"%{search_term}%"
         params = library_member_ids + [search_like, search_like, search_like]
 
+        # Removed (deaccessioned) books are hidden unless asked for
+        if not request.args.get('show_removed'):
+            query += " AND b.removed_at IS NULL"
+
         # Apply filters if they exist (simplified)
         if request.args.get('genre'):
             query += " AND LOWER(b.genre) = LOWER(?)"
@@ -718,7 +772,8 @@ def search():
                 'id': book['id'],
                 'title': book['title'],
                 'author': book['author'],
-                'cover_image_url': book['cover_image_url']
+                'cover_image_url': book['cover_image_url'],
+                'removed': book['removed_at'] is not None
             } for book in books]
 
             return jsonify({
@@ -771,8 +826,8 @@ def transfer_book(book_id):
             flash("You don't have permission to transfer this book", "error")
             return redirect(request.referrer or url_for('base.index'))
 
-        # Check if new owner shares library with current user
-        if not shares_library_with(current_user.id, new_owner_id):
+        # Owners can only give books within their household; admins to anyone
+        if not current_user.is_admin and not shares_library_with(current_user.id, new_owner_id):
             flash("You can only transfer books to users in your library group", "error")
             return redirect(request.referrer or url_for('base.index'))
 

@@ -54,12 +54,12 @@ npm run watch:css    # rebuild on change
 ### Blueprints (`/blueprints/`, URL prefix in brackets)
 - **auth** (`/auth`): register, login (with remember-me), logout, email verification and resend. Registration can be closed with `ALLOW_REGISTRATION=False`.
 - **base** (`/base`): main library view at `/base/index` with search/sort/filter and infinite scroll; shared (household) library; friends' libraries.
-- **books** (`/books`): add, edit, delete (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
+- **books** (`/books`): add, edit, remove from library / restore (deaccession), delete for mistakes (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
 - **collections** (`/collections`): reading status (read, currently reading, want to read, did not finish) and custom user collections.
-- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export, **Goodreads CSV import** (available to every user, not admin-only), adding/removing household members.
+- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only), adding/removing household members.
 - **read** (`/read`): ratings/reviews and reading sessions (dates started/completed).
 - **tags** (`/tags`): per-user tags.
-- **admin** (`/admin`): user management, avatar management, orphaned image cleanup, bulk cover fetch, household (library) membership.
+- **admin** (`/admin`): user management (deactivate/delete dialog), avatar management, orphaned image cleanup, unowned books (reassign), bulk cover fetch, household (library) membership.
 - **feed** (`/feed`): activity feed of friends' reviews/updates, likes, dismissals.
 - **wishlist** (`/wishlist`): wishlist with notes, moving items into the library, viewing friends' wishlists.
 - **friends** (`/friends`): friend requests, friend list, notifications page, user search API.
@@ -83,6 +83,8 @@ There is no `activities` table; the feed is built from `read_data`/`collections`
 Gotchas:
 - **Foreign keys are enforced** (`get_db_connection()` runs `PRAGMA foreign_keys = ON`; needs migrations 014/015). Every FK has a deliberate `ON DELETE` rule: user and book children `CASCADE`, but `books.added_by` is `SET NULL`, so deleting a user never deletes books. A book is a record other people's reviews hang on: hard delete is refused while another user has data on it (`models.other_users_with_book_data`). Don't delete `books` rows anywhere else without that check.
 - **Unowned books** (`added_by IS NULL`) are allowed but appear in no library view, since those filter by owner. Handle `None` wherever `added_by` is used.
+- **Removed (deaccessioned) books** have `books.removed_at` set. Library views must add `AND b.removed_at IS NULL` unless `show_removed` is asked for; reading history, reviews and exports keep them. "Remove from library" is the normal way a book leaves; hard delete is only for mistakes.
+- **Accounts:** deactivate/delete logic lives in `utils/accounts.py` (shared by admin and self-delete). Exports are in `utils/export.py`, scoped to one user.
 - **Wishlist entries are rows in `books`** (plus a `wishlist` row). Library queries must exclude them with `AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id ...)`, or they'll count wishlist books as owned.
 
 ### Access Model (what the code actually does)

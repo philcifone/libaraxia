@@ -61,6 +61,8 @@ CREATE TABLE books (
     subtitle TEXT,
     genre TEXT,
     added_by INTEGER,
+    removed_at TIMESTAMP,   -- set when the book leaves the library (deaccession); NULL = on the shelf
+    removed_note TEXT,
     FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_books_added_by ON books(added_by);
@@ -266,4 +268,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('013_add_theme_preferences.sql'),
     ('014_cleanup_orphans.sql'),
     ('015_foreign_key_actions.sql'),
-    ('016_drop_legacy.sql');
+    ('016_drop_legacy.sql'),
+    ('017_book_removal.sql');
