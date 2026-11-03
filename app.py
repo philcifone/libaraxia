@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # Custom imports
-from utils.database import get_db_connection, database_path
+from utils.database import get_db_connection, database_path, close_db
 from utils.errors import unauthorized
 from blueprints.auth import auth_blueprint
 from blueprints.base import base_blueprint
@@ -133,6 +133,9 @@ def create_app():
     # Image upload configuration
     UPLOAD_FOLDER = os.path.join('static', 'uploads')
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+    # Close the per-request connection from utils.database.get_db()
+    app.teardown_appcontext(close_db)
 
     # Say which database this process opens (the "which library.db?" trap).
     db_path = database_path()

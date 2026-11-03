@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
 from flask_login import login_required, current_user
 from typing import Optional, Dict, Any
-from utils.database import get_db_connection
+from utils.database import get_db_connection, get_db
 from utils.book_utils import (
     get_filter_options,
     fetch_book_details_from_isbn,
@@ -70,24 +70,25 @@ def add_book():
                 current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
                 page_count = 0
 
-            with get_db_connection() as conn:
-                conn.execute("""
-                    INSERT INTO books (title, author, publisher, publish_year, isbn,
-                                     page_count, cover_image_url, description, subtitle, genre, added_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    request.form["title"],
-                    request.form["author"],
-                    request.form["publisher"],
-                    request.form["year"],
-                    request.form["isbn"],
-                    page_count,
-                    cover_image_url,
-                    request.form.get("description"),
-                    request.form["subtitle"],
-                    request.form["genre"],
-                    current_user.id
-                ))
+            conn = get_db()
+            conn.execute("""
+                INSERT INTO books (title, author, publisher, publish_year, isbn,
+                                 page_count, cover_image_url, description, subtitle, genre, added_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                request.form["title"],
+                request.form["author"],
+                request.form["publisher"],
+                request.form["year"],
+                request.form["isbn"],
+                page_count,
+                cover_image_url,
+                request.form.get("description"),
+                request.form["subtitle"],
+                request.form["genre"],
+                current_user.id
+            ))
+            conn.commit()
 
             flash("Book added successfully!", "success")
             return redirect(url_for("base.index"))
@@ -160,62 +161,62 @@ def check_duplicates():
 
         duplicates = []
 
-        with get_db_connection() as conn:
-            # Get library members to restrict search scope
-            library_member_ids = get_library_members(current_user.id)
-            placeholders = ','.join(['?' for _ in library_member_ids])
+        conn = get_db()
+        # Get library members to restrict search scope
+        library_member_ids = get_library_members(current_user.id)
+        placeholders = ','.join(['?' for _ in library_member_ids])
 
-            # Check for exact title match or ISBN match (only within library scope)
-            query_parts = []
-            params = library_member_ids.copy()
+        # Check for exact title match or ISBN match (only within library scope)
+        query_parts = []
+        params = library_member_ids.copy()
 
-            if title:
-                query_parts.append("LOWER(title) = LOWER(?)")
-                params.append(title)
+        if title:
+            query_parts.append("LOWER(title) = LOWER(?)")
+            params.append(title)
 
-            if isbn:
-                if query_parts:
-                    query_parts.append("OR isbn = ?")
-                else:
-                    query_parts.append("isbn = ?")
-                params.append(isbn)
+        if isbn:
+            if query_parts:
+                query_parts.append("OR isbn = ?")
+            else:
+                query_parts.append("isbn = ?")
+            params.append(isbn)
 
-            if not query_parts:
-                return jsonify({"has_duplicates": False, "duplicates": []})
+        if not query_parts:
+            return jsonify({"has_duplicates": False, "duplicates": []})
 
-            query = f"SELECT id, title, author, isbn FROM books WHERE added_by IN ({placeholders}) AND ({' '.join(query_parts)})"
-            existing_books = conn.execute(query, params).fetchall()
+        query = f"SELECT id, title, author, isbn FROM books WHERE added_by IN ({placeholders}) AND ({' '.join(query_parts)})"
+        existing_books = conn.execute(query, params).fetchall()
 
-            for book in existing_books:
-                # Check if in library (collections table)
-                in_library = conn.execute("""
-                    SELECT 1 FROM collections
-                    WHERE user_id = ? AND book_id = ?
-                """, (current_user.id, book['id'])).fetchone()
+        for book in existing_books:
+            # Check if in library (collections table)
+            in_library = conn.execute("""
+                SELECT 1 FROM collections
+                WHERE user_id = ? AND book_id = ?
+            """, (current_user.id, book['id'])).fetchone()
 
-                # Check if in wishlist
-                in_wishlist = conn.execute("""
-                    SELECT 1 FROM wishlist
-                    WHERE user_id = ? AND book_id = ?
-                """, (current_user.id, book['id'])).fetchone()
+            # Check if in wishlist
+            in_wishlist = conn.execute("""
+                SELECT 1 FROM wishlist
+                WHERE user_id = ? AND book_id = ?
+            """, (current_user.id, book['id'])).fetchone()
 
-                duplicate_info = {
-                    "id": book['id'],
-                    "title": book['title'],
-                    "author": book['author'],
-                    "isbn": book['isbn'],
-                    "in_library": bool(in_library),
-                    "in_wishlist": bool(in_wishlist),
-                    "match_reason": []
-                }
+            duplicate_info = {
+                "id": book['id'],
+                "title": book['title'],
+                "author": book['author'],
+                "isbn": book['isbn'],
+                "in_library": bool(in_library),
+                "in_wishlist": bool(in_wishlist),
+                "match_reason": []
+            }
 
-                # Determine what matched
-                if title and book['title'].lower() == title.lower():
-                    duplicate_info["match_reason"].append("title")
-                if isbn and book['isbn'] == isbn:
-                    duplicate_info["match_reason"].append("ISBN")
+            # Determine what matched
+            if title and book['title'].lower() == title.lower():
+                duplicate_info["match_reason"].append("title")
+            if isbn and book['isbn'] == isbn:
+                duplicate_info["match_reason"].append("ISBN")
 
-                duplicates.append(duplicate_info)
+            duplicates.append(duplicate_info)
 
         has_duplicates = len(duplicates) > 0
         current_app.logger.info(f"Found {len(duplicates)} potential duplicates")
@@ -356,79 +357,80 @@ def fetch_cover():
 @books_blueprint.route("/edit/<int:id>", methods=["GET", "POST"])
 @login_required
 def edit_book(id):
-    with get_db_connection() as conn:
-        # Get the book to check who added it
-        book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
+    conn = get_db()
+    # Get the book to check who added it
+    book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
 
-        if not book:
-            flash("Book not found.", "error")
-            return redirect(url_for("base.index"))
+    if not book:
+        flash("Book not found.", "error")
+        return redirect(url_for("base.index"))
 
-        # Allow editing if user is admin or if they added the book
-        if not (current_user.is_admin or book['added_by'] == current_user.id):
-            flash("You don't have permission to edit this book.", "error")
-            return redirect(url_for("base.index"))
+    # Allow editing if user is admin or if they added the book
+    if not (current_user.is_admin or book['added_by'] == current_user.id):
+        flash("You don't have permission to edit this book.", "error")
+        return redirect(url_for("base.index"))
 
-        book_details = None
+    book_details = None
 
-        if request.method == "POST":
-            if "isbn_lookup" in request.form:
-                isbn = request.form["isbn"]
-                book_details = fetch_book_details_from_isbn(isbn)
-                if not book_details:
-                    flash("Book not found. Please enter details manually.", "error")
+    if request.method == "POST":
+        if "isbn_lookup" in request.form:
+            isbn = request.form["isbn"]
+            book_details = fetch_book_details_from_isbn(isbn)
+            if not book_details:
+                flash("Book not found. Please enter details manually.", "error")
+        else:
+            # Get current cover
+            current_cover = book['cover_image_url']
+
+            # Check if a cover was fetched via the fetch cover button
+            fetched_cover = request.form.get("fetched_cover_url")
+
+            # Priority: uploaded image > fetched cover > existing cover
+            if request.files.get("image") and request.files.get("image").filename != '':
+                # User uploaded a new image - delete old cover first
+                if current_cover:
+                    delete_image_file(current_cover)
+                cover_image_url = process_image(request.files.get("image"), current_cover)
+            elif is_safe_upload_path(fetched_cover):
+                # User fetched a new cover - delete old cover first
+                if current_cover and current_cover != fetched_cover:
+                    delete_image_file(current_cover)
+                cover_image_url = fetched_cover
             else:
-                # Get current cover
-                current_cover = book['cover_image_url']
+                # Keep existing cover
+                cover_image_url = current_cover
 
-                # Check if a cover was fetched via the fetch cover button
-                fetched_cover = request.form.get("fetched_cover_url")
+            # Sanitize page_count: convert to integer or default to 0 if invalid
+            page_count_raw = request.form.get("page_count", "").strip()
+            try:
+                page_count = int(page_count_raw) if page_count_raw else 0
+                # Ensure non-negative
+                page_count = max(0, page_count)
+            except (ValueError, TypeError):
+                current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
+                page_count = 0
 
-                # Priority: uploaded image > fetched cover > existing cover
-                if request.files.get("image") and request.files.get("image").filename != '':
-                    # User uploaded a new image - delete old cover first
-                    if current_cover:
-                        delete_image_file(current_cover)
-                    cover_image_url = process_image(request.files.get("image"), current_cover)
-                elif is_safe_upload_path(fetched_cover):
-                    # User fetched a new cover - delete old cover first
-                    if current_cover and current_cover != fetched_cover:
-                        delete_image_file(current_cover)
-                    cover_image_url = fetched_cover
-                else:
-                    # Keep existing cover
-                    cover_image_url = current_cover
+            conn.execute("""
+                UPDATE books
+                SET title = ?, author = ?, publisher = ?, publish_year = ?,
+                    page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?
+                WHERE id = ?
+            """, (
+                request.form["title"],
+                request.form["author"],
+                request.form.get("publisher"),
+                request.form.get("year"),
+                page_count,
+                cover_image_url,
+                request.form.get("description", ""),
+                request.form["subtitle"],
+                request.form["genre"],
+                id
+            ))
+            conn.commit()
 
-                # Sanitize page_count: convert to integer or default to 0 if invalid
-                page_count_raw = request.form.get("page_count", "").strip()
-                try:
-                    page_count = int(page_count_raw) if page_count_raw else 0
-                    # Ensure non-negative
-                    page_count = max(0, page_count)
-                except (ValueError, TypeError):
-                    current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
-                    page_count = 0
-
-                conn.execute("""
-                    UPDATE books
-                    SET title = ?, author = ?, publisher = ?, publish_year = ?,
-                        page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?
-                    WHERE id = ?
-                """, (
-                    request.form["title"],
-                    request.form["author"],
-                    request.form.get("publisher"),
-                    request.form.get("year"),
-                    page_count,
-                    cover_image_url,
-                    request.form.get("description", ""),
-                    request.form["subtitle"],
-                    request.form["genre"],
-                    id
-                ))
-
-                flash("Book updated successfully!", "success")
-                return redirect(url_for("base.index"))
+            flash("Book updated successfully!", "success")
+            return redirect(url_for("base.index"))
 
     return render_template("edit_book.html", book=book, book_details=book_details)
 
@@ -603,28 +605,25 @@ def delete_book(id):
     Refused while any other user has their own data on the book, because the
     delete cascades into reviews, statuses and reading history.
     """
-    conn = get_db_connection()
-    try:
-        book = conn.execute("SELECT added_by, cover_image_url FROM books WHERE id = ?", (id,)).fetchone()
+    conn = get_db()
+    book = conn.execute("SELECT added_by, cover_image_url FROM books WHERE id = ?", (id,)).fetchone()
 
-        if not book:
-            flash("Book not found.", "error")
-            return redirect(url_for('base.index'))
+    if not book:
+        flash("Book not found.", "error")
+        return redirect(url_for('base.index'))
 
-        if not (current_user.is_admin or book['added_by'] == current_user.id):
-            flash("You don't have permission to delete this book.", "error")
-            return redirect(url_for('base.index'))
+    if not (current_user.is_admin or book['added_by'] == current_user.id):
+        flash("You don't have permission to delete this book.", "error")
+        return redirect(url_for('base.index'))
 
-        others = other_users_with_book_data(conn, id, book['added_by'])
-        if others:
-            flash("Can't delete this book: " + ", ".join(others) +
-                  " has reviews or reading history on it, and deleting would erase them.", "error")
-            return redirect(url_for('books.show_book', id=id))
+    others = other_users_with_book_data(conn, id, book['added_by'])
+    if others:
+        flash("Can't delete this book: " + ", ".join(others) +
+              " has reviews or reading history on it, and deleting would erase them.", "error")
+        return redirect(url_for('books.show_book', id=id))
 
-        conn.execute("DELETE FROM books WHERE id = ?", (id,))
-        conn.commit()
-    finally:
-        conn.close()
+    conn.execute("DELETE FROM books WHERE id = ?", (id,))
+    conn.commit()
 
     # Only after the row is gone, so a failed delete never loses the cover.
     if book['cover_image_url']:

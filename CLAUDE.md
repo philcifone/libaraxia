@@ -65,7 +65,7 @@ npm run watch:css    # rebuild on change
 - **friends** (`/friends`): friend requests, friend list, notifications page, user search API.
 
 ### Utilities (`/utils/`)
-- **database.py**: `get_db_connection()`, which opens `DATABASE_PATH` (default `library.db` in the working dir) with `sqlite3.Row`.
+- **database.py**: `get_db()` (request-scoped connection, closed at teardown), `get_db_connection()` (a new connection: `sqlite3.Row`, `PRAGMA foreign_keys = ON`), `database_path()`.
 - **book_utils.py**: Google Books / Open Library / bookcover API lookups, ISBN helpers, cover search and download (`download_and_save_cover`, with an SSRF guard that only fetches public hosts), `process_image` for uploads, `get_filter_options`.
 - **image_utils.py**: `is_safe_upload_path`, `delete_image_file` (refuses paths outside `static/uploads/`), and orphaned image detection/cleanup.
 - **email_utils.py**: verification tokens (random, stored in `email_verification_tokens`) and sending via Flask-Mail.
@@ -157,17 +157,16 @@ Read via python-dotenv from `.env`:
 4. Add templates in `/templates/` (copy the head/sidebar/flash includes from an existing page).
 
 #### Database Queries
+In routes (and helpers called from routes), use the request-scoped connection. It is opened on first use and closed at teardown (`app.teardown_appcontext(close_db)`), and anything not committed is rolled back:
 ```python
-from utils.database import get_db_connection
+from utils.database import get_db
 
-conn = get_db_connection()
-try:
-    row = conn.execute('SELECT * FROM table WHERE id = ?', (id,)).fetchone()
-    conn.commit()  # if you wrote anything
-finally:
-    conn.close()
+conn = get_db()
+row = conn.execute('SELECT * FROM table WHERE id = ?', (id,)).fetchone()
+conn.execute('UPDATE ...', (...))
+conn.commit()          # explicit; roll back in an except that swallows a failed write
 ```
-Avoid `with get_db_connection() as conn:`. sqlite3's context manager commits but does **not** close the connection (several older routes still do this).
+Outside a request (manage.py, scripts) use `get_db_connection()` in try/finally and close it. Many older routes still open their own connection that way; that's correct, just verbose, and can move to `get_db()` once there are tests (ROADMAP 2.8). Never use `with get_db_connection() as conn:` (it commits but doesn't close).
 
 #### API Response Pattern
 ```python

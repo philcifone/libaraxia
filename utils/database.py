@@ -23,3 +23,25 @@ def get_db_connection():
     # connection asks for it. Needs migrations 014/015 (manage.py migrate).
     conn.execute('PRAGMA foreign_keys = ON')
     return conn
+
+
+def get_db():
+    """The request's shared connection (opened on first use, closed at teardown).
+
+    Use this in routes and helpers called from routes: no try/finally or
+    close() needed. Commit explicitly after writes; anything not committed
+    is rolled back when the request ends. Outside a request (manage.py,
+    scripts) use get_db_connection() and close it yourself.
+    """
+    from flask import g
+    if 'db' not in g:
+        g.db = get_db_connection()
+    return g.db
+
+
+def close_db(exc=None):
+    """teardown_appcontext hook: close the request's connection, if any."""
+    from flask import g
+    conn = g.pop('db', None)
+    if conn is not None:
+        conn.close()  # uncommitted changes are rolled back
