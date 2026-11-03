@@ -25,7 +25,6 @@ CREATE TABLE users (
     email_verification_sent_at TEXT,
     bio TEXT,
     default_privacy TEXT DEFAULT 'friends' CHECK(default_privacy IN ('private', 'friends', 'public')),
-    allow_friend_discovery INTEGER DEFAULT 1,
     theme_style TEXT NOT NULL DEFAULT 'house',
     color_mode TEXT NOT NULL DEFAULT 'system'
 );
@@ -266,4 +265,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('012_add_library_members_and_privacy.sql'),
     ('013_add_theme_preferences.sql'),
     ('014_cleanup_orphans.sql'),
-    ('015_foreign_key_actions.sql');
+    ('015_foreign_key_actions.sql'),
+    ('016_drop_legacy.sql');
