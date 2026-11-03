@@ -183,7 +183,9 @@ def view_custom_collection(collection_id):
                              collection=collection,
                              books=books,
                              is_custom=True,
-                             status=None)  # Include status but set to None for custom collections
+                             status=None,  # custom shelves have no reading status
+                             is_own_profile=True,  # the query above only finds your own shelves
+                             target_username=current_user.username)
     finally:
         conn.close()
 

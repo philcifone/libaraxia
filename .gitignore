@@ -22,6 +22,7 @@ goodreads_library_export.csv
 
 # Python
 __pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 *.pyd
