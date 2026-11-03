@@ -5,7 +5,7 @@ import bcrypt
 import os
 from datetime import datetime
 from utils.database import get_db_connection
-from models import admin_required, is_valid_username, USERNAME_RULES
+from models import admin_required, is_valid_username, USERNAME_RULES, other_users_with_book_data
 from PIL import Image
 
 admin_blueprint = Blueprint('admin', __name__, template_folder='templates')
@@ -204,25 +204,65 @@ def delete_user():
                 flash("Cannot delete the last admin user", "error")
                 return redirect(url_for('admin.settings'))
 
-        # Delete user and their associated data
         username = user['username']
 
-        # Delete user's avatar file if it exists
-        if user['avatar_url']:
-            from utils.image_utils import delete_image_file
-            delete_image_file(user['avatar_url'])
+        # Books are records other people's reviews hang on, so they are never
+        # deleted with their owner: they go to another user or become unowned.
+        # Wishlist entries (rows in books with a wishlist row of this user) are
+        # not owned copies; they're deleted unless someone else has data on them.
+        wishlist_books = conn.execute('''
+            SELECT b.id, b.cover_image_url FROM books b
+            WHERE b.added_by = ?
+              AND EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?)
+        ''', (user_id, user_id)).fetchall()
+        wishlist_ids = {b['id'] for b in wishlist_books}
+        owned_count = conn.execute('SELECT COUNT(*) FROM books WHERE added_by = ?',
+                                   (user_id,)).fetchone()[0] - len(wishlist_ids)
 
-        # Delete user's data (cascading delete)
-        conn.execute('DELETE FROM read_data WHERE user_id = ?', (user_id,))
-        conn.execute('DELETE FROM collections WHERE user_id = ?', (user_id,))
-        conn.execute('DELETE FROM book_tags WHERE user_id = ?', (user_id,))
-        conn.execute('DELETE FROM collection_books WHERE collection_id IN (SELECT collection_id FROM user_collections WHERE user_id = ?)', (user_id,))
-        conn.execute('DELETE FROM user_collections WHERE user_id = ?', (user_id,))
+        books_to = request.form.get('books_to', '')
+        new_owner_id = None
+        if owned_count:
+            if books_to == 'none':
+                new_owner_id = None
+            elif books_to.isdigit() and int(books_to) != user_id and conn.execute(
+                    'SELECT 1 FROM users WHERE id = ?', (int(books_to),)).fetchone():
+                new_owner_id = int(books_to)
+            else:
+                flash(f"'{username}' owns {owned_count} book(s). Choose who gets them "
+                      "(another user, or no owner) before deleting.", "error")
+                return redirect(url_for('admin.settings'))
+
+        covers_to_delete = []
+        for b in wishlist_books:
+            if other_users_with_book_data(conn, b['id'], user_id):
+                conn.execute('UPDATE books SET added_by = NULL WHERE id = ?', (b['id'],))
+            else:
+                conn.execute('DELETE FROM books WHERE id = ?', (b['id'],))
+                if b['cover_image_url']:
+                    covers_to_delete.append(b['cover_image_url'])
+
+        conn.execute('UPDATE books SET added_by = ? WHERE added_by = ?', (new_owner_id, user_id))
+
+        # Everything else of theirs (reviews, statuses, sessions, tags, shelves,
+        # wishlist, friendships, requests, notifications, likes, household
+        # membership, tokens) goes with the account via ON DELETE CASCADE.
         conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
-
         conn.commit()
-        flash(f"User '{username}' and all associated data deleted", "success")
-        current_app.logger.warning(f"Admin {current_user.username} deleted user: {username}")
+
+        from utils.image_utils import delete_image_file
+        if user['avatar_url']:
+            delete_image_file(user['avatar_url'])
+        for path in covers_to_delete:
+            delete_image_file(path)
+
+        if owned_count:
+            dest = f"user #{new_owner_id}" if new_owner_id else "no owner"
+            flash(f"User '{username}' deleted; their {owned_count} book(s) went to {dest}", "success")
+        else:
+            flash(f"User '{username}' and all associated data deleted", "success")
+        current_app.logger.warning(
+            f"Admin {current_user.username} deleted user: {username} "
+            f"(books -> {new_owner_id if owned_count else 'n/a'})")
 
     except Exception as e:
         current_app.logger.error(f"Error deleting user: {str(e)}")

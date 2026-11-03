@@ -44,7 +44,8 @@ CREATE INDEX idx_verification_tokens_user_id ON email_verification_tokens(user_i
 
 -- ---------------------------------------------------------------- books
 
--- Shared catalogue. added_by is the owner. Wishlist entries are also rows
+-- Shared catalogue. added_by is the owner (NULL = unowned; deleting a user
+-- never deletes books, see migration 015). Wishlist entries are also rows
 -- here (plus a wishlist row), so library queries must exclude them.
 CREATE TABLE books (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,8 +62,9 @@ CREATE TABLE books (
     subtitle TEXT,
     genre TEXT,
     added_by INTEGER,
-    FOREIGN KEY (added_by) REFERENCES users(id)
+    FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
+CREATE INDEX idx_books_added_by ON books(added_by);
 
 -- Per-user reading status.
 CREATE TABLE collections (
@@ -73,8 +75,8 @@ CREATE TABLE collections (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     privacy TEXT DEFAULT 'friends' CHECK(privacy IN ('private', 'friends', 'public')),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (book_id) REFERENCES books(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_collections_created_at ON collections(created_at);
 CREATE INDEX idx_collections_privacy ON collections(user_id, privacy);
@@ -122,7 +124,7 @@ CREATE TABLE user_collections (
     name TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     privacy TEXT DEFAULT 'friends' CHECK(privacy IN ('private', 'friends', 'public')),
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (user_id, name)
 );
 
@@ -131,8 +133,8 @@ CREATE TABLE collection_books (
     book_id INTEGER NOT NULL,
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (collection_id, book_id),
-    FOREIGN KEY (collection_id) REFERENCES user_collections(collection_id),
-    FOREIGN KEY (book_id) REFERENCES books(id)
+    FOREIGN KEY (collection_id) REFERENCES user_collections(collection_id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
 
 CREATE TABLE wishlist (
@@ -158,6 +160,8 @@ CREATE TABLE dismissed_activities (
     book_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,     -- the user whose activity this was
     dismissed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE(activity_type, book_id, user_id)
 );
 CREATE INDEX idx_dismissed_activities_lookup ON dismissed_activities(activity_type, book_id, user_id);
@@ -169,6 +173,7 @@ CREATE TABLE activity_likes (
     activity_user_id INTEGER NOT NULL,  -- the user whose activity this is
     liker_user_id INTEGER NOT NULL,     -- the user who liked it
     liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (activity_user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (liker_user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
     UNIQUE(activity_type, book_id, activity_user_id, liker_user_id)
@@ -259,4 +264,6 @@ INSERT INTO schema_migrations (name) VALUES
     ('010_add_email_verification.sql'),
     ('011_add_bio.sql'),
     ('012_add_library_members_and_privacy.sql'),
-    ('013_add_theme_preferences.sql');
+    ('013_add_theme_preferences.sql'),
+    ('014_cleanup_orphans.sql'),
+    ('015_foreign_key_actions.sql');

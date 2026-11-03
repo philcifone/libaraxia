@@ -26,7 +26,7 @@ python3 manage.py migrate             # new DB: built from create_database.sql; 
 python3 manage.py status              # applied / pending
 python3 manage.py --db /tmp/x.db migrate   # any other file
 ```
-`create_database.sql` is the complete schema for a **new** database (001–013 folded in, plus the `schema_migrations` ledger). A database created before the runner needs `manage.py migrate --baseline` once; plain `migrate` refuses a DB with tables but no ledger. Migration files must not contain BEGIN/COMMIT; each runs in its own transaction with FKs off and is rolled back if it adds `foreign_key_check` violations. Always check which DB file you're touching.
+`create_database.sql` is the complete schema for a **new** database (every migration so far folded in, plus the `schema_migrations` ledger). A database created before the runner needs `manage.py migrate --baseline` once; plain `migrate` refuses a DB with tables but no ledger. Migration files must not contain BEGIN/COMMIT; each runs in its own transaction with FKs off and is rolled back if it adds `foreign_key_check` violations. Always check which DB file you're touching.
 
 ### Running the Application
 ```bash
@@ -79,8 +79,9 @@ Tables after all migrations:
 
 There is no `activities` table; the feed is built from `read_data`/`collections`/`wishlist` at query time. Some rows are positional (`book[0]`, `book[1]`) in templates, so be careful reordering `SELECT *` columns.
 
-Two gotchas (both scheduled in ROADMAP.md):
-- **Foreign keys are not enforced.** `get_db_connection()` never runs `PRAGMA foreign_keys = ON`, so the schema's `ON DELETE CASCADE` rules don't fire and deleting a book leaves orphaned rows. Clean up child rows explicitly until Phase 2.3 lands.
+Gotchas:
+- **Foreign keys are enforced** (`get_db_connection()` runs `PRAGMA foreign_keys = ON`; needs migrations 014/015). Every FK has a deliberate `ON DELETE` rule: user and book children `CASCADE`, but `books.added_by` is `SET NULL`, so deleting a user never deletes books. A book is a record other people's reviews hang on: hard delete is refused while another user has data on it (`models.other_users_with_book_data`). Don't delete `books` rows anywhere else without that check.
+- **Unowned books** (`added_by IS NULL`) are allowed but appear in no library view, since those filter by owner. Handle `None` wherever `added_by` is used.
 - **Wishlist entries are rows in `books`** (plus a `wishlist` row). Library queries must exclude them with `AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id ...)`, or they'll count wishlist books as owned.
 
 ### Access Model (what the code actually does)

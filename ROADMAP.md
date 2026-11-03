@@ -149,7 +149,7 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
 - [x] **Close self-registration:** `ALLOW_REGISTRATION=False`. Only Access-approved people can reach the site today, so this is defence in depth. 🟢
 - [x] **Rate limiting behind the tunnel:** every request reaches gunicorn from `cloudflared` on localhost, so all users share **one IP** for rate limiting. That includes the global 50/hour default (see Phase 4), so one busy browsing session can 429 everyone. Set `TRUSTED_PROXY_COUNT=1` so the limiter uses the client IP that Cloudflare forwards in `X-Forwarded-For`, then confirm it in the logs. (`CF-Connecting-IP` is the other option, but it needs a small `key_func` change.)
 - [x] **`SECRET_KEY`** is a real random value (`python3 -c "import secrets; print(secrets.token_hex(32))"`), not the `.env.example` placeholder. The app logs a warning if it is.
-- [x] **Find out which DB file prod opens.** Run `ls -la` in the gunicorn working dir and grep the prod `.env` / systemd unit for `DATABASE_PATH`. Write the answer down here, because Phase 2.4 depends on it. → *prod DB path:* **`/home/phil/library-catalog/library.db`** (confirmed 2026-11-02). No `DATABASE_PATH` is set in `.env` or the systemd unit `library-catalog.service` (WorkingDirectory `/home/phil/library-catalog`, gunicorn on `:8000`, venv Python 3.12.3), so the `library.db` default applies. The `DATABASE_URI` line in prod's `.env` is read by nothing. `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` in that dir are leftovers; review them in Phase 2.5 before deleting. Optional: pin it explicitly with `Environment=DATABASE_PATH=...` via `systemctl edit library-catalog`.
+- [x] **Find out which DB file prod opens.** Run `ls -la` in the gunicorn working dir and grep the prod `.env` / systemd unit for `DATABASE_PATH`. Write the answer down here, because Phase 2.4 depends on it. → *prod DB path:* **`/home/phil/library-catalog/library.db`** (confirmed 2026-11-02). No `DATABASE_PATH` is set in `.env` or the systemd unit `library-catalog.service` (WorkingDirectory `/home/phil/library-catalog`, gunicorn on `:8000`, venv Python 3.12.3), so the `library.db` default applies. The `DATABASE_URI` line in prod's `.env` is read by nothing. `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` in that dir are leftovers; review them in Phase 2.6 before deleting. Optional: pin it explicitly with `Environment=DATABASE_PATH=...` via `systemctl edit library-catalog`.
 - [x] **Backups:** prod runs in a Linux container on Proxmox, with a daily ZFS backup job. Snapshots can be rolled back from the Proxmox UI or with `zfs rollback`, and SQLite restores cleanly from them. Optional: take a manual snapshot right before Phase 2's first migration, so the rollback point is minutes old rather than up to a day.
 
 ### 1.2 Upgrade dependencies 🟠
@@ -210,10 +210,16 @@ SQLite only enforces foreign keys when each connection runs `PRAGMA foreign_keys
 
 Visible symptom: your profile says **131** books read, while the Reading Shelves page says **129**. The profile counts `collections` rows; the shelves page joins to `books`.
 
-- [ ] Migration `014_cleanup_orphans.sql`: delete rows that `foreign_key_check` reports (after backup).
-- [ ] Turn on `PRAGMA foreign_keys = ON` in `get_db_connection()`.
-- [ ] ⚠️ **Before enabling, review every FK action.** 13 FKs to `users` are `ON DELETE CASCADE`, so deleting a user will now really delete their data. `books.added_by REFERENCES users(id)` has **no** action, so deleting a user who owns books will start *failing* with a constraint error. Decide what admin "delete user" should do with their books (transfer to a household member? `SET NULL`?) and make the code do that first.
-- [ ] Add a check to the test suite that `PRAGMA foreign_key_check` is empty after the delete flows.
+- [x] Migration `014_cleanup_orphans.sql`: delete rows that `foreign_key_check` reports (after backup). Books are never deleted: a book or household row whose user is gone gets `added_by = NULL` instead.
+- [x] Turn on `PRAGMA foreign_keys = ON` in `get_db_connection()`.
+- [x] ⚠️ **Before enabling, review every FK action.** 13 FKs to `users` are `ON DELETE CASCADE`, so deleting a user will now really delete their data. `books.added_by REFERENCES users(id)` has **no** action, so deleting a user who owns books will start *failing* with a constraint error. Decide what admin "delete user" should do with their books (transfer to a household member? `SET NULL`?) and make the code do that first.
+- [ ] Add a check to the test suite that `PRAGMA foreign_key_check` is empty after the delete flows. → moved to 2.8 (tests).
+- **Decided 2026-11-02** (see 2.7 for the full feature). A book is a *record*; owner and shelf status are attributes of it. Other users' reviews, ratings and reading history must never disappear because a book was removed or its owner left.
+  - Migration `015_foreign_key_actions.sql` rebuilds 6 tables so every FK has a deliberate rule: `books.added_by` → `ON DELETE SET NULL` (deleting a user never deletes books); `collections`, `user_collections`, `collection_books` → `CASCADE`; `dismissed_activities` and `activity_likes.activity_user_id` get FKs (they had none). AUTOINCREMENT counters and column order are preserved; `collections` timestamps get their missing default. Adds `idx_books_added_by`.
+  - **Hard delete** (`/books/delete`) is refused while any *other* user has a review, status, session, tag, shelf or wishlist entry on the book, so cascades only ever remove the owner's own rows.
+  - **Admin delete user** requires a "their books go to" choice (another user, or no owner). Their wishlist-only books are deleted unless someone else has data on them. Everything else of theirs cascades. Minimal form for now; 2.7 replaces it with the full dialog.
+  - Fixed while here: `POST /wishlist/remove/<id>` deleted **any** book with no statuses/reviews/tags/shelves, whoever owned it, even if it was never on your wishlist. Now the row is deleted only if it was your own wishlist entry and nobody has other data on it. The activity feed crashed on unowned books among the 20 newest; it now skips them.
+  - Tested on a migrated copy: FK check empty after deleting users (transfer and no-owner), a mistaken book, a shared book (refused), a custom collection, wishlist removals; every GET route returns 200/302.
 
 ### 2.4 Config / `.env` load order 🟠
 - [ ] `config.py` and `utils/database.py` read env vars at import time, before `load_dotenv()`, so `.env` values for `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` are silently ignored.
@@ -227,7 +233,18 @@ Visible symptom: your profile says **131** books read, while the Reading Shelves
 - [ ] Drop the `discovered_books` table (Discover tab was removed; no code references it) and the `allow_friend_discovery` column. Do it in a migration, after backup.
 - [ ] Delete the stray DB files in the repo root once you've confirmed prod doesn't use them: `libaraxia.db` (Oct 2025, 20 KB), `instance/library.db` (Oct 2025), `library.db.backup_20251018_191333`. They're git-ignored, but they're the "which DB is this?" trap from 2.4.
 
-### 2.7 Smoke tests + CI 🟠
+### 2.7 Ownership & removal 🆕 🟠
+Decided 2026-11-02. The book row is a permanent *record*; who owns the copy and whether it is still on the shelf are attributes that change. Reviews and reading history hang on the record, so they survive both.
+- [ ] **Deaccession instead of delete.** Migration adds `books.removed_at` and `books.removed_note` (e.g. "Little Free Library"). "Remove from library" on the book page asks for an optional note. Library grids, shared library, counts and stats-of-owned-books hide removed books; a "Show removed" filter brings them back. The book page says "Removed from the library on DATE (note)" and keeps reviews, sessions and history. Owner or admin can restore it.
+- [ ] **Hard delete stays for mistakes** (duplicates, bad scans). Allowed only when no other user has data on the book (done in 2.3); otherwise the page offers Remove instead, and says why.
+- [ ] **Unowned books (admin).** An admin page listing books with `added_by IS NULL`, with a reassign dropdown per book and "reassign all to…". Admin transfer may target any user (owners can still only give books to household members). Today unowned books show up in no library, because every library view filters by owner.
+- [ ] **Account deletion dialog** for admin delete and a new self-delete (Profile → Account). A modal explains what happens, with:
+  - **Deactivate (keep everything):** can't log in; reviews, history and books stay. Reversible. The gentle option, e.g. after a death.
+  - **Delete permanently:** a "their books go to" dropdown (household members first, then other users for admins, then *No owner*), the list of what is deleted (reviews, reading history, shelves, wishlist, friendships, notifications), an **Export my data** button, and Proceed / Cancel. Self-delete asks for the password. The last admin can't be deleted.
+- [ ] **Fuller export.** `/user/export_library` gains review text, all reading sessions, tags, custom shelves and the wishlist (CSV for the library; a ZIP with one CSV per table for "export my data").
+- Future model (not now): books owned by the household (`library_id`) rather than a user. Noted in FORK-SPEC.md §9.
+
+### 2.8 Smoke tests + CI 🟠
 - [ ] A small pytest suite using `app.test_client()` against a temp DB built by the migration runner. Cover:
   - register/login
   - add/edit/delete book

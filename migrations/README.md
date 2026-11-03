@@ -10,7 +10,7 @@ python3 manage.py migrate --dry-run   # what would run
 python3 manage.py migrate             # back up, then apply pending (asks first)
 ```
 
-- **New database:** `manage.py migrate` on a missing or empty file builds it from `create_database.sql` (which already contains 001–013) and then applies anything newer.
+- **New database:** `manage.py migrate` on a missing or empty file builds it from `create_database.sql` (which already contains the migrations listed in its `schema_migrations` INSERT) and then applies anything newer.
 - **Existing database from before the runner** (created by hand, at 013): run `python3 manage.py migrate --baseline` **once**. It records 001–013 as applied without running them. Plain `migrate` refuses to touch a database that has tables but no ledger.
 - **Backups:** before changing anything, `migrate` writes `<db>.backup-YYYYMMDD-HHMMSS` next to the database using SQLite's online backup API, and checks it with `integrity_check`. `manage.py backup` does just that step.
 - **Transactions:** each file runs in one transaction together with its ledger row, so it applies completely or not at all. Don't put `BEGIN`/`COMMIT` in a migration file; the runner refuses those.
@@ -37,3 +37,5 @@ python3 manage.py migrate             # back up, then apply pending (asks first)
 - `011_add_bio.sql`
 - `012_add_library_members_and_privacy.sql` - Adds library_members table for household sharing and privacy columns for social features
 - `013_add_theme_preferences.sql` - Adds `theme_style` (house/classic) and `color_mode` (system/light/dark) to users for Profile → Appearance. The older `theme_mode`/`accent_color` columns are unused legacy.
+- `014_cleanup_orphans.sql` - Deletes rows pointing at deleted books/users (left behind while foreign keys weren't enforced). Books whose owner is gone become unowned (`added_by = NULL`) rather than deleted. Data only; a no-op on a fresh DB.
+- `015_foreign_key_actions.sql` - Rebuilds `books`, `collections`, `user_collections`, `collection_books`, `dismissed_activities`, `activity_likes` so every FK has a deliberate `ON DELETE` rule (`books.added_by` → `SET NULL`, the rest `CASCADE`), preserving AUTOINCREMENT counters and column order. Needed before `PRAGMA foreign_keys = ON`.

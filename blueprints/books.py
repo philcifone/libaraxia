@@ -13,7 +13,7 @@ from utils.book_utils import (
     MAX_IMAGE_SIZE
 )
 from utils.image_utils import delete_image_file, is_safe_upload_path
-from models import admin_required, shares_library_with, get_library_members
+from models import admin_required, shares_library_with, get_library_members, other_users_with_book_data
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -598,25 +598,38 @@ def show_book(id):
 @books_blueprint.route("/delete/<int:id>", methods=["POST"])
 @login_required
 def delete_book(id):
-    with get_db_connection() as conn:
-        # Get the book to check who added it and get the cover image
+    """Hard delete, for entries that were a mistake (duplicates, bad scans).
+
+    Refused while any other user has their own data on the book, because the
+    delete cascades into reviews, statuses and reading history.
+    """
+    conn = get_db_connection()
+    try:
         book = conn.execute("SELECT added_by, cover_image_url FROM books WHERE id = ?", (id,)).fetchone()
 
         if not book:
             flash("Book not found.", "error")
             return redirect(url_for('base.index'))
 
-        # Allow deletion if user is admin or if they added the book
-        if current_user.is_admin or book['added_by'] == current_user.id:
-            # Delete the cover image file if it exists
-            if book['cover_image_url']:
-                delete_image_file(book['cover_image_url'])
-
-            conn.execute("DELETE FROM books WHERE id = ?", (id,))
-            flash("Book deleted successfully.", "success")
-        else:
+        if not (current_user.is_admin or book['added_by'] == current_user.id):
             flash("You don't have permission to delete this book.", "error")
+            return redirect(url_for('base.index'))
 
+        others = other_users_with_book_data(conn, id, book['added_by'])
+        if others:
+            flash("Can't delete this book: " + ", ".join(others) +
+                  " has reviews or reading history on it, and deleting would erase them.", "error")
+            return redirect(url_for('books.show_book', id=id))
+
+        conn.execute("DELETE FROM books WHERE id = ?", (id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Only after the row is gone, so a failed delete never loses the cover.
+    if book['cover_image_url']:
+        delete_image_file(book['cover_image_url'])
+    flash("Book deleted successfully.", "success")
     return redirect(url_for('base.index'))
 
 @books_blueprint.route("/search", methods=["GET"])

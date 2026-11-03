@@ -109,7 +109,7 @@ Both repos will be merged into regularly, and merges need a quick "did I break i
 - ISBN and UPC lookup dispatch, with the network mocked
 - every blueprint returning 200 or 302 with features on **and** off
 
-Run it in CI (ROADMAP Phase 2.7).
+Run it in CI (ROADMAP Phase 2.8).
 
 ### 3.6 Dependency upgrade
 *Scheduled as ROADMAP Phase 1.2 🔴.* Do it before tagging v2.0.0 so the fork doesn't inherit known CVEs.
@@ -424,3 +424,4 @@ CREATE TABLE loans (id INTEGER PRIMARY KEY, item_id INTEGER REFERENCES items(id)
 5. **More media after VHS:** DVD, LP, cassette, CD, zine, ephemera, photographs. The `media_type` column allows them; decide which get first-class lookups (Discogs covers LP/CD/cassette).
 6. **Theme default:** follow the system (like philcifone.com), or force dark for Libaraxia and light/paper for the archive?
 7. **Public catalogue:** ever, or never?
+8. **Who owns a book: a user, or the household/collection?** Today `books.added_by` names one user, and households (`library_members.library_id`) only share *views*. The cleaner model, for Libaraxia later and for the fork from day one, is that items belong to a **collection/library** (`books.library_id`), users are members with roles, and "who added it" is just history (`added_by` kept as provenance). Deleting or leaving a user then never raises "who gets the books?". Libaraxia's interim answer (2026-11-02, ROADMAP 2.3/2.7): ownership stays per user, `added_by` is `ON DELETE SET NULL`, deleting a user asks who gets the books, and an admin page reassigns unowned ones. Moving to library ownership would be one migration: give each household a library row, set `books.library_id` from the owner's membership, and switch the library views from `added_by IN (members)` to `library_id = ?`.

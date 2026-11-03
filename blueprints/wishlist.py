@@ -1,6 +1,7 @@
 from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
+from models import other_users_with_book_data
 from utils.book_utils import (
     fetch_book_details_from_isbn,
     process_image,
@@ -397,43 +398,35 @@ def move_to_library(book_id):
 @wishlist_blueprint.route("/remove/<int:book_id>", methods=["POST"])
 @login_required
 def remove_from_wishlist(book_id):
-    """Remove a book from the wishlist and delete the book if it has no other references"""
-    with get_db_connection() as conn:
-        # Check if the book has other references
-        in_collections = conn.execute("""
-            SELECT COUNT(*) as count FROM collections WHERE book_id = ?
-        """, (book_id,)).fetchone()['count']
+    """Remove a book from the current user's wishlist.
 
-        in_read_data = conn.execute("""
-            SELECT COUNT(*) as count FROM read_data WHERE book_id = ?
-        """, (book_id,)).fetchone()['count']
+    The books row itself is deleted only when it is this user's own wishlist
+    entry (they added it and wishlisted it) and nobody, including them, has
+    any other data on it. Library books and other people's books are never
+    deleted from here.
+    """
+    book_was_deleted = False
+    conn = get_db_connection()
+    try:
+        removed = conn.execute(
+            "DELETE FROM wishlist WHERE user_id = ? AND book_id = ?",
+            (current_user.id, book_id)).rowcount
+        book = conn.execute("SELECT added_by FROM books WHERE id = ?", (book_id,)).fetchone()
 
-        in_book_tags = conn.execute("""
-            SELECT COUNT(*) as count FROM book_tags WHERE book_id = ?
-        """, (book_id,)).fetchone()['count']
-
-        in_collection_books = conn.execute("""
-            SELECT COUNT(*) as count FROM collection_books WHERE book_id = ?
-        """, (book_id,)).fetchone()['count']
-
-        # Remove from wishlist
-        conn.execute("""
-            DELETE FROM wishlist
-            WHERE user_id = ? AND book_id = ?
-        """, (current_user.id, book_id))
-
-        # If the book has no other references, delete it
-        book_was_deleted = False
-        if in_collections == 0 and in_read_data == 0 and in_book_tags == 0 and in_collection_books == 0:
-            conn.execute("""
-                DELETE FROM books WHERE id = ?
-            """, (book_id,))
-            flash("Book removed from wishlist and deleted.", "success")
+        if (removed and book and book['added_by'] == current_user.id
+                and not other_users_with_book_data(conn, book_id, None)):
+            conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
             book_was_deleted = True
-        else:
-            flash("Book removed from wishlist.", "success")
-
         conn.commit()
+    finally:
+        conn.close()
+
+    if book_was_deleted:
+        flash("Book removed from wishlist and deleted.", "success")
+    elif removed:
+        flash("Book removed from wishlist.", "success")
+    else:
+        flash("That book isn't on your wishlist.", "error")
 
     # Determine where to redirect based on context
     referrer = request.referrer
