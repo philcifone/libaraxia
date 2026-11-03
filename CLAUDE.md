@@ -168,7 +168,7 @@ row = conn.execute('SELECT * FROM table WHERE id = ?', (id,)).fetchone()
 conn.execute('UPDATE ...', (...))
 conn.commit()          # explicit; roll back in an except that swallows a failed write
 ```
-Outside a request (manage.py, scripts) use `get_db_connection()` in try/finally and close it. Many older routes still open their own connection that way; that's correct, just verbose, and can move to `get_db()` once there are tests (ROADMAP 2.8). Never use `with get_db_connection() as conn:` (it commits but doesn't close).
+Outside a request (manage.py, scripts) use `get_db_connection()` in try/finally and close it. Many older routes still open their own connection that way; that's correct, just verbose, and can move to `get_db()` when you're in the file anyway (ROADMAP → Loose ends). Never use `with get_db_connection() as conn:` (it commits but doesn't close).
 
 #### API Response Pattern
 ```python
@@ -177,8 +177,10 @@ return jsonify({"success": False, "error": "Error message"}), 400
 ```
 
 ### Testing Notes
-- There is no automated test suite. CI (`.github/workflows/basic-tests.yml`) only syntax-checks and imports modules.
-- For manual checks, use a copy of the DB: `DATABASE_PATH=/tmp/test.db python3 app.py`, or Flask's `app.test_client()` with `WTF_CSRF_ENABLED=False`.
+- **Tests:** `pip install -r requirements-dev.txt`, then `pytest` (about a second). CI (`.github/workflows/basic-tests.yml`) runs them on every push/PR to `main` with Python 3.12, after a syntax check and a `create_app()` start check.
+- `tests/conftest.py` builds one DB with `manage.py migrate` and gives each test its own copy via `DATABASE_PATH`; it sets the env before importing the app (so `.env` can't interfere), disables CSRF and rate limits, and blocks network calls. Seed helpers: `people` fixture (alice = admin, alice + bob share a household, carol is alice's friend), `add_user`, `add_book`, `add_review`, `login`, `scalar`, `fk_violations`.
+- Add a test with every bug fix or new route. `test_every_page_loads` hits every GET route automatically; a new route with URL arguments needs its argument name in that test's `filled` dict.
+- For manual checks, use a copy of the DB: `DATABASE_PATH=/tmp/test.db python3 app.py`.
 - First-time setup: visit `/` and you'll be redirected to register the admin user.
 - Camera/barcode scanning needs HTTPS (`--cert`/`--key`, see `docs/HTTPS-SETUP.md`).
 

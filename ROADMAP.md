@@ -12,9 +12,9 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 
 | # | Phase | Why this order | Done when |
 |---|---|---|---|
-| 0 | [Design refresh](#phase-0-design-refresh) | Match philcifone.com / negativeearth.net now; everything built later is built in the new look | Same elements, new skin: Gruvbox light + dark, Courier Prime + Young Serif, square corners, strong borders |
-| 1 | [Prod upkeep](#phase-1-prod-upkeep) | Prod sits behind Cloudflare Access (2FA, 2–3 allowlisted emails), so this is upkeep, not an emergency. Do it before Phase 2 touches the DB | Prod DB path recorded, deps upgraded, `pip-audit` clean |
-| 2 | [Data foundations](#phase-2-data-foundations) | Everything later writes migrations and needs tests | Fresh install is one command; migrations tracked; FK check clean; smoke tests in CI |
+| 0 ✅ | [Design refresh](#phase-0-design-refresh) | Match philcifone.com / negativeearth.net now; everything built later is built in the new look | Same elements, new skin: Gruvbox light + dark, Courier Prime + Young Serif, square corners, strong borders |
+| 1 ✅ | [Prod upkeep](#phase-1-prod-upkeep) | Prod sits behind Cloudflare Access (2FA, 2–3 allowlisted emails), so this is upkeep, not an emergency. Do it before Phase 2 touches the DB | Prod DB path recorded, deps upgraded, `pip-audit` clean |
+| 2 ✅ | [Data foundations](#phase-2-data-foundations) | Everything later writes migrations and needs tests | Fresh install is one command; migrations tracked; FK check clean; smoke tests in CI |
 | 3 | [Data correctness](#phase-3-data-correctness) | Fix what the data already shows is wrong | Stats, covers, reviews and wishlist behave correctly |
 | 4 | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
 | 5 | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
@@ -26,6 +26,17 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 9 is the part that matters.
 
 **Why the refresh can go first without the `base.html` refactor:** the templates already use *semantic* Tailwind names: `text-content-secondary` ×319, `text-content-primary` ×222, `bg-primary` ×118, `bg-accent`/`text-accent` ×212, `font-display` ×40, plus Tailwind's default `white`, `gray-600/700`, `red`, `yellow`, `green`, `blue` and `shadow-*`. Re-pointing those names in `tailwind.config.js` recolours, re-fonts and squares off nearly every page **without editing templates**. Hand edits are limited to the shared partials, a find-and-replace adding borders to cards, and the text colour on coloured buttons. Per-page cleanup waits for Phase 7, when there's one layout to edit.
+
+## Loose ends
+
+Housekeeping that doesn't belong to a phase and shouldn't hold one open: mostly "wait a bit, then delete". Tick and remove as they're done.
+
+- [x] **Prod:** re-add the tag "nuclear war" to *Cat's Cradle*. It was on an old deleted copy of the book, and migration 014 cleaned it up with the other leftover rows. Done 2026-11-02.
+- [ ] **Prod, from about 2026-11-09** (once Phase 2 has run for a few days without trouble):
+  - in `/home/phil/library-catalog`, delete `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` (pre-Phase-2 leftovers nothing opens), and the `library.db.backup-20261102-*` files `manage.py` made during the Phase 2 deploy;
+  - ~~delete the manual ZFS snapshot taken before the Phase 2 deploy~~ (done 2026-11-02).
+- [ ] **Dev machine:** delete the stray DB files in the repo root (all git-ignored, none opened by anything; checked 2026-11-02, see 2.6): `libaraxia.db`, `instance/library.db`, `library.db.backup_20251018_191333`, `library.db.backup_20261102_pre013`.
+- [ ] **Code, opportunistically:** about 85 routes still open their own connection with `get_db_connection()` + try/finally. That's correct, just verbose. When you're in a file anyway, switch it to `get_db()`; the test suite (2.8) will catch mistakes.
 
 ---
 
@@ -188,6 +199,8 @@ pip freeze > requirements.txt   # then hand-trim to direct deps if you prefer
 
 **Goal:** the database can be created, migrated, checked and tested reliably. Everything after this writes migrations, so this layer needs to be solid.
 
+**✅ Done and deployed 2026-11-02.** 2.1–2.7 merged to `main` and deployed to prod: ZFS snapshot, `git pull`, `manage.py migrate --baseline`, then `manage.py migrate` (014–017). Before that, the deploy was rehearsed on a copy of the prod DB, which found that prod's old `collections` table declared its keys as `books(book_id)` / `users(user_id)` (columns that don't exist), so SQLite's FK check failed with "foreign key mismatch". Fixed in the runner (`fk_violations()` checks table by table and skips tables it can't check until a migration rebuilds them) and in 014 (cleans `collections` with a plain query). 014 removed 14 orphaned rows on prod, all pointing at books deleted long ago; the three reviews among them were duplicates of reviews already on the current copies. 2.8 (tests + CI) followed the same day. Leftover files to delete later are under [Loose ends](#loose-ends).
+
 ### 2.1 Consolidated schema 🟠
 - [x] `create_database.sql` lacks migrations 002, 005 and 007–012, so a fresh install crashes at first registration unless every migration is run by hand (and 001/004/006 throw duplicate-column errors). Regenerate it from a fully migrated DB (`sqlite3 library.db .schema`) and make `docker-entrypoint.sh` use it.
   - **2026-11-02:** rewritten as a clean schema equal to old schema + 001–013 (checked column-by-column, FKs, indexes and CHECKs). It also creates `schema_migrations` with 001–013 marked applied, for the 2.2 runner. A fresh DB from it registers, logs in and adds a book. `docker-entrypoint.sh` already loads it. Prod differs only in leftovers no migration created: `users.theme_mode`/`accent_color`, the `discovered_books` table, and `collections.created_at/updated_at` with no default (2.6).
@@ -213,7 +226,7 @@ Visible symptom: your profile says **131** books read, while the Reading Shelves
 - [x] Migration `014_cleanup_orphans.sql`: delete rows that `foreign_key_check` reports (after backup). Books are never deleted: a book or household row whose user is gone gets `added_by = NULL` instead.
 - [x] Turn on `PRAGMA foreign_keys = ON` in `get_db_connection()`.
 - [x] ⚠️ **Before enabling, review every FK action.** 13 FKs to `users` are `ON DELETE CASCADE`, so deleting a user will now really delete their data. `books.added_by REFERENCES users(id)` has **no** action, so deleting a user who owns books will start *failing* with a constraint error. Decide what admin "delete user" should do with their books (transfer to a household member? `SET NULL`?) and make the code do that first.
-- [ ] Add a check to the test suite that `PRAGMA foreign_key_check` is empty after the delete flows. → moved to 2.8 (tests).
+- [x] Add a check to the test suite that `PRAGMA foreign_key_check` is empty after the delete flows. (Done in 2.8.)
 - **Decided 2026-11-02** (see 2.7 for the full feature). A book is a *record*; owner and shelf status are attributes of it. Other users' reviews, ratings and reading history must never disappear because a book was removed or its owner left.
   - Migration `015_foreign_key_actions.sql` rebuilds 6 tables so every FK has a deliberate rule: `books.added_by` → `ON DELETE SET NULL` (deleting a user never deletes books); `collections`, `user_collections`, `collection_books` → `CASCADE`; `dismissed_activities` and `activity_likes.activity_user_id` get FKs (they had none). AUTOINCREMENT counters and column order are preserved; `collections` timestamps get their missing default. Adds `idx_books_added_by`.
   - **Hard delete** (`/books/delete`) is refused while any *other* user has a review, status, session, tag, shelf or wishlist entry on the book, so cascades only ever remove the owner's own rows.
@@ -234,7 +247,7 @@ Visible symptom: your profile says **131** books read, while the Reading Shelves
 ### 2.6 Leftovers 🆕 🟢
 - [x] Drop the `discovered_books` table (Discover tab was removed; no code references it) and the `allow_friend_discovery` column. Do it in a migration, after backup.
   - **2026-11-02:** migration `016_drop_legacy.sql` also drops the pre-reskin `users.theme_mode`/`accent_color` (prod only) by rebuilding `users`. After it, a migrated prod copy, a migrated old fresh DB and a new `create_database.sql` DB have identical schemas.
-- [ ] Delete the stray DB files in the repo root once you've confirmed prod doesn't use them: `libaraxia.db` (Oct 2025, 20 KB), `instance/library.db` (Oct 2025), `library.db.backup_20251018_191333`. They're git-ignored, but they're the "which DB is this?" trap from 2.4.
+- [x] ~~Delete~~ Check the stray DB files in the repo root (deleting them moved to [Loose ends](#loose-ends)): `libaraxia.db` (Oct 2025, 20 KB), `instance/library.db` (Oct 2025), `library.db.backup_20251018_191333`. They're git-ignored, but they're the "which DB is this?" trap from 2.4.
   - **Checked 2026-11-02 (dev machine), not deleted:** `libaraxia.db` has no `users` table (an empty early schema); `instance/library.db` has 1 user and 1 book (old Docker test); `library.db.backup_20251018_191333` has 5 users and 37 books (a pre-Goodreads-import snapshot). None is opened by anything: the app and `manage.py` resolve `library.db` in the project dir and log the path at startup. Prod's own leftovers (`library-prod.db`, `libaraxia.db`, `library.db.backup-20251104` in `/home/phil/library-catalog`) are covered in the Phase 2 deploy steps. Delete by hand once you're happy.
 
 ### 2.7 Ownership & removal 🆕 🟠
@@ -251,20 +264,28 @@ Decided 2026-11-02. The book row is a permanent *record*; who owns the copy and 
 - Future model (not now): books owned by the household (`library_id`) rather than a user. Noted in FORK-SPEC.md §9.
 
 ### 2.8 Smoke tests + CI 🟠
-- [ ] A small pytest suite using `app.test_client()` against a temp DB built by the migration runner. Cover:
+- [x] A small pytest suite using `app.test_client()` against a temp DB built by the migration runner. Cover:
   - register/login
   - add/edit/delete book
   - ownership checks
   - the 2026-10-28 security fixes (unsafe cover paths, SSRF guard, POST-only delete)
   - FK check after deletes
   - every blueprint returning 200/302
-- [ ] CI (`.github/workflows/basic-tests.yml`):
+- [x] CI (`.github/workflows/basic-tests.yml`):
   - bump `actions/checkout@v4`, `actions/setup-python@v5`, Python 3.11+
   - exclude `./venv` from `py_compile`
   - add `python -c "from app import create_app; create_app()"`
   - run pytest
 
 **Done when:** `sqlite3 new.db < create_database.sql` gives a working app; `manage.py migrate` is idempotent; `foreign_key_check` is empty; tests run green in CI.
+
+- **2026-11-02, done:** `tests/` has 73 tests that run in about a second (`pip install -r requirements-dev.txt`, then `pytest`). Every test gets its own copy of a database built by `manage.py migrate` in a temp dir; `library.db` and `.env` are never used, and network calls are blocked.
+  - `test_migrations.py`: a fresh DB has every migration and a clean FK check; `create_database.sql` alone gives the same schema as `migrate`; `migrate` is idempotent; a DB without a ledger is refused; a prod-like DB with the broken `collections` keys baselines and migrates (regression); bad migrations roll back; BEGIN/COMMIT is refused.
+  - `test_pages.py`: register (first user is admin, bad usernames and short passwords refused), login, deactivated users are logged out, login and admin gates, security headers, **every GET route** loads as an admin with seeded data, and a missing book is a 404.
+  - `test_books.py`: add/edit, ownership on edit/remove/delete/transfer, household-only transfer, remove/restore keeps reviews, delete is POST-only and needs CSRF, delete cascades cleanly or is refused while others have reviews, the wishlist-remove fix, unsafe cover paths, and the SSRF guard (private addresses, odd schemes, and a redirect into the LAN).
+  - `test_accounts.py`: deactivate, delete with books going to a user or to no owner, reassigning unowned books, wishlist-only books, the last-admin guard, self-delete (password, household-only), exports scoped to one user.
+  - CI now installs `requirements-dev.txt`, syntax-checks the tracked `.py` files, checks `create_app()` starts, and runs pytest on Python 3.12 (same as prod).
+  - **Found by the suite:** opening a custom shelf (`/collections/collections/<id>/view`) crashed with a template error (`target_username` undefined). Fixed in `view_custom_collection`.
 
 ---
 
