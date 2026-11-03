@@ -97,6 +97,7 @@ def find_orphaned_images(db_connection):
         return {
             'orphaned_files': [],
             'total_size': 0,
+            'total_size_mb': 0,
             'count': 0
         }
 

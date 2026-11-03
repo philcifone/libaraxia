@@ -112,3 +112,11 @@ def test_every_page_loads(app, client, db, people):
 def test_missing_book_is_404(client, people):
     login(client, 'alice')
     assert client.get('/books/book/99999').status_code == 404
+
+
+def test_orphaned_images_page_without_uploads_folder(app, client, people, tmp_path, monkeypatch):
+    """Regression (found by CI): a fresh checkout has no static/uploads/, and the
+    admin orphaned-images page crashed on the missing total_size_mb."""
+    monkeypatch.setattr(app, 'root_path', str(tmp_path))   # tmp_path/static/uploads doesn't exist
+    login(client, 'alice')
+    assert client.get('/admin/orphaned_images').status_code == 200
