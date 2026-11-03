@@ -88,7 +88,18 @@ def applied(conn):
 
 
 def fk_violations(conn):
-    return {tuple(r) for r in conn.execute('PRAGMA foreign_key_check')}
+    """All foreign key violations, table by table. A table whose declared keys
+    point at a column that isn't a key ("foreign key mismatch", e.g. the old
+    collections -> books(book_id)) can't be checked; it's skipped until a
+    migration rebuilds it, after which its violations count as new."""
+    found = set()
+    for (table,) in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall():
+        try:
+            found |= {tuple(r) for r in conn.execute('SELECT * FROM pragma_foreign_key_check(?)', (table,))}
+        except sqlite3.OperationalError as e:
+            if 'foreign key mismatch' not in str(e):
+                raise
+    return found
 
 
 def backup(path):

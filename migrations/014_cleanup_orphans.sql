@@ -19,7 +19,11 @@ UPDATE library_members SET added_by = NULL
  WHERE added_by IS NOT NULL AND added_by NOT IN (SELECT id FROM users);
 
 -- Child rows of deleted books / users / custom collections.
-DELETE FROM collections               WHERE rowid IN (SELECT rowid FROM pragma_foreign_key_check('collections'));
+-- Older databases declare collections' keys as books(book_id) / users(user_id),
+-- columns that don't exist, so the pragma can't check that table ("foreign key
+-- mismatch"). Check it by hand; 015 rebuilds it with correct keys.
+DELETE FROM collections
+ WHERE book_id NOT IN (SELECT id FROM books) OR user_id NOT IN (SELECT id FROM users);
 DELETE FROM read_data                 WHERE rowid IN (SELECT rowid FROM pragma_foreign_key_check('read_data'));
 DELETE FROM reading_sessions          WHERE rowid IN (SELECT rowid FROM pragma_foreign_key_check('reading_sessions'));
 DELETE FROM book_tags                 WHERE rowid IN (SELECT rowid FROM pragma_foreign_key_check('book_tags'));
