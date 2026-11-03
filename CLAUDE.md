@@ -20,12 +20,11 @@ cp .env.example .env              # then set SECRET_KEY and GOOGLE_BOOKS_API_KEY
 ```
 
 ### Database Management
-`create_database.sql` is **not** a complete schema: it only includes migrations 001, 003, 004 and 006. A fresh database needs the schema **and then every migration in order**:
+`create_database.sql` is the complete schema for a **new** database (every migration up to 013 folded in, plus a `schema_migrations` ledger marking them applied):
 ```bash
 sqlite3 library.db < create_database.sql
-for f in migrations/0*.sql; do sqlite3 library.db < "$f"; done
 ```
-Migrations 001, 004 and part of 006 print "duplicate column" errors on a fresh DB. That's expected and harmless; sqlite3 continues. Without the later migrations, the first registration crashes (no `email_verified` column). See `migrations/README.md` for history. Always back up and check which DB file you're touching before running a migration.
+Never run it against an existing database. See `migrations/README.md` for history. Always back up and check which DB file you're touching before running a migration.
 
 ### Running the Application
 ```bash

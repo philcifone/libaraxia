@@ -85,14 +85,9 @@ Edit `.env`:
 
 ### 3. Create the database
 
-`create_database.sql` doesn't contain the full schema yet, so run it **and then every migration in order**:
-
 ```shell
 sqlite3 library.db < create_database.sql
-for f in migrations/0*.sql; do sqlite3 library.db < "$f"; done
 ```
-
-On a fresh database, migrations 001, 004 and 006 print `duplicate column` errors. That's expected and harmless. See [`migrations/README.md`](migrations/README.md).
 
 **Upgrading an existing install:** back up first (`sqlite3 library.db ".backup library.db.bak"`), then run only the migrations you haven't applied yet.
 
