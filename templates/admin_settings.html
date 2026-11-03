@@ -50,6 +50,18 @@
                     Manage
                 </a>
             </div>
+
+            <!-- Unowned Books -->
+            <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
+                <div>
+                    <h3 class="text-content-primary font-medium mb-1">Unowned Books{% if stats.unowned_books %} ({{ stats.unowned_books }}){% endif %}</h3>
+                    <p class="text-sm text-content-secondary">Books with no owner (e.g. after a user was deleted). They show in no library until reassigned.</p>
+                </div>
+                <a href="{{ url_for('admin.unowned_books') }}"
+                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg transition-colors font-medium">
+                    Manage
+                </a>
+            </div>
         </div>
 
         <!-- Shared Library Groups -->
@@ -250,19 +262,16 @@
                     </form>
                 </div>
 
-                <!-- Delete User -->
+                <!-- Deactivate / delete: opens the shared dialog (templates/_account_removal.html) -->
                 <div class="pt-4 border-t border-gray-700">
-                    <form method="POST" action="{{ url_for('admin.delete_user') }}"
-                          onsubmit="return confirm('Are you sure you want to permanently delete this user and all their data? This cannot be undone.');">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <input type="hidden" name="user_id" id="edit-user-id-delete">
-                        <button type="submit" class="w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                            Delete User Permanently
-                        </button>
-                    </form>
+                    <button type="button" id="remove-user-btn"
+                            onclick="openAccountRemoval('/admin/users/' + encodeURIComponent(this.dataset.userId) + '/removal')"
+                            class="w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        Deactivate or Delete User…
+                    </button>
                 </div>
             </div>
         </div>
@@ -412,7 +421,7 @@
             document.getElementById('edit-user-id-password').value = userId;
             document.getElementById('edit-user-id-admin').value = userId;
             document.getElementById('edit-user-id-active').value = userId;
-            document.getElementById('edit-user-id-delete').value = userId;
+            document.getElementById('remove-user-btn').dataset.userId = userId;
 
             // Update toggle button styles
             const adminBtn = document.getElementById('admin-toggle-btn');
@@ -631,6 +640,9 @@
         }
 
     </script>
+    <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 bg-secondary text-content-primary border border-card backdrop:bg-black/60">
+        <div id="account-removal-body"></div>
+    </dialog>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

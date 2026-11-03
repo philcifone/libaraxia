@@ -91,6 +91,10 @@ def index():
         '''
         params = [current_user.id, current_user.id]
 
+        # Removed (deaccessioned) books are hidden unless asked for
+        if not request.args.get('show_removed'):
+            query += " AND b.removed_at IS NULL"
+
         # Apply filters if they exist (simplified - no complex joins unless needed)
         if request.args.get('genre'):
             query += " AND LOWER(b.genre) = LOWER(?)"
@@ -137,7 +141,8 @@ def index():
                 'id': book['id'],
                 'title': book['title'],
                 'author': book['author'],
-                'cover_image_url': book['cover_image_url']
+                'cover_image_url': book['cover_image_url'],
+                'removed': book['removed_at'] is not None
             } for book in books]
 
             return jsonify({
@@ -208,6 +213,10 @@ def shared_library():
         '''
         params = shared_user_ids + shared_user_ids
 
+        # Removed (deaccessioned) books are hidden unless asked for
+        if not request.args.get('show_removed'):
+            query += " AND b.removed_at IS NULL"
+
         # Apply filters
         if request.args.get('genre'):
             query += " AND LOWER(b.genre) = LOWER(?)"
@@ -250,7 +259,8 @@ def shared_library():
                 'id': book['id'],
                 'title': book['title'],
                 'author': book['author'],
-                'cover_image_url': book['cover_image_url']
+                'cover_image_url': book['cover_image_url'],
+                'removed': book['removed_at'] is not None
             } for book in books]
 
             return jsonify({
@@ -305,7 +315,7 @@ def friends_libraries():
                 (f.user_id_1 = ? AND f.user_id_2 = u.id) OR
                 (f.user_id_2 = ? AND f.user_id_1 = u.id)
             )
-            LEFT JOIN books b ON b.added_by = u.id
+            LEFT JOIN books b ON b.added_by = u.id AND b.removed_at IS NULL
             GROUP BY u.id
             ORDER BY u.username
         ''', (current_user.id, current_user.id)).fetchall()
@@ -356,6 +366,7 @@ def friend_library(username):
                 SELECT DISTINCT b.*
                 FROM books b
                 WHERE b.added_by = ?
+                AND b.removed_at IS NULL
                 AND NOT EXISTS (
                     SELECT 1 FROM wishlist w
                     WHERE w.book_id = b.id

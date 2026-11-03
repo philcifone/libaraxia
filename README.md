@@ -81,20 +81,17 @@ Edit `.env`:
 | `TRUSTED_PROXY_COUNT` | Set to `1` if you run behind nginx/Caddy, so rate limits see real client IPs. |
 | `EMAIL_VERIFICATION_REQUIRED`, `MAIL_*` | Optional email verification. |
 
-> **Note:** `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` are currently read before `.env` is loaded. Set them as real environment variables (e.g. in your systemd unit) rather than in `.env`. The database defaults to `library.db` in the working directory.
+> **Note:** every setting can go in `.env` or be a real environment variable (e.g. in a systemd unit); a real environment variable wins. The database defaults to `library.db` in the project directory, and the app logs which file it opened at startup.
 
 ### 3. Create the database
 
-`create_database.sql` doesn't contain the full schema yet, so run it **and then every migration in order**:
-
 ```shell
-sqlite3 library.db < create_database.sql
-for f in migrations/0*.sql; do sqlite3 library.db < "$f"; done
+python3 manage.py migrate
 ```
 
-On a fresh database, migrations 001, 004 and 006 print `duplicate column` errors. That's expected and harmless. See [`migrations/README.md`](migrations/README.md).
+This builds `library.db` from `create_database.sql`. Later, after `git pull`, the same command backs up the database and applies any new migrations. `python3 manage.py status` shows where you are. See [`migrations/README.md`](migrations/README.md).
 
-**Upgrading an existing install:** back up first (`sqlite3 library.db ".backup library.db.bak"`), then run only the migrations you haven't applied yet.
+**Upgrading an install from before `manage.py` existed:** run `python3 manage.py migrate --baseline` once, then `python3 manage.py migrate`.
 
 ### 4. Run
 

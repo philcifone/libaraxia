@@ -193,3 +193,26 @@ def can_view_content(viewer_id, owner_id, privacy_setting):
 
     # Default: deny access
     return False
+
+def other_users_with_book_data(conn, book_id, owner_id):
+    """Usernames of users other than owner_id with their own data on a book.
+
+    "Data" means a review/rating, reading status, reading session, tag,
+    custom-collection entry or wishlist entry. A book that anyone else has
+    data on must not be hard-deleted (the delete would cascade into their
+    rows); it can only be given away or, later, marked as removed.
+    owner_id may be None (unowned book): then every user counts.
+    """
+    rows = conn.execute('''
+        SELECT DISTINCT u.username FROM users u WHERE u.id IS NOT ? AND u.id IN (
+            SELECT user_id FROM read_data        WHERE book_id = ?
+            UNION SELECT user_id FROM collections      WHERE book_id = ?
+            UNION SELECT user_id FROM reading_sessions WHERE book_id = ?
+            UNION SELECT user_id FROM book_tags        WHERE book_id = ?
+            UNION SELECT user_id FROM wishlist         WHERE book_id = ?
+            UNION SELECT uc.user_id FROM collection_books cb
+                  JOIN user_collections uc ON uc.collection_id = cb.collection_id
+                  WHERE cb.book_id = ?
+        ) ORDER BY u.username
+    ''', (owner_id, book_id, book_id, book_id, book_id, book_id, book_id)).fetchall()
+    return [r['username'] for r in rows]

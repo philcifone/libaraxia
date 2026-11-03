@@ -1,10 +1,15 @@
 import os
 
+# app.py loads .env before importing this module, so os.getenv() here sees
+# values from .env as well as real environment variables.
+#
+# Not configured here (see app.py / utils): SECRET_KEY, ALLOW_REGISTRATION,
+# TRUSTED_PROXY_COUNT, UPLOAD_FOLDER, the database path (DATABASE_PATH,
+# utils/database.py) and rate limits (utils/rate_limiting.py).
+
 class Config:
     DEBUG = False
     TESTING = False
-    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///library.db')
-    UPLOAD_FOLDER = os.path.join('static', 'uploads')  # Default path
     MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20MB max upload size
 
     # Session cookie security
@@ -17,11 +22,6 @@ class Config:
     REMEMBER_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_SECURE = False  # Overridden in production
     REMEMBER_COOKIE_DURATION = 30 * 24 * 60 * 60  # 30 days in seconds
-
-    # Rate Limiting Configuration
-    RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')
-    RATELIMIT_STRATEGY = 'fixed-window'
-    RATELIMIT_HEADERS_ENABLED = True
 
     # Email Configuration
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
@@ -38,19 +38,11 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///library.db')
-    # Development uploads folder remains relative
-    UPLOAD_FOLDER = os.path.join('static', 'uploads')
 
 class ProductionConfig(Config):
-    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:////home/phil/library-catalog/library-prod.db')
-    # Production uploads folder should be absolute
-    UPLOAD_FOLDER = '/home/phil/library-catalog/static/uploads'  # Adjust this path
     # HTTPS-only cookies in production
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
 
 class TestingConfig(Config):
     TESTING = True
-    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///library-test.db')
-    UPLOAD_FOLDER = os.path.join('static', 'uploads')

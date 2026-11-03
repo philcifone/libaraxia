@@ -31,6 +31,7 @@ def activity_feed():
             WHERE b.id NOT IN (
                 SELECT book_id FROM wishlist
             )
+            AND b.added_by IS NOT NULL  -- unowned books have no "added by" activity
             AND NOT EXISTS (
                 SELECT 1 FROM dismissed_activities da
                 WHERE da.activity_type = 'book_added'
@@ -226,6 +227,8 @@ def activity_feed():
         for activity in activities:
             activity_user_id = activity.get('user_id')
             # Show if it's your own activity or if you're friends with the user
+            if activity_user_id is None:
+                continue
             if activity_user_id == current_user.id or is_friends_with(current_user.id, activity_user_id):
                 friend_activities.append(activity)
 

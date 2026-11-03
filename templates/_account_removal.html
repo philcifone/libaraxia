@@ -1,0 +1,102 @@
+{# Deactivate / delete an account. Rendered inline on the profile page (is_self)
+   and as a fragment inside the admin page's dialog. Needs: ctx (utils.accounts.
+   removal_context), is_self, action_url, export_url. Show/hide of the
+   delete-only part is handled by a delegated listener in static/script.js. #}
+{% set u = ctx.user %}
+{% set who = 'You' if is_self else u.username %}
+<form method="POST" action="{{ action_url }}" class="account-removal space-y-5">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="user_id" value="{{ u.id }}"/>
+
+    <h3 class="text-xl font-display text-content-primary">
+        {{ 'Leave Libaraxia' if is_self else 'Remove ' ~ u.username ~ "'s account" }}
+    </h3>
+
+    {% if ctx.last_admin %}
+    <p class="p-3 border border-card bg-primary text-sm text-content-primary">
+        {{ 'You are' if is_self else u.username ~ ' is' }} the only admin, so this account can't be deactivated or deleted.
+        Make someone else an admin first.
+    </p>
+    {% else %}
+
+    <fieldset class="space-y-3">
+        <legend class="sr-only">What should happen?</legend>
+        <label class="flex gap-3 p-3 border border-card bg-primary cursor-pointer">
+            <input type="radio" name="action" value="deactivate" checked class="mt-1 account-removal-choice">
+            <span>
+                <span class="block font-medium text-content-primary">Deactivate (keep everything)</span>
+                <span class="block text-sm text-content-secondary">
+                    {{ 'You' if is_self else 'They' }} can't log in, but books, reviews and reading history all stay
+                    and stay visible to others. An admin can reactivate the account later.
+                    {% if is_self %}You'll be logged out now.{% endif %}
+                </span>
+            </span>
+        </label>
+        <label class="flex gap-3 p-3 border border-card bg-primary cursor-pointer">
+            <input type="radio" name="action" value="delete" class="mt-1 account-removal-choice">
+            <span>
+                <span class="block font-medium text-content-primary">Delete permanently</span>
+                <span class="block text-sm text-content-secondary">Removes the account and {{ 'your' if is_self else 'their' }} personal data. This can't be undone.</span>
+            </span>
+        </label>
+    </fieldset>
+
+    <div class="account-removal-delete hidden space-y-4">
+        {% set c = ctx.counts %}
+        <div class="text-sm text-content-primary">
+            <p class="mb-1">Deleted with the account:</p>
+            <ul class="list-disc pl-6 text-content-secondary">
+                <li>{{ c.reviews }} rating(s) and review(s), {{ c.statuses }} reading status(es), {{ c.sessions }} reading session(s)</li>
+                <li>{{ c.shelves }} custom shelf/shelves and {{ c.wishlist }} wishlist item(s)</li>
+                <li>{{ c.friends }} friendship(s), friend requests, notifications and likes</li>
+                <li>household membership</li>
+            </ul>
+            <p class="mt-2 text-content-secondary">Other people's reviews and reading history are never touched.</p>
+        </div>
+
+        {% if ctx.owned_books %}
+        <div>
+            <label for="books_to_{{ u.id }}" class="block text-sm text-content-primary mb-1">
+                {{ 'Your' if is_self else u.username ~ "'s" }} {{ ctx.owned_books }} book(s) go to:
+            </label>
+            <select name="books_to" id="books_to_{{ u.id }}"
+                    class="w-full px-3 py-2 bg-primary border border-card text-content-primary">
+                <option value="">Choose…</option>
+                {% if ctx.household %}
+                <optgroup label="Household">
+                    {% for m in ctx.household %}<option value="{{ m.id }}">{{ m.username }}</option>{% endfor %}
+                </optgroup>
+                {% endif %}
+                {% if ctx.other_users %}
+                <optgroup label="Other users">
+                    {% for m in ctx.other_users %}<option value="{{ m.id }}">{{ m.username }}</option>{% endfor %}
+                </optgroup>
+                {% endif %}
+                <option value="none">No owner (an admin can reassign them later)</option>
+            </select>
+            <p class="mt-1 text-xs text-content-secondary">The books are kept either way, so reviews of them survive.</p>
+        </div>
+        {% endif %}
+
+        <a href="{{ export_url }}" class="inline-flex items-center gap-2 px-4 py-2 border border-card bg-primary text-content-primary text-sm hover:bg-primary-hover">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export {{ 'my' if is_self else 'their' }} data first (ZIP of CSVs)
+        </a>
+
+        {% if is_self %}
+        <div>
+            <label for="delete-password" class="block text-sm text-content-primary mb-1">Your password, to confirm</label>
+            <input type="password" name="password" id="delete-password" autocomplete="current-password"
+                   class="w-full px-3 py-2 bg-primary border border-card text-content-primary">
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="flex justify-end gap-3 pt-2 border-t border-card">
+        <button type="button" class="account-removal-cancel px-4 py-2 border border-card bg-primary text-content-primary hover:bg-primary-hover">Cancel</button>
+        {% if not ctx.last_admin %}
+        <button type="submit" class="account-removal-submit px-4 py-2 bg-red-600 text-on-accent hover:bg-red-700">Deactivate</button>
+        {% endif %}
+    </div>
+</form>

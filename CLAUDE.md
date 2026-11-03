@@ -20,12 +20,13 @@ cp .env.example .env              # then set SECRET_KEY and GOOGLE_BOOKS_API_KEY
 ```
 
 ### Database Management
-`create_database.sql` is **not** a complete schema: it only includes migrations 001, 003, 004 and 006. A fresh database needs the schema **and then every migration in order**:
+Use `manage.py` (see `migrations/README.md`):
 ```bash
-sqlite3 library.db < create_database.sql
-for f in migrations/0*.sql; do sqlite3 library.db < "$f"; done
+python3 manage.py migrate             # new DB: built from create_database.sql; existing: backup + pending migrations
+python3 manage.py status              # applied / pending
+python3 manage.py --db /tmp/x.db migrate   # any other file
 ```
-Migrations 001, 004 and part of 006 print "duplicate column" errors on a fresh DB. That's expected and harmless; sqlite3 continues. Without the later migrations, the first registration crashes (no `email_verified` column). See `migrations/README.md` for history. Always back up and check which DB file you're touching before running a migration.
+`create_database.sql` is the complete schema for a **new** database (every migration so far folded in, plus the `schema_migrations` ledger). A database created before the runner needs `manage.py migrate --baseline` once; plain `migrate` refuses a DB with tables but no ledger. Migration files must not contain BEGIN/COMMIT; each runs in its own transaction with FKs off and is rolled back if it adds `foreign_key_check` violations. Always check which DB file you're touching.
 
 ### Running the Application
 ```bash
@@ -46,24 +47,25 @@ npm run watch:css    # rebuild on change
 
 ### Application Structure
 - **app.py**: application factory `create_app()`. Loads `.env`, picks the config, sets up CSRF, Flask-Limiter, Flask-Mail and Flask-Login, adds security headers, optional ProxyFix, and registers the blueprints. `/` redirects to registration when there are no users, otherwise to `/base/`.
-- **config.py**: `DevelopmentConfig` / `ProductionConfig` / `TestingConfig`, chosen by `FLASK_ENV`.
+- **config.py**: `DevelopmentConfig` / `ProductionConfig` / `TestingConfig`, chosen by `FLASK_ENV` (cookies, mail, email verification).
+- **manage.py**: database CLI: `migrate`, `status`, `backup` (see Database Management).
 - **models.py**: `User` (Flask-Login), `admin_required`, username rules (`is_valid_username`), and friendship/library helpers (`is_friends_with`, `get_friendship_status`, `get_library_members`, `shares_library_with`, `can_view_content`).
 
 ### Blueprints (`/blueprints/`, URL prefix in brackets)
 - **auth** (`/auth`): register, login (with remember-me), logout, email verification and resend. Registration can be closed with `ALLOW_REGISTRATION=False`.
 - **base** (`/base`): main library view at `/base/index` with search/sort/filter and infinite scroll; shared (household) library; friends' libraries.
-- **books** (`/books`): add, edit, delete (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
+- **books** (`/books`): add, edit, remove from library / restore (deaccession), delete for mistakes (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
 - **collections** (`/collections`): reading status (read, currently reading, want to read, did not finish) and custom user collections.
-- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export, **Goodreads CSV import** (available to every user, not admin-only), adding/removing household members.
+- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only), adding/removing household members.
 - **read** (`/read`): ratings/reviews and reading sessions (dates started/completed).
 - **tags** (`/tags`): per-user tags.
-- **admin** (`/admin`): user management, avatar management, orphaned image cleanup, bulk cover fetch, household (library) membership.
+- **admin** (`/admin`): user management (deactivate/delete dialog), avatar management, orphaned image cleanup, unowned books (reassign), bulk cover fetch, household (library) membership.
 - **feed** (`/feed`): activity feed of friends' reviews/updates, likes, dismissals.
 - **wishlist** (`/wishlist`): wishlist with notes, moving items into the library, viewing friends' wishlists.
 - **friends** (`/friends`): friend requests, friend list, notifications page, user search API.
 
 ### Utilities (`/utils/`)
-- **database.py**: `get_db_connection()`, which opens `DATABASE_PATH` (default `library.db` in the working dir) with `sqlite3.Row`.
+- **database.py**: `get_db()` (request-scoped connection, closed at teardown), `get_db_connection()` (a new connection: `sqlite3.Row`, `PRAGMA foreign_keys = ON`), `database_path()`.
 - **book_utils.py**: Google Books / Open Library / bookcover API lookups, ISBN helpers, cover search and download (`download_and_save_cover`, with an SSRF guard that only fetches public hosts), `process_image` for uploads, `get_filter_options`.
 - **image_utils.py**: `is_safe_upload_path`, `delete_image_file` (refuses paths outside `static/uploads/`), and orphaned image detection/cleanup.
 - **email_utils.py**: verification tokens (random, stored in `email_verification_tokens`) and sending via Flask-Mail.
@@ -78,8 +80,11 @@ Tables after all migrations:
 
 There is no `activities` table; the feed is built from `read_data`/`collections`/`wishlist` at query time. Some rows are positional (`book[0]`, `book[1]`) in templates, so be careful reordering `SELECT *` columns.
 
-Two gotchas (both scheduled in ROADMAP.md):
-- **Foreign keys are not enforced.** `get_db_connection()` never runs `PRAGMA foreign_keys = ON`, so the schema's `ON DELETE CASCADE` rules don't fire and deleting a book leaves orphaned rows. Clean up child rows explicitly until Phase 2.3 lands.
+Gotchas:
+- **Foreign keys are enforced** (`get_db_connection()` runs `PRAGMA foreign_keys = ON`; needs migrations 014/015). Every FK has a deliberate `ON DELETE` rule: user and book children `CASCADE`, but `books.added_by` is `SET NULL`, so deleting a user never deletes books. A book is a record other people's reviews hang on: hard delete is refused while another user has data on it (`models.other_users_with_book_data`). Don't delete `books` rows anywhere else without that check.
+- **Unowned books** (`added_by IS NULL`) are allowed but appear in no library view, since those filter by owner. Handle `None` wherever `added_by` is used.
+- **Removed (deaccessioned) books** have `books.removed_at` set. Library views must add `AND b.removed_at IS NULL` unless `show_removed` is asked for; reading history, reviews and exports keep them. "Remove from library" is the normal way a book leaves; hard delete is only for mistakes.
+- **Accounts:** deactivate/delete logic lives in `utils/accounts.py` (shared by admin and self-delete). Exports are in `utils/export.py`, scoped to one user.
 - **Wishlist entries are rows in `books`** (plus a `wishlist` row). Library queries must exclude them with `AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id ...)`, or they'll count wishlist books as owned.
 
 ### Access Model (what the code actually does)
@@ -129,21 +134,21 @@ Two gotchas (both scheduled in ROADMAP.md):
 - `app.py` sets `UPLOAD_FOLDER = static/uploads` (relative to the working dir), overriding the paths in config.py.
 
 ### Database Migrations
-- Manual SQL files in `/migrations/`, run in numerical order. See `migrations/README.md`.
-- When adding a migration, also consider folding it into `create_database.sql` (see ROADMAP.md Phase 2.1).
+- SQL files in `/migrations/` (`NNN_name.sql`), applied in order by `manage.py migrate`, tracked in `schema_migrations`. See `migrations/README.md`.
+- When adding a migration, either fold it into `create_database.sql` (and add its name to the ledger INSERT there) or leave it for `migrate` to apply after the schema.
 
 ### Environment Variables
 Read via python-dotenv from `.env`:
 - **SECRET_KEY**: required in production. A warning is logged if it's still the `.env.example` placeholder.
 - **GOOGLE_BOOKS_API_KEY**: Google Books lookups.
 - **FLASK_ENV**: `development` or `production`.
-- **DATABASE_PATH**: SQLite file used by `utils/database.py` (default `library.db`). `DATABASE_URI` in config.py is unused.
+- **DATABASE_PATH**: SQLite file used by `utils/database.py` and `manage.py` (default `library.db` in the project directory).
 - **ALLOW_REGISTRATION**: `False` closes self-registration once the first user exists (default `True`).
 - **TRUSTED_PROXY_COUNT**: number of reverse proxies to trust for `X-Forwarded-*` (default 0 = off).
 - **EMAIL_VERIFICATION_REQUIRED** and **MAIL_SERVER / MAIL_PORT / MAIL_USE_TLS / MAIL_USERNAME / MAIL_PASSWORD / MAIL_DEFAULT_SENDER**: email verification.
 - **PORT**: dev server port.
 
-**Load-order caveat:** `config.py` and `utils/database.py` read the environment at **import time**, before `create_app()` calls `load_dotenv()`. So `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` set only in `.env` are ignored unless they're real environment variables. `SECRET_KEY`, `FLASK_ENV`, `ALLOW_REGISTRATION` and `TRUSTED_PROXY_COUNT` are read inside `create_app()` and do work from `.env`. Fixing this could change which DB file prod opens, so check before changing it.
+**Load order:** `app.py` calls `load_dotenv()` at import, before `config.py` is imported, and `utils/database.database_path()` reads `DATABASE_PATH` on every call. So every setting works from `.env` or the real environment (real env wins). A relative `DATABASE_PATH` is relative to the project directory, not the cwd. The app logs the DB path at startup and warns if the file doesn't exist.
 
 ### Common Patterns
 
@@ -154,17 +159,16 @@ Read via python-dotenv from `.env`:
 4. Add templates in `/templates/` (copy the head/sidebar/flash includes from an existing page).
 
 #### Database Queries
+In routes (and helpers called from routes), use the request-scoped connection. It is opened on first use and closed at teardown (`app.teardown_appcontext(close_db)`), and anything not committed is rolled back:
 ```python
-from utils.database import get_db_connection
+from utils.database import get_db
 
-conn = get_db_connection()
-try:
-    row = conn.execute('SELECT * FROM table WHERE id = ?', (id,)).fetchone()
-    conn.commit()  # if you wrote anything
-finally:
-    conn.close()
+conn = get_db()
+row = conn.execute('SELECT * FROM table WHERE id = ?', (id,)).fetchone()
+conn.execute('UPDATE ...', (...))
+conn.commit()          # explicit; roll back in an except that swallows a failed write
 ```
-Avoid `with get_db_connection() as conn:`. sqlite3's context manager commits but does **not** close the connection (several older routes still do this).
+Outside a request (manage.py, scripts) use `get_db_connection()` in try/finally and close it. Many older routes still open their own connection that way; that's correct, just verbose, and can move to `get_db()` once there are tests (ROADMAP 2.8). Never use `with get_db_connection() as conn:` (it commits but doesn't close).
 
 #### API Response Pattern
 ```python
@@ -174,7 +178,7 @@ return jsonify({"success": False, "error": "Error message"}), 400
 
 ### Testing Notes
 - There is no automated test suite. CI (`.github/workflows/basic-tests.yml`) only syntax-checks and imports modules.
-- For manual checks, use a copy of the DB: `DATABASE_PATH=/tmp/test.db python3 app.py` (it must be a real env var, see the caveat above), or Flask's `app.test_client()` with `WTF_CSRF_ENABLED=False`.
+- For manual checks, use a copy of the DB: `DATABASE_PATH=/tmp/test.db python3 app.py`, or Flask's `app.test_client()` with `WTF_CSRF_ENABLED=False`.
 - First-time setup: visit `/` and you'll be redirected to register the admin user.
 - Camera/barcode scanning needs HTTPS (`--cert`/`--key`, see `docs/HTTPS-SETUP.md`).
 

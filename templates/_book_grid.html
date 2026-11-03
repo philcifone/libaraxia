@@ -8,7 +8,10 @@
             <div class="book-item group">
                 <a href="/books/book/{{ book[0] }}"
                    class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
-                    <div class="book-cover w-full h-64 overflow-hidden bg-primary">
+                    <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
+                        {% if book.removed_at %}
+                        <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
+                        {% endif %}
                         {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                              alt="{{ book[1] }}"
