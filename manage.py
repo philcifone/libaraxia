@@ -8,8 +8,9 @@
     python3 manage.py backup                 # just take a backup
 
 Every command takes --db PATH. Without it, the same path the app uses is
-picked (DATABASE_PATH, default library.db in the working directory). The
-resolved absolute path is always printed, so check it before saying yes.
+picked (DATABASE_PATH from the environment or .env, default library.db in
+the project directory). The resolved absolute path is always printed, so
+check it before saying yes.
 
 Migrations are the files migrations/NNN_name.sql, applied in name order.
 Each one runs in its own transaction together with its schema_migrations
@@ -38,10 +39,12 @@ BASELINE = '013'
 
 
 def default_db_path():
-    # Same resolution as the app (utils/database.py).
+    # Same resolution as the app: .env, then utils/database.py.
     sys.path.insert(0, ROOT)
-    from utils.database import DATABASE
-    return DATABASE
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(ROOT, '.env'))
+    from utils.database import database_path
+    return database_path()
 
 
 def migration_files():

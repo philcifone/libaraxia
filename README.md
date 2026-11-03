@@ -81,7 +81,7 @@ Edit `.env`:
 | `TRUSTED_PROXY_COUNT` | Set to `1` if you run behind nginx/Caddy, so rate limits see real client IPs. |
 | `EMAIL_VERIFICATION_REQUIRED`, `MAIL_*` | Optional email verification. |
 
-> **Note:** `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` are currently read before `.env` is loaded. Set them as real environment variables (e.g. in your systemd unit) rather than in `.env`. The database defaults to `library.db` in the working directory.
+> **Note:** every setting can go in `.env` or be a real environment variable (e.g. in a systemd unit); a real environment variable wins. The database defaults to `library.db` in the project directory, and the app logs which file it opened at startup.
 
 ### 3. Create the database
 

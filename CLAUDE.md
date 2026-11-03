@@ -47,7 +47,8 @@ npm run watch:css    # rebuild on change
 
 ### Application Structure
 - **app.py**: application factory `create_app()`. Loads `.env`, picks the config, sets up CSRF, Flask-Limiter, Flask-Mail and Flask-Login, adds security headers, optional ProxyFix, and registers the blueprints. `/` redirects to registration when there are no users, otherwise to `/base/`.
-- **config.py**: `DevelopmentConfig` / `ProductionConfig` / `TestingConfig`, chosen by `FLASK_ENV`.
+- **config.py**: `DevelopmentConfig` / `ProductionConfig` / `TestingConfig`, chosen by `FLASK_ENV` (cookies, mail, email verification).
+- **manage.py**: database CLI: `migrate`, `status`, `backup` (see Database Management).
 - **models.py**: `User` (Flask-Login), `admin_required`, username rules (`is_valid_username`), and friendship/library helpers (`is_friends_with`, `get_friendship_status`, `get_library_members`, `shares_library_with`, `can_view_content`).
 
 ### Blueprints (`/blueprints/`, URL prefix in brackets)
@@ -139,13 +140,13 @@ Read via python-dotenv from `.env`:
 - **SECRET_KEY**: required in production. A warning is logged if it's still the `.env.example` placeholder.
 - **GOOGLE_BOOKS_API_KEY**: Google Books lookups.
 - **FLASK_ENV**: `development` or `production`.
-- **DATABASE_PATH**: SQLite file used by `utils/database.py` (default `library.db`). `DATABASE_URI` in config.py is unused.
+- **DATABASE_PATH**: SQLite file used by `utils/database.py` and `manage.py` (default `library.db` in the project directory).
 - **ALLOW_REGISTRATION**: `False` closes self-registration once the first user exists (default `True`).
 - **TRUSTED_PROXY_COUNT**: number of reverse proxies to trust for `X-Forwarded-*` (default 0 = off).
 - **EMAIL_VERIFICATION_REQUIRED** and **MAIL_SERVER / MAIL_PORT / MAIL_USE_TLS / MAIL_USERNAME / MAIL_PASSWORD / MAIL_DEFAULT_SENDER**: email verification.
 - **PORT**: dev server port.
 
-**Load-order caveat:** `config.py` and `utils/database.py` read the environment at **import time**, before `create_app()` calls `load_dotenv()`. So `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` set only in `.env` are ignored unless they're real environment variables. `SECRET_KEY`, `FLASK_ENV`, `ALLOW_REGISTRATION` and `TRUSTED_PROXY_COUNT` are read inside `create_app()` and do work from `.env`. Fixing this could change which DB file prod opens, so check before changing it.
+**Load order:** `app.py` calls `load_dotenv()` at import, before `config.py` is imported, and `utils/database.database_path()` reads `DATABASE_PATH` on every call. So every setting works from `.env` or the real environment (real env wins). A relative `DATABASE_PATH` is relative to the project directory, not the cwd. The app logs the DB path at startup and warns if the file doesn't exist.
 
 ### Common Patterns
 
@@ -176,7 +177,7 @@ return jsonify({"success": False, "error": "Error message"}), 400
 
 ### Testing Notes
 - There is no automated test suite. CI (`.github/workflows/basic-tests.yml`) only syntax-checks and imports modules.
-- For manual checks, use a copy of the DB: `DATABASE_PATH=/tmp/test.db python3 app.py` (it must be a real env var, see the caveat above), or Flask's `app.test_client()` with `WTF_CSRF_ENABLED=False`.
+- For manual checks, use a copy of the DB: `DATABASE_PATH=/tmp/test.db python3 app.py`, or Flask's `app.test_client()` with `WTF_CSRF_ENABLED=False`.
 - First-time setup: visit `/` and you'll be redirected to register the admin user.
 - Camera/barcode scanning needs HTTPS (`--cert`/`--key`, see `docs/HTTPS-SETUP.md`).
 

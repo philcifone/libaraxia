@@ -222,9 +222,10 @@ Visible symptom: your profile says **131** books read, while the Reading Shelves
   - Tested on a migrated copy: FK check empty after deleting users (transfer and no-owner), a mistaken book, a shared book (refused), a custom collection, wishlist removals; every GET route returns 200/302.
 
 ### 2.4 Config / `.env` load order 🟠
-- [ ] `config.py` and `utils/database.py` read env vars at import time, before `load_dotenv()`, so `.env` values for `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` are silently ignored.
-- [ ] ⚠️ Use the prod DB path recorded in Phase 1.1. Moving `load_dotenv()` earlier could switch prod to a different (possibly empty) DB file.
-- [ ] Remove the hardcoded `/home/phil/library-catalog/...` paths, the unused `DATABASE_URI`, and the wrong-key `RATELIMIT_STORAGE_URL` from `config.py`.
+- [x] `config.py` and `utils/database.py` read env vars at import time, before `load_dotenv()`, so `.env` values for `DATABASE_PATH`, `MAIL_*` and `EMAIL_VERIFICATION_REQUIRED` are silently ignored.
+- [x] ⚠️ Use the prod DB path recorded in Phase 1.1. Moving `load_dotenv()` earlier could switch prod to a different (possibly empty) DB file.
+- [x] Remove the hardcoded `/home/phil/library-catalog/...` paths, the unused `DATABASE_URI`, and the wrong-key `RATELIMIT_STORAGE_URL` from `config.py`.
+  - **2026-11-02:** `app.py` loads `.env` (by absolute path) before importing `config.py`; `database_path()` reads `DATABASE_PATH` per call and resolves a relative path against the project dir, not the cwd. Startup logs the DB path and warns if the file is missing. `config.py` keeps only cookies/mail/verification; `.env.example` drops `DATABASE_URI`/`REDIS_URL` and documents `DATABASE_PATH`, `ALLOW_REGISTRATION`, `TRUSTED_PROXY_COUNT`. Prod opens the same file as before (no `DATABASE_PATH` set; cwd = project dir). **Behaviour change to check on prod:** any `EMAIL_VERIFICATION_REQUIRED` / `MAIL_*` / `DATABASE_PATH` lines in prod's `.env` were ignored until now and will take effect.
 
 ### 2.5 DB connection helper 🟢
 - [ ] Replace `with get_db_connection() as conn:` (commits but never closes; used in books/wishlist) with a Flask `g`-scoped connection and `teardown_appcontext`. That removes most try/finally boilerplate, and it's the one place the FK pragma lives.
