@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
 import sqlite3
@@ -43,7 +43,8 @@ def add_tag():
             'tags': [tag[0] for tag in all_tags]
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.exception('Error updating tags')
+        return jsonify({'error': 'Something went wrong with the tags.'}), 500
     finally:
         conn.close()
 
@@ -77,7 +78,8 @@ def remove_tag():
             'tags': [tag[0] for tag in all_tags]
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.exception('Error updating tags')
+        return jsonify({'error': 'Something went wrong with the tags.'}), 500
     finally:
         conn.close()
 

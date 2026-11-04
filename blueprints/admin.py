@@ -41,7 +41,7 @@ def settings():
         stats = {
             'total_users': conn.execute('SELECT COUNT(*) FROM users').fetchone()[0],
             'active_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_active = 1').fetchone()[0],
-            'total_books': conn.execute('SELECT COUNT(*) FROM books').fetchone()[0],
+            'total_books': conn.execute('SELECT COUNT(*) FROM library_books WHERE removed_at IS NULL').fetchone()[0],
             'admin_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0],
             'unowned_books': conn.execute('SELECT COUNT(*) FROM books WHERE added_by IS NULL').fetchone()[0],
         }
@@ -450,7 +450,7 @@ def upload_user_avatar():
 
             except Exception as e:
                 logger.error(f"Error processing image: {str(e)}")
-                return jsonify({'success': False, 'message': f'Error processing image: {str(e)}'}), 500
+                return jsonify({'success': False, 'message': 'Error processing the image.'}), 500
 
             # Get relative path for database storage (use forward slashes for URLs)
             relative_path = f'uploads/avatars/{unique_filename}'
@@ -491,7 +491,7 @@ def upload_user_avatar():
 
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
 
 
 @admin_blueprint.route("/remove_user_avatar", methods=["POST"])
@@ -546,7 +546,7 @@ def remove_user_avatar():
 
     except Exception as e:
         current_app.logger.error(f"Error removing avatar: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
 
 
 @admin_blueprint.route("/unowned_books")
@@ -640,100 +640,97 @@ def cleanup_orphaned_images():
 
     except Exception as e:
         current_app.logger.error(f"Error cleaning up orphaned images: {str(e)}", exc_info=True)
-        flash(f"An error occurred: {str(e)}", "error")
+        flash("Something went wrong deleting the files; see the server log.", "error")
         return redirect(url_for('admin.orphaned_images'))
+
+
+@admin_blueprint.route("/placeholder_covers")
+@login_required
+@admin_required
+def placeholder_covers():
+    """Books whose cover is a downloaded placeholder ("image not available")."""
+    from utils.book_utils import find_placeholder_covers
+    conn = get_db()
+    missing = conn.execute("SELECT COUNT(*) " + MISSING_COVER_SQL).fetchone()[0]
+    return render_template('admin/placeholder_covers.html',
+                           books=find_placeholder_covers(conn),
+                           missing=missing,
+                           offset=request.args.get('offset', 0, type=int),
+                           batch=COVER_FETCH_BATCH)
+
+
+@admin_blueprint.route("/clear_placeholder_covers", methods=["POST"])
+@login_required
+@admin_required
+def clear_placeholder_covers():
+    from utils.book_utils import clear_placeholder_covers as clear
+    result = clear(get_db())
+    current_app.logger.info(f"Admin {current_user.username} cleared {result['books']} placeholder covers "
+                            f"({result['files']} files deleted)")
+    flash(f"Cleared {result['books']} placeholder cover(s) and deleted {result['files']} file(s). "
+          "Run the bulk cover fetch to look for real ones.", "success")
+    return redirect(url_for('admin.placeholder_covers'))
+
+
+MISSING_COVER_SQL = """
+    FROM books
+    WHERE (cover_image_url IS NULL OR cover_image_url = '')
+      AND isbn IS NOT NULL AND isbn != ''
+"""
+# Each book is a few HTTP lookups; keep a batch well under gunicorn's 30 s timeout
+COVER_FETCH_BATCH = 10
 
 
 @admin_blueprint.route("/missing_covers_count")
 @login_required
 @admin_required
 def missing_covers_count():
-    """Get count of books missing cover images"""
-    conn = get_db_connection()
-    try:
-        count = conn.execute("""
-            SELECT COUNT(*) as missing
-            FROM books
-            WHERE cover_image_url IS NULL OR cover_image_url = ''
-        """).fetchone()['missing']
-
-        return jsonify({'missing': count})
-    except Exception as e:
-        current_app.logger.error(f"Error counting missing covers: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-    finally:
-        conn.close()
+    """Books without a cover that have an ISBN to look one up by."""
+    count = get_db().execute("SELECT COUNT(*) " + MISSING_COVER_SQL).fetchone()[0]
+    return jsonify({'missing': count})
 
 
 @admin_blueprint.route("/bulk_fetch_covers", methods=["POST"])
 @login_required
 @admin_required
 def bulk_fetch_covers():
-    """Bulk fetch missing book covers from Google Books API"""
-    import logging
-    logger = logging.getLogger(__name__)
+    """Look up covers for the next batch of books that have none.
 
-    conn = get_db_connection()
-    try:
-        # Get all books without covers (limit to 50 at a time to avoid timeout)
-        books = conn.execute("""
-            SELECT id, title, author, isbn
-            FROM books
-            WHERE (cover_image_url IS NULL OR cover_image_url = '')
-            AND isbn IS NOT NULL AND isbn != ''
-            LIMIT 50
-        """).fetchall()
+    A plain form post redirects back to the placeholder-covers page with a
+    flash message; a fetch() call gets JSON.
+    """
+    from utils.book_utils import fetch_book_details_from_isbn
 
-        stats = {
-            'books_processed': 0,
-            'covers_found': 0,
-            'covers_failed': 0
-        }
+    conn = get_db()
+    # Books that failed before come last, so repeated clicks make progress
+    books = conn.execute("SELECT id, title, isbn " + MISSING_COVER_SQL +
+                         " ORDER BY id LIMIT ? OFFSET ?",
+                         (COVER_FETCH_BATCH, request.form.get('offset', 0, type=int))).fetchall()
+    stats = {'books_processed': 0, 'covers_found': 0, 'covers_failed': 0}
+    for book in books:
+        stats['books_processed'] += 1
+        try:
+            book_data = fetch_book_details_from_isbn(book['isbn'])
+        except Exception:
+            current_app.logger.exception(f"Error fetching cover for '{book['title']}'")
+            book_data = None
+        if book_data and book_data.get('local_cover_url'):
+            conn.execute('UPDATE books SET cover_image_url = ? WHERE id = ?',
+                         (book_data['local_cover_url'], book['id']))
+            conn.commit()
+            stats['covers_found'] += 1
+        else:
+            stats['covers_failed'] += 1
+    current_app.logger.info(f"Admin {current_user.username} bulk cover fetch: {stats}")
 
-        from utils.book_utils import fetch_book_details_from_isbn
-
-        for book in books:
-            stats['books_processed'] += 1
-
-            try:
-                logger.info(f"Fetching cover for: {book['title']} (ISBN: {book['isbn']})")
-
-                # Fetch book data from API
-                book_data = fetch_book_details_from_isbn(book['isbn'])
-
-                if book_data and book_data.get('local_cover_url'):
-                    # Update book with new cover URL
-                    conn.execute(
-                        'UPDATE books SET cover_image_url = ? WHERE id = ?',
-                        (book_data['local_cover_url'], book['id'])
-                    )
-                    stats['covers_found'] += 1
-                    logger.info(f"✓ Cover found for: {book['title']}")
-                else:
-                    stats['covers_failed'] += 1
-                    logger.warning(f"✗ No cover found for: {book['title']}")
-
-            except Exception as e:
-                stats['covers_failed'] += 1
-                logger.error(f"Error fetching cover for '{book['title']}': {str(e)}")
-                continue
-
-        conn.commit()
-
-        logger.info(f"Bulk cover fetch complete: {stats}")
-        current_app.logger.info(f"Admin {current_user.username} fetched {stats['covers_found']} covers")
-
-        return jsonify({
-            'success': True,
-            **stats
-        })
-
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Bulk cover fetch error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        conn.close()
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, **stats})
+    remaining = conn.execute("SELECT COUNT(*) " + MISSING_COVER_SQL).fetchone()[0]
+    flash(f"Checked {stats['books_processed']} book(s): found {stats['covers_found']} cover(s). "
+          f"{remaining} book(s) with an ISBN still have no cover.", "success")
+    # Skip past this batch's misses next time
+    return redirect(url_for('admin.placeholder_covers',
+                            offset=request.form.get('offset', 0, type=int) + stats['covers_failed']))
 
 
 @admin_blueprint.route("/add_library_member", methods=["POST"])

@@ -244,6 +244,20 @@ CREATE TABLE library_members (
 CREATE INDEX idx_library_members_library ON library_members(library_id);
 CREATE INDEX idx_library_members_user ON library_members(user_id);
 
+-- ---------------------------------------------------------------- views
+
+-- Books on their owner's shelf: owned, and not the owner's own wishlist entry.
+-- Includes removed books (filter on removed_at). See migration 018.
+-- A table rebuild of books or wishlist must drop and recreate this view.
+CREATE VIEW library_books AS
+SELECT b.*
+FROM books b
+WHERE b.added_by IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM wishlist w
+      WHERE w.book_id = b.id AND w.user_id = b.added_by
+  );
+
 -- ---------------------------------------------------------------- migrations
 
 -- Ledger used by `manage.py migrate`. Lists every migration already folded
@@ -269,4 +283,6 @@ INSERT INTO schema_migrations (name) VALUES
     ('014_cleanup_orphans.sql'),
     ('015_foreign_key_actions.sql'),
     ('016_drop_legacy.sql'),
-    ('017_book_removal.sql');
+    ('017_book_removal.sql'),
+    ('018_library_books_view.sql'),
+    ('019_clean_goodreads_reviews.sql');

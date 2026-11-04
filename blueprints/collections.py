@@ -226,7 +226,8 @@ def add_to_status_collection():
             return redirect(url_for('read.rate_review', book_id=book_id))
             
     except Exception as e:
-        flash(f'Failed to update collection: {e}', 'danger')
+        current_app.logger.exception('Error updating collection')
+        flash('Failed to update the reading status.', 'danger')
     finally:
         conn.close()
     

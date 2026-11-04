@@ -300,10 +300,10 @@ function updateActiveFilters() {
         activeFilters.push({ label: 'Rating', value: rating.options[rating.selectedIndex].text });
     }
 
-    // Check "include removed books"
+    // Check the removed-books choice (empty = on the shelf only, the default)
     const showRemoved = document.getElementById('show_removed');
-    if (showRemoved && showRemoved.checked) {
-        activeFilters.push({ label: 'Showing', value: 'removed books' });
+    if (showRemoved && showRemoved.value) {
+        activeFilters.push({ label: 'Removed', value: showRemoved.options[showRemoved.selectedIndex].text });
     }
 
     // Check tags

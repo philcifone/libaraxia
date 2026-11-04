@@ -36,6 +36,9 @@ def schema(path):
             'checks': sorted(re.findall(r'CHECK\((?:[^()]|\([^()]*\))*\)', body)),
             'autoincrement': 'AUTOINCREMENT' in body.upper(),
         }
+    # Views: compare the SELECT with comments and whitespace removed
+    for name, sql in conn.execute("SELECT name, sql FROM sqlite_master WHERE type = 'view' ORDER BY name"):
+        out['view:' + name] = re.sub(r'\s+', '', re.sub(r'--[^\n]*', '', sql))
     conn.close()
     return out
 
@@ -98,6 +101,7 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
     # Wind the schema back to "migration 013, never baselined".
     conn.executescript("""
         DROP TABLE schema_migrations;
+        DROP VIEW library_books;       -- added by 018
         ALTER TABLE books DROP COLUMN removed_note;
         ALTER TABLE books DROP COLUMN removed_at;
         PRAGMA foreign_keys = OFF;

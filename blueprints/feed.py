@@ -1,4 +1,4 @@
-from flask import render_template, Blueprint, request, redirect, url_for, flash, jsonify
+from flask import render_template, Blueprint, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
 from models import is_friends_with
@@ -269,7 +269,8 @@ def dismiss_activity():
         flash('Activity dismissed from feed', 'success')
 
     except Exception as e:
-        flash(f'Error dismissing activity: {str(e)}', 'error')
+        current_app.logger.exception('Error dismissing activity')
+        flash("Couldn't dismiss that activity.", 'error')
     finally:
         conn.close()
 
@@ -339,7 +340,8 @@ def like_activity():
         return jsonify({'success': True, 'like_count': like_count})
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.exception('Error updating like')
+        return jsonify({'success': False, 'error': 'Something went wrong. Please try again.'}), 500
     finally:
         conn.close()
 
@@ -386,6 +388,7 @@ def unlike_activity():
         return jsonify({'success': True, 'like_count': like_count})
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.exception('Error updating like')
+        return jsonify({'success': False, 'error': 'Something went wrong. Please try again.'}), 500
     finally:
         conn.close()
