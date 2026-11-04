@@ -15,7 +15,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 0 ✅ | [Design refresh](#phase-0-design-refresh) | Match philcifone.com / negativeearth.net now; everything built later is built in the new look | Same elements, new skin: Gruvbox light + dark, Courier Prime + Young Serif, square corners, strong borders |
 | 1 ✅ | [Prod upkeep](#phase-1-prod-upkeep) | Prod sits behind Cloudflare Access (2FA, 2–3 allowlisted emails), so this is upkeep, not an emergency. Do it before Phase 2 touches the DB | Prod DB path recorded, deps upgraded, `pip-audit` clean |
 | 2 ✅ | [Data foundations](#phase-2-data-foundations) | Everything later writes migrations and needs tests | Fresh install is one command; migrations tracked; FK check clean; smoke tests in CI |
-| 3 | [Data correctness](#phase-3-data-correctness) | Fix what the data already shows is wrong | Stats, covers, reviews and wishlist behave correctly |
+| 3 ✅ | [Data correctness](#phase-3-data-correctness) | Fix what the data already shows is wrong | Stats, covers, reviews and wishlist behave correctly |
 | 4 | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
 | 5 | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
@@ -35,7 +35,7 @@ Housekeeping that doesn't belong to a phase and shouldn't hold one open: mostly 
 - [ ] **Prod, from about 2026-11-09** (once Phase 2 has run for a few days without trouble):
   - in `/home/phil/library-catalog`, delete `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` (pre-Phase-2 leftovers nothing opens), and the `library.db.backup-20261102-*` files `manage.py` made during the Phase 2 deploy;
   - ~~delete the manual ZFS snapshot taken before the Phase 2 deploy~~ (done 2026-11-02).
-- [ ] **Prod: install auto-deploy** (once, see `deploy/README.md`): one last `git pull`, https remote, sudoers line for the restart, enable `libaraxia-deploy.timer`. Then, once by hand (the pull leaves the timer nothing to do): `manage.py migrate` (018, 019) and restart gunicorn. Then the 3.2 cover cleanup.
+- [ ] **Prod: install auto-deploy** (once, see `deploy/README.md`): one last `git pull`, https remote, sudoers line for the restart, enable `libaraxia-deploy.timer`. Then, once by hand (the pull leaves the timer nothing to do): `manage.py migrate` (018, 019) and restart gunicorn.
 - [ ] **Dev machine:** delete the stray DB files in the repo root (all git-ignored, none opened by anything; checked 2026-11-02, see 2.6): `libaraxia.db`, `instance/library.db`, `library.db.backup_20251018_191333`, `library.db.backup_20261102_pre013`.
 
 ---
@@ -310,8 +310,8 @@ They show in the grid (see the library screenshot), count as "has a cover" so bu
 - [x] Use the existing `no-cover.png` / an empty state for books with no cover, not a white tile.
 - [x] **Replace `static/no-cover.png`:** it's a stock photo with a visible Depositphotos watermark (not licensed for use). It's only the JS fallback in `add_book.js` / `wishlist.js` (and the admin orphaned-images page) when a cover fails to load. Swap it for the same themed "No Image Available" text box the grid uses (CSS, no image), or a small in-house SVG.
 - **2026-11-04, done:** `placeholder_reason()` in `book_utils` rejects a download that is tiny, blank, a wide strip (height under half the width), or a perceptual-hash (dHash) match for the two known placeholders. SHA-256 wasn't used: saved files are re-encoded, so a Pillow upgrade would change the bytes. All Open Library cover URLs use `?default=false`. Admin → Maintenance → **Covers** (`/admin/placeholder_covers`) lists them, clears them (cover set to NULL, unused files deleted) and runs the bulk fetch 10 books per click (50 would hit gunicorn's 30 s timeout). The bulk fetch had routes but no button until now. Dev copy: **142** books (87 Google "image not available", 24 grey outline, 31 strips cut from interior title pages). The grid already showed "No Image Available" for empty covers; the white tiles were the placeholder files. `no-cover.png` replaced by `static/no-cover.svg`.
-- [ ] **Prod:** Admin → Maintenance → Covers → *Clear*, then *Fetch next 10* until it stops finding covers. Books with no ISBN need a cover search from their edit page.
-- [ ] About 6 covers are Google scans of a white title page with a small publisher logo. They aren't auto-detected (a minimalist white cover would look the same), so replace them by hand.
+- [x] **Prod:** Admin → Maintenance → Covers → *Clear*, then *Fetch next 10* until it stops finding covers. Books with no ISBN need a cover search from their edit page. *(2026-11-04: not needed. Prod has no placeholder covers; the 142 on dev came from an old Goodreads import test. The page stays for future imports.)*
+- [x] ~~About 6 covers are Google scans of a white title page~~ (dev only, same import test; not worth fixing). with a small publisher logo. They aren't auto-detected (a minimalist white cover would look the same), Left as is.
 
 ### 3.3 Wishlist books live in the `books` table 🆕 🟠
 A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260 of 415** rows. The library grid keeps them out with `AND NOT EXISTS (SELECT 1 FROM wishlist ...)`, so every query that forgets this clause leaks wishlist books (3.1 is one example).
@@ -337,7 +337,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 **Done when:** profile stats match the shelves page and only count your own books; no placeholder covers remain; no raw HTML in reviews; wishlist books can't leak into library queries.
 
-- **2026-11-04:** all done in code on branch `phase-3-data-correctness` (94 tests; new ones in `tests/test_library_data.py`). Left for prod: run migrations 018 and 019 on deploy, then the cover cleanup above.
+- **2026-11-04:** all done in code on branch `phase-3-data-correctness` (94 tests; new ones in `tests/test_library_data.py`). Left for prod: run migrations 018 and 019 on deploy (see Loose ends). **Phase 3 closed 2026-11-04.**
 
 ---
 
