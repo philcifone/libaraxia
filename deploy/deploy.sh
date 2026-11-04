@@ -52,7 +52,7 @@ runs = json.load(sys.stdin).get("check_runs", [])
 print(runs[0]["conclusion"] or "pending" if runs else "none")')
 case "$conclusion" in
     success) ;;
-    pending|none) exit 0 ;;                            # CI still running or not started
+    pending|none) log "waiting for CI on ${target:0:7}"; exit 0 ;;
     *) log "CI for ${target:0:7} is '$conclusion', not deploying"; exit 0 ;;
 esac
 
