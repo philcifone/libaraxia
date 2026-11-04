@@ -35,6 +35,7 @@ Housekeeping that doesn't belong to a phase and shouldn't hold one open: mostly 
 - [ ] **Prod, from about 2026-11-09** (once Phase 2 has run for a few days without trouble):
   - in `/home/phil/library-catalog`, delete `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` (pre-Phase-2 leftovers nothing opens), and the `library.db.backup-20261102-*` files `manage.py` made during the Phase 2 deploy;
   - ~~delete the manual ZFS snapshot taken before the Phase 2 deploy~~ (done 2026-11-02).
+- [ ] **Prod: install auto-deploy** (once, see `deploy/README.md`): one last `git pull`, https remote, sudoers line for the restart, enable `libaraxia-deploy.timer`. The first run deploys Phase 3 (migrations 018 and 019), then do the 3.2 cover cleanup.
 - [ ] **Dev machine:** delete the stray DB files in the repo root (all git-ignored, none opened by anything; checked 2026-11-02, see 2.6): `libaraxia.db`, `instance/library.db`, `library.db.backup_20251018_191333`, `library.db.backup_20261102_pre013`.
 
 ---

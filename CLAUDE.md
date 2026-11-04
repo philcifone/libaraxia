@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Libaraxia is a Flask-based personal library management web application that allows users to catalog books, track reading progress, and share collections with friends and household members. The application uses SQLite (raw `sqlite3`, no ORM) for data storage and integrates with the Google Books and Open Library APIs for book metadata.
 
-Production runs under **gunicorn directly (no Docker)**. The Docker files are kept for reference.
+Production runs under **gunicorn directly (no Docker)**. The Docker files are kept for reference. Prod deploys itself: a systemd timer runs `deploy/deploy.sh`, which fast-forwards to `main` once its CI run has passed, migrates and restarts (see `deploy/README.md`). So a push to `main` with green CI reaches prod within about 5 minutes.
 
 ## Development Commands
 

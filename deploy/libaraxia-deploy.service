@@ -1,0 +1,10 @@
+[Unit]
+Description=Deploy Libaraxia from GitHub main when CI has passed
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=phil
+WorkingDirectory=/home/phil/library-catalog
+ExecStart=/home/phil/library-catalog/deploy/deploy.sh

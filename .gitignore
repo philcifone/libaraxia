@@ -59,3 +59,4 @@ Thumbs.db
 venv/
 .claude/init
 
+.deploy-failed
