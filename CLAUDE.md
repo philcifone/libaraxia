@@ -49,14 +49,14 @@ npm run watch:css    # rebuild on change
 - **app.py**: application factory `create_app()`. Loads `.env`, picks the config, sets up CSRF, Flask-Limiter, Flask-Mail and Flask-Login, adds security headers, optional ProxyFix, and registers the blueprints. `/` redirects to registration when there are no users, otherwise to `/base/`.
 - **config.py**: `DevelopmentConfig` / `ProductionConfig` / `TestingConfig`, chosen by `FLASK_ENV` (cookies, mail, email verification).
 - **manage.py**: database CLI: `migrate`, `status`, `backup` (see Database Management).
-- **models.py**: `User` (Flask-Login), `admin_required`, username rules (`is_valid_username`), and friendship/library helpers (`is_friends_with`, `get_friendship_status`, `get_library_members`, `shares_library_with`, `can_view_content`).
+- **models.py**: `User` (Flask-Login), `admin_required`, username rules (`is_valid_username`), and friendship/library helpers (`is_friends_with`, `get_friendship_status`, `get_library_members`, `shares_library_with`, `circle_ids`, `can_view_book`).
 
 ### Blueprints (`/blueprints/`, URL prefix in brackets)
 - **auth** (`/auth`): register, login (with remember-me), logout, email verification and resend. Registration can be closed with `ALLOW_REGISTRATION=False`.
 - **base** (`/base`): main library view at `/base/index` with search/sort/filter and infinite scroll; shared (household) library; friends' libraries.
 - **books** (`/books`): add, edit, remove from library / restore (deaccession), delete for mistakes (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
 - **collections** (`/collections`): reading status (read, currently reading, want to read, did not finish) and custom user collections.
-- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only), adding/removing household members.
+- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only), household invite/accept/decline/remove/leave (logic in `utils/households.py`).
 - **read** (`/read`): ratings/reviews and reading sessions (dates started/completed).
 - **tags** (`/tags`): per-user tags.
 - **admin** (`/admin`): user management (deactivate/delete dialog), avatar management, orphaned image cleanup, unowned books (reassign), bulk cover fetch, household (library) membership.
@@ -68,6 +68,7 @@ npm run watch:css    # rebuild on change
 - **database.py**: `get_db()` (request-scoped connection, closed at teardown), `get_db_connection()` (a new connection: `sqlite3.Row`, `PRAGMA foreign_keys = ON`), `database_path()`.
 - **book_utils.py**: Google Books / Open Library / bookcover API lookups, ISBN helpers, cover search and download (`download_and_save_cover`, with an SSRF guard that only fetches public hosts), `process_image` for uploads, `get_filter_options`.
 - **image_utils.py**: `is_safe_upload_path`, `delete_image_file` (refuses paths outside `static/uploads/`), and orphaned image detection/cleanup.
+- **households.py**: household invites, joining, leaving and owner hand-over (see Access Model).
 - **email_utils.py**: verification tokens (random, stored in `email_verification_tokens`) and sending via Flask-Mail.
 - **rate_limiting.py**: shared `limiter` instance.
 - **errors.py**: 401 handler that redirects to login.
@@ -75,8 +76,8 @@ npm run watch:css    # rebuild on change
 ### Database Schema
 Tables after all migrations:
 - **Books and reading:** `books` (shared catalog, `added_by` = owner), `collections` (per-user reading status), `read_data` (rating/comment), `reading_sessions`, `book_tags`, `user_collections` + `collection_books` (custom collections), `wishlist`.
-- **Users and social:** `users` (incl. `is_admin`, `is_active`, `avatar_url`, `bio`, `reading_goal`, `email_verified`, `default_privacy`), `friendships` (stored with `user_id_1 < user_id_2`), `friend_requests`, `notifications`, `activity_likes`, `dismissed_activities`, `email_verification_tokens`.
-- **Households:** `library_members` (one library per user; `library_id` groups members).
+- **Users and social:** `users` (incl. `is_admin`, `is_active`, `avatar_url`, `bio`, `reading_goal`, `email_verified`), `friendships` (stored with `user_id_1 < user_id_2`), `friend_requests`, `notifications`, `activity_likes`, `dismissed_activities`, `email_verification_tokens`.
+- **Households:** `library_members` (one library per user; `library_id` groups members; exactly one `owner` per household), `household_invites` (pending invites).
 
 There is no `activities` table; the feed is built from `read_data`/`collections`/`wishlist` at query time. Some rows are positional (`book[0]`, `book[1]`) in templates, so be careful reordering `SELECT *` columns.
 
@@ -88,18 +89,33 @@ Gotchas:
 - **Wishlist entries are rows in `books`** (plus a `wishlist` row). Library queries, counts and stats select `FROM library_books b` (a view, migration 018: owned books that aren't the owner's own wishlist entry) instead of `books`, or they'll count wishlist books as owned. The view keeps removed books, so still add the `removed_at` filter (`book_utils.removed_filter()` for the library pages). A table rebuild of `books` or `wishlist` must drop and recreate the view.
 
 ### Access Model (what the code actually does)
-- **Friends-gated:** profiles, stats, wishlists, reviews and friends' libraries are shown only to the owner and their friends (`get_friendship_status` in `user.py`, `wishlist.py`, `base.py`).
-- **Household members** (`library_members`) see each other's books in the shared library view.
-- **Privacy columns are not enforced.** Migration 012 added `privacy` columns (`collections`, `wishlist`, `reading_sessions`, `user_collections`) and `users.default_privacy`, and `models.can_view_content()` implements a private/friends/public check, but nothing calls it yet. Treat the three-tier privacy model as planned, not live (see ROADMAP.md Phase 4).
-- **Book detail** (`/books/book/<id>`) has no access check; any logged-in user can open any book by id.
-- Only the owner or an admin can edit, delete or transfer a book.
+Decided and enforced in Phase 4; `tests/test_access.py` and `tests/test_households.py` assert it. A user's **circle** is themselves, their household members and their friends (`models.circle_ids`). Admins see everything.
+
+| Page / action | Who | Where enforced |
+|---|---|---|
+| Own library, collections, tags, reading history, settings, exports | the user | queries filter on `current_user.id` |
+| Shared (household) library | household members | `base.shared_library` via `get_library_members` |
+| Profile, stats, reviews, wishlist, reading lists, friend's library | the user and their friends | `get_friendship_status` / `is_friends_with` in `user.py`, `wishlist.py`, `collections.py`, `base.py` |
+| Feed | friends' activity (and your own) | `feed.py` |
+| Book detail `/books/book/<id>` | admins; or someone in your circle owns the book or has data on it (review, status, session, tag, wishlist, collection). 404 otherwise | `models.can_view_book` |
+| Attaching your data to a book id (status, review/session, tag, custom collection, wishlist quick-add) | same as book detail, so attaching data can't grant access | `can_view_book` in `read.py`, `collections.py`, `tags.py`, `wishlist.py` |
+| Another user's wishlist note on a book page | only from your circle | `books.show_book` |
+| Edit, remove/restore, delete, transfer a book | owner or admin (delete also refused while others have data on it) | `books.py` |
+| Join a household | by invite only, from the household owner (or someone not in one) to a friend; the invitee accepts or declines on the notifications page | `utils/households.py` |
+| Remove from a household | the owner removes anyone; anyone can leave. Owner leaving hands ownership to the longest-standing member; a household of one is dissolved | `utils/households.py` (admin and account deletion use it too) |
+| Change email | needs the current password; re-verification if `EMAIL_VERIFICATION_REQUIRED` | `user.update_email` |
+| Log out | POST with CSRF (sidebar form) | `auth.logout` |
+| Admin pages | admins | `@admin_required` |
+
+There are no per-item privacy settings (private/friends/public); the unused columns from migration 012 were dropped in 020. Household members who aren't also friends see each other's books (shared library, book pages) but not each other's profiles or feed activity.
 
 ### Frontend
 - **No base layout.** Each page template is standalone and `{% include %}`s `_sidebar.html`, `_flash_messages.html`, and where relevant `_search_sort_filter.html`, `_book_grid.html` and `_add_book_fab.html`.
 - **Themes:** two per-user settings on `<html data-style=… data-mode=…>` (injected by a context processor in `app.py`, edited at Profile → Appearance, stored in `users.theme_style` / `users.color_mode`). Style `house` = Gruvbox, Courier Prime, square, strong borders; `classic` = the original look (Outfit, rounded, soft shadows). Mode `system|light|dark`. Every colour, radius, shadow and the body font are CSS variables in `static/styles.css`; `tailwind.config.js` maps Tailwind names onto them. Use the semantic classes (`bg-secondary`, `text-content-primary`, `bg-accent text-on-accent`, `border-card` for card outlines, `rounded-pill` for badges) rather than raw colours. Fonts are served from `static/fonts/`.
 - **Vanilla JS in `/static/`:**
+  - `static/vendor/`: vendored third-party JS (Quagga for barcode scanning), with source and hashes in its README. Don't load scripts from CDNs.
   - `script.js`: library grid, filters, infinite scroll, status updates; defines `escapeHtml()` and `getCSRFToken()`.
-  - `add_book.js`: add form, ISBN/title search, barcode scanning via Quagga from cdnjs.
+  - `add_book.js`: add form, ISBN/title search, barcode scanning via Quagga (`static/vendor/`).
   - `edit_book.js`: edit form, cover fetching.
   - `wishlist.js`: wishlist add/search/barcode.
   - `tags.js`: tag add/remove.
@@ -116,8 +132,8 @@ Gotchas:
 - Session and remember-me cookies are HttpOnly and SameSite=Lax. They are `Secure` only in production; remember-me lasts 30 days.
 - `after_request` sets `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN` and `Referrer-Policy`. There is no CSP yet.
 - Rate limiting:
-  - Flask-Limiter applies a **global default of 200/day and 50/hour per IP** on every route (`utils/rate_limiting.py`), plus per-route `@limiter.limit()` on auth, profile updates, friend requests and imports.
-  - Storage is in memory, so each gunicorn worker counts separately.
+  - No global default (it caused 429s while browsing). Per-route `@limiter.limit()` on auth, profile updates, friend and household requests, and imports (`utils/rate_limiting.py`).
+  - Storage is in memory, so each gunicorn worker counts separately (effective limit = limit x workers). Redis is the fix if that ever matters.
   - Behind a reverse proxy, set `TRUSTED_PROXY_COUNT` so limits use the real client IP.
 
 ### Security conventions (follow these in new code)

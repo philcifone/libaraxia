@@ -5,6 +5,7 @@ import bcrypt
 import os
 from datetime import datetime
 from utils.database import get_db_connection, get_db
+from utils import households
 from models import admin_required, is_valid_username, USERNAME_RULES
 from utils.accounts import removal_context, deactivate_account, delete_account, AccountError
 from PIL import Image
@@ -762,17 +763,22 @@ def add_library_member():
             flash(f"User '{user['username']}' is already in a library group", "warning")
             return redirect(url_for('admin.settings'))
 
-        # If no library_id provided, create a new library
+        # If no library_id provided, create a new library, with this user as
+        # its owner (every household has one; see utils/households.py)
+        role = 'member'
         if not library_id:
             # Find the next available library_id
             max_lib = conn.execute('SELECT MAX(library_id) as max_id FROM library_members').fetchone()
             library_id = (max_lib['max_id'] or 0) + 1
+            role = 'owner'
 
         # Add user to library
         conn.execute("""
             INSERT INTO library_members (library_id, user_id, role, added_by)
-            VALUES (?, ?, 'member', ?)
-        """, (library_id, user_id, current_user.id))
+            VALUES (?, ?, ?, ?)
+        """, (library_id, user_id, role, current_user.id))
+        # Any invites they had are moot now that they're in a household
+        conn.execute('DELETE FROM household_invites WHERE invitee_id = ?', (user_id,))
 
         conn.commit()
         flash(f"User '{user['username']}' added to library group {library_id}", "success")
@@ -811,12 +817,8 @@ def remove_library_member():
             flash("User not found", "error")
             return redirect(url_for('admin.settings'))
 
-        # Remove from library
-        result = conn.execute(
-            'DELETE FROM library_members WHERE user_id = ?', (user_id,)
-        )
-
-        if result.rowcount > 0:
+        # Remove from library (hands ownership on / dissolves a household of one)
+        if households.leave(conn, user_id):
             conn.commit()
             flash(f"User '{user['username']}' removed from library group", "success")
             current_app.logger.info(

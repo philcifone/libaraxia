@@ -1,6 +1,7 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash
+from flask import Blueprint, request, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
+from models import can_view_book
 from datetime import datetime
 
 # Define the blueprint
@@ -10,6 +11,10 @@ read_blueprint = Blueprint('read', __name__, template_folder='templates')
 @login_required
 def rate_review(book_id):
     conn = get_db_connection()
+    # Only books in the user's circle (models.can_view_book)
+    if not can_view_book(conn, current_user, book_id):
+        conn.close()
+        abort(404)
 
     if request.method == 'POST':
         # Get form data
@@ -119,6 +124,10 @@ def rate_review(book_id):
 def manage_session(book_id):
     """Add or update a reading session"""
     conn = get_db_connection()
+    # Only books in the user's circle (models.can_view_book)
+    if not can_view_book(conn, current_user, book_id):
+        conn.close()
+        abort(404)
 
     # Get form data
     session_id = request.form.get('session_id')

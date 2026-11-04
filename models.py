@@ -160,39 +160,56 @@ def shares_library_with(user_id, other_user_id):
     return other_user_id in library_members
 
 
-def can_view_content(viewer_id, owner_id, privacy_setting):
+def circle_ids(conn, user_id):
+    """The user's circle: themselves, their household members and their friends.
+
+    This is the set of people whose books and activity a user can see
+    (see "Access Model" in CLAUDE.md).
     """
-    Check if viewer_id can see content owned by owner_id with given privacy setting.
+    ids = {user_id}
+    ids.update(r['user_id'] for r in conn.execute('''
+        SELECT m.user_id FROM library_members m
+        JOIN library_members me ON me.library_id = m.library_id
+        WHERE me.user_id = ?
+    ''', (user_id,)))
+    # friendships are stored with user_id_1 < user_id_2, so look both ways
+    ids.update(r['other'] for r in conn.execute('''
+        SELECT CASE WHEN user_id_1 = ? THEN user_id_2 ELSE user_id_1 END AS other
+        FROM friendships WHERE user_id_1 = ? OR user_id_2 = ?
+    ''', (user_id, user_id, user_id)))
+    return sorted(ids)
 
-    Privacy settings:
-    - 'private': Only the owner can see
-    - 'friends': Owner and friends can see
-    - 'public': Everyone can see
 
-    Note: Library members are treated as having full access (overrides privacy)
+def can_view_book(conn, user, book_id):
+    """Whether `user` may open a book's page or attach their own data to it.
+
+    Allowed for admins, and when someone in the user's circle (themselves,
+    household, friends) owns the book or has their own data on it: a review,
+    reading status, reading session, tag, wishlist entry or custom-collection
+    entry. The second clause keeps a book reachable from the feed and from
+    the user's own history after it was given away or its owner deleted.
+
+    Routes that let a user attach data to a book id must call this first, or
+    attaching data would itself grant access.
     """
-    # Owner can always see their own content
-    if viewer_id == owner_id:
-        return True
+    if user.is_admin:
+        return conn.execute('SELECT 1 FROM books WHERE id = ?', (book_id,)).fetchone() is not None
+    ids = circle_ids(conn, user.id)
+    marks = ','.join('?' * len(ids))
+    row = conn.execute(f'''
+        SELECT 1 FROM books WHERE id = ? AND added_by IN ({marks})
+        UNION ALL SELECT 1 FROM read_data        WHERE book_id = ? AND user_id IN ({marks})
+        UNION ALL SELECT 1 FROM collections      WHERE book_id = ? AND user_id IN ({marks})
+        UNION ALL SELECT 1 FROM reading_sessions WHERE book_id = ? AND user_id IN ({marks})
+        UNION ALL SELECT 1 FROM book_tags        WHERE book_id = ? AND user_id IN ({marks})
+        UNION ALL SELECT 1 FROM wishlist         WHERE book_id = ? AND user_id IN ({marks})
+        UNION ALL SELECT 1 FROM collection_books cb
+                  JOIN user_collections uc ON uc.collection_id = cb.collection_id
+                  WHERE cb.book_id = ? AND uc.user_id IN ({marks})
+        LIMIT 1
+    ''', [book_id, *ids] * 7).fetchone()
+    return row is not None
 
-    # Library members can see each other's content (household sharing)
-    if shares_library_with(viewer_id, owner_id):
-        return True
-
-    # Public content is visible to everyone
-    if privacy_setting == 'public':
-        return True
-
-    # Private content is only visible to owner (and library members, checked above)
-    if privacy_setting == 'private':
-        return False
-
-    # Friends-only content requires friendship
-    if privacy_setting == 'friends':
-        return is_friends_with(viewer_id, owner_id)
-
-    # Default: deny access
-    return False
 
 def other_users_with_book_data(conn, book_id, owner_id):
     """Usernames of users other than owner_id with their own data on a book.

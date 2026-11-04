@@ -73,34 +73,62 @@
 
                     <!-- Friend Request Actions -->
                     {% if not is_own_profile %}
+                    <!-- Household actions: shown to household members whether or not they're friends -->
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <!-- Household: invite / respond / remove / leave (utils/households.py) -->
+                        {% if in_shared_library %}
+                            {% if household.i_am_owner %}
+                            <form method="POST" action="{{ url_for('user.household_remove', user_id=user['id']) }}" class="inline-block">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm transition-colors flex items-center gap-1.5" onclick='return confirm({{ ("Remove " ~ user["username"] ~ " from your household? Their books stay theirs; you just stop sharing a library.")|tojson }})'>
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    <span class="hidden sm:inline">Remove from Household</span>
+                                    <span class="sm:hidden">Remove</span>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('user.household_remove', user_id=current_user.id) }}" class="inline-block">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm transition-colors" onclick='return confirm({{ "Leave this household? Your books stay yours; you just stop sharing a library."|tojson }})'>
+                                    Leave Household
+                                </button>
+                            </form>
+                            {% endif %}
+                        {% elif household.received %}
+                            <span class="text-sm text-content-secondary">Invited you to share a library:</span>
+                            <form method="POST" action="{{ url_for('user.household_accept', invite_id=household.received['id']) }}" class="inline-block">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm transition-colors">Accept</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.received['id']) }}" class="inline-block">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary border border-content-secondary rounded transition-colors">Decline</button>
+                            </form>
+                        {% elif household.sent %}
+                            <span class="text-sm text-content-secondary">Household invite sent</span>
+                            <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.sent['id']) }}" class="inline-block">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="cancel" value="1">
+                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary border border-content-secondary rounded transition-colors">Cancel</button>
+                            </form>
+                        {% elif friendship_status == 'friends' and household.can_invite and not household.they_are_in_one %}
+                            <form method="POST" action="{{ url_for('user.household_invite', user_id=user['id']) }}" class="inline-block">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm transition-colors flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                    </svg>
+                                    <span class="hidden sm:inline">Invite to Household</span>
+                                    <span class="sm:hidden">Invite</span>
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
                     <div class="mt-3">
                         {% if friendship_status == 'friends' %}
                             <div class="flex flex-wrap items-center gap-2">
-                                <!-- Add/Remove Shared Library -->
-                                {% if in_shared_library %}
-                                <form method="POST" action="{{ url_for('user.remove_from_shared_library', user_id=user['id']) }}" class="inline-block">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm transition-colors flex items-center gap-1.5" onclick='return confirm({{ ("Remove " ~ user["username"] ~ " from your shared library?")|tojson }})'>
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                        </svg>
-                                        <span class="hidden sm:inline">Remove from Library</span>
-                                        <span class="sm:hidden">Remove</span>
-                                    </button>
-                                </form>
-                                {% else %}
-                                <form method="POST" action="{{ url_for('user.add_to_shared_library', user_id=user['id']) }}" class="inline-block">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm transition-colors flex items-center gap-1.5">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                                        </svg>
-                                        <span class="hidden sm:inline">Add to Library</span>
-                                        <span class="sm:hidden">Add</span>
-                                    </button>
-                                </form>
-                                {% endif %}
-
                                 <!-- Remove Friend -->
                                 <form method="POST" action="{{ url_for('friends.remove_friend', friend_id=user['id']) }}" class="inline-block">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -217,6 +245,10 @@
                             </svg>
                         </button>
                     </div>
+                    <!-- Changing the email needs the current password (shown while editing) -->
+                    <input type="password" id="email-password-input" autocomplete="current-password"
+                           class="hidden w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                           placeholder="Current password" aria-label="Current password">
                 </div>
 
                 <!-- Username (Editable) -->
@@ -902,6 +934,9 @@
             input.classList.remove('hidden');
             saveBtn.classList.remove('hidden');
             cancelBtn.classList.remove('hidden');
+            if (fieldName === 'email') {
+                document.getElementById('email-password-input').classList.remove('hidden');
+            }
 
             // Focus the input
             input.focus();
@@ -924,6 +959,11 @@
             input.classList.add('hidden');
             saveBtn.classList.add('hidden');
             cancelBtn.classList.add('hidden');
+            if (fieldName === 'email') {
+                const pw = document.getElementById('email-password-input');
+                pw.value = '';
+                pw.classList.add('hidden');
+            }
         }
 
         async function saveField(fieldName) {
@@ -943,12 +983,20 @@
                     return;
                 }
             }
+            const body = { [fieldName]: newValue };
+            if (fieldName === 'email') {
+                body.current_password = document.getElementById('email-password-input').value;
+                if (!body.current_password) {
+                    alert('Enter your current password to change your email.');
+                    return;
+                }
+            }
 
             try {
                 const response = await fetch(`/user/update_${fieldName}`, {
                     method: 'POST',
                     headers: getCSRFHeaders(),
-                    body: JSON.stringify({ [fieldName]: newValue })
+                    body: JSON.stringify(body)
                 });
 
                 const data = await response.json();

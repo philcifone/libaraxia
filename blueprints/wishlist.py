@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
 from flask_login import login_required, current_user
 from utils.database import get_db_connection, get_db
-from models import other_users_with_book_data
+from models import other_users_with_book_data, can_view_book
 from utils.book_utils import (
     fetch_book_details_from_isbn,
     process_image,
@@ -408,6 +408,10 @@ def update_notes(book_id):
 def quick_add_to_wishlist(book_id):
     """Quick add an existing book to wishlist (from library view)"""
     conn = get_db()
+    # Only books in the user's circle (models.can_view_book)
+    if not can_view_book(conn, current_user, book_id):
+        flash("Book not found.", "error")
+        return redirect(request.referrer or url_for("base.index"))
     try:
         conn.execute("""
             INSERT INTO wishlist (user_id, book_id)

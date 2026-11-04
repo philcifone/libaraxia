@@ -15,7 +15,8 @@ from utils.book_utils import (
     MAX_IMAGE_SIZE
 )
 from utils.image_utils import delete_image_file, is_safe_upload_path
-from models import admin_required, shares_library_with, get_library_members, other_users_with_book_data
+from models import (admin_required, shares_library_with, get_library_members,
+                    other_users_with_book_data, can_view_book, circle_ids)
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -379,54 +380,44 @@ def show_book(id):
     try:
         # Get book details
         book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
-        if not book:
+        # 404 rather than 403 for books outside the user's circle, so ids
+        # can't be probed for existence
+        if not book or not can_view_book(conn, current_user, id):
             abort(404)
 
-        # Check if ANY user has this book on their wishlist
-        # First, check if there's a specific wishlist_owner parameter from URL
+        # Someone else's wishlist entry (notes included) for this book, shown
+        # only for people in the viewer's circle. ?wishlist_owner=<username>
+        # picks whose (links from a friend's wishlist); otherwise the most
+        # recent one, so the section also shows when coming from the feed.
+        others = [uid for uid in circle_ids(conn, current_user.id) if uid != current_user.id]
         wishlist_owner = request.args.get('wishlist_owner')
         wishlist_owner_entry = None
         wishlist_owner_user = None
-
-        if wishlist_owner and wishlist_owner != current_user.username:
-            # Get the wishlist owner's user info
-            wishlist_owner_user = conn.execute(
-                "SELECT id, username FROM users WHERE username = ?",
-                (wishlist_owner,)
-            ).fetchone()
-
-            if wishlist_owner_user:
-                # Get the wishlist entry for that user
-                wishlist_owner_entry = conn.execute("""
-                    SELECT wishlist_id, notes, added_at
-                    FROM wishlist
-                    WHERE user_id = ? AND book_id = ?
-                """, (wishlist_owner_user['id'], id)).fetchone()
-
-        # If no specific wishlist_owner was found, check if ANY user has this on their wishlist
-        # This ensures the wishlist section shows when clicking from activity feed
-        if not wishlist_owner_entry:
-            # Get the first user (excluding current user) who has this book on their wishlist
-            any_wishlist_entry = conn.execute("""
+        if others:
+            marks = ','.join('?' * len(others))
+            query = f"""
                 SELECT w.wishlist_id, w.notes, w.added_at, u.id, u.username
                 FROM wishlist w
                 JOIN users u ON w.user_id = u.id
-                WHERE w.book_id = ? AND w.user_id != ?
-                ORDER BY w.added_at DESC
-                LIMIT 1
-            """, (id, current_user.id)).fetchone()
-
-            if any_wishlist_entry:
+                WHERE w.book_id = ? AND w.user_id IN ({marks})
+            """
+            entry = None
+            if wishlist_owner and wishlist_owner != current_user.username:
+                entry = conn.execute(query + " AND u.username = ?",
+                                     [id, *others, wishlist_owner]).fetchone()
+            if not entry:
+                entry = conn.execute(query + " ORDER BY w.added_at DESC LIMIT 1",
+                                     [id, *others]).fetchone()
+            if entry:
                 wishlist_owner_entry = {
-                    'wishlist_id': any_wishlist_entry['wishlist_id'],
-                    'notes': any_wishlist_entry['notes'],
-                    'added_at': any_wishlist_entry['added_at']
+                    'wishlist_id': entry['wishlist_id'],
+                    'notes': entry['notes'],
+                    'added_at': entry['added_at'],
                 }
-                wishlist_owner_user = {
-                    'id': any_wishlist_entry['id'],
-                    'username': any_wishlist_entry['username']
-                }
-                wishlist_owner = any_wishlist_entry['username']
+                wishlist_owner_user = {'id': entry['id'], 'username': entry['username']}
+                wishlist_owner = entry['username']
+            else:
+                wishlist_owner = None
 
         # Get reading status and most recent reading session
         read_data = conn.execute("""

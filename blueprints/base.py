@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, request, Blueprint, jsonif
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
 from datetime import datetime
-from models import get_library_members, is_friends_with, can_view_content
+from models import get_library_members, is_friends_with
 from utils.book_utils import get_filter_options, removed_filter
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
