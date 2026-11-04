@@ -61,7 +61,8 @@ needs_pip() { grep -qx 'requirements.txt' <<<"$changed"; }
 
 healthy() {
     for _ in $(seq 1 15); do
-        curl -fsS -o /dev/null "$HEALTH_URL" && return 0
+        # -s: gunicorn takes a moment to bind; only the final verdict is logged
+        curl -fs -o /dev/null "$HEALTH_URL" && return 0
         sleep 2
     done
     return 1
