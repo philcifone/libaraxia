@@ -74,6 +74,47 @@
         </section>
         {% endif %}
 
+        <!-- Household Invites Section -->
+        {% if household_invites %}
+        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+            <h2 class="text-xl font-display text-content-primary mb-4">Household Invites</h2>
+            <div class="space-y-4">
+                {% for invite in household_invites %}
+                <div class="flex flex-wrap items-center gap-4 p-4 bg-primary rounded-lg">
+                    {% if invite.avatar_url %}
+                    <img src="{{ url_for('static', filename=invite.avatar_url) }}"
+                         alt="{{ invite.username }}"
+                         class="w-16 h-16 rounded-full object-cover flex-shrink-0">
+                    {% else %}
+                    <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-on-accent text-2xl font-semibold flex-shrink-0">
+                        {{ invite.username[0].upper() }}
+                    </div>
+                    {% endif %}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-content-primary font-semibold text-lg">{{ invite.username }}</p>
+                        <p class="text-content-secondary text-sm">Invited you to share their library. You'll see each other's books in the shared library, and books can be handed between you.</p>
+                        <p class="text-content-secondary text-xs mt-1">{{ invite.created_at }}</p>
+                    </div>
+                    <div class="flex gap-3 flex-shrink-0">
+                        <form method="POST" action="{{ url_for('user.household_accept', invite_id=invite.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium transition-colors">
+                                Accept
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('user.household_decline', invite_id=invite.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-6 py-2 bg-primary-hover hover:bg-content-secondary/20 text-content-secondary rounded-lg font-medium transition-colors border border-content-secondary/30">
+                                Decline
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
         <!-- Recent Activity Section -->
         <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
             <div class="flex items-center justify-between mb-4">

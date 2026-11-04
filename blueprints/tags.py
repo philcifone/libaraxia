@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
 from utils.database import get_db_connection
+from models import can_view_book
 import sqlite3
 from datetime import datetime
 
@@ -18,6 +19,9 @@ def add_tag():
     
     conn = get_db_connection()
     try:
+        # Only books in the user's circle (models.can_view_book)
+        if not can_view_book(conn, current_user, book_id):
+            return jsonify({'error': 'Book not found'}), 404
         for tag in tags:
             tag = tag.strip().lower()  # Normalize tags
             if tag:  # Skip empty tags

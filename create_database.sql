@@ -24,7 +24,6 @@ CREATE TABLE users (
     email_verified INTEGER DEFAULT 0,
     email_verification_sent_at TEXT,
     bio TEXT,
-    default_privacy TEXT DEFAULT 'friends' CHECK(default_privacy IN ('private', 'friends', 'public')),
     theme_style TEXT NOT NULL DEFAULT 'house',
     color_mode TEXT NOT NULL DEFAULT 'system'
 );
@@ -75,12 +74,10 @@ CREATE TABLE collections (
     status TEXT CHECK(status IN ('read', 'want to read', 'currently reading', 'did not finish')) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    privacy TEXT DEFAULT 'friends' CHECK(privacy IN ('private', 'friends', 'public')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_collections_created_at ON collections(created_at);
-CREATE INDEX idx_collections_privacy ON collections(user_id, privacy);
 
 -- Rating and review.
 CREATE TABLE read_data (
@@ -100,7 +97,6 @@ CREATE TABLE reading_sessions (
     date_started DATE,
     date_completed DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    privacy TEXT DEFAULT 'friends' CHECK(privacy IN ('private', 'friends', 'public')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
@@ -124,7 +120,6 @@ CREATE TABLE user_collections (
     user_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    privacy TEXT DEFAULT 'friends' CHECK(privacy IN ('private', 'friends', 'public')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (user_id, name)
 );
@@ -145,13 +140,11 @@ CREATE TABLE wishlist (
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes TEXT,
     purchase_link TEXT,
-    privacy TEXT DEFAULT 'friends' CHECK(privacy IN ('private', 'friends', 'public')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
     UNIQUE(user_id, book_id)
 );
 CREATE INDEX idx_wishlist_user ON wishlist(user_id);
-CREATE INDEX idx_wishlist_privacy ON wishlist(user_id, privacy);
 
 -- ---------------------------------------------------------------- feed
 
@@ -244,6 +237,18 @@ CREATE TABLE library_members (
 CREATE INDEX idx_library_members_library ON library_members(library_id);
 CREATE INDEX idx_library_members_user ON library_members(user_id);
 
+-- Pending invites to join a household (deleted on accept/decline/cancel).
+CREATE TABLE household_invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    inviter_id INTEGER NOT NULL,
+    invitee_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (invitee_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE (inviter_id, invitee_id)
+);
+CREATE INDEX idx_household_invites_invitee ON household_invites(invitee_id);
+
 -- ---------------------------------------------------------------- views
 
 -- Books on their owner's shelf: owned, and not the owner's own wishlist entry.
@@ -285,4 +290,6 @@ INSERT INTO schema_migrations (name) VALUES
     ('016_drop_legacy.sql'),
     ('017_book_removal.sql'),
     ('018_library_books_view.sql'),
-    ('019_clean_goodreads_reviews.sql');
+    ('019_clean_goodreads_reviews.sql'),
+    ('020_drop_privacy_columns.sql'),
+    ('021_household_invites.sql');

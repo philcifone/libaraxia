@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=0.8">
     <title>Wishlist - Books to Buy</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/quagga-0.12.1.min.js') }}"></script>
 </head>
 <body class="bg-primary min-h-screen">
     {% include '_sidebar.html' %}

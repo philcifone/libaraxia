@@ -72,7 +72,7 @@ def test_security_headers(client):
 
 
 # Routes that are GET but act, or need arguments filled in below.
-SKIP = {'static', 'auth.logout', 'auth.verify_email'}
+SKIP = {'static', 'auth.verify_email'}
 
 
 def test_every_page_loads(app, client, db, people):
@@ -120,3 +120,29 @@ def test_orphaned_images_page_without_uploads_folder(app, client, people, tmp_pa
     monkeypatch.setattr(app, 'root_path', str(tmp_path))   # tmp_path/static/uploads doesn't exist
     login(client, 'alice')
     assert client.get('/admin/orphaned_images').status_code == 200
+
+
+def test_no_global_rate_limit_but_login_is_limited(client, db, people, monkeypatch):
+    """Phase 4: browsing isn't rate limited (the old 50/hour global default
+    caused 429s); login still is. Limits are off in tests, so switch them on."""
+    from utils.rate_limiting import limiter
+    monkeypatch.setattr(limiter, 'enabled', True)
+    limiter.reset()
+    try:
+        login(client, 'bob')
+        for _ in range(60):
+            assert client.get('/base/index').status_code == 200
+        client.post('/auth/logout')
+        codes = [client.post('/auth/login', data={'email': 'x@example.test', 'password': 'no'}).status_code
+                 for _ in range(12)]
+        assert 429 in codes
+    finally:
+        limiter.reset()
+
+
+def test_quagga_is_served_locally(client, db, people):
+    login(client, 'bob')
+    for page in ('/books/add', '/wishlist/view'):
+        html = client.get(page, follow_redirects=True).get_data(as_text=True)
+        assert 'vendor/quagga-0.12.1.min.js' in html and 'cdnjs' not in html, page
+    assert client.get('/static/vendor/quagga-0.12.1.min.js').status_code == 200

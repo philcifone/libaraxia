@@ -9,6 +9,7 @@ Rules (ROADMAP 2.3 / 2.7):
   Their wishlist-only entries are deleted unless someone else has data on them.
 """
 from models import get_library_members, other_users_with_book_data
+from utils import households
 
 
 class AccountError(Exception):
@@ -106,6 +107,8 @@ def delete_account(conn, user_id, books_to):
     conn.execute('UPDATE books SET added_by = ? WHERE added_by = ?',
                  (new_owner['id'] if new_owner else None, user_id))
     # Everything else of theirs goes via ON DELETE CASCADE.
+    # Leave the household first, so it keeps an owner (or is dissolved)
+    households.leave(conn, user_id)
     conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
     conn.commit()
 

@@ -280,6 +280,15 @@ def notifications_page():
             ORDER BY fr.created_at DESC
         ''', (current_user.id,)).fetchall()
 
+        # Pending invites to share someone's library (utils/households.py)
+        household_invites = conn.execute('''
+            SELECT i.id, u.username, u.avatar_url, i.created_at
+            FROM household_invites i
+            JOIN users u ON i.inviter_id = u.id
+            WHERE i.invitee_id = ?
+            ORDER BY i.created_at DESC
+        ''', (current_user.id,)).fetchall()
+
         # Get all notifications (excluding friend_request type)
         notifications = conn.execute('''
             SELECT
@@ -301,6 +310,7 @@ def notifications_page():
 
         return render_template('notifications.html',
                              friend_requests=[dict(r) for r in friend_requests],
+                             household_invites=[dict(r) for r in household_invites],
                              notifications=[dict(n) for n in notifications])
     finally:
         conn.close()
@@ -326,12 +336,17 @@ def notification_count():
             WHERE user_id = ? AND is_read = 0 AND type != 'friend_request'
         ''', (current_user.id,)).fetchone()['count']
 
-        total_count = friend_request_count + notification_count
+        household_invite_count = conn.execute(
+            'SELECT COUNT(*) FROM household_invites WHERE invitee_id = ?', (current_user.id,)
+        ).fetchone()[0]
+
+        total_count = friend_request_count + notification_count + household_invite_count
 
         return jsonify({
             'count': total_count,
             'friend_requests': friend_request_count,
-            'notifications': notification_count
+            'notifications': notification_count,
+            'household_invites': household_invite_count,
         })
 
     finally:

@@ -7,7 +7,7 @@ import csv
 import io
 import zipfile
 
-from conftest import add_book, add_review, fk_violations, login, scalar
+from conftest import PASSWORD, add_book, add_review, fk_violations, login, scalar
 
 
 def test_admin_deactivate_keeps_everything(client, db, people):
@@ -139,3 +139,42 @@ def test_only_admins_export_someone_else(client, db, people):
     login(client, 'carol')
     body = client.get(f'/user/export_library?user_id={people["bob"]}').get_data(as_text=True)
     assert 'Private to bob' not in body
+
+
+# --- Phase 4: email change needs the password; logout is POST -----------------
+
+def test_email_change_needs_current_password(client, db, people):
+    login(client, 'bob')
+    r = client.post('/user/update_email', json={'email': 'new@example.test'})
+    assert r.status_code == 400
+    r = client.post('/user/update_email', json={'email': 'new@example.test', 'current_password': 'wrong'})
+    assert r.status_code == 400
+    assert scalar(db, 'SELECT email FROM users WHERE id = ?', people['bob']) == 'bob@example.test'
+    r = client.post('/user/update_email', json={'email': 'new@example.test', 'current_password': PASSWORD})
+    assert r.get_json()['success']
+    assert scalar(db, 'SELECT email FROM users WHERE id = ?', people['bob']) == 'new@example.test'
+
+
+def test_email_change_reverifies_when_required(app, client, db, people, monkeypatch):
+    import blueprints.user as user_bp
+    sent = []
+    monkeypatch.setitem(app.config, 'EMAIL_VERIFICATION_REQUIRED', True)
+    monkeypatch.setattr(user_bp, 'send_verification_email', lambda *a: sent.append(a) or True)
+    login(client, 'bob')
+    client.post('/user/update_email', json={'email': 'new@example.test', 'current_password': PASSWORD})
+    assert scalar(db, 'SELECT email_verified FROM users WHERE id = ?', people['bob']) == 0
+    assert sent and sent[0][0] == 'new@example.test'
+
+
+def test_email_change_refuses_taken_address(client, db, people):
+    login(client, 'bob')
+    r = client.post('/user/update_email', json={'email': 'carol@example.test', 'current_password': PASSWORD})
+    assert r.status_code == 400
+
+
+def test_logout_is_post_only(client, db, people):
+    login(client, 'bob')
+    assert client.get('/auth/logout').status_code == 405
+    assert client.get('/base/index').status_code == 200      # still logged in
+    assert client.post('/auth/logout').status_code == 302
+    assert client.get('/base/index').status_code in (302, 401)

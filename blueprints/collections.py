@@ -1,6 +1,7 @@
 from flask import current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify
 from utils.database import get_db_connection
 from flask_login import login_required, current_user
+from models import can_view_book
 
 collections_blueprint = Blueprint('collections', __name__, template_folder='templates')
 
@@ -106,7 +107,9 @@ def add_to_custom_collection(collection_id):
         ''', (collection_id, current_user.id))
         if not cursor.fetchone():
             return jsonify({'success': False, 'error': 'Collection not found'}), 404
-        
+        if not can_view_book(conn, current_user, book_id):
+            return jsonify({'success': False, 'error': 'Book not found'}), 404
+
         # Add book to collection
         conn.execute('''
             INSERT OR REPLACE INTO collection_books (collection_id, book_id)
@@ -201,6 +204,11 @@ def add_to_status_collection():
     
     conn = get_db_connection()
     try:
+        # Only books in the user's circle (models.can_view_book)
+        if not can_view_book(conn, current_user, book_id):
+            flash('Book not found.', 'danger')
+            return redirect(request.referrer or url_for('base.index'))
+
         cursor = conn.execute('''
             SELECT 1 FROM collections
             WHERE user_id = ? AND book_id = ?
@@ -299,6 +307,9 @@ def manage_book_collections():
         ''', (collection_id, current_user.id)).fetchone()
         if not owns_collection:
             flash('Collection not found', 'error')
+            return redirect(request.referrer or url_for('collections.view_collections'))
+        if not can_view_book(conn, current_user, book_id):
+            flash('Book not found', 'error')
             return redirect(request.referrer or url_for('collections.view_collections'))
 
         # Check if book is already in collection

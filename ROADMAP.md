@@ -16,7 +16,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 1 ✅ | [Prod upkeep](#phase-1-prod-upkeep) | Prod sits behind Cloudflare Access (2FA, 2–3 allowlisted emails), so this is upkeep, not an emergency. Do it before Phase 2 touches the DB | Prod DB path recorded, deps upgraded, `pip-audit` clean |
 | 2 ✅ | [Data foundations](#phase-2-data-foundations) | Everything later writes migrations and needs tests | Fresh install is one command; migrations tracked; FK check clean; smoke tests in CI |
 | 3 ✅ | [Data correctness](#phase-3-data-correctness) | Fix what the data already shows is wrong | Stats, covers, reviews and wishlist behave correctly |
-| 4 | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
+| 4 ✅ | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
 | 5 | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
 | 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Film-frame covers, page fixes, a11y (theme toggle done early) |
@@ -345,18 +345,24 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 **Goal:** every page has a decided access rule, enforced in SQL.
 
-- [ ] **Book detail access** 🟠: `/books/book/<id>` shows any book to any logged-in user, and it picks *any* user's wishlist entry (notes included) and friend reviews to display. Decide the rule (owner + household + friends?) and enforce it.
-- [ ] **Privacy model** 🟠: the `privacy` columns (migration 012) and `models.can_view_content()` exist, but nothing calls them; everything is friends-or-nothing. Either wire them in with a settings UI (profile, wishlist, collections, sessions, feed), or drop the columns and the claim.
-- [ ] **Household consent** 🟠: `user.add_to_shared_library` lets a friend add you to their household without asking. Make it an invite/accept flow, reusing `friend_requests` + `notifications`. Also, any member can currently remove any other member, **including the owner**. Restrict removal to the owner (or self-removal).
-- [ ] **Email change needs the password** 🟠 (`user.update_email`): a hijacked session can take over the account's email. Require the current password, and re-verify the new address if verification is on.
-- [ ] **Logout is a GET** 🟢: make it a POST form in `_sidebar.html`.
-- [ ] **Rate limiter** 🟠:
-  - Storage is `memory://` per gunicorn worker, so limits multiply by the worker count.
-  - The global default of **50 requests/hour per IP** on every route is tight for infinite scroll and the feed. It's the likely cause of mystery 429s.
-  - Fix: raise or remove the global default and keep strict per-route limits on auth/imports, or point storage at Redis.
-- [ ] **Quagga** 🟢: `add_book.html` and `wishlist.html` load it from cdnjs without `integrity=`. Vendor it into `static/`, or pin it with SRI.
+**2026-11-04, done.** The written rule per page type is the table in CLAUDE.md's "Access Model"; `tests/test_access.py` and `tests/test_households.py` assert it (120 tests). Two migrations: 020, 021.
 
-**Done when:** there's a written access rule per page type (put it in CLAUDE.md's "Access Model"), and tests assert it.
+- [x] **Book detail access** 🟠: `/books/book/<id>` showed any book to any logged-in user, and picked *any* user's wishlist entry (notes included) to display.
+  - **Rule:** admins, or someone in your *circle* (you, household, friends) owns the book or has data on it (review, status, session, tag, wishlist, collection). Otherwise 404, so ids can't be probed. The "has data" clause keeps your history reachable after a book is given away or its owner deleted, and keeps feed links working (a friend's review of a household member's book).
+  - `models.circle_ids` / `models.can_view_book`. The routes that attach your data to a book id (status, review, reading session, tag, custom collection, wishlist quick-add) run the same check first, or attaching data would itself grant access.
+  - Other users' wishlist notes on a book page only come from your circle.
+- [x] **Privacy model** 🟠: dropped. Every row still had the default `friends` and nothing read the columns. Migration 020 drops the `privacy` columns and their indexes and `users.default_privacy`; `can_view_content()` is gone. A real per-item privacy model, if ever wanted, should be designed fresh.
+- [x] **Household consent** 🟠: joining is invite/accept. New `household_invites` table (migration 021) rather than overloading `friend_requests`; pending invites show on the notifications page and in the badge count, and on the inviter's profile with *Cancel*. Only the owner (or someone in no household) can invite, and only friends. Only the owner can remove a member; anyone can leave. When the owner leaves, the longest-standing member becomes owner; a household of one is dissolved. All of it lives in `utils/households.py`, which admin removal and account deletion now use too, so neither can leave a household without an owner. Admin *add* to a new library makes that user its owner. 021 also repairs existing data: ownerless households get an owner, one-person households are dissolved.
+- [x] **Email change needs the password** 🟠 (`user.update_email`): a password field appears while editing the email. With `EMAIL_VERIFICATION_REQUIRED` on, the new address is marked unverified and a verification email is sent (login then waits for it, as at registration).
+- [x] **Logout is a POST** 🟢: sidebar form with CSRF; GET `/auth/logout` is now 405.
+- [x] **Rate limiter** 🟠: the global default (200/day, 50/hour per IP on *every* route, static files and covers included) is gone; per-route limits on auth, profile changes, friend/household requests and imports stay. Memory storage per worker is documented as accepted (limits are x workers); Redis is the upgrade path. `TRUSTED_PROXY_COUNT` was already set in Phase 1.
+- [x] **Quagga** 🟢: vendored to `static/vendor/quagga-0.12.1.min.js`; its sha512 matched cdnjs's published SRI. Source, licence and hash in `static/vendor/README.md`. No CDN scripts remain, which helps the Phase 6 CSP.
+
+**Follow-ups found on the way** (not access bugs, so not done here):
+- The Goodreads import and the wishlist add match existing books by ISBN (and the import by title+author) across **everyone's** books, so a match can attach your data to a stranger's copy, which then never shows in your library. Prefer your own, then your household's books, and otherwise create a new one. Belongs with Phase 5.
+- Household members who aren't also friends can't see each other's profile or feed activity. Fine for one real household where both are friends; revisit only if it ever matters.
+
+**Prod rollout:** migrations 020 and 021 run automatically on deploy. They were rehearsed on the dev DB copy and a fresh DB, not on a prod copy; prod's schema has surprised before (see Phase 2), so rehearse on a copy of the prod DB first, run from the dev checkout (prod doesn't have the new migration files until the deploy): `manage.py backup` on prod, copy the backup here, `venv/bin/python manage.py --db /tmp/prod-copy.db migrate`, then delete the copy.
 
 ---
 
@@ -364,6 +370,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 `blueprints/user.py` `import_goodreads`, `templates/goodreads_import.html`. What works today: matching by ISBN13/ISBN, then title+author; `to-read` → wishlist; `read` / `currently-reading` → collections + rating/review + one reading session.
 
+- [ ] **Match within your own books** 🆕: matching by ISBN / title+author searches everyone's books, so a match can attach your shelf/review to a stranger's copy that never shows in your library (found in Phase 4). Prefer your own, then your household's, else create the book. Same for the wishlist add-by-ISBN.
 - [ ] **Shelves** → map custom shelves (the comma-separated `Bookshelves` column) to **tags** or **custom collections**. Today a multi-shelf value never matches and is counted as "unknown shelf".
 - [ ] **DNF:** map a "did-not-finish"-style shelf to the `did not finish` status.
 - [x] **Clean HTML** in reviews (`<br/>`, entities) on the way in. Done in 3.4 (`goodreads_review_text`).

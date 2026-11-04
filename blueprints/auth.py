@@ -161,7 +161,7 @@ def login():
         flash('Invalid email or password!', 'danger')
     return render_template('login.html')
 
-@auth_blueprint.route('/logout')
+@auth_blueprint.route('/logout', methods=['POST'])
 def logout():
     logout_user()
     flash('Logged out successfully!', 'success')
