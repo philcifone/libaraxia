@@ -294,36 +294,49 @@ Decided 2026-11-02. The book row is a permanent *record*; who owns the copy and 
 
 ### 3.1 Stats count the whole database 🆕 🔴
 `user.py` stats divide "books you've read" by `SELECT COUNT(DISTINCT id) FROM books`, which is **every** row: all users' books *plus wishlist entries* (see 3.3). Today that's 131 / 415 instead of 131 out of your 155-book library. `calculate_library_stats()` has the same problem for total pages, unique authors, longest book and most common genre.
-- [ ] Scope every stats query to the user's library (`added_by = ?`, or household members for the shared view) and exclude wishlist-only books.
-- [ ] Same scoping for `get_filter_options` in `base.py`, which lists every user's genres and tags. Merge it with the duplicate in `utils/book_utils.py`; the two return different shapes.
+- [x] Scope every stats query to the user's library (`added_by = ?`, or household members for the shared view) and exclude wishlist-only books.
+- [x] Same scoping for `get_filter_options` in `base.py`, which lists every user's genres and tags. Merge it with the duplicate in `utils/book_utils.py`; the two return different shapes.
+- **2026-11-04, done:** stats read from the `library_books` view (3.3). *Books Read* now counts the Read shelf (it counted rated/reviewed books), so it matches the shelves page; pages, top genres and top authors follow it. *Read percentage* and the Library tab cover the profile owner's own shelf, not removed books. On the dev copy: 129 read, 134 books, 89.6% (was 131 / 415). One `get_filter_options(owner_ids)` in `book_utils`: genres from the libraries on screen, statuses and tags your own. Also fixed: the *Minimum rating* filter matched the rating exactly instead of "and up".
 
 ### 3.2 Placeholder covers saved as real covers 🆕 🟠
 **111 of 415 books (27%)** point at one of two placeholder images that were downloaded and saved as if they were covers:
-- 95 files are Google's grey "image not available" JPEG.
+- 95 files are Google's grey "image not available" JPEG.	
 - 27 are a generic grey book-outline image.
 
 They show in the grid (see the library screenshot), count as "has a cover" so bulk fetch skips them, and waste disk space.
-- [ ] **Detect at download:** in `download_and_save_cover` / `_fetch_image`, reject known placeholder hashes (keep a small set of SHA-256s in `book_utils`), and request Open Library covers with `?default=false` so a miss is a 404, not a placeholder.
-- [ ] **One-off cleanup** (script or admin button): for books whose cover file hashes to a placeholder, set `cover_image_url = NULL`, remove the files via `delete_image_file()`, then rerun the admin bulk cover fetch.
-- [ ] Use the existing `no-cover.png` / an empty state for books with no cover, not a white tile.
-- [ ] **Replace `static/no-cover.png`:** it's a stock photo with a visible Depositphotos watermark (not licensed for use). It's only the JS fallback in `add_book.js` / `wishlist.js` (and the admin orphaned-images page) when a cover fails to load. Swap it for the same themed "No Image Available" text box the grid uses (CSS, no image), or a small in-house SVG.
+- [x] **Detect at download:** in `download_and_save_cover` / `_fetch_image`, reject known placeholder hashes (keep a small set of SHA-256s in `book_utils`), and request Open Library covers with `?default=false` so a miss is a 404, not a placeholder.
+- [x] **One-off cleanup** (script or admin button): for books whose cover file hashes to a placeholder, set `cover_image_url = NULL`, remove the files via `delete_image_file()`, then rerun the admin bulk cover fetch.
+- [x] Use the existing `no-cover.png` / an empty state for books with no cover, not a white tile.
+- [x] **Replace `static/no-cover.png`:** it's a stock photo with a visible Depositphotos watermark (not licensed for use). It's only the JS fallback in `add_book.js` / `wishlist.js` (and the admin orphaned-images page) when a cover fails to load. Swap it for the same themed "No Image Available" text box the grid uses (CSS, no image), or a small in-house SVG.
+- **2026-11-04, done:** `placeholder_reason()` in `book_utils` rejects a download that is tiny, blank, a wide strip (height under half the width), or a perceptual-hash (dHash) match for the two known placeholders. SHA-256 wasn't used: saved files are re-encoded, so a Pillow upgrade would change the bytes. All Open Library cover URLs use `?default=false`. Admin → Maintenance → **Covers** (`/admin/placeholder_covers`) lists them, clears them (cover set to NULL, unused files deleted) and runs the bulk fetch 10 books per click (50 would hit gunicorn's 30 s timeout). The bulk fetch had routes but no button until now. Dev copy: **142** books (87 Google "image not available", 24 grey outline, 31 strips cut from interior title pages). The grid already showed "No Image Available" for empty covers; the white tiles were the placeholder files. `no-cover.png` replaced by `static/no-cover.svg`.
+- [ ] **Prod:** Admin → Maintenance → Covers → *Clear*, then *Fetch next 10* until it stops finding covers. Books with no ISBN need a cover search from their edit page.
+- [ ] About 6 covers are Google scans of a white title page with a small publisher logo. They aren't auto-detected (a minimalist white cover would look the same), so replace them by hand.
 
 ### 3.3 Wishlist books live in the `books` table 🆕 🟠
 A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260 of 415** rows. The library grid keeps them out with `AND NOT EXISTS (SELECT 1 FROM wishlist ...)`, so every query that forgets this clause leaks wishlist books (3.1 is one example).
-- [ ] Decide the model:
+- [x] Decide the model:
   - (a) add `books.in_library` (or `status`), set on "move to library", and filter on it; or
   - (b) keep the `NOT EXISTS` approach, but put it in one helper/view (`library_books`) that every query uses.
 
   (a) is simpler to reason about.
-- [ ] Wishlist duplicates: the same title is wishlisted as different editions (e.g. *Les Misérables* ×2, *Heretics of Dune* ×2, *Chapterhouse: Dune* ×2). Warn on title+author match when adding, not just ISBN.
+
+  **Decided 2026-11-04: (b), as a SQL view.** Migration 018 adds `library_books`: books with an owner that aren't the *owner's* own wishlist entry. It's derived from the data, so there is no flag to keep in sync with the wishlist on add, move-to-library, transfer or account deletion (the risk with (a)). Library pages, search, friends' libraries, stats, filter options, the account dialog and admin totals query it. The old clauses disagreed: search hid a book from its owner if *anyone* wishlisted it, and the friends' libraries page counted wishlist entries as books. Removed books stay in the view (filter on `removed_at`). A future table rebuild of `books` or `wishlist` must drop and recreate the view (noted in the migration and `migrations/README.md`).
+- [x] Wishlist duplicates: the same title is wishlisted as different editions (e.g. *Les Misérables* ×2, *Heretics of Dune* ×2, *Chapterhouse: Dune* ×2). Warn on title+author match when adding, not just ISBN.
+  - **2026-11-04, done:** one `find_duplicates()` in `book_utils` serves both `/books/check_duplicates` and `/wishlist/check_duplicates` (they were near-copies). Matches ISBN (hyphens ignored) or title + author with case, accents, punctuation and a leading "The/A/An" ignored, so *Les Misérables* = *Les Miserables*. Searches the household's shelf and your wishlist only; the wishlist check used to search every user's books. Removed books are flagged as such in the warning.
 
 ### 3.4 Goodreads HTML in existing reviews 🆕 🟠
-- [ ] **27 of your reviews** contain literal `<br>` / HTML from the Goodreads import, which shows up raw in the review editor. Write a one-off cleanup (`<br>` → newline, unescape entities, strip other tags) and fix the importer (Phase 5).
+- [x] **27 of your reviews** contain literal `<br>` / HTML from the Goodreads import, which shows up raw in the review editor. Write a one-off cleanup (`<br>` → newline, unescape entities, strip other tags) and fix the importer (Phase 5).
+  - **2026-11-04, done:** migration `019_clean_goodreads_reviews.sql` (data only): `<br/>` becomes a newline, so `<br/><br/>` is a paragraph break (reviews render with `pre-wrap`). Only `<br>` tags were in the data, no entities. The importer now stores plain text via `goodreads_review_text()` (breaks, other tags stripped, entities decoded), so this item is off Phase 5's list.
 
 ### 3.5 Error handling 🟠
-- [ ] Stop returning `str(e)` to the browser: `books.fetch_cover`, `books.select_search_result`, the collections routes, `user.import_goodreads`, the user stats route. Log it and return a generic message.
+- [x] Stop returning `str(e)` to the browser: `books.fetch_cover`, `books.select_search_result`, the collections routes, `user.import_goodreads`, the user stats route. Log it and return a generic message.
+  - **2026-11-04, done:** every `str(e)` sent to the browser (books, wishlist, feed, tags, collections, user, admin) is now logged with its traceback and answered with a generic message. The two account-deletion flashes still show their `AccountError` text on purpose: those messages are written for the user.
+- [x] **Removed books (from Phil, 2026-11-04):** after a removal the button does switch to *Put Back in Library*. To list them: the library filter's *Include books removed from the library* checkbox is now a **Removed books** choice: *On the shelf only* (default), *Include removed*, *Removed only*. Books you reviewed but no longer own stay on your Read shelf and in your profile reviews.
+- [x] **Transfer ownership is owner/admin only (from Phil, 2026-11-04):** confirmed. The section is inside the owner/admin block on the book page, and `transfer_book` checks again on the server (owners: household only; admins: anyone), covered by `test_non_owner_cannot_edit_remove_delete_or_transfer` and `test_transfer_within_household_only`. Moving it to the edit page is in 7.2.
 
 **Done when:** profile stats match the shelves page and only count your own books; no placeholder covers remain; no raw HTML in reviews; wishlist books can't leak into library queries.
+
+- **2026-11-04:** all done in code on branch `phase-3-data-correctness` (94 tests; new ones in `tests/test_library_data.py`). Left for prod: run migrations 018 and 019 on deploy, then the cover cleanup above.
 
 ---
 
@@ -352,7 +365,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 - [ ] **Shelves** → map custom shelves (the comma-separated `Bookshelves` column) to **tags** or **custom collections**. Today a multi-shelf value never matches and is counted as "unknown shelf".
 - [ ] **DNF:** map a "did-not-finish"-style shelf to the `did not finish` status.
-- [ ] **Clean HTML** in reviews (`<br/>`, entities) on the way in. See 3.4 for existing data.
+- [x] **Clean HTML** in reviews (`<br/>`, entities) on the way in. Done in 3.4 (`goodreads_review_text`).
 - [ ] **Reviews without a rating** are dropped. Import them, and import ratings for `to-read` books if present.
 - [ ] **Read Count** → multiple reading sessions (today only one).
 - [ ] **Unused columns:** Additional Authors, Private Notes, Owned Copies, Binding.
@@ -388,6 +401,19 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 **Goal:** finish what the Phase 0 refresh deliberately left out, now that every page extends `base.html` (Phase 6) and edits happen in one place. Phase 0 is the house-style reference.
 
+### User additions:
+Answer any below questions I have, work through any decisions with me, reorganize the ROADMAP accordingly, and delete this section as needed.
+#### Book details page "readjusts" when information auto populates. 
+Bug replication: one column of input forms split into two after manually entering ISBN on add book page. Did not test on other inputs.
+
+#### Additional design theme to add to classic/house group: 
+- skeuomorphic theme similar to OG iphone books app. see docs/skeuomorphic-inspo.jpg - if planning or more details/effort is needed for this feel free to divide theme creation into a separate phase if it better suits your workflow. 
+- I’m thinking library look for books and blockbuster/video-store look for the vhs page. 
+- Also interested in a 80s neon outrun theme - no literal pictorial depictions, perhaps a glowing neon grid, purple>orange gradient, angled text boxes with contrasting colors (think boxy 80s sports car angles/livery) etc. 
+
+#### random:
+- can we more replicate the card & button shadows from negativeearth.net? 
+
 ### 7.1 Finish the house style
 - [x] **Theme toggle** (done early, 2026-11-02): Profile → Appearance has **Style** (House = Gruvbox/square/bold lines, Classic = the original 2024 look, with a new light version) and **Mode** (System/Light/Dark), saved per user (migration 013). Styles are CSS-variable sets on `<html data-style data-mode>`. To add a style: one shape block and a light + dark palette in `static/styles.css`, plus a line in `THEME_STYLES` in `models.py`.
 - [ ] Optional: a quick sidebar shortcut for Mode, so it doesn't need a trip to the profile.
@@ -399,6 +425,8 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
   - `--measure: 66ch` for review and description text
 
 ### 7.2 Page fixes seen in the 2026-11-02 screenshots 🆕
+- **Decided 2026-11-04: keep a separate edit page** (no in-place editing on the book page). Security is the same either way, since the server checks ownership on every save. In-place editing would need per-field save endpoints or a JS form-state layer, its own validation and error display, and more inline script just before Phase 6 removes inline scripts for CSP. Edits are rare in a household catalog, so it would be a lot of work for a small gain. The book page stays a clean read view; the edit page holds the owner/admin tools.
+- [ ] **Book tools on the edit page (from Phil, 2026-11-04):** combine *Transfer Book Ownership* and *Delete permanently…* into one "Book tools" disclosure, styled with the transfer section's arrow, and move it to the edit page. Edit is already owner/admin only (`can_manage` on the page, ownership check in `edit_book`), so the tools stay owner/admin only for free. *Remove from Library / Put Back* stays on the book page: it's the normal, everyday action.
 - [ ] **Book detail on mobile:** the 3-column metadata grid collapses to 2 with awkward wrapping ("Dial Press Trade / Paperback"). Use one column on narrow screens.
 - [ ] **Profile card on desktop:** the avatar and title float above a two-column field list. Tighten it into a header row.
 
@@ -423,7 +451,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 A core Libaraxia feature. The design notes were written alongside the fork plan, in [FORK-SPEC §5](FORK-SPEC.md#5-phase-2-core-change-b-vhs-support), but nothing here needs the fork.
 
 ### 8.0 Fix the barcode scanner first 🆕
-Reported by Phil (2026-11-02): it often takes the barcode too early (wrong number), seems to work with only one camera, and is generally flaky. VHS scanning builds on this, so fix it before the rest of the phase. The scanner code is duplicated in `add_book.js` and `wishlist.js`; fix it once in a shared module (ideally `common.js` from Phase 6) and use it from both.
+Reported by Phil (2026-11-02): camera only fills half the barcode window, it often takes the barcode too early (wrong number), seems to work with only one camera, and is generally flaky. VHS scanning builds on this, so fix it before the rest of the phase. The scanner code is duplicated in `add_book.js` and `wishlist.js`; fix it once in a shared module (ideally `common.js` from Phase 6) and use it from both.
 - [ ] **Misreads (takes the code too early):** `onDetected` accepts the very first frame whose code is 10 or 13 digits, with no checksum and no confirmation. Validate the EAN/ISBN check digit, and only accept a code after it's read the same way on several frames in a row (e.g. 3), or reject reads whose average decoder error is high.
 - [ ] **Only one camera:** the stream is hard-coded to `facingMode: "environment"` at 640×480. Add a camera picker (`enumerateDevices()`, select by `deviceId`, remember the choice in `localStorage`) and fall back cleanly on devices without a back camera (laptops, desktops). On phones with several back lenses (wide/ultra-wide/macro), the default can be one that won't focus up close, so the picker matters there too.
 - [ ] **Resolution/focus:** ask for a higher resolution (e.g. 1280×720 ideal) and continuous autofocus where supported; 640×480 is too coarse for small barcodes.

@@ -85,7 +85,7 @@ Gotchas:
 - **Unowned books** (`added_by IS NULL`) are allowed but appear in no library view, since those filter by owner. Handle `None` wherever `added_by` is used.
 - **Removed (deaccessioned) books** have `books.removed_at` set. Library views must add `AND b.removed_at IS NULL` unless `show_removed` is asked for; reading history, reviews and exports keep them. "Remove from library" is the normal way a book leaves; hard delete is only for mistakes.
 - **Accounts:** deactivate/delete logic lives in `utils/accounts.py` (shared by admin and self-delete). Exports are in `utils/export.py`, scoped to one user.
-- **Wishlist entries are rows in `books`** (plus a `wishlist` row). Library queries must exclude them with `AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id ...)`, or they'll count wishlist books as owned.
+- **Wishlist entries are rows in `books`** (plus a `wishlist` row). Library queries, counts and stats select `FROM library_books b` (a view, migration 018: owned books that aren't the owner's own wishlist entry) instead of `books`, or they'll count wishlist books as owned. The view keeps removed books, so still add the `removed_at` filter (`book_utils.removed_filter()` for the library pages). A table rebuild of `books` or `wishlist` must drop and recreate the view.
 
 ### Access Model (what the code actually does)
 - **Friends-gated:** profiles, stats, wishlists, reviews and friends' libraries are shown only to the owner and their friends (`get_friendship_status` in `user.py`, `wishlist.py`, `base.py`).
@@ -130,7 +130,7 @@ Gotchas:
 
 ### Image Handling
 - Covers are uploaded or auto-fetched, resized to MAX_IMAGE_SIZE (500x1000), and stored under `static/uploads/` as `uploads/...` paths relative to `static/`. Avatars go in `static/uploads/avatars/`.
-- Fallback image: `static/no-cover.png`.
+- Fallback image (JS, when a cover fails to load): `static/no-cover.svg`. Templates show a themed "No Image Available" box instead.
 - `app.py` sets `UPLOAD_FOLDER = static/uploads` (relative to the working dir), overriding the paths in config.py.
 
 ### Database Migrations
