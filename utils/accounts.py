@@ -22,8 +22,7 @@ def removal_context(conn, user_id, viewer_is_admin):
     if not user:
         return None
     owned = conn.execute('''
-        SELECT COUNT(*) FROM books b WHERE b.added_by = ?
-          AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = b.added_by)
+        SELECT COUNT(*) FROM library_books b WHERE b.added_by = ?
     ''', (user_id,)).fetchone()[0]
     household_ids = [i for i in get_library_members(user_id) if i != user_id]
     household = conn.execute(

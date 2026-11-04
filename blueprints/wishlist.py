@@ -6,7 +6,8 @@ from utils.book_utils import (
     fetch_book_details_from_isbn,
     process_image,
     download_and_save_cover,
-    search_google_books
+    search_google_books,
+    find_duplicates,
 )
 
 wishlist_blueprint = Blueprint('wishlist', __name__, template_folder='templates')
@@ -117,7 +118,8 @@ def view_wishlist():
                 if "UNIQUE constraint failed" in str(e):
                     flash("This book is already in your wishlist!", "error")
                 else:
-                    flash(f"Error adding to wishlist: {str(e)}", "error")
+                    current_app.logger.exception('Error adding to wishlist')
+                    flash("Couldn't add the book to your wishlist.", "error")
 
             return redirect(url_for("wishlist.view_wishlist"))
 
@@ -140,80 +142,20 @@ def view_wishlist():
 @wishlist_blueprint.route("/check_duplicates", methods=["POST"])
 @login_required
 def check_duplicates():
-    """Check if a book already exists in the library or wishlist"""
+    """Warn before adding a book that's already on the household's shelf or
+    your wishlist (same ISBN, or same title and author)."""
+    data = request.get_json(silent=True) or {}
     try:
-        data = request.get_json()
-        title = data.get("title", "").strip()
-        isbn = data.get("isbn", "").strip()
+        duplicates = find_duplicates(
+            get_db(), current_user.id,
+            title=(data.get("title") or "").strip(),
+            author=(data.get("author") or "").strip(),
+            isbn=(data.get("isbn") or "").strip())
+    except Exception:
+        current_app.logger.exception("Error checking duplicates")
+        return jsonify({"success": False, "error": "Couldn't check for duplicates."}), 500
+    return jsonify({"has_duplicates": bool(duplicates), "duplicates": duplicates})
 
-        current_app.logger.debug(f"Checking duplicates for title: {title}, ISBN: {isbn}")
-
-        duplicates = []
-
-        conn = get_db()
-        # Check for exact title match or ISBN match
-        query_parts = []
-        params = []
-
-        if title:
-            query_parts.append("LOWER(title) = LOWER(?)")
-            params.append(title)
-
-        if isbn:
-            if query_parts:
-                query_parts.append("OR isbn = ?")
-            else:
-                query_parts.append("isbn = ?")
-            params.append(isbn)
-
-        if not query_parts:
-            return jsonify({"has_duplicates": False, "duplicates": []})
-
-        query = f"SELECT id, title, author, isbn FROM books WHERE {' '.join(query_parts)}"
-        existing_books = conn.execute(query, params).fetchall()
-
-        for book in existing_books:
-            # Check if in library (collections table)
-            in_library = conn.execute("""
-                SELECT 1 FROM collections
-                WHERE user_id = ? AND book_id = ?
-            """, (current_user.id, book['id'])).fetchone()
-
-            # Check if in wishlist
-            in_wishlist = conn.execute("""
-                SELECT 1 FROM wishlist
-                WHERE user_id = ? AND book_id = ?
-            """, (current_user.id, book['id'])).fetchone()
-
-            duplicate_info = {
-                "id": book['id'],
-                "title": book['title'],
-                "author": book['author'],
-                "isbn": book['isbn'],
-                "in_library": bool(in_library),
-                "in_wishlist": bool(in_wishlist),
-                "match_reason": []
-            }
-
-            # Determine what matched
-            if title and book['title'].lower() == title.lower():
-                duplicate_info["match_reason"].append("title")
-            if isbn and book['isbn'] == isbn:
-                duplicate_info["match_reason"].append("ISBN")
-
-            duplicates.append(duplicate_info)
-
-        has_duplicates = len(duplicates) > 0
-        current_app.logger.info(f"Found {len(duplicates)} potential duplicates")
-
-        return jsonify({
-            "has_duplicates": has_duplicates,
-            "duplicates": duplicates
-        })
-
-    except Exception as e:
-        current_app.logger.error(f"Error checking duplicates: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
 
 @wishlist_blueprint.route("/select_search_result", methods=["POST"])
 @login_required
@@ -303,7 +245,7 @@ def select_search_result():
 
     except Exception as e:
         current_app.logger.error(f"Error in select_search_result: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
 
 
 @wishlist_blueprint.route("/search_books")
@@ -324,7 +266,7 @@ def search_books():
 
     except Exception as e:
         current_app.logger.error(f"Unexpected error in wishlist search: {str(e)}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Search failed. Please try again."}), 500
 
 
 @wishlist_blueprint.route("/fetch_isbn_details")
@@ -348,7 +290,7 @@ def fetch_isbn_details():
 
     except Exception as e:
         current_app.logger.error(f"Error fetching ISBN details: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
 
 
 @wishlist_blueprint.route("/move_to_library/<int:book_id>", methods=["POST"])
@@ -394,7 +336,8 @@ def move_to_library(book_id):
 
     except Exception as e:
         conn.rollback()  # undo a half-done insert (e.g. book added, wishlist row failed)
-        flash(f"Error moving book to library: {str(e)}", "error")
+        current_app.logger.exception('Error moving book to library')
+        flash("Couldn't move the book to your library.", "error")
         return redirect(url_for("wishlist.view_wishlist"))
 
 
@@ -477,6 +420,7 @@ def quick_add_to_wishlist(book_id):
         if "UNIQUE constraint failed" in str(e):
             flash("This book is already in your wishlist!", "error")
         else:
-            flash(f"Error adding to wishlist: {str(e)}", "error")
+            current_app.logger.exception('Error adding to wishlist')
+            flash("Couldn't add the book to your wishlist.", "error")
 
     return redirect(request.referrer or url_for("base.index"))

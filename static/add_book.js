@@ -129,9 +129,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                          .replace('&edge=curl', '');
                 coverImg.src = thumbnailUrl;
             } else {
-                coverImg.src = '/static/no-cover.png';
+                coverImg.src = '/static/no-cover.svg';
             }
-            coverImg.onerror = () => coverImg.src = '/static/no-cover.png';
+            coverImg.onerror = () => coverImg.src = '/static/no-cover.svg';
     
             const elements = {
                 title: bookResult.querySelector('.book-title'),
@@ -188,6 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: getCSRFHeaders(),
                 body: JSON.stringify({
                     title: bookData.title,
+                    author: bookData.author || '',
                     isbn: bookData.isbn
                 })
             });
@@ -228,7 +229,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         duplicates.forEach(dup => {
             message += `"${dup.title}" by ${dup.author}\n`;
-            message += `  - ${dup.in_library ? 'In library' : ''}${dup.in_library && dup.in_wishlist ? ' and ' : ''}${dup.in_wishlist ? 'In wishlist' : ''}\n`;
+            const where = [];
+            if (dup.in_library) where.push(dup.removed ? 'Removed from library' : 'In library');
+            if (dup.in_wishlist) where.push('In wishlist');
+            message += `  - ${where.join(' and ')}\n`;
         });
 
         message += '\nAre you sure you want to add this book?';
@@ -331,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
             coverPreview.innerHTML = `
                 <img src="${imagePath}"
                      alt="Book cover"
-                     onerror="this.onerror=null; this.src='/static/no-cover.png'; console.error('Failed to load cover:', '${imagePath}');"
+                     onerror="this.onerror=null; this.src='/static/no-cover.svg'; console.error('Failed to load cover:', '${imagePath}');"
                      class="max-w-xs rounded-lg shadow-lg">
             `;
 
@@ -355,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
             coverPreview.innerHTML = `
                 <img src="${thumbnailUrl}"
                      alt="Book cover"
-                     onerror="this.onerror=null; this.src='/static/no-cover.png';"
+                     onerror="this.onerror=null; this.src='/static/no-cover.svg';"
                      class="max-w-xs rounded-lg shadow-lg">
             `;
         } else {
@@ -475,6 +479,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check for duplicates before filling form
                 const duplicateCheck = await checkForDuplicates({
                     title: data.book_details.title,
+                    author: data.book_details.author || '',
                     isbn: data.book_details.isbn
                 });
 

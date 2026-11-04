@@ -3,55 +3,9 @@ from flask_login import login_required, current_user
 from utils.database import get_db_connection
 from datetime import datetime
 from models import get_library_members, is_friends_with, can_view_content
+from utils.book_utils import get_filter_options, removed_filter
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
-
-def get_filter_options():
-    """Get all filter options from the database"""
-    conn = get_db_connection()
-    try:
-        # Get unique genres (case-insensitive)
-        genres = conn.execute('''
-            SELECT genre
-            FROM books
-            WHERE genre IS NOT NULL
-            GROUP BY LOWER(genre)
-            ORDER BY LOWER(genre)
-        ''').fetchall()
-        
-        # Get unique read statuses
-        read_statuses = conn.execute('''
-            SELECT DISTINCT status 
-            FROM collections 
-            WHERE status IS NOT NULL 
-            ORDER BY status
-        ''').fetchall()
-        
-        # Get all tags
-        tags = conn.execute('''
-            SELECT DISTINCT tag_name 
-            FROM book_tags 
-            WHERE tag_name IS NOT NULL 
-            ORDER BY tag_name
-        ''').fetchall()
-
-        # Create date range options
-        date_ranges = [
-            {"value": "all", "label": "All Time"},
-            {"value": "this_year", "label": "This Year"},
-            {"value": "last_year", "label": "Last Year"},
-            {"value": "older", "label": "Older"}
-        ]
-
-        return {
-            "genres": [genre[0] for genre in genres],
-            "read_statuses": [status[0] for status in read_statuses],
-            "tags": [tag[0] for tag in tags],
-            "date_ranges": date_ranges,
-            "ratings": list(range(1, 6))  # 1 to 5 stars
-        }
-    finally:
-        conn.close()
 
 @base_blueprint.route("/")
 def home():
@@ -85,15 +39,13 @@ def index():
     try:
         # "My Library" now shows ONLY books added by current user
         query = '''
-            SELECT b.* FROM books b
+            SELECT b.* FROM library_books b
             WHERE b.added_by = ?
-            AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?)
         '''
-        params = [current_user.id, current_user.id]
+        params = [current_user.id]
 
         # Removed (deaccessioned) books are hidden unless asked for
-        if not request.args.get('show_removed'):
-            query += " AND b.removed_at IS NULL"
+        query += removed_filter(request.args.get('show_removed'))
 
         # Apply filters if they exist (simplified - no complex joins unless needed)
         if request.args.get('genre'):
@@ -105,7 +57,7 @@ def index():
             params.extend([current_user.id, request.args.get('read_status')])
 
         if request.args.get('rating'):
-            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating = ?)"
+            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
             params.extend([current_user.id, int(request.args.get('rating'))])
 
         tags = request.args.getlist('tags[]')
@@ -153,7 +105,7 @@ def index():
             })
 
         # Get filter options for the template
-        filter_options = get_filter_options()
+        filter_options = get_filter_options([current_user.id])
 
         return render_template("index.html",
                              books=books,
@@ -207,15 +159,13 @@ def shared_library():
         # Build query to show books from all shared library members (or filtered member)
         placeholders = ','.join(['?' for _ in shared_user_ids])
         query = f'''
-            SELECT b.* FROM books b
+            SELECT b.* FROM library_books b
             WHERE b.added_by IN ({placeholders})
-            AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id IN ({placeholders}))
         '''
-        params = shared_user_ids + shared_user_ids
+        params = list(shared_user_ids)
 
         # Removed (deaccessioned) books are hidden unless asked for
-        if not request.args.get('show_removed'):
-            query += " AND b.removed_at IS NULL"
+        query += removed_filter(request.args.get('show_removed'))
 
         # Apply filters
         if request.args.get('genre'):
@@ -227,7 +177,7 @@ def shared_library():
             params.extend([current_user.id, request.args.get('read_status')])
 
         if request.args.get('rating'):
-            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating = ?)"
+            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
             params.extend([current_user.id, int(request.args.get('rating'))])
 
         tags = request.args.getlist('tags[]')
@@ -280,7 +230,7 @@ def shared_library():
                 all_library_members
             ).fetchall()
 
-        filter_options = get_filter_options()
+        filter_options = get_filter_options(all_library_members)
 
         return render_template("shared_library.html",
                              books=books,
@@ -315,7 +265,7 @@ def friends_libraries():
                 (f.user_id_1 = ? AND f.user_id_2 = u.id) OR
                 (f.user_id_2 = ? AND f.user_id_1 = u.id)
             )
-            LEFT JOIN books b ON b.added_by = u.id AND b.removed_at IS NULL
+            LEFT JOIN library_books b ON b.added_by = u.id AND b.removed_at IS NULL
             GROUP BY u.id
             ORDER BY u.username
         ''', (current_user.id, current_user.id)).fetchall()
@@ -363,17 +313,12 @@ def friend_library(username):
         else:
             # Show library books (excluding wishlist)
             query = '''
-                SELECT DISTINCT b.*
-                FROM books b
+                SELECT b.*
+                FROM library_books b
                 WHERE b.added_by = ?
                 AND b.removed_at IS NULL
-                AND NOT EXISTS (
-                    SELECT 1 FROM wishlist w
-                    WHERE w.book_id = b.id
-                    AND w.user_id = ?
-                )
             '''
-            params = [friend['id'], friend['id']]
+            params = [friend['id']]
 
             # Apply shelf filter if specified
             if shelf:

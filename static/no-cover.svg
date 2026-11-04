@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300">
+  <!-- Fallback when a cover fails to load. Gruvbox grey on transparent so it
+       reads on light and dark pages; matches the grid's "No Image Available" box. -->
+  <rect x="4" y="4" width="192" height="292" fill="none" stroke="#928374" stroke-width="4"/>
+  <text x="100" y="140" text-anchor="middle" font-family="'Courier Prime', 'Courier New', monospace"
+        font-size="20" font-style="italic" fill="#928374">No Image</text>
+  <text x="100" y="168" text-anchor="middle" font-family="'Courier Prime', 'Courier New', monospace"
+        font-size="20" font-style="italic" fill="#928374">Available</text>
+</svg>

@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 import bcrypt
 import csv
 import os
+import re
 from datetime import datetime
 from io import StringIO
 from PIL import Image
@@ -24,19 +25,26 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def calculate_user_stats(conn, user_id):
-    """Calculate user reading statistics"""
-    query = '''
-        SELECT
-            COUNT(DISTINCT r.book_id) as books_read,
-            SUM(CAST(b.page_count AS INTEGER)) as pages_read,
-            AVG(r.rating) as avg_rating
-        FROM read_data r
-        JOIN books b ON r.book_id = b.id
-        WHERE r.user_id = ?
-    '''
-    stats = conn.execute(query, [user_id]).fetchone()
+    """Reading statistics for one user.
 
-    # Calculate year-to-date reading progress
+    "Read" means the book is on the user's Read shelf (collections.status =
+    'read'), so the numbers match the shelves page. Reading counts whoever's
+    copy it was, so these aren't limited to the user's own library; only the
+    read percentage is ("how much of my library have I read").
+    """
+    stats = conn.execute('''
+        SELECT
+            COUNT(*) AS books_read,
+            SUM(CAST(b.page_count AS INTEGER)) AS pages_read,
+            (SELECT AVG(r.rating) FROM read_data r
+             WHERE r.user_id = :u AND r.rating IS NOT NULL) AS avg_rating
+        FROM collections c
+        JOIN books b ON b.id = c.book_id
+        WHERE c.user_id = :u AND c.status = 'read'
+    ''', {'u': user_id}).fetchone()
+    result = dict(stats)
+
+    # Year-to-date reading progress
     from datetime import datetime
     current_year = datetime.now().year
     ytd_query = '''
@@ -47,27 +55,22 @@ def calculate_user_stats(conn, user_id):
         AND strftime('%Y', rs.date_completed) = ?
     '''
     ytd_stats = conn.execute(ytd_query, [user_id, str(current_year)]).fetchone()
+    result['books_read_this_year'] = ytd_stats['books_read_this_year'] if ytd_stats else 0
 
-    result = dict(stats) if stats else {}
-    if ytd_stats:
-        result['books_read_this_year'] = ytd_stats['books_read_this_year']
-    else:
-        result['books_read_this_year'] = 0
-
-    # Calculate user-specific read percentage (books user has read vs total books in library)
-    library_query = '''
-        SELECT COUNT(DISTINCT id) as total_books
-        FROM books
-    '''
-    library_total = conn.execute(library_query).fetchone()
-
-    books_read = result.get('books_read', 0) or 0
-    total_books = library_total['total_books'] if library_total else 0
-
-    if total_books > 0:
-        result['read_percentage'] = round((books_read / total_books) * 100, 1)
-    else:
-        result['read_percentage'] = 0
+    # Read percentage: books on the user's own shelf they've read, out of
+    # the books on their shelf (not the whole database, not wishlist entries,
+    # not books that have left the house)
+    shelf = conn.execute('''
+        SELECT
+            COUNT(*) AS total_books,
+            SUM(EXISTS (SELECT 1 FROM collections c
+                        WHERE c.book_id = b.id AND c.user_id = :u AND c.status = 'read')) AS read_books
+        FROM library_books b
+        WHERE b.added_by = :u AND b.removed_at IS NULL
+    ''', {'u': user_id}).fetchone()
+    total_books = shelf['total_books'] or 0
+    result['read_percentage'] = (round((shelf['read_books'] or 0) / total_books * 100, 1)
+                                 if total_books else 0)
 
     # Reading by month (last 12 months)
     reading_by_month_query = '''
@@ -88,9 +91,9 @@ def calculate_user_stats(conn, user_id):
         SELECT
             b.genre,
             COUNT(DISTINCT r.book_id) as count
-        FROM read_data r
+        FROM collections r
         JOIN books b ON r.book_id = b.id
-        WHERE r.user_id = ? AND b.genre IS NOT NULL AND b.genre != ''
+        WHERE r.user_id = ? AND r.status = 'read' AND b.genre IS NOT NULL AND b.genre != ''
         GROUP BY b.genre
         ORDER BY count DESC
         LIMIT 5
@@ -124,11 +127,12 @@ def calculate_user_stats(conn, user_id):
     top_authors_query = '''
         SELECT
             b.author,
-            COUNT(DISTINCT r.book_id) as books_count,
+            COUNT(DISTINCT c.book_id) as books_count,
             ROUND(AVG(r.rating), 1) as avg_rating
-        FROM read_data r
-        JOIN books b ON r.book_id = b.id
-        WHERE r.user_id = ?
+        FROM collections c
+        JOIN books b ON c.book_id = b.id
+        LEFT JOIN read_data r ON r.user_id = c.user_id AND r.book_id = c.book_id
+        WHERE c.user_id = ? AND c.status = 'read'
         GROUP BY b.author
         ORDER BY books_count DESC, avg_rating DESC
         LIMIT 5
@@ -179,7 +183,7 @@ def profile(username):
         stats = calculate_user_stats(conn, user['id']) if are_friends else None
 
         # Library stats (only if friends or own profile)
-        library_stats = calculate_library_stats(conn) if are_friends else None
+        library_stats = calculate_library_stats(conn, user['id']) if are_friends else None
 
         # Get pending friend request ID if applicable
         friend_request_id = None
@@ -596,7 +600,7 @@ def upload_avatar():
 
             except Exception as e:
                 logger.error(f"Error processing image: {str(e)}", exc_info=True)
-                return jsonify({'success': False, 'message': f'Error processing image: {str(e)}'}), 500
+                return jsonify({'success': False, 'message': 'Error processing the image.'}), 500
 
             # Get relative path for database storage (use forward slashes for URLs)
             relative_path = f'uploads/avatars/{unique_filename}'
@@ -642,42 +646,36 @@ def upload_avatar():
 
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
 
-def calculate_library_stats(conn):
-   query = '''
-       SELECT
-           COUNT(DISTINCT b.id) as total_books,
-           SUM(CAST(b.page_count AS INTEGER)) as total_pages,
-           COUNT(DISTINCT c.book_id) as read_books,
-           (SELECT COUNT(*) FROM (
-               SELECT DISTINCT author FROM books
-           )) as unique_authors,
-           (SELECT title FROM books
-            WHERE CAST(page_count AS INTEGER) = (
-                SELECT MAX(CAST(page_count AS INTEGER)) FROM books
-            )) as longest_book,
-           (SELECT MAX(CAST(page_count AS INTEGER)) FROM books) as longest_pages,
-           (
-               SELECT genre
-               FROM (
-                   SELECT genre, COUNT(*) as count
-                   FROM books
-                   WHERE genre IS NOT NULL
-                   GROUP BY genre
-                   ORDER BY count DESC
-                   LIMIT 1
-               )
-           ) as most_common_genre
-       FROM books b
-       LEFT JOIN collections c ON b.id = c.book_id AND c.status = 'read'
-   '''
-   stats = dict(conn.execute(query).fetchone())
-   if stats['total_books']:
-       stats['read_percentage'] = round((stats['read_books'] / stats['total_books']) * 100)
-       stats['total_pages'] = "{:,}".format(int(stats['total_pages'] or 0))
-       stats['longest_pages'] = "{:,}".format(int(stats['longest_pages'] or 0))
-   return stats
+def calculate_library_stats(conn, user_id):
+    """Statistics about one user's library: the books on their shelf now
+    (owned, not wishlist entries, not removed)."""
+    stats = dict(conn.execute('''
+        WITH shelf AS (
+            SELECT * FROM library_books
+            WHERE added_by = :u AND removed_at IS NULL
+        )
+        SELECT
+            (SELECT COUNT(*) FROM shelf) AS total_books,
+            (SELECT SUM(CAST(page_count AS INTEGER)) FROM shelf) AS total_pages,
+            (SELECT COUNT(*) FROM shelf s
+             WHERE EXISTS (SELECT 1 FROM collections c
+                           WHERE c.book_id = s.id AND c.user_id = :u AND c.status = 'read')) AS read_books,
+            (SELECT COUNT(DISTINCT LOWER(author)) FROM shelf
+             WHERE author IS NOT NULL AND author != '') AS unique_authors,
+            (SELECT title FROM shelf
+             ORDER BY CAST(page_count AS INTEGER) DESC LIMIT 1) AS longest_book,
+            (SELECT MAX(CAST(page_count AS INTEGER)) FROM shelf) AS longest_pages,
+            (SELECT genre FROM shelf
+             WHERE genre IS NOT NULL AND genre != ''
+             GROUP BY LOWER(genre) ORDER BY COUNT(*) DESC LIMIT 1) AS most_common_genre
+    ''', {'u': user_id}).fetchone())
+    if stats['total_books']:
+        stats['read_percentage'] = round((stats['read_books'] / stats['total_books']) * 100)
+        stats['total_pages'] = "{:,}".format(int(stats['total_pages'] or 0))
+        stats['longest_pages'] = "{:,}".format(int(stats['longest_pages'] or 0))
+    return stats
 
 def _export_target():
     """Whose data to export: yourself, or (admins only) ?user_id=N."""
@@ -774,6 +772,18 @@ def format_goodreads_date(date_str):
     # Replace forward slashes with dashes for proper SQLite date sorting
     return date_str.replace('/', '-')
 
+def goodreads_review_text(review):
+    """Goodreads exports reviews as HTML. Store plain text: <br> becomes a
+    newline (so <br/><br/> is a paragraph break), other tags are dropped and
+    entities like &amp; are decoded. Reviews are shown with pre-wrap."""
+    import html
+    text = (review or '').replace('\r\n', '\n')
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = html.unescape(text)
+    return re.sub(r'\n{3,}', '\n\n', text).strip()
+
+
 @user_blueprint.route('/import_goodreads', methods=['POST'])
 @login_required
 @limiter.limit("3 per hour")
@@ -831,7 +841,7 @@ def import_goodreads():
                     date_added = format_goodreads_date(row.get('Date Added', '').strip())
                     bookshelves = row.get('Bookshelves', '').strip()
                     exclusive_shelf = row.get('Exclusive Shelf', '').strip()
-                    my_review = row.get('My Review', '').strip()
+                    my_review = goodreads_review_text(row.get('My Review', ''))
 
                     # Skip if no title
                     if not title:
@@ -975,14 +985,14 @@ def import_goodreads():
         except Exception as e:
             conn.rollback()
             logger.error(f"Import error: {str(e)}", exc_info=True)
-            return jsonify({'success': False, 'message': str(e)}), 500
+            return jsonify({'success': False, 'message': 'The import failed. Check that the file is a Goodreads CSV export.'}), 500
 
         finally:
             conn.close()
 
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'The import failed. Check that the file is a Goodreads CSV export.'}), 500
 
 
 @user_blueprint.route('/add_to_shared_library/<int:user_id>', methods=['POST'])

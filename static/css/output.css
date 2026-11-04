@@ -1518,6 +1518,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   max-height: 12rem;
 }
 
+.max-h-96 {
+  max-height: 24rem;
+}
+
 .max-h-\[600px\] {
   max-height: 600px;
 }
@@ -3260,6 +3264,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
     height: 1.5rem;
   }
 
+  .md\:w-1\/2 {
+    width: 50%;
+  }
+
   .md\:w-12 {
     width: 3rem;
   }
@@ -3316,6 +3324,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 }
 
 @media (min-width: 1024px) {
+  .lg\:w-1\/4 {
+    width: 25%;
+  }
+
   .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

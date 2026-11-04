@@ -1,6 +1,6 @@
 from flask import current_app
 from werkzeug.utils import secure_filename
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageStat
 from io import BytesIO
 import re
 import requests
@@ -14,6 +14,7 @@ from utils.database import get_db_connection
 from flask_login import current_user
 from urllib.parse import urljoin, urlparse
 from utils.image_utils import is_safe_upload_path
+from models import get_library_members
 
 # Constants
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -213,7 +214,8 @@ def _text(value) -> str:
     return value or ""
 
 def _open_library_cover_url(cover_id) -> Optional[str]:
-    return f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else None
+    # default=false: a missing cover is a 404, not Open Library's placeholder
+    return f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg?default=false" if cover_id else None
 
 def _open_library_work_description(isbn: str) -> str:
     """The edition record rarely has a description; the work record usually does."""
@@ -447,7 +449,7 @@ def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
         book_details["local_cover_url"] = local_cover_url
         book_details["thumbnail_url"] = f"/static/{local_cover_url}"
     else:
-        # Never store a hotlinked remote URL; the UI falls back to no-cover.png
+        # Never store a hotlinked remote URL; the UI falls back to no-cover.svg
         book_details["cover_image_url"] = None
         current_app.logger.warning(f"Failed to download any cover images for ISBN {isbn}")
 
@@ -526,6 +528,52 @@ def _get_public(url: str) -> Optional[requests.Response]:
     current_app.logger.debug(f"Too many redirects fetching cover: {url}")
     return None
 
+# --- placeholder detection --------------------------------------------------
+#
+# Cover services often answer a miss with a stock image instead of a 404.
+# Those got saved as real covers (111 of 415 books in Nov 2026). Exact file
+# hashes don't work for this: the saved files are re-encoded, and a Pillow
+# upgrade would change the bytes. A difference hash (dHash) compares the
+# picture instead: shrink to 9x8 greyscale and record whether each pixel is
+# brighter than its right-hand neighbour. Re-encoding or resizing barely
+# changes those 64 bits, while different covers differ in 14+ of them.
+
+KNOWN_PLACEHOLDER_DHASHES = {
+    0x00c4d838b0aa2800: "Google 'image not available'",
+    0x2349171721091711: "grey book outline",
+}
+PLACEHOLDER_MAX_DISTANCE = 6      # bits; real covers were all 14 or more away
+BLANK_STDDEV = 2.0                # greyscale std-dev of a plain white/grey image
+MIN_COVER_ASPECT = 0.5            # height / width; the 500x80 strips are 0.16
+
+
+def cover_dhash(img: Image.Image) -> int:
+    """64-bit difference hash of an image (see the note above)."""
+    small = img.convert('L').resize((9, 8), Image.LANCZOS)
+    px = small.tobytes()   # one byte per pixel in 'L' mode, row by row
+    bits = 0
+    for row in range(8):
+        for col in range(8):
+            left, right = px[row * 9 + col], px[row * 9 + col + 1]
+            bits = (bits << 1) | (left > right)
+    return bits
+
+
+def placeholder_reason(img: Image.Image) -> Optional[str]:
+    """Why this image isn't a real cover, or None if it looks like one."""
+    if img.width < MIN_COVER_DIMENSION or img.height < MIN_COVER_DIMENSION:
+        return f"tiny ({img.width}x{img.height})"
+    if img.height < img.width * MIN_COVER_ASPECT:
+        return f"a strip, not a cover ({img.width}x{img.height})"
+    if ImageStat.Stat(img.convert('L')).stddev[0] < BLANK_STDDEV:
+        return "blank"
+    h = cover_dhash(img)
+    for known, name in KNOWN_PLACEHOLDER_DHASHES.items():
+        if bin(h ^ known).count('1') <= PLACEHOLDER_MAX_DISTANCE:
+            return name
+    return None
+
+
 def _fetch_image(url: str) -> Optional[Image.Image]:
     """Download a URL and return it as a PIL image, or None if it isn't a real cover."""
     try:
@@ -545,8 +593,9 @@ def _fetch_image(url: str) -> Optional[Image.Image]:
         current_app.logger.debug(f"Cover {url} could not be loaded: {e}")
         return None
 
-    if img.width < MIN_COVER_DIMENSION or img.height < MIN_COVER_DIMENSION:
-        current_app.logger.debug(f"Cover {url} is a {img.width}x{img.height} placeholder, skipping")
+    reason = placeholder_reason(img)
+    if reason:
+        current_app.logger.debug(f"Cover {url} is a placeholder ({reason}), skipping")
         return None
     return img
 
@@ -608,29 +657,168 @@ def download_and_save_cover(url: str, fallback_urls: Optional[list] = None) -> O
     return save_best_cover([url] + (fallback_urls or []))
 
 
-# filter options
-def get_filter_options():
-    """Fetch available filter options from the database."""
+# ------------------------------------------------------------ library filters
+
+def removed_filter(value, alias='b'):
+    """SQL fragment for the "removed books" filter on library pages.
+
+    `value` is the `show_removed` request argument:
+      ''/None   -> only books on the shelf (the default)
+      'include' -> shelf and removed books together ('1' too, from old links)
+      'only'    -> only removed (deaccessioned) books
+    """
+    if value == 'only':
+        return f" AND {alias}.removed_at IS NOT NULL"
+    if value in ('include', '1'):
+        return ""
+    return f" AND {alias}.removed_at IS NULL"
+
+
+def get_filter_options(owner_ids):
+    """Choices for the library filter panel, from the libraries being shown.
+
+    `owner_ids` are the users whose shelves the page lists (yourself for My
+    Library, the household for the shared library and search). Genres come
+    from those books only; statuses and tags are the viewer's own, because
+    that's what the status and tag filters match on.
+    """
+    owner_ids = list(owner_ids) or [current_user.id]
+    placeholders = ','.join('?' for _ in owner_ids)
     conn = get_db_connection()
     try:
-        # Fetch genres
-        genres = [row['genre'] for row in conn.execute("SELECT DISTINCT genre FROM books").fetchall()]
-
-        # Fetch read statuses
-        read_statuses = [row['status'] for row in conn.execute("SELECT DISTINCT status FROM collections WHERE user_id = ?", (current_user.id,)).fetchall()]
-
-        # Fetch ratings
-        ratings = [row['rating'] for row in conn.execute("SELECT DISTINCT rating FROM read_data WHERE user_id = ?", (current_user.id,)).fetchall()]
-
-        # Fetch tags
-        tags = [row['tag_name'] for row in conn.execute("SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?", (current_user.id,)).fetchall()]
-
-        # Return filter options as a dictionary
+        # One spelling per genre, case-insensitively
+        genres = conn.execute(f"""
+            SELECT MIN(genre) FROM library_books
+            WHERE added_by IN ({placeholders}) AND genre IS NOT NULL AND genre != ''
+            GROUP BY LOWER(genre)
+            ORDER BY LOWER(genre)
+        """, owner_ids).fetchall()
+        read_statuses = conn.execute("""
+            SELECT DISTINCT status FROM collections
+            WHERE user_id = ? AND status IS NOT NULL
+            ORDER BY status
+        """, (current_user.id,)).fetchall()
+        tags = conn.execute("""
+            SELECT DISTINCT tag_name FROM book_tags
+            WHERE user_id = ? AND tag_name IS NOT NULL
+            ORDER BY tag_name
+        """, (current_user.id,)).fetchall()
         return {
-            'genres': genres,
-            'read_statuses': read_statuses,
-            'ratings': ratings,
-            'tags': tags
+            'genres': [r[0] for r in genres],
+            'read_statuses': [r[0] for r in read_statuses],
+            'tags': [r[0] for r in tags],
         }
     finally:
         conn.close()
+
+
+# ------------------------------------------------------------ duplicate check
+
+def _normalise(text):
+    """Lowercase, accents and punctuation removed, a leading article dropped:
+    'Les Misérables' == 'les miserables', 'The Hobbit' == 'Hobbit'."""
+    import unicodedata
+    text = unicodedata.normalize('NFKD', text or '')
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch)).lower()
+    text = re.sub(r'[^a-z0-9]+', ' ', text).strip()
+    return re.sub(r'^(the|a|an) ', '', text)
+
+
+def _isbn_digits(isbn):
+    return re.sub(r'[^0-9X]', '', (isbn or '').upper())
+
+
+def find_duplicates(conn, user_id, title, author='', isbn=''):
+    """Books already on the household's shelf or the user's own wishlist
+    that look like the one being added.
+
+    Matches on ISBN, or on title + author with case, accents, punctuation and
+    a leading "The/A/An" ignored, so different editions of the same book
+    (one with an ISBN, one without) are caught. A title match with no author
+    on either side still counts. Other people's books outside the household
+    are never searched.
+    """
+    members = get_library_members(user_id)
+    placeholders = ','.join('?' for _ in members)
+    candidates = conn.execute(f"""
+        WITH shelf AS (SELECT id FROM library_books WHERE added_by IN ({placeholders})),
+             wished AS (SELECT book_id AS id FROM wishlist WHERE user_id = ?)
+        SELECT b.id, b.title, b.author, b.isbn, b.removed_at,
+               b.id IN (SELECT id FROM shelf) AS in_library,
+               b.id IN (SELECT id FROM wished) AS in_wishlist
+        FROM books b
+        WHERE b.id IN (SELECT id FROM shelf) OR b.id IN (SELECT id FROM wished)
+    """, members + [user_id]).fetchall()
+
+    want_title, want_author, want_isbn = _normalise(title), _normalise(author), _isbn_digits(isbn)
+    duplicates = []
+    for book in candidates:
+        reasons = []
+        if want_isbn and _isbn_digits(book['isbn']) == want_isbn:
+            reasons.append('ISBN')
+        if want_title and _normalise(book['title']) == want_title:
+            have_author = _normalise(book['author'])
+            if not want_author or not have_author or have_author == want_author:
+                reasons.append('title')
+        if reasons:
+            duplicates.append({
+                'id': book['id'],
+                'title': book['title'],
+                'author': book['author'],
+                'isbn': book['isbn'],
+                'in_library': bool(book['in_library']),
+                'removed': book['removed_at'] is not None,
+                'in_wishlist': bool(book['in_wishlist']),
+                'match_reason': reasons,
+            })
+    return duplicates
+
+
+# ------------------------------------------------------------ placeholder cleanup
+
+def find_placeholder_covers(conn) -> List[Dict[str, Any]]:
+    """Books whose saved cover file is a placeholder (see placeholder_reason).
+
+    Opens every cover file once, so it's for an admin page, not a hot path.
+    Files shared by several books are checked once.
+    """
+    from utils.image_utils import is_safe_upload_path
+    static_root = os.path.join(current_app.root_path, 'static')
+    verdicts = {}
+    found = []
+    rows = conn.execute("""
+        SELECT id, title, author, cover_image_url FROM books
+        WHERE cover_image_url IS NOT NULL AND cover_image_url != ''
+        ORDER BY title
+    """).fetchall()
+    for row in rows:
+        path = row['cover_image_url']
+        if path not in verdicts:
+            verdicts[path] = None
+            if is_safe_upload_path(path):
+                try:
+                    with Image.open(os.path.join(static_root, path)) as img:
+                        verdicts[path] = placeholder_reason(img)
+                except (OSError, ValueError):
+                    pass   # missing or unreadable: not this tool's job
+        if verdicts[path]:
+            found.append({**dict(row), 'reason': verdicts[path]})
+    return found
+
+
+def clear_placeholder_covers(conn) -> Dict[str, int]:
+    """Set placeholder covers to NULL (so the grid shows "no cover" and bulk
+    fetch tries again), then delete the files nothing else uses."""
+    from utils.image_utils import delete_image_file
+    found = find_placeholder_covers(conn)
+    paths = {b['cover_image_url'] for b in found}
+    conn.executemany("UPDATE books SET cover_image_url = NULL WHERE id = ?",
+                     [(b['id'],) for b in found])
+    conn.commit()
+    # Only after the commit, so a failed update never loses a file
+    deleted = 0
+    for path in paths:
+        still_used = conn.execute("SELECT 1 FROM books WHERE cover_image_url = ? LIMIT 1", (path,)).fetchone()
+        if not still_used and delete_image_file(path):
+            deleted += 1
+    return {'books': len(found), 'files': deleted}

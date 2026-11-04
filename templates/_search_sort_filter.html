@@ -175,13 +175,18 @@
                 </div>
 
                 <!-- Deaccessioned books (given away, sold, lost) -->
-                <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">
-                    <input type="checkbox" name="show_removed" id="show_removed" value="1"
-                           onchange="updateActiveFilters()"
-                           {% if request.args.get('show_removed') %}checked{% endif %}
-                           class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
-                    Include books removed from the library
-                </label>
+                {% set show_removed = request.args.get('show_removed', '') %}
+                <div class="space-y-2 md:w-1/2 lg:w-1/4">
+                    <label for="show_removed" class="block text-sm font-medium text-content-secondary">Removed books</label>
+                    <select name="show_removed" id="show_removed"
+                            onchange="updateActiveFilters()"
+                            class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
+                                   focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
+                        <option value="">On the shelf only</option>
+                        <option value="include" {% if show_removed in ('include', '1') %}selected{% endif %}>Include removed</option>
+                        <option value="only" {% if show_removed == 'only' %}selected{% endif %}>Removed only</option>
+                    </select>
+                </div>
 
                 <!-- Tags Section -->
                 {% if filter_options.tags %}

@@ -4,6 +4,8 @@ from typing import Optional, Dict, Any
 from utils.database import get_db_connection, get_db
 from utils.book_utils import (
     get_filter_options,
+    removed_filter,
+    find_duplicates,
     fetch_book_details_from_isbn,
     process_image,
     download_and_save_cover,
@@ -121,7 +123,7 @@ def search_books():
 
     except Exception as e:
         current_app.logger.error(f"Unexpected error in search_books: {str(e)}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Search failed. Please try again."}), 500
 
 @books_blueprint.route("/fetch_isbn_details")
 @login_required
@@ -146,89 +148,25 @@ def fetch_isbn_details():
 
     except Exception as e:
         current_app.logger.error(f"Error fetching ISBN details: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
 
 @books_blueprint.route("/check_duplicates", methods=["POST"])
 @login_required
 def check_duplicates():
-    """Check if a book already exists in the library or wishlist"""
+    """Warn before adding a book that's already on the household's shelf or
+    your wishlist (same ISBN, or same title and author)."""
+    data = request.get_json(silent=True) or {}
     try:
-        data = request.get_json()
-        title = data.get("title", "").strip()
-        isbn = data.get("isbn", "").strip()
+        duplicates = find_duplicates(
+            get_db(), current_user.id,
+            title=(data.get("title") or "").strip(),
+            author=(data.get("author") or "").strip(),
+            isbn=(data.get("isbn") or "").strip())
+    except Exception:
+        current_app.logger.exception("Error checking duplicates")
+        return jsonify({"success": False, "error": "Couldn't check for duplicates."}), 500
+    return jsonify({"has_duplicates": bool(duplicates), "duplicates": duplicates})
 
-        current_app.logger.debug(f"Checking duplicates for title: {title}, ISBN: {isbn}")
-
-        duplicates = []
-
-        conn = get_db()
-        # Get library members to restrict search scope
-        library_member_ids = get_library_members(current_user.id)
-        placeholders = ','.join(['?' for _ in library_member_ids])
-
-        # Check for exact title match or ISBN match (only within library scope)
-        query_parts = []
-        params = library_member_ids.copy()
-
-        if title:
-            query_parts.append("LOWER(title) = LOWER(?)")
-            params.append(title)
-
-        if isbn:
-            if query_parts:
-                query_parts.append("OR isbn = ?")
-            else:
-                query_parts.append("isbn = ?")
-            params.append(isbn)
-
-        if not query_parts:
-            return jsonify({"has_duplicates": False, "duplicates": []})
-
-        query = f"SELECT id, title, author, isbn FROM books WHERE added_by IN ({placeholders}) AND ({' '.join(query_parts)})"
-        existing_books = conn.execute(query, params).fetchall()
-
-        for book in existing_books:
-            # Check if in library (collections table)
-            in_library = conn.execute("""
-                SELECT 1 FROM collections
-                WHERE user_id = ? AND book_id = ?
-            """, (current_user.id, book['id'])).fetchone()
-
-            # Check if in wishlist
-            in_wishlist = conn.execute("""
-                SELECT 1 FROM wishlist
-                WHERE user_id = ? AND book_id = ?
-            """, (current_user.id, book['id'])).fetchone()
-
-            duplicate_info = {
-                "id": book['id'],
-                "title": book['title'],
-                "author": book['author'],
-                "isbn": book['isbn'],
-                "in_library": bool(in_library),
-                "in_wishlist": bool(in_wishlist),
-                "match_reason": []
-            }
-
-            # Determine what matched
-            if title and book['title'].lower() == title.lower():
-                duplicate_info["match_reason"].append("title")
-            if isbn and book['isbn'] == isbn:
-                duplicate_info["match_reason"].append("ISBN")
-
-            duplicates.append(duplicate_info)
-
-        has_duplicates = len(duplicates) > 0
-        current_app.logger.info(f"Found {len(duplicates)} potential duplicates")
-
-        return jsonify({
-            "has_duplicates": has_duplicates,
-            "duplicates": duplicates
-        })
-
-    except Exception as e:
-        current_app.logger.error(f"Error checking duplicates: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
 
 @books_blueprint.route("/select_search_result", methods=["POST"])
 @login_required
@@ -290,7 +228,7 @@ def select_search_result():
 
     except Exception as e:
         current_app.logger.error(f"Error in select_search_result: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
 
 @books_blueprint.route("/fetch_cover", methods=["POST"])
 @login_required
@@ -352,7 +290,7 @@ def fetch_cover():
 
     except Exception as e:
         current_app.logger.error(f"Error fetching cover: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
         
 @books_blueprint.route("/edit/<int:id>", methods=["GET", "POST"])
 @login_required
@@ -714,17 +652,15 @@ def search():
         # Search only books from current user or their library members
         placeholders = ','.join(['?' for _ in library_member_ids])
         query = f'''
-            SELECT b.* FROM books b
+            SELECT b.* FROM library_books b
             WHERE b.added_by IN ({placeholders})
-            AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id)
             AND (LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?)
         '''
         search_like = f"%{search_term}%"
         params = library_member_ids + [search_like, search_like, search_like]
 
         # Removed (deaccessioned) books are hidden unless asked for
-        if not request.args.get('show_removed'):
-            query += " AND b.removed_at IS NULL"
+        query += removed_filter(request.args.get('show_removed'))
 
         # Apply filters if they exist (simplified)
         if request.args.get('genre'):
@@ -736,7 +672,7 @@ def search():
             params.extend([current_user.id, request.args.get('read_status')])
 
         if request.args.get('rating'):
-            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating = ?)"
+            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
             params.extend([current_user.id, int(request.args.get('rating'))])
 
         tags = request.args.getlist('tags[]')
@@ -784,7 +720,7 @@ def search():
             })
 
         # Get filter options for the template
-        filter_options = get_filter_options()
+        filter_options = get_filter_options(library_member_ids)
 
         return render_template("search.html",
                              books=books,
