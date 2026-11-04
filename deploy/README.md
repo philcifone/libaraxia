@@ -30,6 +30,11 @@ sudo visudo -cf /etc/sudoers.d/libaraxia-deploy
 sudo cp deploy/libaraxia-deploy.service deploy/libaraxia-deploy.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now libaraxia-deploy.timer
+
+# the manual pull above already moved the code to main, so the timer sees
+# nothing new: apply migrations and restart this one time by hand
+venv/bin/python manage.py migrate
+sudo systemctl restart library-catalog
 ```
 
 Check `which systemctl` on prod. If it isn't `/usr/bin/systemctl`, use that path in the sudoers line.
