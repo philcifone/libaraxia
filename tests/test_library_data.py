@@ -294,7 +294,7 @@ def test_migration_019_turns_br_into_newlines(db, people):
 
 
 def test_goodreads_review_text():
-    from blueprints.user import goodreads_review_text
+    from utils.goodreads import review_text as goodreads_review_text
     assert goodreads_review_text('One<br/><br/>Two &amp; <b>three</b><BR />four') == 'One\n\nTwo & three\nfour'
     assert goodreads_review_text('') == ''
     assert goodreads_review_text(None) == ''

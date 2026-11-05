@@ -9,6 +9,7 @@ from utils.book_utils import (
     search_google_books,
     find_duplicates,
 )
+from utils.book_matching import own_book_for_wishlist
 
 wishlist_blueprint = Blueprint('wishlist', __name__, template_folder='templates')
 
@@ -70,15 +71,12 @@ def view_wishlist():
             conn = get_db()
             # Check if book already exists by ISBN
             isbn = request.form.get("isbn")
-            existing_book = None
-            if isbn:
-                existing_book = conn.execute(
-                    "SELECT id FROM books WHERE isbn = ?", (isbn,)
-                ).fetchone()
-
-            if existing_book:
-                book_id = existing_book['id']
-            else:
+            # Only your own books are reused (utils/book_matching.py)
+            book_id, kind = own_book_for_wishlist(conn, current_user.id, isbn)
+            if kind == 'library':
+                flash("That book is already in your library.", "error")
+                return redirect(url_for("books.show_book", id=book_id))
+            if not book_id:
                 # Process uploaded image or use downloaded cover
                 cover_image_url = process_image(
                     request.files.get("image"),
@@ -169,7 +167,16 @@ def select_search_result():
         isbn = original_data.get("isbn")
         thumbnail_url = original_data.get("thumbnail")
 
-        # Download and save cover image first
+        conn = get_db()
+        # Only your own books are reused (utils/book_matching.py). Checked
+        # before the cover download so a refusal leaves no orphaned file.
+        book_id, kind = own_book_for_wishlist(conn, current_user.id, isbn)
+        if kind == 'library':
+            return jsonify({"success": False, "error": "That book is already in your library."})
+        if kind == 'wishlist':
+            return jsonify({"success": False, "error": "This book is already in your wishlist!"})
+
+        # Download and save the cover
         local_cover_url = None
         if thumbnail_url:
             current_app.logger.info(f"Attempting to download cover from: {thumbnail_url}")
@@ -177,18 +184,7 @@ def select_search_result():
             if not local_cover_url:
                 current_app.logger.warning("Failed to download cover image")
 
-        # Add book to database
-        conn = get_db()
-        # Check if book already exists by ISBN
-        existing_book = None
-        if isbn:
-            existing_book = conn.execute(
-                "SELECT id FROM books WHERE isbn = ?", (isbn,)
-            ).fetchone()
-
-        if existing_book:
-            book_id = existing_book['id']
-        else:
+        if not book_id:
             # Insert new book
             cursor = conn.execute("""
                 INSERT INTO books (title, author, publisher, publish_year, isbn,

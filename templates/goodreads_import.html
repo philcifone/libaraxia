@@ -29,73 +29,43 @@
 
         <!-- Important Notice -->
         <div class="bg-yellow-900/20 border-2 border-yellow-600 rounded-xl p-6 shadow-lg">
-            <div class="flex items-start gap-3">
-                <svg class="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                <div class="space-y-2">
-                    <h2 class="text-xl font-semibold text-yellow-400">Please Note</h2>
-                    <p class="text-yellow-100">The Goodreads import is not perfect and will require some manual work:</p>
-                    <ul class="list-disc list-inside space-y-1 text-yellow-100 ml-4">
-                        <li><strong>Book covers will not be imported</strong> - You'll need to fetch them separately using the "Fetch Cover" feature</li>
-                        <li><strong>Missing book details</strong> - Some books may have incomplete information (publisher, page count, etc.)</li>
-                        <li><strong>Review formatting</strong> - Long reviews may need reformatting</li>
-                        <li><strong>Custom shelves</strong> - Only standard Goodreads shelves are recognized</li>
-                    </ul>
-                </div>
+            <div class="space-y-2">
+                <h2 class="text-xl font-semibold text-yellow-400">Please Note</h2>
+                <ul class="list-disc list-inside space-y-1 text-yellow-100 ml-4">
+                    <li><strong>Covers aren't in the export.</strong> After the import you can fetch them for your new books in one go (it takes a few seconds per book).</li>
+                    <li><strong>Details come from Goodreads as they are.</strong> Description and genre are empty; edit a book or fetch its details to fill them in.</li>
+                    <li><strong>Books you already have are matched</strong> by ISBN or title and author, only among your own books and your household's. Nobody else's copy is ever used.</li>
+                    <li><strong>Importing again is safe.</strong> Books that already have a reading status or wishlist entry are left as they are, so only new rows are added.</li>
+                    <li><strong>Not imported:</strong> additional authors (mostly translators and illustrators), binding, owned copies and the spoiler flag. Private notes are kept only for wishlist books.</li>
+                </ul>
             </div>
         </div>
 
         <!-- Where Data Goes -->
         <div class="bg-secondary rounded-xl p-6 shadow-lg space-y-4 border border-card">
             <h2 class="text-2xl font-semibold text-content-primary mb-4">Where Your Goodreads Data Goes</h2>
-
-            <div class="space-y-4">
-                <!-- Wishlist -->
-                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg">
-                    <svg class="w-6 h-6 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                    </svg>
-                    <div>
-                        <h3 class="text-lg font-semibold text-content-primary">Wishlist</h3>
-                        <p class="text-content-secondary">Books on your <span class="font-mono text-accent">"to-read"</span> or <span class="font-mono text-accent">"want-to-read"</span> shelves</p>
-                    </div>
+            <dl class="space-y-3">
+                <div class="p-4 bg-primary rounded-lg">
+                    <dt class="text-lg font-semibold text-content-primary"><span class="font-mono text-accent">read</span>, <span class="font-mono text-accent">currently-reading</span></dt>
+                    <dd class="text-content-secondary">Your library, with that reading status. <em>Read Count</em> becomes that many reading sessions; Goodreads only keeps the date of the last one, so earlier reads show as "Date unknown".</dd>
                 </div>
-
-                <!-- Collections (Read) -->
-                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg">
-                    <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <div>
-                        <h3 class="text-lg font-semibold text-content-primary">Collections (Read)</h3>
-                        <p class="text-content-secondary">Books on your <span class="font-mono text-accent">"read"</span> shelf</p>
-                        <p class="text-sm text-content-secondary mt-1">Includes: ratings, reviews, and reading completion dates</p>
-                    </div>
+                <div class="p-4 bg-primary rounded-lg">
+                    <dt class="text-lg font-semibold text-content-primary"><span class="font-mono text-accent">did-not-finish</span>, <span class="font-mono text-accent">dnf</span>, <span class="font-mono text-accent">abandoned</span></dt>
+                    <dd class="text-content-secondary">Your library with the <em>Did Not Finish</em> status. Also recognised: <span class="font-mono">gave-up</span>, <span class="font-mono">unfinished</span>, <span class="font-mono">stopped-reading</span>.</dd>
                 </div>
-
-                <!-- Collections (Currently Reading) -->
-                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg">
-                    <svg class="w-6 h-6 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                    </svg>
-                    <div>
-                        <h3 class="text-lg font-semibold text-content-primary">Collections (Currently Reading)</h3>
-                        <p class="text-content-secondary">Books on your <span class="font-mono text-accent">"currently-reading"</span> shelf</p>
-                    </div>
+                <div class="p-4 bg-primary rounded-lg">
+                    <dt class="text-lg font-semibold text-content-primary"><span class="font-mono text-accent">to-read</span></dt>
+                    <dd class="text-content-secondary">Your wishlist. If you or your household already own the book, it's marked <em>Want to Read</em> instead.</dd>
                 </div>
-
-                <!-- Skipped -->
-                <div class="flex items-start gap-3 p-4 bg-primary rounded-lg opacity-60">
-                    <svg class="w-6 h-6 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                    </svg>
-                    <div>
-                        <h3 class="text-lg font-semibold text-content-primary">Not Imported</h3>
-                        <p class="text-content-secondary">Books on custom shelves or other non-standard shelves will be skipped</p>
-                    </div>
+                <div class="p-4 bg-primary rounded-lg">
+                    <dt class="text-lg font-semibold text-content-primary">Your other shelves</dt>
+                    <dd class="text-content-secondary">Each one (for example <span class="font-mono">audiobook</span>) becomes a custom collection of the same name.</dd>
                 </div>
-            </div>
+                <div class="p-4 bg-primary rounded-lg">
+                    <dt class="text-lg font-semibold text-content-primary">Ratings and reviews</dt>
+                    <dd class="text-content-secondary">Imported on any shelf, including reviews without a rating. Formatting is turned into plain text with paragraph breaks.</dd>
+                </div>
+            </dl>
         </div>
 
         <!-- How to Export from Goodreads -->
@@ -146,123 +116,142 @@
         <!-- Rate Limit Notice -->
         <div class="bg-secondary rounded-xl p-4 shadow-lg border border-card">
             <p class="text-sm text-content-secondary text-center">
-                <strong>Note:</strong> You can only import once every 3 attempts per hour to prevent abuse.
+                <strong>Note:</strong> you can run the import up to 3 times an hour.
             </p>
         </div>
     </div>
 
     <script>
-        // Goodreads Import Handler
+        const CSRF_TOKEN = {{ csrf_token()|tojson }};
+        const IMPORT_URL = {{ url_for("user.import_goodreads")|tojson }};
+        const COVERS_START_URL = {{ url_for("covers.start")|tojson }};
+        const PROFILE_URL = {{ url_for("user.profile", username=current_user.username)|tojson }};
+
+        const esc = value => String(value ?? '').replace(/[&<>"']/g,
+            c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
+        const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+
+        function setImportButton(enabled) {
+            const button = document.querySelector('label[for="goodreads-import"]');
+            if (!button) return;
+            button.classList.toggle('opacity-50', !enabled);
+            button.classList.toggle('cursor-not-allowed', !enabled);
+            button.style.pointerEvents = enabled ? 'auto' : 'none';
+        }
+
         function handleGoodreadsImport(event) {
             const file = event.target.files[0];
             if (!file) return;
-
-            // Check file type
-            if (!file.name.endsWith('.csv')) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
                 alert('Please select a CSV file');
                 event.target.value = '';
                 return;
             }
 
-            // Show progress section and disable button
-            const statusContainer = document.getElementById('import-status');
             const progressDiv = document.getElementById('import-progress');
             const resultDiv = document.getElementById('import-result');
             const messageP = document.getElementById('import-message');
-            const importButton = document.querySelector('label[for="goodreads-import"]');
-
-            statusContainer.classList.remove('hidden');
+            document.getElementById('import-status').classList.remove('hidden');
             progressDiv.classList.remove('hidden');
             resultDiv.classList.add('hidden');
+            setImportButton(false);
 
-            // Disable button during import
-            if (importButton) {
-                importButton.classList.add('opacity-50', 'cursor-not-allowed');
-                importButton.style.pointerEvents = 'none';
-            }
-
-            // Prepare form data
             const formData = new FormData();
             formData.append('goodreads_csv', file);
-            formData.append('csrf_token', '{{ csrf_token() }}');
+            formData.append('csrf_token', CSRF_TOKEN);
 
-            // Send to server
-            fetch('{{ url_for("user.import_goodreads") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Hide progress, show result
-                progressDiv.classList.add('hidden');
-                resultDiv.classList.remove('hidden');
+            fetch(IMPORT_URL, {method: 'POST', body: formData})
+                .then(response => response.json().catch(() => ({success: false, message: `Server error (${response.status})`})))
+                .then(data => {
+                    messageP.innerHTML = data.success ? renderReport(data) : `
+                        <p class="text-red-400">Import failed: ${esc(data.message)}</p>`;
+                })
+                .catch(error => {
+                    messageP.innerHTML = `<p class="text-red-400">Error: ${esc(error.message)}</p>
+                        <p class="text-sm text-content-secondary mt-2">Please try again.</p>`;
+                })
+                .finally(() => {
+                    progressDiv.classList.add('hidden');
+                    resultDiv.classList.remove('hidden');
+                    setImportButton(true);
+                    event.target.value = '';
+                });
+        }
 
-                const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
+        // Every row of the file has exactly one outcome; list each group so
+        // the counts can be checked against the file.
+        function renderReport(data) {
+            const groups = data.outcome_labels.map(([key, label]) => {
+                const rows = data.rows.filter(r => r.outcome === key);
+                if (!rows.length) return '';
+                const tone = key === 'error' ? 'text-red-400' : (key === 'already' || key === 'skipped') ? 'text-content-secondary' : 'text-content-primary';
+                const items = rows.map(r => `
+                    <li><span class="font-mono text-xs text-content-secondary">line ${r.line}</span>
+                        ${esc(r.title || '(no title)')}${r.author ? ` <span class="text-content-secondary">by ${esc(r.author)}</span>` : ''}
+                        ${r.detail ? ` <span class="text-content-secondary italic">(${esc(r.detail)})</span>` : ''}</li>`).join('');
+                return `
+                    <details class="border border-card rounded p-2" ${key === 'error' ? 'open' : ''}>
+                        <summary class="cursor-pointer ${tone}"><strong>${rows.length}</strong> ${esc(label)}</summary>
+                        <ul class="mt-2 ml-4 space-y-1 text-sm max-h-96 overflow-y-auto">${items}</ul>
+                    </details>`;
+            }).join('');
 
-                if (data.success) {
-                    // The server returns the counts at the top level of the response
-                    const stats = data.stats || data;
-                    const errors = stats.errors || [];
-                    messageP.innerHTML = `
-                        <div class="space-y-2">
-                            <p class="text-green-400 font-semibold">✓ Import completed successfully!</p>
-                            <div class="text-sm text-content-secondary space-y-1">
-                                <p>• Books added: ${stats.books_added}</p>
-                                <p>• Added to wishlist: ${stats.wishlist_added}</p>
-                                <p>• Added to collections: ${stats.collection_added}</p>
-                                <p>• Ratings imported: ${stats.ratings_added}</p>
-                                <p>• Reading sessions: ${stats.sessions_added}</p>
-                                <p>• Duplicates skipped: ${stats.duplicates_skipped}</p>
-                                ${stats.unknown_shelf > 0 ? `<p class="text-yellow-400">• Unknown shelves: ${stats.unknown_shelf}</p>` : ''}
-                            </div>
-                            ${data.message ? `<p class="text-sm text-yellow-400">${esc(data.message)}</p>` : ''}
-                            ${errors.length ? `
-                                <details class="text-sm text-red-400">
-                                    <summary>${errors.length} row${errors.length !== 1 ? 's' : ''} had errors</summary>
-                                    <ul class="mt-1 space-y-1">${errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul>
-                                </details>` : ''}
-                            <p class="text-sm text-content-secondary mt-3">
-                                <strong>Next steps:</strong> Use the "Fetch Cover" feature on your books to add missing covers!
-                            </p>
-                            <a href="{{ url_for('user.profile', username=current_user.username) }}"
-                               class="inline-block mt-3 px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover transition-colors">
-                                Return to Profile
-                            </a>
-                        </div>
-                    `;
-                } else {
-                    messageP.innerHTML = `
-                        <p class="text-red-400">✗ Import failed: ${esc(data.message)}</p>
-                        <p class="text-sm text-content-secondary mt-2">Please try again or contact support if the issue persists.</p>
-                    `;
-                }
+            const t = data.totals;
+            const created = data.collections_created.length
+                ? `<p>New collections: ${data.collections_created.map(esc).join(', ')}</p>` : '';
+            const notes = t.private_notes_not_imported
+                ? `<p class="text-yellow-400">${plural(t.private_notes_not_imported, 'private note')} on library books not imported (there's nowhere to keep them yet).</p>` : '';
+            const encoding = data.encoding !== 'utf-8-sig'
+                ? `<p class="text-yellow-400">The file wasn't UTF-8; it was read as ${esc(data.encoding)}. Check accented titles.</p>` : '';
+            const covers = data.covers_missing ? `
+                <div id="cover-fetch" class="mt-4 p-3 border border-card rounded">
+                    <p class="text-sm text-content-secondary mb-2">${plural(data.covers_missing, 'book')} of yours ha${data.covers_missing === 1 ? 's' : 've'} an ISBN but no cover.
+                        Fetching runs in the background (a second or two per book); you can leave this page and follow it in the corner.</p>
+                    <button type="button" onclick="startCoverFetch(this)"
+                            class="px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover transition-colors">
+                        Fetch covers
+                    </button>
+                    <p id="cover-start-message" class="text-sm text-content-secondary mt-2"></p>
+                </div>` : '';
 
-                // Re-enable button
-                if (importButton) {
-                    importButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                    importButton.style.pointerEvents = 'auto';
-                }
+            return `
+                <div class="space-y-3">
+                    <p class="text-green-400 font-semibold">Import finished: ${plural(data.total_rows, 'row')} in the file, all accounted for below.</p>
+                    ${encoding}
+                    <div class="space-y-2">${groups}</div>
+                    <div class="text-sm text-content-secondary space-y-1">
+                        <p>${plural(t.books_created, 'new book')}, ${plural(t.statuses, 'reading status', 'reading statuses')}, ${plural(t.wishlist, 'wishlist entry', 'wishlist entries')}</p>
+                        <p>${plural(t.ratings, 'rating')}, ${plural(t.reviews, 'review')}, ${plural(t.sessions, 'reading session')}, ${plural(t.collection_entries, 'collection entry', 'collection entries')}</p>
+                        ${created}
+                        ${notes}
+                    </div>
+                    ${covers}
+                    <a href="${esc(PROFILE_URL)}"
+                       class="inline-block mt-3 px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover transition-colors">
+                        Return to Profile
+                    </a>
+                </div>`;
+        }
 
-                // Clear file input
-                event.target.value = '';
-            })
-            .catch(error => {
-                progressDiv.classList.add('hidden');
-                resultDiv.classList.remove('hidden');
-                messageP.innerHTML = `
-                    <p class="text-red-400">✗ Error: ${String(error.message).replace(/</g, '&lt;')}</p>
-                    <p class="text-sm text-content-secondary mt-2">Please try again.</p>
-                `;
-
-                // Re-enable button
-                if (importButton) {
-                    importButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                    importButton.style.pointerEvents = 'auto';
-                }
-
-                // Clear file input
-                event.target.value = '';
-            });
+        // Starts a background job (blueprints/covers.py); its progress shows
+        // in the floating panel from _sidebar.html on every page.
+        function startCoverFetch(button) {
+            button.disabled = true;
+            button.classList.add('opacity-50');
+            const form = new FormData();
+            form.append('csrf_token', CSRF_TOKEN);
+            form.append('scope', 'own');
+            fetch(COVERS_START_URL, {method: 'POST', body: form, headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('cover-start-message').textContent = data.message || '';
+                    if (data.job && window.coverJobs) window.coverJobs.track(data.job);
+                })
+                .catch(error => {
+                    document.getElementById('cover-start-message').textContent = `Couldn't start: ${error.message}`;
+                    button.disabled = false;
+                    button.classList.remove('opacity-50');
+                });
         }
     </script>
 </body>

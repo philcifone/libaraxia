@@ -140,8 +140,10 @@
                                         {% if session.date_completed %}
                                             <span class="text-content-secondary text-xs">Completed:</span>
                                             <span class="text-content-primary">{{ session.date_completed }}</span>
-                                        {% else %}
+                                        {% elif session.date_started %}
                                             <span class="text-yellow-500 italic">Currently Reading</span>
+                                        {% else %}{# undated past read, e.g. from a Goodreads Read Count #}
+                                            <span class="text-content-secondary italic">Date unknown</span>
                                         {% endif %}
                                     </div>
                                     <div class="flex gap-2">

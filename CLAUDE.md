@@ -56,18 +56,22 @@ npm run watch:css    # rebuild on change
 - **base** (`/base`): main library view at `/base/index` with search/sort/filter and infinite scroll; shared (household) library; friends' libraries.
 - **books** (`/books`): add, edit, remove from library / restore (deaccession), delete for mistakes (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
 - **collections** (`/collections`): reading status (read, currently reading, want to read, did not finish) and custom user collections.
-- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only), household invite/accept/decline/remove/leave (logic in `utils/households.py`).
+- **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only; logic in `utils/goodreads.py`), household invite/accept/decline/remove/leave (logic in `utils/households.py`).
 - **read** (`/read`): ratings/reviews and reading sessions (dates started/completed).
 - **tags** (`/tags`): per-user tags.
 - **admin** (`/admin`): user management (deactivate/delete dialog), avatar management, orphaned image cleanup, unowned books (reassign), bulk cover fetch, household (library) membership.
 - **feed** (`/feed`): activity feed of friends' reviews/updates, likes, dismissals.
 - **wishlist** (`/wishlist`): wishlist with notes, moving items into the library, viewing friends' wishlists.
 - **friends** (`/friends`): friend requests, friend list, notifications page, user search API.
+- **covers** (`/covers`): background "fetch missing covers" jobs: start (scope `own`, or `all` for admins), status, stop, dismiss. Started from the Goodreads import result, the profile page and admin → placeholder covers.
 
 ### Utilities (`/utils/`)
 - **database.py**: `get_db()` (request-scoped connection, closed at teardown), `get_db_connection()` (a new connection: `sqlite3.Row`, `PRAGMA foreign_keys = ON`), `database_path()`.
 - **book_utils.py**: Google Books / Open Library / bookcover API lookups, ISBN helpers, cover search and download (`download_and_save_cover`, with an SSRF guard that only fetches public hosts), `process_image` for uploads, `get_filter_options`.
 - **image_utils.py**: `is_safe_upload_path`, `delete_image_file` (refuses paths outside `static/uploads/`), and orphaned image detection/cleanup.
+- **goodreads.py**: the Goodreads CSV import. One SAVEPOINT per row; returns a report with exactly one outcome per row, which the result screen lists.
+- **cover_jobs.py**: the background cover fetcher. A `cover_jobs` row (migration 022) is the job and its progress; a daemon thread per process works through it one book at a time (`book_utils.fetch_cover_for_book`). `worker` + `heartbeat_at` let another gunicorn worker take over a job whose process died; the next `/covers/status` poll restarts it. Tests never start the thread: they call `run_pending()`.
+- **book_matching.py**: finding an existing book to attach a user's data to (`BookIndex`, `own_book_for_wishlist`). Only the user's own books and their household's shelf are searched, never anyone else's.
 - **households.py**: household invites, joining, leaving and owner hand-over (see Access Model).
 - **email_utils.py**: verification tokens (random, stored in `email_verification_tokens`) and sending via Flask-Mail.
 - **rate_limiting.py**: shared `limiter` instance.
@@ -76,6 +80,7 @@ npm run watch:css    # rebuild on change
 ### Database Schema
 Tables after all migrations:
 - **Books and reading:** `books` (shared catalog, `added_by` = owner), `collections` (per-user reading status), `read_data` (rating/comment), `reading_sessions`, `book_tags`, `user_collections` + `collection_books` (custom collections), `wishlist`.
+- **Jobs:** `cover_jobs` (background cover fetching, see `utils/cover_jobs.py`).
 - **Users and social:** `users` (incl. `is_admin`, `is_active`, `avatar_url`, `bio`, `reading_goal`, `email_verified`), `friendships` (stored with `user_id_1 < user_id_2`), `friend_requests`, `notifications`, `activity_likes`, `dismissed_activities`, `email_verification_tokens`.
 - **Households:** `library_members` (one library per user; `library_id` groups members; exactly one `owner` per household), `household_invites` (pending invites).
 
@@ -120,7 +125,17 @@ There are no per-item privacy settings (private/friends/public); the unused colu
   - `wishlist.js`: wishlist add/search/barcode.
   - `tags.js`: tag add/remove.
   - `sidebar.js`: legacy sidebar toggle, only loaded by `notifications.html`.
+  - `cover_jobs.js`: the floating cover-fetch progress panel, loaded by `_sidebar.html`; it only shows and polls when the user has a job (`cover_job`, from a context processor in `app.py`).
 - Large inline `<script>` blocks also live in `user.html`, `admin_settings.html`, `rate_review.html`, `goodreads_import.html` and `book_detail.html`.
+
+## Product direction (from Phil, 2026-11-05)
+
+Not scheduled and not to be worked on until Phil picks them up; they belong in a future ROADMAP phase.
+
+- **The catalog is for physical books Phil owns.** Audiobooks don't really belong in it: either leave them out of imports, or later integrate with Phil's Audiobookshelf server, which tracks audiobooks better than this project should.
+- **Revisit book info and cover fetching.** Today it's clunky (many sources), slow, and covers still aren't always right.
+- **Granular Goodreads import:** a selection grid with sorting, so the user picks which rows to import and where they go. Ideally covers would come with the import, if that's possible at all (the export has no cover URLs).
+- Goodreads `to-read` rows go to the wishlist on purpose, not the library with *Want to Read*: that would add books Phil doesn't own. (Rows for books he or his household already own do get *Want to Read*.)
 
 ## Important Development Notes
 
@@ -142,6 +157,7 @@ There are no per-item privacy settings (private/friends/public); the unused colu
 - **Never put data into `innerHTML`/template literals unescaped.** Use `escapeHtml()` (or `textContent`), and `encodeURIComponent` for URL path segments.
 - **Jinja values inside JS** must use `|tojson`. In inline handlers, use a single-quoted attribute: `onclick='return confirm({{ msg|tojson }})'`.
 - **State-changing routes are POST-only** with CSRF. Check ownership in the SQL (`WHERE ... AND user_id = ?`) for anything addressed by id.
+- **Reusing an existing book record** (by ISBN or title) goes through `utils/book_matching.py`. Never match against all of `books`: your data would hang on a stranger's copy that never shows in your library.
 - Don't return `str(e)` to clients in new code; log it and return a generic message.
 
 ### Image Handling

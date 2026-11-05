@@ -864,6 +864,17 @@
                 </svg>
                 Import from Goodreads
             </a>
+
+            <!-- Background job (blueprints/covers.py); progress shows in the corner panel -->
+            <form method="POST" action="{{ url_for('covers.start') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="scope" value="own"/>
+                <input type="hidden" name="next" value="{{ url_for('user.profile', username=current_user.username) }}"/>
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent transition-colors hover:bg-accent-hover">
+                    Fetch Missing Covers
+                </button>
+            </form>
         </div>
 
         <!-- Account: export everything, deactivate or delete -->

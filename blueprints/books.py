@@ -432,7 +432,9 @@ def show_book(id):
             FROM reading_sessions
             WHERE user_id = ? AND book_id = ?
             ORDER BY
-                CASE WHEN date_completed IS NULL THEN 1 ELSE 0 END,
+                -- undated past reads first, then by date, then in progress
+                CASE WHEN date_completed IS NULL AND date_started IS NULL THEN 0
+                     WHEN date_completed IS NULL THEN 2 ELSE 1 END,
                 COALESCE(date_completed, date_started, created_at) ASC,
                 created_at ASC
         """, (current_user.id, id)).fetchall()

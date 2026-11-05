@@ -24,6 +24,7 @@ from blueprints.admin import admin_blueprint
 from blueprints.feed import feed_blueprint
 from blueprints.wishlist import wishlist_blueprint
 from blueprints.friends import friends_blueprint
+from blueprints.covers import covers_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES
 from utils.rate_limiting import limiter
@@ -159,6 +160,7 @@ def create_app():
     app.register_blueprint(feed_blueprint, url_prefix='/feed')
     app.register_blueprint(wishlist_blueprint, url_prefix='/wishlist')
     app.register_blueprint(friends_blueprint, url_prefix='/friends')
+    app.register_blueprint(covers_blueprint, url_prefix='/covers')
 
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)
@@ -174,6 +176,17 @@ def create_app():
             'theme_styles': THEME_STYLES,
             'theme_modes': THEME_MODES,
         }
+
+    @app.context_processor
+    def inject_cover_job():
+        # The cover-fetch progress panel in _sidebar.html renders only when
+        # the user has a job to show, so nobody else pays for polling.
+        user = _current_user
+        if not getattr(user, 'is_authenticated', False):
+            return {'cover_job': None}
+        from utils import cover_jobs
+        from utils.database import get_db
+        return {'cover_job': cover_jobs.as_dict(cover_jobs.current_job(get_db(), user.id))}
     
     # Configure Logging
     logging.basicConfig(level=logging.DEBUG if app.config.get('DEBUG') else logging.INFO)

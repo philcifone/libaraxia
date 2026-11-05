@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from utils.database import get_db_connection, get_db
 from utils import households
+from utils.book_utils import missing_cover_sql
 from models import admin_required, is_valid_username, USERNAME_RULES
 from utils.accounts import removal_context, deactivate_account, delete_account, AccountError
 from PIL import Image
@@ -655,9 +656,7 @@ def placeholder_covers():
     missing = conn.execute("SELECT COUNT(*) " + MISSING_COVER_SQL).fetchone()[0]
     return render_template('admin/placeholder_covers.html',
                            books=find_placeholder_covers(conn),
-                           missing=missing,
-                           offset=request.args.get('offset', 0, type=int),
-                           batch=COVER_FETCH_BATCH)
+                           missing=missing)
 
 
 @admin_blueprint.route("/clear_placeholder_covers", methods=["POST"])
@@ -673,65 +672,9 @@ def clear_placeholder_covers():
     return redirect(url_for('admin.placeholder_covers'))
 
 
-MISSING_COVER_SQL = """
-    FROM books
-    WHERE (cover_image_url IS NULL OR cover_image_url = '')
-      AND isbn IS NOT NULL AND isbn != ''
-"""
-# Each book is a few HTTP lookups; keep a batch well under gunicorn's 30 s timeout
-COVER_FETCH_BATCH = 10
-
-
-@admin_blueprint.route("/missing_covers_count")
-@login_required
-@admin_required
-def missing_covers_count():
-    """Books without a cover that have an ISBN to look one up by."""
-    count = get_db().execute("SELECT COUNT(*) " + MISSING_COVER_SQL).fetchone()[0]
-    return jsonify({'missing': count})
-
-
-@admin_blueprint.route("/bulk_fetch_covers", methods=["POST"])
-@login_required
-@admin_required
-def bulk_fetch_covers():
-    """Look up covers for the next batch of books that have none.
-
-    A plain form post redirects back to the placeholder-covers page with a
-    flash message; a fetch() call gets JSON.
-    """
-    from utils.book_utils import fetch_book_details_from_isbn
-
-    conn = get_db()
-    # Books that failed before come last, so repeated clicks make progress
-    books = conn.execute("SELECT id, title, isbn " + MISSING_COVER_SQL +
-                         " ORDER BY id LIMIT ? OFFSET ?",
-                         (COVER_FETCH_BATCH, request.form.get('offset', 0, type=int))).fetchall()
-    stats = {'books_processed': 0, 'covers_found': 0, 'covers_failed': 0}
-    for book in books:
-        stats['books_processed'] += 1
-        try:
-            book_data = fetch_book_details_from_isbn(book['isbn'])
-        except Exception:
-            current_app.logger.exception(f"Error fetching cover for '{book['title']}'")
-            book_data = None
-        if book_data and book_data.get('local_cover_url'):
-            conn.execute('UPDATE books SET cover_image_url = ? WHERE id = ?',
-                         (book_data['local_cover_url'], book['id']))
-            conn.commit()
-            stats['covers_found'] += 1
-        else:
-            stats['covers_failed'] += 1
-    current_app.logger.info(f"Admin {current_user.username} bulk cover fetch: {stats}")
-
-    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True, **stats})
-    remaining = conn.execute("SELECT COUNT(*) " + MISSING_COVER_SQL).fetchone()[0]
-    flash(f"Checked {stats['books_processed']} book(s): found {stats['covers_found']} cover(s). "
-          f"{remaining} book(s) with an ISBN still have no cover.", "success")
-    # Skip past this batch's misses next time
-    return redirect(url_for('admin.placeholder_covers',
-                            offset=request.form.get('offset', 0, type=int) + stats['covers_failed']))
+MISSING_COVER_SQL = missing_cover_sql()
+# Fetching them is a background job: the button on placeholder_covers.html
+# posts to covers.start with scope=all (blueprints/covers.py).
 
 
 @admin_blueprint.route("/add_library_member", methods=["POST"])

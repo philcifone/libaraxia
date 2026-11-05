@@ -504,9 +504,7 @@
 
             <!-- Reading Stats -->
             <div class="bg-secondary rounded-lg p-6 border border-card">
-                {% if read_data %}
-
-                <!-- Reading History -->
+                <!-- Reading History (shown with or without a review) -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="label text-sm pb-1">Reading History</h3>
@@ -583,8 +581,10 @@
                                     {% endif %}
                                     {% if session.date_completed %}
                                         <span class="text-content-primary">{{ session.date_completed }}</span>
-                                    {% else %}
+                                    {% elif session.date_started %}
                                         <span class="text-yellow-500 italic">Currently Reading</span>
+                                    {% else %}{# undated past read, e.g. from a Goodreads Read Count #}
+                                        <span class="text-content-secondary italic">Date unknown</span>
                                     {% endif %}
                                 </div>
                                 <div class="flex gap-2">
@@ -610,6 +610,8 @@
                     {% endif %}
                 </div>
 
+                {% if read_data %}
+                {% if read_data['rating'] %}{# a review can have no rating #}
                 <div class="grid sm:grid-cols-2 gap-8 mb-6">
                     <div class="space-y-2">
                         <span class="label text-sm pb-1">Your Rating</span>
@@ -626,6 +628,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
                 {% if read_data['comment'] %}
                     <div class="space-y-2">
                         <span class="label text-sm pb-1">Your Review</span>
