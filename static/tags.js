@@ -1,28 +1,4 @@
-// Escape text for use inside HTML, including attribute values
-function escapeHtml(text) {
-    return String(text ?? '').replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    })[c]);
-}
-
-// CSRF Token Helper Functions
-function getCSRFToken() {
-    const tokenInput = document.querySelector('input[name="csrf_token"]');
-    if (tokenInput) return tokenInput.value;
-    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-    if (tokenMeta) return tokenMeta.content;
-    console.warn('CSRF token not found');
-    return null;
-}
-
-function getCSRFHeaders() {
-    const token = getCSRFToken();
-    return {
-        'X-CSRFToken': token,
-        'Content-Type': 'application/json'
-    };
-}
-
+// Shared helpers (getCSRFToken, escapeHtml, ...) are in common.js.
 // Keywording/Tag Javascript
 document.addEventListener('DOMContentLoaded', function() {
     const tagInput = document.getElementById('tagInput');

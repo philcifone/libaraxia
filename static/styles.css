@@ -353,3 +353,23 @@
         @apply rotate-180;
     }
 }
+
+/* ---------- Flash messages (templates/_flash_messages.html, common.js) ---------- */
+@keyframes slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slide-out {
+    from { transform: translateX(0);    opacity: 1; }
+    to   { transform: translateX(100%); opacity: 0; }
+}
+
+.animate-slide-in  { animation: slide-in 0.3s ease-out; }
+.animate-slide-out { animation: slide-out 0.3s ease-out; }
+
+/* ---------- Star rating (templates/rate_review.html) ---------- */
+.rating-group { isolation: isolate; }
+.rating-star { position: relative; z-index: 1; }
+.rating-star:hover { transform: scale(1.1); }
+.rating-group:hover .rating-star:hover ~ .rating-star { color: #9ca3af; /* gray-400 */ }

@@ -1,35 +1,11 @@
-<!DOCTYPE html>
-<html lang="en" class="bg-primary-bg" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <style>
-        .rating-group {
-            isolation: isolate;
-        }
+{% extends 'base.html' %}
 
-        .rating-star {
-            position: relative;
-            z-index: 1;
-        }
+{% block title %}{{ book.title }} - Rate & Review{% endblock %}
+{% block html_class %}bg-primary-bg{% endblock %}
+{% block body_class %}min-h-screen bg-primary-bg text-content-primary{% endblock %}
 
-        .rating-star:hover {
-            transform: scale(1.1);
-        }
 
-        .rating-group:hover .rating-star:hover ~ .rating-star {
-            color: #9ca3af;  /* gray-400 */
-        }
-    </style>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>{{ book.title }} - Rate & Review</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="min-h-screen bg-primary-bg text-content-primary">
-    {% include '_sidebar.html' %}
-
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
-
+{% block content %}
     <main class="max-w-6xl mx-auto px-4 pt-20 pb-12">
         <!-- Back Navigation -->
         <a href="{{ url_for('base.index') }}" 
@@ -72,7 +48,7 @@
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="font-medium text-content-secondary">Reading History</h3>
                             <button type="button"
-                                    onclick="showAddSessionForm()"
+                                    data-click="showAddSessionForm"
                                     class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors">
                                 Add Session
                             </button>
@@ -103,12 +79,12 @@
 
                                 <div class="flex gap-2 pt-2 justify-center">
                                     <button type="button"
-                                            onclick="saveInlineSession()"
+                                            data-click="saveInlineSession" data-book-id="{{ book.id }}"
                                             class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors text-sm">
                                         Save Session
                                     </button>
                                     <button type="button"
-                                            onclick="hideInlineSessionForm()"
+                                            data-click="hideInlineSessionForm"
                                             class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors text-sm">
                                         Cancel
                                     </button>
@@ -148,12 +124,13 @@
                                     </div>
                                     <div class="flex gap-2">
                                         <button type="button"
-                                                onclick="editInlineSession({{ session.session_id }}, '{{ session.date_started or '' }}', '{{ session.date_completed or '' }}')"
+                                                data-click="editInlineSession" data-session-id="{{ session.session_id }}"
+                                                data-date-started="{{ session.date_started or '' }}" data-date-completed="{{ session.date_completed or '' }}"
                                                 class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
                                             Edit
                                         </button>
                                         <button type="button"
-                                                onclick="deleteSession({{ session.session_id }}, {{ book.id }})"
+                                                data-click="deleteSession" data-session-id="{{ session.session_id }}" data-book-id="{{ book.id }}"
                                                 class="text-xs text-red-400 hover:text-red-300 transition-colors">
                                             Delete
                                         </button>
@@ -222,141 +199,9 @@
             </div>
         </div>
     </main>
+{% endblock %}
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <script>
-        let currentEditingSessionId = null;
-
-        // Inline session form functions
-        function showAddSessionForm() {
-            const container = document.getElementById('session-form-inline');
-            const title = document.getElementById('inline-session-form-title');
-            const dateStarted = document.getElementById('inline_date_started');
-            const dateCompleted = document.getElementById('inline_date_completed');
-
-            // Reset form
-            currentEditingSessionId = null;
-            dateStarted.value = '';
-            dateCompleted.value = '';
-            title.textContent = 'Add New Reading Session';
-
-            // Show form
-            container.classList.remove('hidden');
-            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function hideInlineSessionForm() {
-            const container = document.getElementById('session-form-inline');
-            container.classList.add('hidden');
-            currentEditingSessionId = null;
-        }
-
-        function editInlineSession(sessionId, dateStarted, dateCompleted) {
-            const container = document.getElementById('session-form-inline');
-            const title = document.getElementById('inline-session-form-title');
-            const dateStartedInput = document.getElementById('inline_date_started');
-            const dateCompletedInput = document.getElementById('inline_date_completed');
-
-            // Set form values
-            currentEditingSessionId = sessionId;
-            dateStartedInput.value = dateStarted;
-            dateCompletedInput.value = dateCompleted;
-            title.textContent = 'Edit Reading Session';
-
-            // Show form
-            container.classList.remove('hidden');
-            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function saveInlineSession() {
-            const dateStarted = document.getElementById('inline_date_started').value;
-            const dateCompleted = document.getElementById('inline_date_completed').value;
-
-            // Validate dates
-            if (dateStarted && dateCompleted) {
-                const startDate = new Date(dateStarted);
-                const endDate = new Date(dateCompleted);
-                if (startDate > endDate) {
-                    alert('Start date cannot be after completion date.');
-                    return;
-                }
-            }
-
-            // Create a separate form to submit only the session data
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/read/manage_session/{{ book.id }}';
-
-            // Add CSRF token
-            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = csrfToken;
-            form.appendChild(csrfInput);
-
-            // Add session_id if editing
-            if (currentEditingSessionId) {
-                const sessionIdInput = document.createElement('input');
-                sessionIdInput.type = 'hidden';
-                sessionIdInput.name = 'session_id';
-                sessionIdInput.value = currentEditingSessionId;
-                form.appendChild(sessionIdInput);
-            }
-
-            // Add date_started
-            const dateStartedInput = document.createElement('input');
-            dateStartedInput.type = 'hidden';
-            dateStartedInput.name = 'date_started';
-            dateStartedInput.value = dateStarted;
-            form.appendChild(dateStartedInput);
-
-            // Add date_completed
-            const dateCompletedInput = document.createElement('input');
-            dateCompletedInput.type = 'hidden';
-            dateCompletedInput.name = 'date_completed';
-            dateCompletedInput.value = dateCompleted;
-            form.appendChild(dateCompletedInput);
-
-            // Add redirect parameter to come back to rate_review
-            const redirectInput = document.createElement('input');
-            redirectInput.type = 'hidden';
-            redirectInput.name = 'redirect_to';
-            redirectInput.value = 'rate_review';
-            form.appendChild(redirectInput);
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        function deleteSession(sessionId, bookId) {
-            if (!confirm('Are you sure you want to delete this reading session?')) {
-                return;
-            }
-
-            // Create a form and submit it
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/read/delete_reading_session/' + sessionId;
-
-            // Add CSRF token
-            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = csrfToken;
-            form.appendChild(csrfInput);
-
-            // Add book_id for redirect
-            const bookInput = document.createElement('input');
-            bookInput.type = 'hidden';
-            bookInput.name = 'book_id';
-            bookInput.value = bookId;
-            form.appendChild(bookInput);
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-    </script>
-</body>
-</html>
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='rate_review.js') }}"></script>
+{% endblock %}

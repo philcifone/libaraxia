@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>{{ book[1] }} - Details</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="bg-primary min-h-screen">
-    {% include '_sidebar.html' %}
+{% extends 'base.html' %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% block title %}{{ book['title'] }} - Details{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
 
+{% block content %}
     <!-- Main Content Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
         <!-- Back Navigation (context-aware) -->
@@ -40,7 +32,7 @@
             <!-- Book Header -->
             <header class="mb-8 text-center">
                 <h1 class="text-4xl font-display text-content-primary mb-2">
-                    {{ book[1] }}
+                    {{ book['title'] }}
                     {% if book['subtitle'] %}
                         <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
                     {% endif %}
@@ -54,7 +46,7 @@
                     <div class="w-72 sm:w-100 md:w-full max-w-[300px] mx-auto">
                         {% if book.cover_image_url %}
                             <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
-                                alt="{{ book[1] }} Cover"
+                                alt="{{ book['title'] }} Cover"
                                 class="w-full rounded-lg shadow-lg transition-transform duration-300">
                         {% else %}
                             <div class="w-full aspect-[2/3] bg-primary flex items-center justify-center rounded-lg">
@@ -95,7 +87,7 @@
                             {% if book['description']|length > 300 %}
                             <button type="button"
                                     class="mt-2 text-accent hover:text-accent-hover flex items-center gap-1 transition-colors"
-                                    onclick="toggleDescription()">
+                                    data-click="toggleDescription">
                                 <span class="toggle-text">Show More</span>
                                 <svg class="w-4 h-4 transform transition-transform duration-300" viewBox="0 0 20 20">
                                     <path fill="currentColor" d="M10 13.5l-5-5 1.5-1.5L10 10.5 13.5 7l1.5 1.5-5 5z"/>
@@ -236,7 +228,7 @@
                     <!-- Owner / admin actions -->
                     {% if can_manage %}
                     <div class="grid grid-cols-2 gap-4">
-                        <a href="/books/edit/{{ book[0] }}"
+                        <a href="/books/edit/{{ book['id'] }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-on-accent text-sm rounded-lg hover:bg-accent-hover transition-colors">
                             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
@@ -252,7 +244,7 @@
                             </button>
                         </form>
                         {% elif not in_wishlist %}
-                        <button type="button" onclick="document.getElementById('remove-book-panel').classList.toggle('hidden')"
+                        <button type="button" data-click="toggleHidden" data-target="remove-book-panel"
                                 class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary border border-card text-sm rounded-lg hover:bg-primary-hover transition-colors">
                             Remove from Library
                         </button>
@@ -286,7 +278,7 @@
                             {% else %}
                             <p class="text-sm text-content-secondary">For entries added by mistake. This erases the book and your own status, review and history for it. If the book just left the house, use <em>Remove from Library</em> instead.</p>
                             <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST"
-                                  onsubmit='return confirm({{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.")|tojson }})'>
+                                  data-confirm="{{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.") }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit"
                                         class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-on-accent text-sm rounded-lg hover:bg-red-700 transition-colors">
@@ -331,7 +323,7 @@
                                 </select>
                                 <button type="submit"
                                         class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
-                                        onclick="return confirm('Transfer ownership of this book? The new owner will be responsible for it.')">
+                                        data-confirm="Transfer ownership of this book? The new owner will be responsible for it.">
                                     Transfer Book
                                 </button>
                             </form>
@@ -360,7 +352,7 @@
                     <div class="bg-primary rounded-lg overflow-hidden transition-all duration-200 hover:shadow-lg friend-review-card">
                         <!-- Collapsed Header (Always Visible) -->
                         <button type="button"
-                                onclick="toggleFriendReview(this)"
+                                data-click="toggleFriendReview"
                                 class="w-full p-3 flex items-center gap-3 text-left hover:bg-primary-hover transition-colors">
                             <!-- Avatar -->
                             <div class="flex-shrink-0">
@@ -509,7 +501,7 @@
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="label text-sm pb-1">Reading History</h3>
                         <button type="button"
-                                onclick="showAddSessionForm()"
+                                data-click="showAddSessionForm"
                                 class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors">
                             Add Session
                         </button>
@@ -550,7 +542,7 @@
                                         Save Session
                                     </button>
                                     <button type="button"
-                                            onclick="hideSessionForm()"
+                                            data-click="hideSessionForm"
                                             class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors text-sm">
                                         Cancel
                                     </button>
@@ -589,12 +581,13 @@
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="button"
-                                            onclick="editSession({{ session.session_id }}, '{{ session.date_started or '' }}', '{{ session.date_completed or '' }}')"
+                                            data-click="editSession" data-session-id="{{ session.session_id }}"
+                                            data-date-started="{{ session.date_started or '' }}" data-date-completed="{{ session.date_completed or '' }}"
                                             class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
                                         Edit
                                     </button>
                                     <button type="button"
-                                            onclick="deleteSession({{ session.session_id }}, {{ book.id }})"
+                                            data-click="deleteSession" data-session-id="{{ session.session_id }}" data-book-id="{{ book.id }}"
                                             class="text-xs text-red-400 hover:text-red-300 transition-colors">
                                         Delete
                                     </button>
@@ -673,87 +666,10 @@
     </div>
     {% endif %}
     <!-- End of Reading Info Section -->
+{% endblock %}
 
+{% block scripts %}
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='tags.js') }}"></script>
-<script>
-    // Reading Session Management Functions
-    function showAddSessionForm() {
-        const container = document.getElementById('session-form-container');
-        const title = document.getElementById('session-form-title');
-        const sessionIdInput = document.getElementById('form_session_id');
-        const dateStarted = document.getElementById('form_date_started');
-        const dateCompleted = document.getElementById('form_date_completed');
-
-        // Reset form
-        sessionIdInput.value = '';
-        dateStarted.value = '';
-        dateCompleted.value = '';
-        title.textContent = 'Add New Reading Session';
-
-        // Show form
-        container.classList.remove('hidden');
-        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    function hideSessionForm() {
-        const container = document.getElementById('session-form-container');
-        container.classList.add('hidden');
-    }
-
-    function editSession(sessionId, dateStarted, dateCompleted) {
-        const container = document.getElementById('session-form-container');
-        const title = document.getElementById('session-form-title');
-        const sessionIdInput = document.getElementById('form_session_id');
-        const dateStartedInput = document.getElementById('form_date_started');
-        const dateCompletedInput = document.getElementById('form_date_completed');
-
-        // Set form values
-        sessionIdInput.value = sessionId;
-        dateStartedInput.value = dateStarted;
-        dateCompletedInput.value = dateCompleted;
-        title.textContent = 'Edit Reading Session';
-
-        // Show form
-        container.classList.remove('hidden');
-        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    function deleteSession(sessionId, bookId) {
-        if (!confirm('Are you sure you want to delete this reading session?')) {
-            return;
-        }
-
-        // Create and submit form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/read/delete_reading_session/' + sessionId;
-
-        // Add CSRF token
-        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrf_token';
-        csrfInput.value = csrfToken;
-        form.appendChild(csrfInput);
-
-        // Add book_id for redirect
-        const bookInput = document.createElement('input');
-        bookInput.type = 'hidden';
-        bookInput.name = 'book_id';
-        bookInput.value = bookId;
-        form.appendChild(bookInput);
-
-        // Add redirect_to parameter to come back to book detail
-        const redirectInput = document.createElement('input');
-        redirectInput.type = 'hidden';
-        redirectInput.name = 'redirect_to';
-        redirectInput.value = 'book_detail';
-        form.appendChild(redirectInput);
-
-        document.body.appendChild(form);
-        form.submit();
-    }
-</script>
-</body>
-</html>
+<script src="{{ url_for('static', filename='book_detail.js') }}"></script>
+{% endblock %}

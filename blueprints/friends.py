@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, flash, redirect, url_for, render_template, current_app
 from flask_login import login_required, current_user
-from utils.database import get_db_connection
+from utils.database import get_db
 from utils.rate_limiting import limiter
 import sqlite3
 
@@ -12,7 +12,7 @@ friends_blueprint = Blueprint('friends', __name__, url_prefix='/friends')
 @limiter.limit("30 per hour")
 def send_request(username):
     """Send a friend request to another user"""
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Get the target user
         target_user = conn.execute(
@@ -91,8 +91,6 @@ def send_request(username):
 
     except sqlite3.IntegrityError:
         flash('Error sending friend request!', 'danger')
-    finally:
-        conn.close()
 
     return redirect(url_for('user.profile', username=username))
 
@@ -102,7 +100,7 @@ def send_request(username):
 @limiter.limit("50 per hour")
 def accept_request(request_id):
     """Accept a friend request"""
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Get the friend request
         friend_request = conn.execute('''
@@ -139,8 +137,6 @@ def accept_request(request_id):
 
     except sqlite3.IntegrityError:
         flash('Error accepting friend request!', 'danger')
-    finally:
-        conn.close()
 
     return redirect(request.referrer or url_for('base.index'))
 
@@ -149,30 +145,27 @@ def accept_request(request_id):
 @login_required
 def decline_request(request_id):
     """Decline a friend request"""
-    conn = get_db_connection()
-    try:
-        # Verify the request belongs to the current user
-        friend_request = conn.execute('''
-            SELECT id FROM friend_requests
-            WHERE id = ? AND receiver_id = ? AND status = 'pending'
-        ''', (request_id, current_user.id)).fetchone()
+    conn = get_db()
+    # Verify the request belongs to the current user
+    friend_request = conn.execute('''
+        SELECT id FROM friend_requests
+        WHERE id = ? AND receiver_id = ? AND status = 'pending'
+    ''', (request_id, current_user.id)).fetchone()
 
-        if not friend_request:
-            flash('Friend request not found!', 'danger')
-            return redirect(url_for('base.index'))
+    if not friend_request:
+        flash('Friend request not found!', 'danger')
+        return redirect(url_for('base.index'))
 
-        # Update status to declined (keep record to prevent re-sending)
-        conn.execute('''
-            UPDATE friend_requests
-            SET status = 'declined', updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ''', (request_id,))
+    # Update status to declined (keep record to prevent re-sending)
+    conn.execute('''
+        UPDATE friend_requests
+        SET status = 'declined', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (request_id,))
 
-        conn.commit()
-        flash('Friend request declined.', 'info')
+    conn.commit()
+    flash('Friend request declined.', 'info')
 
-    finally:
-        conn.close()
 
     return redirect(request.referrer or url_for('base.index'))
 
@@ -181,34 +174,31 @@ def decline_request(request_id):
 @login_required
 def remove_friend(friend_id):
     """Remove a friend"""
-    conn = get_db_connection()
-    try:
-        # Get friend's username for the flash message
-        friend = conn.execute(
-            'SELECT username FROM users WHERE id = ?',
-            (friend_id,)
-        ).fetchone()
+    conn = get_db()
+    # Get friend's username for the flash message
+    friend = conn.execute(
+        'SELECT username FROM users WHERE id = ?',
+        (friend_id,)
+    ).fetchone()
 
-        if not friend:
-            flash('User not found!', 'danger')
-            return redirect(url_for('base.index'))
+    if not friend:
+        flash('User not found!', 'danger')
+        return redirect(url_for('base.index'))
 
-        # Delete the friendship
-        result = conn.execute('''
-            DELETE FROM friendships
-            WHERE (user_id_1 = ? AND user_id_2 = ?)
-               OR (user_id_1 = ? AND user_id_2 = ?)
-        ''', (min(current_user.id, friend_id), max(current_user.id, friend_id),
-              min(current_user.id, friend_id), max(current_user.id, friend_id)))
+    # Delete the friendship
+    result = conn.execute('''
+        DELETE FROM friendships
+        WHERE (user_id_1 = ? AND user_id_2 = ?)
+           OR (user_id_1 = ? AND user_id_2 = ?)
+    ''', (min(current_user.id, friend_id), max(current_user.id, friend_id),
+          min(current_user.id, friend_id), max(current_user.id, friend_id)))
 
-        if result.rowcount > 0:
-            conn.commit()
-            flash(f'Removed {friend["username"]} from friends.', 'info')
-        else:
-            flash('Friendship not found!', 'danger')
+    if result.rowcount > 0:
+        conn.commit()
+        flash(f'Removed {friend["username"]} from friends.', 'info')
+    else:
+        flash('Friendship not found!', 'danger')
 
-    finally:
-        conn.close()
 
     return redirect(request.referrer or url_for('base.index'))
 
@@ -217,147 +207,135 @@ def remove_friend(friend_id):
 @login_required
 def get_requests():
     """Get all pending friend requests for the current user (JSON API)"""
-    conn = get_db_connection()
-    try:
-        requests = conn.execute('''
-            SELECT fr.id, fr.sender_id, u.username, u.avatar_url, fr.created_at
-            FROM friend_requests fr
-            JOIN users u ON fr.sender_id = u.id
-            WHERE fr.receiver_id = ? AND fr.status = 'pending'
-            ORDER BY fr.created_at DESC
-        ''', (current_user.id,)).fetchall()
+    conn = get_db()
+    requests = conn.execute('''
+        SELECT fr.id, fr.sender_id, u.username, u.avatar_url, fr.created_at
+        FROM friend_requests fr
+        JOIN users u ON fr.sender_id = u.id
+        WHERE fr.receiver_id = ? AND fr.status = 'pending'
+        ORDER BY fr.created_at DESC
+    ''', (current_user.id,)).fetchall()
 
-        return jsonify([dict(r) for r in requests])
+    return jsonify([dict(r) for r in requests])
 
-    finally:
-        conn.close()
 
 
 @friends_blueprint.route('/list', methods=['GET'])
 @login_required
 def get_friends():
     """Get all friends for the current user (JSON API)"""
-    conn = get_db_connection()
-    try:
-        friends = conn.execute('''
-            SELECT
-                u.id, u.username, u.avatar_url,
-                f.created_at as friends_since
-            FROM friendships f
-            JOIN users u ON (
-                CASE
-                    WHEN f.user_id_1 = ? THEN f.user_id_2
-                    ELSE f.user_id_1
-                END = u.id
-            )
-            WHERE f.user_id_1 = ? OR f.user_id_2 = ?
-            ORDER BY u.username
-        ''', (current_user.id, current_user.id, current_user.id)).fetchall()
+    conn = get_db()
+    friends = conn.execute('''
+        SELECT
+            u.id, u.username, u.avatar_url,
+            f.created_at as friends_since
+        FROM friendships f
+        JOIN users u ON (
+            CASE
+                WHEN f.user_id_1 = ? THEN f.user_id_2
+                ELSE f.user_id_1
+            END = u.id
+        )
+        WHERE f.user_id_1 = ? OR f.user_id_2 = ?
+        ORDER BY u.username
+    ''', (current_user.id, current_user.id, current_user.id)).fetchall()
 
-        return jsonify([dict(f) for f in friends])
+    return jsonify([dict(f) for f in friends])
 
-    finally:
-        conn.close()
 
 
 @friends_blueprint.route('/notifications_page', methods=['GET'])
 @login_required
 def notifications_page():
     """Display the notifications page"""
-    conn = get_db_connection()
-    try:
-        # Get pending friend requests
-        friend_requests = conn.execute('''
-            SELECT
-                fr.id,
-                fr.sender_id,
-                u.username,
-                u.avatar_url,
-                fr.created_at
-            FROM friend_requests fr
-            JOIN users u ON fr.sender_id = u.id
-            WHERE fr.receiver_id = ? AND fr.status = 'pending'
-            ORDER BY fr.created_at DESC
-        ''', (current_user.id,)).fetchall()
+    conn = get_db()
+    # Get pending friend requests
+    friend_requests = conn.execute('''
+        SELECT
+            fr.id,
+            fr.sender_id,
+            u.username,
+            u.avatar_url,
+            fr.created_at
+        FROM friend_requests fr
+        JOIN users u ON fr.sender_id = u.id
+        WHERE fr.receiver_id = ? AND fr.status = 'pending'
+        ORDER BY fr.created_at DESC
+    ''', (current_user.id,)).fetchall()
 
-        # Pending invites to share someone's library (utils/households.py)
-        household_invites = conn.execute('''
-            SELECT i.id, u.username, u.avatar_url, i.created_at
-            FROM household_invites i
-            JOIN users u ON i.inviter_id = u.id
-            WHERE i.invitee_id = ?
-            ORDER BY i.created_at DESC
-        ''', (current_user.id,)).fetchall()
+    # Pending invites to share someone's library (utils/households.py)
+    household_invites = conn.execute('''
+        SELECT i.id, u.username, u.avatar_url, i.created_at
+        FROM household_invites i
+        JOIN users u ON i.inviter_id = u.id
+        WHERE i.invitee_id = ?
+        ORDER BY i.created_at DESC
+    ''', (current_user.id,)).fetchall()
 
-        # Get all notifications (excluding friend_request type)
-        notifications = conn.execute('''
-            SELECT
-                n.id,
-                n.type,
-                n.message,
-                n.from_user_id,
-                n.created_at,
-                u.username as from_username,
-                u.avatar_url as from_avatar_url,
-                n.is_read
-            FROM notifications n
-            LEFT JOIN users u ON n.from_user_id = u.id
-            WHERE n.user_id = ?
-            AND n.type != 'friend_request'
-            ORDER BY n.created_at DESC
-            LIMIT 50
-        ''', (current_user.id,)).fetchall()
+    # Get all notifications (excluding friend_request type)
+    notifications = conn.execute('''
+        SELECT
+            n.id,
+            n.type,
+            n.message,
+            n.from_user_id,
+            n.created_at,
+            u.username as from_username,
+            u.avatar_url as from_avatar_url,
+            n.is_read
+        FROM notifications n
+        LEFT JOIN users u ON n.from_user_id = u.id
+        WHERE n.user_id = ?
+        AND n.type != 'friend_request'
+        ORDER BY n.created_at DESC
+        LIMIT 50
+    ''', (current_user.id,)).fetchall()
 
-        return render_template('notifications.html',
-                             friend_requests=[dict(r) for r in friend_requests],
-                             household_invites=[dict(r) for r in household_invites],
-                             notifications=[dict(n) for n in notifications])
-    finally:
-        conn.close()
+    return render_template('notifications.html',
+                         friend_requests=[dict(r) for r in friend_requests],
+                         household_invites=[dict(r) for r in household_invites],
+                         notifications=[dict(n) for n in notifications])
 
 
 @friends_blueprint.route('/notification_count', methods=['GET'])
 @login_required
 def notification_count():
     """Get count of unread notifications and pending friend requests (JSON API)"""
-    conn = get_db_connection()
-    try:
-        # Count pending friend requests
-        friend_request_count = conn.execute('''
-            SELECT COUNT(*) as count
-            FROM friend_requests
-            WHERE receiver_id = ? AND status = 'pending'
-        ''', (current_user.id,)).fetchone()['count']
+    conn = get_db()
+    # Count pending friend requests
+    friend_request_count = conn.execute('''
+        SELECT COUNT(*) as count
+        FROM friend_requests
+        WHERE receiver_id = ? AND status = 'pending'
+    ''', (current_user.id,)).fetchone()['count']
 
-        # Count unread notifications (excluding friend_request type)
-        notification_count = conn.execute('''
-            SELECT COUNT(*) as count
-            FROM notifications
-            WHERE user_id = ? AND is_read = 0 AND type != 'friend_request'
-        ''', (current_user.id,)).fetchone()['count']
+    # Count unread notifications (excluding friend_request type)
+    notification_count = conn.execute('''
+        SELECT COUNT(*) as count
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0 AND type != 'friend_request'
+    ''', (current_user.id,)).fetchone()['count']
 
-        household_invite_count = conn.execute(
-            'SELECT COUNT(*) FROM household_invites WHERE invitee_id = ?', (current_user.id,)
-        ).fetchone()[0]
+    household_invite_count = conn.execute(
+        'SELECT COUNT(*) FROM household_invites WHERE invitee_id = ?', (current_user.id,)
+    ).fetchone()[0]
 
-        total_count = friend_request_count + notification_count + household_invite_count
+    total_count = friend_request_count + notification_count + household_invite_count
 
-        return jsonify({
-            'count': total_count,
-            'friend_requests': friend_request_count,
-            'notifications': notification_count,
-            'household_invites': household_invite_count,
-        })
+    return jsonify({
+        'count': total_count,
+        'friend_requests': friend_request_count,
+        'notifications': notification_count,
+        'household_invites': household_invite_count,
+    })
 
-    finally:
-        conn.close()
 
 
 @friends_blueprint.route('/dismiss_notification/<int:notification_id>', methods=['POST'])
 @login_required
 def dismiss_notification(notification_id):
     """Delete/dismiss a notification"""
-    conn = get_db_connection()
+    conn = get_db()
     try:
         conn.execute('''
             DELETE FROM notifications
@@ -367,8 +345,6 @@ def dismiss_notification(notification_id):
         flash('Notification dismissed', 'info')
     except Exception as e:
         flash('Error dismissing notification', 'danger')
-    finally:
-        conn.close()
 
     return redirect(url_for('friends.notifications_page'))
 
@@ -377,7 +353,7 @@ def dismiss_notification(notification_id):
 @login_required
 def mark_all_read():
     """Dismiss all notifications for the current user"""
-    conn = get_db_connection()
+    conn = get_db()
     try:
         result = conn.execute('''
             DELETE FROM notifications
@@ -393,8 +369,6 @@ def mark_all_read():
             flash('No notifications to dismiss', 'info')
     except Exception as e:
         flash('Error dismissing notifications', 'danger')
-    finally:
-        conn.close()
 
     return redirect(url_for('friends.notifications_page'))
 
@@ -408,43 +382,40 @@ def search_users():
     if not query or len(query) < 2:
         return jsonify([])
 
-    conn = get_db_connection()
-    try:
-        # Search for users by username, excluding current user
-        users = conn.execute('''
-            SELECT
-                u.id,
-                u.username,
-                u.avatar_url,
-                CASE
-                    WHEN EXISTS (
-                        SELECT 1 FROM friendships
-                        WHERE (user_id_1 = ? AND user_id_2 = u.id)
-                           OR (user_id_1 = u.id AND user_id_2 = ?)
-                    ) THEN 'friends'
-                    WHEN EXISTS (
-                        SELECT 1 FROM friend_requests
-                        WHERE sender_id = ? AND receiver_id = u.id AND status = 'pending'
-                    ) THEN 'request_sent'
-                    WHEN EXISTS (
-                        SELECT 1 FROM friend_requests
-                        WHERE sender_id = u.id AND receiver_id = ? AND status = 'pending'
-                    ) THEN 'request_received'
-                    ELSE 'none'
-                END as friendship_status
-            FROM users u
-            WHERE u.username LIKE ? AND u.id != ?
-            ORDER BY
-                CASE
-                    WHEN u.username LIKE ? THEN 0
-                    ELSE 1
-                END,
-                u.username
-            LIMIT 10
-        ''', (current_user.id, current_user.id, current_user.id, current_user.id,
-              f'%{query}%', current_user.id, f'{query}%')).fetchall()
+    conn = get_db()
+    # Search for users by username, excluding current user
+    users = conn.execute('''
+        SELECT
+            u.id,
+            u.username,
+            u.avatar_url,
+            CASE
+                WHEN EXISTS (
+                    SELECT 1 FROM friendships
+                    WHERE (user_id_1 = ? AND user_id_2 = u.id)
+                       OR (user_id_1 = u.id AND user_id_2 = ?)
+                ) THEN 'friends'
+                WHEN EXISTS (
+                    SELECT 1 FROM friend_requests
+                    WHERE sender_id = ? AND receiver_id = u.id AND status = 'pending'
+                ) THEN 'request_sent'
+                WHEN EXISTS (
+                    SELECT 1 FROM friend_requests
+                    WHERE sender_id = u.id AND receiver_id = ? AND status = 'pending'
+                ) THEN 'request_received'
+                ELSE 'none'
+            END as friendship_status
+        FROM users u
+        WHERE u.username LIKE ? AND u.id != ?
+        ORDER BY
+            CASE
+                WHEN u.username LIKE ? THEN 0
+                ELSE 1
+            END,
+            u.username
+        LIMIT 10
+    ''', (current_user.id, current_user.id, current_user.id, current_user.id,
+          f'%{query}%', current_user.id, f'{query}%')).fetchall()
 
-        return jsonify([dict(u) for u in users])
+    return jsonify([dict(u) for u in users])
 
-    finally:
-        conn.close()

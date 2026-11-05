@@ -6,7 +6,7 @@
         <div id="book-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             <div class="book-item group">
-                <a href="/books/book/{{ book[0] }}"
+                <a href="/books/book/{{ book['id'] }}"
                    class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                         {% if book.removed_at %}
@@ -14,7 +14,7 @@
                         {% endif %}
                         {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
-                             alt="{{ book[1] }}"
+                             alt="{{ book['title'] }}"
                              class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
                         {% else %}
                         <div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
@@ -25,10 +25,10 @@
 
                     <div class="book-info p-3 sm:p-4">
                         <h3 class="book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white">
-                            {{ book[1] }}
+                            {{ book['title'] }}
                         </h3>
                         <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
-                            by {{ book[2] }}
+                            by {{ book['author'] }}
                         </p>
                     </div>
                 </a>

@@ -1146,6 +1146,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   visibility: hidden;
 }
 
+.collapse {
+  visibility: collapse;
+}
+
 .static {
   position: static;
 }
@@ -1212,10 +1216,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .top-4 {
   top: 1rem;
-}
-
-.isolate {
-  isolation: isolate;
 }
 
 .z-10 {
@@ -2571,11 +2571,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   color: rgb(var(--on-accent) / var(--tw-text-opacity, 1));
 }
 
-.text-purple-400 {
-  --tw-text-opacity: 1;
-  color: rgb(var(--purple) / var(--tw-text-opacity, 1));
-}
-
 .text-purple-500 {
   --tw-text-opacity: 1;
   color: rgb(var(--purple) / var(--tw-text-opacity, 1));
@@ -2637,10 +2632,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   opacity: 0.5;
 }
 
-.opacity-60 {
-  opacity: 0.6;
-}
-
 .opacity-75 {
   opacity: 0.75;
 }
@@ -2689,6 +2680,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .ring-accent {
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(var(--accent) / var(--tw-ring-opacity, 1));
+}
+
+.invert {
+  --tw-invert: invert(100%);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 
 .filter {
@@ -2748,6 +2744,15 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 #description {
   max-height: 12rem;
   overflow: hidden;
+}
+
+#description.expanded {
+  max-height: none;
+}
+
+#description.expanded + button svg {
+  --tw-rotate: 180deg;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
 /* ---------- Fonts ---------- */
@@ -2831,6 +2836,60 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
    Colours are RGB channels so Tailwind alpha modifiers (bg-accent/20) work.
    To add a style: add a shape block and a light + dark palette below, then add
    it to THEME_STYLES in models.py. */
+
+/* ---------- Flash messages (templates/_flash_messages.html, common.js) ---------- */
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to   {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to   {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-in  {
+  animation: slide-in 0.3s ease-out;
+}
+
+.animate-slide-out {
+  animation: slide-out 0.3s ease-out;
+}
+
+/* ---------- Star rating (templates/rate_review.html) ---------- */
+
+.rating-group {
+  isolation: isolate;
+}
+
+.rating-star {
+  position: relative;
+  z-index: 1;
+}
+
+.rating-star:hover {
+  transform: scale(1.1);
+}
+
+.rating-group:hover .rating-star:hover ~ .rating-star {
+  color: #9ca3af;
+  /* gray-400 */
+}
 
 .file\:mr-4::file-selector-button {
   margin-right: 1rem;

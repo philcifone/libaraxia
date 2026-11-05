@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html lang="en" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Notifications</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="bg-primary dark:bg-primary light:bg-primary-light min-h-screen">
-    {% include '_sidebar.html' %}
+{% extends 'base.html' %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% block title %}Notifications{% endblock %}
+{% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
 
+{% block content %}
     <!-- Main Content -->
     <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
         <!-- Back Nav -->
@@ -183,6 +175,4 @@
     </div>
 
     <!-- Sidebar Toggle Script -->
-    <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,17 +1,10 @@
-<!DOCTYPE html>
-<html class="min-h-screen bg-primary-bg" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>libaraxia | Search Results</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="min-h-screen text-content-primary">
-    {% include '_sidebar.html' %}
+{% extends 'base.html' %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% block title %}libaraxia | Search Results{% endblock %}
+{% block html_class %}min-h-screen bg-primary-bg{% endblock %}
+{% block body_class %}min-h-screen text-content-primary{% endblock %}
 
+{% block content %}
     <!-- Add Book Button -->
     {% include '_add_book_fab.html' %}
 
@@ -29,5 +22,4 @@
     {% include '_book_grid.html' %}
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,21 +1,4 @@
-// CSRF Token Helper Functions
-function getCSRFToken() {
-    const tokenInput = document.querySelector('input[name="csrf_token"]');
-    if (tokenInput) return tokenInput.value;
-    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-    if (tokenMeta) return tokenMeta.content;
-    console.warn('CSRF token not found');
-    return null;
-}
-
-function getCSRFHeaders() {
-    const token = getCSRFToken();
-    return {
-        'X-CSRFToken': token,
-        'Content-Type': 'application/json'
-    };
-}
-
+// Shared helpers (getCSRFToken, escapeHtml, ...) are in common.js.
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
     const methodButtons = document.querySelectorAll('.search-method-btn');
@@ -127,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 thumbnailUrl = thumbnailUrl.replace('http:', 'https:')
                                          .replace('&zoom=1', '')
                                          .replace('&edge=curl', '');
-                coverImg.src = thumbnailUrl;
+                coverImg.src = coverSrc(thumbnailUrl);
             } else {
                 coverImg.src = '/static/no-cover.svg';
             }
@@ -333,9 +316,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
             coverPreview.innerHTML = `
-                <img src="${imagePath}"
+                <img src="${escapeHtml(coverSrc(imagePath))}"
                      alt="Book cover"
-                     onerror="this.onerror=null; this.src='/static/no-cover.svg'; console.error('Failed to load cover:', '${imagePath}');"
+                     data-fallback-src="/static/no-cover.svg"
                      class="max-w-xs rounded-lg shadow-lg">
             `;
 
@@ -357,9 +340,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (thumbnailUrl) {
             // Fallback to thumbnail if no local cover
             coverPreview.innerHTML = `
-                <img src="${thumbnailUrl}"
+                <img src="${escapeHtml(coverSrc(thumbnailUrl))}"
                      alt="Book cover"
-                     onerror="this.onerror=null; this.src='/static/no-cover.svg';"
+                     data-fallback-src="/static/no-cover.svg"
                      class="max-w-xs rounded-lg shadow-lg">
             `;
         } else {
@@ -545,6 +528,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     scannerBtn.addEventListener('click', () => {
         if (!isScanning) {
+            const reason = cameraUnavailableReason();
+            if (reason) {
+                alert(reason);
+                return;
+            }
             startScanner();
             scannerBtn.textContent = 'Stop Scanner';
         } else {

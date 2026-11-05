@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # Custom imports
-from utils.database import get_db_connection, database_path, close_db
+from utils.database import get_db, database_path, close_db
 from utils.errors import unauthorized
 from blueprints.auth import auth_blueprint
 from blueprints.base import base_blueprint
@@ -72,8 +72,35 @@ def create_app():
     app.config['WTF_CSRF_CHECK_DEFAULT'] = True
     app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
 
+    # Content-Security-Policy: scripts only from our own files (no inline
+    # <script> or onclick=; page scripts are in static/ and markup uses the
+    # data-click/data-change hooks from static/common.js). Inline style=""
+    # attributes are still allowed: there are a handful, and injected CSS is
+    # far less dangerous than injected script. Images are ours too: remote
+    # search-result covers go through /books/thumbnail. data: is for upload
+    # previews, blob: workers for the Quagga barcode scanner.
+    # CSP_REPORT_ONLY=true sends it as Report-Only (logged in the browser
+    # console, not enforced), an escape hatch if something turns out blocked.
+    csp = '; '.join([
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "worker-src 'self' blob:",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'self'",
+    ])
+    csp_header = ('Content-Security-Policy-Report-Only'
+                  if os.getenv('CSP_REPORT_ONLY', '').lower() in ('1', 'true', 'yes')
+                  else 'Content-Security-Policy')
+
     @app.after_request
     def set_security_headers(response):
+        response.headers.setdefault(csp_header, csp)
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
         response.headers.setdefault('Referrer-Policy', 'same-origin')
@@ -96,10 +123,9 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         logging.debug(f"Loading user with ID: {user_id}")
-        conn = get_db_connection()
+        conn = get_db()
         logging.debug("Database connections successful")
         user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-        conn.close()
         if user and not user['is_active']:
             # Deactivated: end any existing session / remember-me login too
             return None
@@ -123,9 +149,8 @@ def create_app():
     @app.route("/")
     def root():
         # Check if any users exist in the database
-        conn = get_db_connection()
+        conn = get_db()
         user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-        conn.close()
         
         # If no users exist, redirect to registration page for first-time setup
         if user_count == 0:
@@ -185,7 +210,6 @@ def create_app():
         if not getattr(user, 'is_authenticated', False):
             return {'cover_job': None}
         from utils import cover_jobs
-        from utils.database import get_db
         return {'cover_job': cover_jobs.as_dict(cover_jobs.current_job(get_db(), user.id))}
     
     # Configure Logging

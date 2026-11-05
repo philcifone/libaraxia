@@ -1,7 +1,7 @@
-from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify, abort
+from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify, abort, Response
 from flask_login import login_required, current_user
 from typing import Optional, Dict, Any
-from utils.database import get_db_connection, get_db
+from utils.database import get_db
 from utils.book_utils import (
     get_filter_options,
     removed_filter,
@@ -11,14 +11,33 @@ from utils.book_utils import (
     download_and_save_cover,
     search_google_books,
     search_covers_multiple_sources,
+    thumbnail_jpeg,
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
 from utils.image_utils import delete_image_file, is_safe_upload_path
+from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
+
+
+@books_blueprint.route("/thumbnail")
+@login_required
+@limiter.limit("600 per hour")
+def thumbnail():
+    """Search-result cover, fetched server-side (see book_utils.thumbnail_jpeg).
+
+    ?url= must point at Google Books or Open Library; anything else, or no
+    usable image, is a 404 and the page shows its no-cover image instead.
+    """
+    data = thumbnail_jpeg(request.args.get("url", ""))
+    if data is None:
+        abort(404)
+    response = Response(data, mimetype="image/jpeg")
+    response.headers["Cache-Control"] = "private, max-age=86400"
+    return response
 
 
 @books_blueprint.route("/add", methods=["GET", "POST"])
@@ -376,172 +395,169 @@ def edit_book(id):
 @books_blueprint.route("/book/<int:id>")
 @login_required
 def show_book(id):
-    conn = get_db_connection()
-    try:
-        # Get book details
-        book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
-        # 404 rather than 403 for books outside the user's circle, so ids
-        # can't be probed for existence
-        if not book or not can_view_book(conn, current_user, id):
-            abort(404)
+    conn = get_db()
+    # Get book details
+    book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
+    # 404 rather than 403 for books outside the user's circle, so ids
+    # can't be probed for existence
+    if not book or not can_view_book(conn, current_user, id):
+        abort(404)
 
-        # Someone else's wishlist entry (notes included) for this book, shown
-        # only for people in the viewer's circle. ?wishlist_owner=<username>
-        # picks whose (links from a friend's wishlist); otherwise the most
-        # recent one, so the section also shows when coming from the feed.
-        others = [uid for uid in circle_ids(conn, current_user.id) if uid != current_user.id]
-        wishlist_owner = request.args.get('wishlist_owner')
-        wishlist_owner_entry = None
-        wishlist_owner_user = None
-        if others:
-            marks = ','.join('?' * len(others))
-            query = f"""
-                SELECT w.wishlist_id, w.notes, w.added_at, u.id, u.username
-                FROM wishlist w
-                JOIN users u ON w.user_id = u.id
-                WHERE w.book_id = ? AND w.user_id IN ({marks})
-            """
-            entry = None
-            if wishlist_owner and wishlist_owner != current_user.username:
-                entry = conn.execute(query + " AND u.username = ?",
-                                     [id, *others, wishlist_owner]).fetchone()
-            if not entry:
-                entry = conn.execute(query + " ORDER BY w.added_at DESC LIMIT 1",
-                                     [id, *others]).fetchone()
-            if entry:
-                wishlist_owner_entry = {
-                    'wishlist_id': entry['wishlist_id'],
-                    'notes': entry['notes'],
-                    'added_at': entry['added_at'],
-                }
-                wishlist_owner_user = {'id': entry['id'], 'username': entry['username']}
-                wishlist_owner = entry['username']
-            else:
-                wishlist_owner = None
+    # Someone else's wishlist entry (notes included) for this book, shown
+    # only for people in the viewer's circle. ?wishlist_owner=<username>
+    # picks whose (links from a friend's wishlist); otherwise the most
+    # recent one, so the section also shows when coming from the feed.
+    others = [uid for uid in circle_ids(conn, current_user.id) if uid != current_user.id]
+    wishlist_owner = request.args.get('wishlist_owner')
+    wishlist_owner_entry = None
+    wishlist_owner_user = None
+    if others:
+        marks = ','.join('?' * len(others))
+        query = f"""
+            SELECT w.wishlist_id, w.notes, w.added_at, u.id, u.username
+            FROM wishlist w
+            JOIN users u ON w.user_id = u.id
+            WHERE w.book_id = ? AND w.user_id IN ({marks})
+        """
+        entry = None
+        if wishlist_owner and wishlist_owner != current_user.username:
+            entry = conn.execute(query + " AND u.username = ?",
+                                 [id, *others, wishlist_owner]).fetchone()
+        if not entry:
+            entry = conn.execute(query + " ORDER BY w.added_at DESC LIMIT 1",
+                                 [id, *others]).fetchone()
+        if entry:
+            wishlist_owner_entry = {
+                'wishlist_id': entry['wishlist_id'],
+                'notes': entry['notes'],
+                'added_at': entry['added_at'],
+            }
+            wishlist_owner_user = {'id': entry['id'], 'username': entry['username']}
+            wishlist_owner = entry['username']
+        else:
+            wishlist_owner = None
 
-        # Get reading status and most recent reading session
-        read_data = conn.execute("""
-            SELECT rating, comment
-            FROM read_data
-            WHERE user_id = ? AND book_id = ?
-        """, (current_user.id, id)).fetchone()
+    # Get reading status and most recent reading session
+    read_data = conn.execute("""
+        SELECT rating, comment
+        FROM read_data
+        WHERE user_id = ? AND book_id = ?
+    """, (current_user.id, id)).fetchone()
 
-        # Get all reading sessions (ordered by completion date, oldest first)
-        reading_sessions = conn.execute("""
-            SELECT session_id, date_started, date_completed, created_at
-            FROM reading_sessions
-            WHERE user_id = ? AND book_id = ?
-            ORDER BY
-                -- undated past reads first, then by date, then in progress
-                CASE WHEN date_completed IS NULL AND date_started IS NULL THEN 0
-                     WHEN date_completed IS NULL THEN 2 ELSE 1 END,
-                COALESCE(date_completed, date_started, created_at) ASC,
-                created_at ASC
-        """, (current_user.id, id)).fetchall()
+    # Get all reading sessions (ordered by completion date, oldest first)
+    reading_sessions = conn.execute("""
+        SELECT session_id, date_started, date_completed, created_at
+        FROM reading_sessions
+        WHERE user_id = ? AND book_id = ?
+        ORDER BY
+            -- undated past reads first, then by date, then in progress
+            CASE WHEN date_completed IS NULL AND date_started IS NULL THEN 0
+                 WHEN date_completed IS NULL THEN 2 ELSE 1 END,
+            COALESCE(date_completed, date_started, created_at) ASC,
+            created_at ASC
+    """, (current_user.id, id)).fetchall()
 
-        # Get the latest session for quick display
-        latest_session = reading_sessions[-1] if reading_sessions else None
+    # Get the latest session for quick display
+    latest_session = reading_sessions[-1] if reading_sessions else None
 
-        collection_status = conn.execute("""
-            SELECT status
-            FROM collections
-            WHERE user_id = ? AND book_id = ?
-        """, (current_user.id, id)).fetchone()
+    collection_status = conn.execute("""
+        SELECT status
+        FROM collections
+        WHERE user_id = ? AND book_id = ?
+    """, (current_user.id, id)).fetchone()
 
-        # Get custom collections with book membership status
-        custom_collections = conn.execute("""
+    # Get custom collections with book membership status
+    custom_collections = conn.execute("""
+        SELECT
+            uc.collection_id,
+            uc.name,
+            COUNT(cb2.book_id) as book_count,
+            CASE WHEN cb.book_id IS NOT NULL THEN 1 ELSE 0 END as has_book
+        FROM user_collections uc
+        LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
+            AND cb.book_id = ?
+        LEFT JOIN collection_books cb2 ON uc.collection_id = cb2.collection_id
+        WHERE uc.user_id = ?
+        GROUP BY uc.collection_id, uc.name
+    """, (id, current_user.id)).fetchall()
+
+    # Check if book is in user's wishlist
+    wishlist_entry = conn.execute("""
+        SELECT wishlist_id, notes, added_at
+        FROM wishlist
+        WHERE user_id = ? AND book_id = ?
+    """, (current_user.id, id)).fetchone()
+
+    collection_status = collection_status['status'] if collection_status else 'untracked'
+
+    can_manage = current_user.is_admin or book['added_by'] == current_user.id
+    owner = (conn.execute('SELECT username FROM users WHERE id = ?', (book['added_by'],)).fetchone()
+             if book['added_by'] is not None else None)
+
+    # Get library members for transfer functionality
+    library_member_ids = get_library_members(current_user.id)
+    library_members = []
+    if current_user.is_admin:
+        # Admins can give a book to anyone (e.g. unowned books after a user was deleted)
+        library_members = conn.execute('SELECT id, username FROM users ORDER BY username').fetchall()
+    elif len(library_member_ids) > 1:
+        # Get full user info for library members
+        placeholders = ','.join(['?' for _ in library_member_ids])
+        library_members = conn.execute(
+            f'SELECT id, username FROM users WHERE id IN ({placeholders})',
+            library_member_ids
+        ).fetchall()
+
+    # Get friend reviews for this book
+    # Friends are users who share the library with current user or are connected via friend requests
+    friend_reviews = []
+    if library_member_ids:
+        placeholders = ','.join(['?' for _ in library_member_ids])
+        friend_reviews = conn.execute(f"""
             SELECT
-                uc.collection_id,
-                uc.name,
-                COUNT(cb2.book_id) as book_count,
-                CASE WHEN cb.book_id IS NOT NULL THEN 1 ELSE 0 END as has_book
-            FROM user_collections uc
-            LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
-                AND cb.book_id = ?
-            LEFT JOIN collection_books cb2 ON uc.collection_id = cb2.collection_id
-            WHERE uc.user_id = ?
-            GROUP BY uc.collection_id, uc.name
-        """, (id, current_user.id)).fetchall()
+                u.id,
+                u.username,
+                u.avatar_url,
+                rd.rating,
+                rd.comment,
+                rs.date_completed,
+                c.status as reading_status
+            FROM read_data rd
+            JOIN users u ON rd.user_id = u.id
+            LEFT JOIN collections c ON c.user_id = rd.user_id AND c.book_id = rd.book_id
+            LEFT JOIN reading_sessions rs ON rs.user_id = rd.user_id
+                AND rs.book_id = rd.book_id
+                AND rs.date_completed IS NOT NULL
+            WHERE rd.book_id = ?
+                AND rd.user_id IN ({placeholders})
+                AND rd.user_id != ?
+                AND (rd.rating IS NOT NULL OR rd.comment IS NOT NULL)
+            GROUP BY u.id
+            ORDER BY MAX(rs.date_completed) DESC, u.username ASC
+        """, [id] + library_member_ids + [current_user.id]).fetchall()
 
-        # Check if book is in user's wishlist
-        wishlist_entry = conn.execute("""
-            SELECT wishlist_id, notes, added_at
-            FROM wishlist
-            WHERE user_id = ? AND book_id = ?
-        """, (current_user.id, id)).fetchone()
-
-        collection_status = collection_status['status'] if collection_status else 'untracked'
-
-        can_manage = current_user.is_admin or book['added_by'] == current_user.id
-        owner = (conn.execute('SELECT username FROM users WHERE id = ?', (book['added_by'],)).fetchone()
-                 if book['added_by'] is not None else None)
-
-        # Get library members for transfer functionality
-        library_member_ids = get_library_members(current_user.id)
-        library_members = []
-        if current_user.is_admin:
-            # Admins can give a book to anyone (e.g. unowned books after a user was deleted)
-            library_members = conn.execute('SELECT id, username FROM users ORDER BY username').fetchall()
-        elif len(library_member_ids) > 1:
-            # Get full user info for library members
-            placeholders = ','.join(['?' for _ in library_member_ids])
-            library_members = conn.execute(
-                f'SELECT id, username FROM users WHERE id IN ({placeholders})',
-                library_member_ids
-            ).fetchall()
-
-        # Get friend reviews for this book
-        # Friends are users who share the library with current user or are connected via friend requests
-        friend_reviews = []
-        if library_member_ids:
-            placeholders = ','.join(['?' for _ in library_member_ids])
-            friend_reviews = conn.execute(f"""
-                SELECT
-                    u.id,
-                    u.username,
-                    u.avatar_url,
-                    rd.rating,
-                    rd.comment,
-                    rs.date_completed,
-                    c.status as reading_status
-                FROM read_data rd
-                JOIN users u ON rd.user_id = u.id
-                LEFT JOIN collections c ON c.user_id = rd.user_id AND c.book_id = rd.book_id
-                LEFT JOIN reading_sessions rs ON rs.user_id = rd.user_id
-                    AND rs.book_id = rd.book_id
-                    AND rs.date_completed IS NOT NULL
-                WHERE rd.book_id = ?
-                    AND rd.user_id IN ({placeholders})
-                    AND rd.user_id != ?
-                    AND (rd.rating IS NOT NULL OR rd.comment IS NOT NULL)
-                GROUP BY u.id
-                ORDER BY MAX(rs.date_completed) DESC, u.username ASC
-            """, [id] + library_member_ids + [current_user.id]).fetchall()
-
-        return render_template(
-            "book_detail.html",
-            book=book,
-            read_data=read_data,
-            latest_session=latest_session,
-            reading_sessions=reading_sessions,
-            collection_status=collection_status,
-            custom_collections=custom_collections,
-            wishlist_entry=wishlist_entry,
-            in_wishlist=wishlist_entry is not None,
-            wishlist_owner=wishlist_owner,
-            wishlist_owner_user=wishlist_owner_user,
-            wishlist_owner_entry=wishlist_owner_entry,
-            library_members=library_members,
-            friend_reviews=friend_reviews,
-            owner_username=owner['username'] if owner else None,
-            # Who else has reviews/history on it: a hard delete is refused while
-            # anyone does (only computed for people who can delete)
-            others_with_data=(other_users_with_book_data(conn, id, book['added_by'])
-                              if can_manage else []),
-            can_manage=can_manage,
-        )
-    finally:
-        conn.close()
+    return render_template(
+        "book_detail.html",
+        book=book,
+        read_data=read_data,
+        latest_session=latest_session,
+        reading_sessions=reading_sessions,
+        collection_status=collection_status,
+        custom_collections=custom_collections,
+        wishlist_entry=wishlist_entry,
+        in_wishlist=wishlist_entry is not None,
+        wishlist_owner=wishlist_owner,
+        wishlist_owner_user=wishlist_owner_user,
+        wishlist_owner_entry=wishlist_owner_entry,
+        library_members=library_members,
+        friend_reviews=friend_reviews,
+        owner_username=owner['username'] if owner else None,
+        # Who else has reviews/history on it: a hard delete is refused while
+        # anyone does (only computed for people who can delete)
+        others_with_data=(other_users_with_book_data(conn, id, book['added_by'])
+                          if can_manage else []),
+        can_manage=can_manage,
+    )
 
 @books_blueprint.route("/remove/<int:id>", methods=["POST"])
 @login_required
@@ -637,95 +653,92 @@ def search():
     # Limit per_page to reasonable values
     per_page = max(12, min(per_page, 100))
 
-    conn = get_db_connection()
-    try:
-        # Get library members to filter books
-        library_member_ids = get_library_members(current_user.id)
+    conn = get_db()
+    # Get library members to filter books
+    library_member_ids = get_library_members(current_user.id)
 
-        # Search only books from current user or their library members
-        placeholders = ','.join(['?' for _ in library_member_ids])
-        query = f'''
-            SELECT b.* FROM library_books b
-            WHERE b.added_by IN ({placeholders})
-            AND (LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?)
-        '''
-        search_like = f"%{search_term}%"
-        params = library_member_ids + [search_like, search_like, search_like]
+    # Search only books from current user or their library members
+    placeholders = ','.join(['?' for _ in library_member_ids])
+    query = f'''
+        SELECT b.* FROM library_books b
+        WHERE b.added_by IN ({placeholders})
+        AND (LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?)
+    '''
+    search_like = f"%{search_term}%"
+    params = library_member_ids + [search_like, search_like, search_like]
 
-        # Removed (deaccessioned) books are hidden unless asked for
-        query += removed_filter(request.args.get('show_removed'))
+    # Removed (deaccessioned) books are hidden unless asked for
+    query += removed_filter(request.args.get('show_removed'))
 
-        # Apply filters if they exist (simplified)
-        if request.args.get('genre'):
-            query += " AND LOWER(b.genre) = LOWER(?)"
-            params.append(request.args.get('genre'))
+    # Apply filters if they exist (simplified)
+    if request.args.get('genre'):
+        query += " AND LOWER(b.genre) = LOWER(?)"
+        params.append(request.args.get('genre'))
 
-        if request.args.get('read_status'):
-            query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
-            params.extend([current_user.id, request.args.get('read_status')])
+    if request.args.get('read_status'):
+        query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
+        params.extend([current_user.id, request.args.get('read_status')])
 
-        if request.args.get('rating'):
-            query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
-            params.extend([current_user.id, int(request.args.get('rating'))])
+    if request.args.get('rating'):
+        query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
+        params.extend([current_user.id, int(request.args.get('rating'))])
 
-        tags = request.args.getlist('tags[]')
-        if tags:
-            # Validate tags exist for this user
-            valid_tags_query = 'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?'
-            valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
+    tags = request.args.getlist('tags[]')
+    if tags:
+        # Validate tags exist for this user
+        valid_tags_query = 'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?'
+        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
 
-            # Filter to only valid tags
-            valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
-            if valid_tags_in_request:
-                placeholders = ','.join(['?' for _ in valid_tags_in_request])
-                query += f" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = ? AND t.tag_name IN ({placeholders}))"
-                params.append(current_user.id)
-                params.extend(valid_tags_in_request)
+        # Filter to only valid tags
+        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
+        if valid_tags_in_request:
+            placeholders = ','.join(['?' for _ in valid_tags_in_request])
+            query += f" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = ? AND t.tag_name IN ({placeholders}))"
+            params.append(current_user.id)
+            params.extend(valid_tags_in_request)
 
-        # Get total count before pagination
-        count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")
-        total_count = conn.execute(count_query, params).fetchone()[0]
+    # Get total count before pagination
+    count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")
+    total_count = conn.execute(count_query, params).fetchone()[0]
 
-        # Add sorting and pagination
-        query += f" ORDER BY b.{sort_by} {sort_order} LIMIT ? OFFSET ?"
-        offset = (page - 1) * per_page
-        params.extend([per_page, offset])
+    # Add sorting and pagination
+    query += f" ORDER BY b.{sort_by} {sort_order} LIMIT ? OFFSET ?"
+    offset = (page - 1) * per_page
+    params.extend([per_page, offset])
 
-        # Get paginated books
-        books = conn.execute(query, params).fetchall()
-        has_more = (offset + len(books)) < total_count
+    # Get paginated books
+    books = conn.execute(query, params).fetchall()
+    has_more = (offset + len(books)) < total_count
 
-        # Handle AJAX requests for infinite scroll
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            books_data = [{
-                'id': book['id'],
-                'title': book['title'],
-                'author': book['author'],
-                'cover_image_url': book['cover_image_url'],
-                'removed': book['removed_at'] is not None
-            } for book in books]
+    # Handle AJAX requests for infinite scroll
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        books_data = [{
+            'id': book['id'],
+            'title': book['title'],
+            'author': book['author'],
+            'cover_image_url': book['cover_image_url'],
+            'removed': book['removed_at'] is not None
+        } for book in books]
 
-            return jsonify({
-                'books': books_data,
-                'total_count': total_count,
-                'has_more': has_more,
-                'current_page': page
-            })
+        return jsonify({
+            'books': books_data,
+            'total_count': total_count,
+            'has_more': has_more,
+            'current_page': page
+        })
 
-        # Get filter options for the template
-        filter_options = get_filter_options(library_member_ids)
+    # Get filter options for the template
+    filter_options = get_filter_options(library_member_ids)
 
-        return render_template("search.html",
-                             books=books,
-                             filter_options=filter_options,
-                             sort_by=sort_by,
-                             sort_order=sort_order,
-                             search_term=search_term,
-                             total_count=total_count,
-                             has_more=has_more,
-                             current_page=page)
-    finally:
-        conn.close()
+    return render_template("search.html",
+                         books=books,
+                         filter_options=filter_options,
+                         sort_by=sort_by,
+                         sort_order=sort_order,
+                         search_term=search_term,
+                         total_count=total_count,
+                         has_more=has_more,
+                         current_page=page)
 
 
 @books_blueprint.route("/transfer/<int:book_id>", methods=["POST"])
@@ -738,7 +751,7 @@ def transfer_book(book_id):
         flash("Please select a user to transfer the book to", "error")
         return redirect(request.referrer or url_for('base.index'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Get the book and verify current user owns it
         book = conn.execute(
@@ -785,7 +798,5 @@ def transfer_book(book_id):
     except Exception as e:
         current_app.logger.error(f"Error transferring book: {str(e)}")
         flash("Error transferring book", "error")
-    finally:
-        conn.close()
 
     return redirect(request.referrer or url_for('base.index'))

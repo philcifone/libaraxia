@@ -3,7 +3,7 @@ from functools import wraps
 import re
 from flask import abort, redirect, url_for
 from flask_login import current_user
-from utils.database import get_db_connection
+from utils.database import get_db
 
 # Usernames appear in URLs and in HTML/JS, so keep them to a safe character set
 USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]{3,30}$')
@@ -47,9 +47,8 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # First, check if any users exist in the database
-        conn = get_db_connection()
+        conn = get_db()
         user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-        conn.close()
 
         # If no users exist, proceed (this is first run)
         if user_count == 0:
@@ -67,18 +66,15 @@ def is_friends_with(user_id, other_user_id):
     if user_id == other_user_id:
         return True  # User is always "friends" with themselves
 
-    conn = get_db_connection()
-    try:
-        friendship = conn.execute('''
-            SELECT id FROM friendships
-            WHERE (user_id_1 = ? AND user_id_2 = ?)
-               OR (user_id_1 = ? AND user_id_2 = ?)
-        ''', (min(user_id, other_user_id), max(user_id, other_user_id),
-              min(user_id, other_user_id), max(user_id, other_user_id))).fetchone()
+    conn = get_db()
+    friendship = conn.execute('''
+        SELECT id FROM friendships
+        WHERE (user_id_1 = ? AND user_id_2 = ?)
+           OR (user_id_1 = ? AND user_id_2 = ?)
+    ''', (min(user_id, other_user_id), max(user_id, other_user_id),
+          min(user_id, other_user_id), max(user_id, other_user_id))).fetchone()
 
-        return friendship is not None
-    finally:
-        conn.close()
+    return friendship is not None
 
 
 def get_friendship_status(current_user_id, target_user_id):
@@ -89,35 +85,32 @@ def get_friendship_status(current_user_id, target_user_id):
     if current_user_id == target_user_id:
         return 'self'
 
-    conn = get_db_connection()
-    try:
-        # Check if friends
-        friendship = conn.execute('''
-            SELECT id FROM friendships
-            WHERE (user_id_1 = ? AND user_id_2 = ?)
-               OR (user_id_1 = ? AND user_id_2 = ?)
-        ''', (min(current_user_id, target_user_id), max(current_user_id, target_user_id),
-              min(current_user_id, target_user_id), max(current_user_id, target_user_id))).fetchone()
+    conn = get_db()
+    # Check if friends
+    friendship = conn.execute('''
+        SELECT id FROM friendships
+        WHERE (user_id_1 = ? AND user_id_2 = ?)
+           OR (user_id_1 = ? AND user_id_2 = ?)
+    ''', (min(current_user_id, target_user_id), max(current_user_id, target_user_id),
+          min(current_user_id, target_user_id), max(current_user_id, target_user_id))).fetchone()
 
-        if friendship:
-            return 'friends'
+    if friendship:
+        return 'friends'
 
-        # Check for pending friend request
-        friend_request = conn.execute('''
-            SELECT sender_id FROM friend_requests
-            WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-              AND status = 'pending'
-        ''', (current_user_id, target_user_id, target_user_id, current_user_id)).fetchone()
+    # Check for pending friend request
+    friend_request = conn.execute('''
+        SELECT sender_id FROM friend_requests
+        WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+          AND status = 'pending'
+    ''', (current_user_id, target_user_id, target_user_id, current_user_id)).fetchone()
 
-        if friend_request:
-            if friend_request['sender_id'] == current_user_id:
-                return 'request_sent'
-            else:
-                return 'request_received'
+    if friend_request:
+        if friend_request['sender_id'] == current_user_id:
+            return 'request_sent'
+        else:
+            return 'request_received'
 
-        return 'none'
-    finally:
-        conn.close()
+    return 'none'
 
 
 def get_library_members(user_id):
@@ -125,27 +118,24 @@ def get_library_members(user_id):
     Get all users who share a library with the given user (including the user themselves).
     Returns a list of user IDs.
     """
-    conn = get_db_connection()
-    try:
-        # Find the library this user belongs to
-        library = conn.execute('''
-            SELECT library_id FROM library_members
-            WHERE user_id = ?
-        ''', (user_id,)).fetchone()
+    conn = get_db()
+    # Find the library this user belongs to
+    library = conn.execute('''
+        SELECT library_id FROM library_members
+        WHERE user_id = ?
+    ''', (user_id,)).fetchone()
 
-        if not library:
-            # User is not in any library group, return just themselves
-            return [user_id]
+    if not library:
+        # User is not in any library group, return just themselves
+        return [user_id]
 
-        # Get all members of this library
-        members = conn.execute('''
-            SELECT user_id FROM library_members
-            WHERE library_id = ?
-        ''', (library['library_id'],)).fetchall()
+    # Get all members of this library
+    members = conn.execute('''
+        SELECT user_id FROM library_members
+        WHERE library_id = ?
+    ''', (library['library_id'],)).fetchall()
 
-        return [m['user_id'] for m in members]
-    finally:
-        conn.close()
+    return [m['user_id'] for m in members]
 
 
 def shares_library_with(user_id, other_user_id):

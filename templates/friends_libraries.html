@@ -1,18 +1,9 @@
-<!DOCTYPE html>
-<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Friends' Libraries - libaraxia</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
+{% extends 'base.html' %}
 
-<body class="bg-primary text-content-primary p-6">
-    {% include '_sidebar.html' %}
+{% block title %}Friends' Libraries - libaraxia{% endblock %}
+{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
-
+{% block content %}
     <!-- Library View Tabs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
         <div class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-card">
@@ -88,5 +79,4 @@
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% endblock %}

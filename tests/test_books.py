@@ -158,6 +158,42 @@ def test_wishlist_remove_deletes_own_wishlist_book(client, db, people):
     assert fk_violations(db) == []
 
 
+def test_wishlist_remove_keeps_rated_book_out_of_library(client, db, people):
+    """Phase 5 leftover: a rated wishlist book (e.g. a Goodreads to-read row
+    with a rating) used to land in your library when removed from the
+    wishlist. Now it's marked removed and kept on "Read but not owned"."""
+    carol = people['carol']
+    book = add_book(db, carol, 'Read it, never bought it')
+    db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (carol, book))
+    db.execute("INSERT INTO read_data (user_id, book_id, rating, comment) VALUES (?, ?, 4, 'Good')", (carol, book))
+    db.commit()
+    login(client, 'carol')
+    client.post(f'/wishlist/remove/{book}')
+
+    assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE book_id = ?', book) == 1      # review kept
+    assert scalar(db, 'SELECT removed_at IS NOT NULL FROM books WHERE id = ?', book) == 1
+    assert 'Read it, never bought it' not in client.get('/base/index').get_data(as_text=True)
+    assert scalar(db, """SELECT COUNT(*) FROM collection_books cb
+                         JOIN user_collections uc ON uc.collection_id = cb.collection_id
+                         WHERE uc.user_id = ? AND uc.name = 'Read but not owned' AND cb.book_id = ?""",
+                  carol, book) == 1
+    assert fk_violations(db) == []
+
+
+def test_wishlist_remove_unread_book_with_data_is_not_shelved_as_read(client, db, people):
+    """Data that isn't reading it (here a tag) keeps the book out of the library
+    but doesn't call it read."""
+    carol = people['carol']
+    book = add_book(db, carol, 'Tagged only')
+    db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (carol, book))
+    db.execute("INSERT INTO book_tags (user_id, book_id, tag_name) VALUES (?, ?, 'gift')", (carol, book))
+    db.commit()
+    login(client, 'carol')
+    client.post(f'/wishlist/remove/{book}')
+    assert scalar(db, 'SELECT removed_at IS NOT NULL FROM books WHERE id = ?', book) == 1
+    assert scalar(db, "SELECT COUNT(*) FROM user_collections WHERE name = 'Read but not owned'") == 0
+
+
 # --- cover paths (arbitrary file deletion fix) --------------------------------------
 
 UNSAFE_PATHS = ['../library.db', '/etc/passwd', 'uploads/../../app.py', 'C:\\x.jpg',

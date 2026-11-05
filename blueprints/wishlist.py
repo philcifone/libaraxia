@@ -1,6 +1,6 @@
 from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
 from flask_login import login_required, current_user
-from utils.database import get_db_connection, get_db
+from utils.database import get_db
 from models import other_users_with_book_data, can_view_book
 from utils.book_utils import (
     fetch_book_details_from_isbn,
@@ -354,14 +354,24 @@ def remove_from_wishlist(book_id):
         (current_user.id, book_id)).rowcount
     book = conn.execute("SELECT added_by FROM books WHERE id = ?", (book_id,)).fetchone()
 
-    if (removed and book and book['added_by'] == current_user.id
-            and not other_users_with_book_data(conn, book_id, None)):
-        conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
-        book_was_deleted = True
+    shelved_as_read = False
+    if removed and book and book['added_by'] == current_user.id:
+        if not other_users_with_book_data(conn, book_id, None):
+            conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
+            book_was_deleted = True
+        else:
+            # The entry is kept because someone (usually you: a rating from a
+            # Goodreads to-read row) has data on it. Without its wishlist row
+            # it would count as owned and show up in your library, so mark
+            # it removed instead; reviews keep working on removed books.
+            shelved_as_read = _keep_as_not_owned(conn, book_id)
     conn.commit()
 
     if book_was_deleted:
         flash("Book removed from wishlist and deleted.", "success")
+    elif shelved_as_read:
+        flash(f"Book removed from wishlist. You've read it, so it's kept on your "
+              f"\"{READ_NOT_OWNED}\" collection with your review.", "success")
     elif removed:
         flash("Book removed from wishlist.", "success")
     else:
@@ -379,6 +389,38 @@ def remove_from_wishlist(book_id):
     # Default fallback to wishlist
     else:
         return redirect(url_for("wishlist.view_wishlist"))
+
+
+# Custom collection for books you've read but don't own, kept when such a book
+# leaves your wishlist (see remove_from_wishlist).
+READ_NOT_OWNED = "Read but not owned"
+
+
+def _keep_as_not_owned(conn, book_id):
+    """Mark the current user's ex-wishlist book removed (not in the library).
+
+    If they've read it (a rating/review or a 'read' status), also put it on
+    the READ_NOT_OWNED collection, created on first use. Returns True if it
+    went on that collection. Restoring the book on its page (you bought it
+    after all) brings it into the library as usual.
+    """
+    conn.execute("""
+        UPDATE books SET removed_at = CURRENT_TIMESTAMP, removed_note = 'Removed from wishlist; not owned'
+        WHERE id = ? AND removed_at IS NULL
+    """, (book_id,))
+    has_read = conn.execute("""
+        SELECT 1 FROM read_data WHERE user_id = ? AND book_id = ?
+        UNION SELECT 1 FROM collections WHERE user_id = ? AND book_id = ? AND status = 'read'
+    """, (current_user.id, book_id, current_user.id, book_id)).fetchone()
+    if not has_read:
+        return False
+    conn.execute("INSERT OR IGNORE INTO user_collections (user_id, name) VALUES (?, ?)",
+                 (current_user.id, READ_NOT_OWNED))
+    collection_id = conn.execute("SELECT collection_id FROM user_collections WHERE user_id = ? AND name = ?",
+                                 (current_user.id, READ_NOT_OWNED)).fetchone()[0]
+    conn.execute("INSERT OR IGNORE INTO collection_books (collection_id, book_id) VALUES (?, ?)",
+                 (collection_id, book_id))
+    return True
 
 
 @wishlist_blueprint.route("/update_notes/<int:book_id>", methods=["POST"])
