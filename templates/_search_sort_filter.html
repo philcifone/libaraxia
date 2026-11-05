@@ -1,23 +1,26 @@
+{# Header search dropdown: search and filters. Sort and the grid/list switch
+   live in the view bar above the grid (_view_bar.html). Both forms are GET,
+   so no CSRF token: it would only end up in URLs and logs. #}
 <!-- Main container with transitions for smooth show/hide -->
 <div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl space-y-4 bg-primary
             transform -translate-y-full transition-all duration-300 ease-in-out opacity-0 invisible
             search-form-container z-30">
 
-    <!-- Search and Sort Container -->
-    <div class="flex flex-col lg:flex-row gap-4 items-stretch bg-secondary-bg rounded-lg p-4 shadow-lg border border-card">
+    <!-- Search -->
+    <div class="bg-secondary-bg rounded-lg p-4 card">
         <!-- Search Form -->
-        <form method="GET" action="{{ url_for('books.search') }}" class="flex-1" data-submit="showLoading" data-loading="Searching...">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <form method="GET" action="{{ url_for('books.search') }}" data-submit="showLoading" data-loading="Searching...">
             <div class="relative">
                 <input type="text"
                        id="search_term"
+                       aria-label="Search your library"
                        name="search_term"
                        placeholder="Search by title, author, year..."
                        value="{{ request.args.get('search_term', '') }}"
                        class="w-full pl-4 pr-10 py-2.5 bg-primary-bg border border-rule-strong rounded-lg
                               focus:ring-2 focus:ring-accent focus:border-transparent
                               placeholder-gray-400 text-content-primary transition-all">
-                <button type="submit"
+                <button type="submit" aria-label="Search"
                         class="absolute right-2 top-1/2 transform -translate-y-1/2 text-accent hover:text-accent-hover transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
@@ -25,64 +28,11 @@
                 </button>
             </div>
         </form>
-
-        <!-- View Toggle -->
-        <div class="flex items-center gap-2 border-r border-gray-600 pr-4">
-            <label class="text-content-secondary font-medium text-sm">View:</label>
-            <div class="flex bg-primary-bg rounded-lg p-1">
-                <button type="button"
-                        id="grid-view-btn"
-                        data-click="switchView" data-view="grid"
-                        class="view-toggle-btn active p-2 rounded hover:bg-accent/20 transition-colors"
-                        aria-label="Grid view">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
-                    </svg>
-                </button>
-                <button type="button"
-                        id="list-view-btn"
-                        data-click="switchView" data-view="list"
-                        class="view-toggle-btn p-2 rounded hover:bg-accent/20 transition-colors"
-                        aria-label="List view">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Sort Controls -->
-        <form method="GET"
-              action="{{ url_for('base.index') }}"
-              id="sort-form"
-              class="flex flex-wrap gap-2 items-center">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            <label for="sort_by" class="text-content-secondary font-medium text-sm">Sort:</label>
-            <select name="sort_by"
-                    id="sort_by"
-                    data-change="submitSortForm"
-                    class="bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                           focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
-                <option value="title" {% if sort_by=="title" %}selected{% endif %}>Title</option>
-                <option value="author" {% if sort_by=="author" %}selected{% endif %}>Author</option>
-                <option value="publish_year" {% if sort_by=="publish_year" %}selected{% endif %}>Year</option>
-                <option value="created_at" {% if sort_by=="created_at" %}selected{% endif %}>Date Added</option>
-            </select>
-
-            <select name="sort_order"
-                    id="sort_order"
-                    data-change="submitSortForm"
-                    class="bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                           focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
-                <option value="asc" {% if sort_order=="asc" %}selected{% endif %}>A-Z</option>
-                <option value="desc" {% if sort_order=="desc" %}selected{% endif %}>Z-A</option>
-            </select>
-        </form>
     </div>
 
     <!-- Active Filters Display -->
     <div id="active-filters-display" class="hidden">
-        <div class="bg-secondary-bg rounded-lg px-4 py-2 shadow-md border border-card">
+        <div class="bg-secondary-bg rounded-lg px-4 py-2 card">
             <div class="flex flex-wrap items-center gap-2">
                 <span class="text-content-secondary text-sm font-medium">Active filters:</span>
                 <div id="active-filter-pills" class="flex flex-wrap gap-2"></div>
@@ -95,7 +45,7 @@
     </div>
 
     <!-- Filter Section - Collapsible -->
-    <div class="bg-secondary-bg rounded-lg shadow-lg overflow-hidden border border-card">
+    <div class="bg-secondary-bg rounded-lg overflow-hidden card">
         <!-- Filter Toggle Button -->
         <button data-click="toggleFilters"
                 type="button"
@@ -120,8 +70,14 @@
 
         <!-- Filter Panel -->
         <div class="filter-content hidden transition-all duration-200" id="filter-panel">
-            <form id="filter-form" method="GET" action="{{ url_for('base.index') }}" class="p-4 space-y-4">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            {# Filters apply to the page you're on (library, shared library or
+               search results), keeping its search term, member and sort. #}
+            <form id="filter-form" method="GET" action="{{ request.path }}" class="p-4 space-y-4">
+                {% for key in request.args %}
+                {% if key in ('search_term', 'member', 'sort_by', 'sort_order', 'view') %}
+                <input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">
+                {% endif %}
+                {% endfor %}
 
                 <!-- Filter Groups Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -215,14 +171,12 @@
                 <div class="flex justify-end gap-3 pt-2 border-t border-gray-700">
                     <button type="button"
                             data-click="clearFilters"
-                            class="px-4 py-2 text-content-primary bg-primary-bg hover:bg-primary-hover
-                                   rounded-lg border border-gray-600 transition-all font-medium">
+                            class="px-4 py-2 text-content-primary bg-primary-bg hover:bg-primary-hover rounded-lg font-medium btn btn-outline">
                         Clear Filters
                     </button>
                     <button type="submit"
                             data-click="showLoading" data-loading="Applying filters..."
-                            class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg
-                                   transition-all font-medium shadow-md hover:shadow-lg">
+                            class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium btn">
                         Apply Filters
                     </button>
                 </div>

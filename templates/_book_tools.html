@@ -1,0 +1,71 @@
+{# Owner/admin "Book tools" on the edit page: transfer ownership and permanent
+   delete. (Remove from Library / Put Back stays on the book page: it's the
+   everyday action.) The edit route only renders for the owner or an admin;
+   the transfer and delete routes check again on POST.
+   Needs: book, library_members, owner_username, others_with_data, in_wishlist. #}
+<details id="book-tools" class="group bg-secondary-bg rounded-xl p-4 sm:p-6 mt-8 card">
+    <summary class="cursor-pointer list-none flex items-center gap-2 text-xl font-display text-content-primary">
+        <svg class="w-5 h-5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        Book tools
+    </summary>
+
+    <div class="mt-6 space-y-8">
+        {# Transfer: household members (admins: anyone) #}
+        {% if library_members and library_members|length > 1 %}
+        <section class="space-y-3">
+            <h2 class="label text-sm pb-1">Transfer ownership</h2>
+            <p class="text-sm text-content-secondary">
+                Current owner: <span class="text-content-primary font-bold">{{ owner_username or 'No owner' }}</span>.
+                Give this book to another member of your household; it moves to their shelf.
+            </p>
+            <form method="POST" action="{{ url_for('books.transfer_book', book_id=book['id']) }}"
+                  class="flex flex-col sm:flex-row gap-3"
+                  data-confirm="Transfer ownership of this book? The new owner will be responsible for it."
+                  data-confirm-ok="Transfer">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <label for="new_owner_id" class="sr-only">New owner</label>
+                <select name="new_owner_id" id="new_owner_id" required
+                        class="flex-1 bg-primary border border-rule-strong rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    <option value="">Select a user...</option>
+                    {% for member in library_members %}
+                        {% if member.id != book['added_by'] %}
+                        <option value="{{ member.id }}">{{ member.username }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
+                    Transfer Book
+                </button>
+            </form>
+        </section>
+        {% endif %}
+
+        {# Permanent delete: for mistakes (duplicates, bad scans) #}
+        <section class="space-y-3">
+            <h2 class="label text-sm pb-1">Delete permanently</h2>
+            {% if others_with_data %}
+            <p class="text-sm text-content-secondary">
+                Can't delete: {{ others_with_data|join(', ') }} {{ 'has' if others_with_data|length == 1 else 'have' }}
+                reviews or reading history on this book, and deleting would erase them.
+                {% if not in_wishlist %}Use <em>Remove from Library</em> on the book page instead.{% endif %}
+            </p>
+            {% else %}
+            <p class="text-sm text-content-secondary">For entries added by mistake. This erases the book and your own status, review and history for it. If the book just left the house, use <em>Remove from Library</em> on the book page instead.</p>
+            <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST"
+                  data-confirm="{{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.") }}"
+                  data-confirm-ok="Delete">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                        class="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-on-accent text-sm rounded-lg hover:bg-red-700 btn">
+                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M15 4H5L4 5v1h12V5l-1-1zM7 16c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V7H7v9zm2-7h2v5H9V9z"/>
+                    </svg>
+                    Delete Permanently
+                </button>
+            </form>
+            {% endif %}
+        </section>
+    </div>
+</details>

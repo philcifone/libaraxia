@@ -21,12 +21,12 @@
         </div>
 
         {% if not books %}
-        <div class="bg-secondary rounded-lg border border-card p-12 text-center">
+        <div class="bg-secondary rounded-lg p-12 text-center card">
             <p class="text-content-secondary text-lg">Every book has an owner.</p>
         </div>
         {% else %}
         <form method="POST" action="{{ url_for('admin.reassign_books') }}"
-              class="bg-secondary rounded-lg border border-card p-4 mb-6 flex flex-wrap items-center gap-3"
+              class="bg-secondary rounded-lg p-4 mb-6 flex flex-wrap items-center gap-3 card"
               data-confirm="{{ ("Give all " ~ books|length ~ " unowned books to the selected user?") }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="hidden" name="all" value="1"/>
@@ -36,10 +36,10 @@
                 <option value="">Choose…</option>
                 {% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
             </select>
-            <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent">Reassign all</button>
+            <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn">Reassign all</button>
         </form>
 
-        <div class="bg-secondary rounded-lg border border-card divide-y divide-gray-700">
+        <div class="bg-secondary rounded-lg divide-y divide-gray-700 card">
             {% for b in books %}
             <div class="flex flex-wrap items-center gap-4 p-4">
                 <a href="{{ url_for('books.show_book', id=b.id) }}" class="flex-1 min-w-[12rem]">
@@ -59,7 +59,7 @@
                         <option value="">Give to…</option>
                         {% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
                     </select>
-                    <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm">Save</button>
+                    <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm btn">Save</button>
                 </form>
             </div>
             {% endfor %}

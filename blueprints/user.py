@@ -152,7 +152,55 @@ def calculate_user_stats(conn, user_id):
     if streak_stats:
         result.update(dict(streak_stats))
 
+    result['by_month'] = reading_by_month(conn, user_id)
     return result
+
+def reading_by_month(conn, user_id, today=None):
+    """Books finished per month, for the profile chart: twelve months ending
+    this month. If nothing was finished in that window (say the reading log
+    went quiet), the window ends at the last finished book instead, so the
+    chart still shows something; the template prints the range either way.
+
+    A book finished twice in one month counts once. Returns None when the
+    user has never finished a book.
+    """
+    rows = conn.execute("""
+        SELECT strftime('%Y-%m', date_completed) AS month, COUNT(DISTINCT book_id) AS books
+        FROM reading_sessions
+        WHERE user_id = ? AND date_completed IS NOT NULL
+          AND strftime('%Y-%m', date_completed) IS NOT NULL
+        GROUP BY month
+    """, (user_id,)).fetchall()
+    counts = {row['month']: row['books'] for row in rows}
+    if not counts:
+        return None
+
+    today = today or datetime.now()
+    end_y, end_m = today.year, today.month
+
+    def window(y, m):
+        """The twelve (year, month) pairs ending at y-m, oldest first."""
+        months = []
+        for _ in range(12):
+            months.append((y, m))
+            y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+        return months[::-1]
+
+    months = window(end_y, end_m)
+    if not any(f'{y:04d}-{m:02d}' in counts for y, m in months):
+        last = max(counts)                       # 'YYYY-MM' sorts as a date
+        months = window(int(last[:4]), int(last[5:]))
+
+    bars = [{'year': y,
+             'label': datetime(y, m, 1).strftime('%b'),
+             'name': datetime(y, m, 1).strftime('%B %Y'),
+             'books': counts.get(f'{y:04d}-{m:02d}', 0)} for y, m in months]
+    peak = max(bar['books'] for bar in bars)
+    for bar in bars:
+        bar['pct'] = round(100 * bar['books'] / peak) if peak else 0
+    return {'bars': bars, 'peak': peak, 'total': sum(bar['books'] for bar in bars),
+            'start': bars[0]['name'], 'end': bars[-1]['name']}
+
 
 @user_blueprint.route('/<username>')
 @login_required

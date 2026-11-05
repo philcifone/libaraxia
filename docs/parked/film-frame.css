@@ -1,0 +1,70 @@
+/* Film-frame cover: PARKED, not loaded anywhere.
+
+   Built in Phase 7.1 for the book page, removed again on 2026-11-05 (Phil
+   didn't like it on books). Kept because it may suit the VHS/DVD covers in
+   the Phase 9 Shelf style's video-store rack, or the archive fork
+   (FORK-SPEC.md). In House style the cover sits in a strip of film stock with
+   sprocket holes top and bottom and the ISBN (or barcode) printed on the edge
+   in amber, like a film edge code. Classic hides the frame.
+
+   To use it: paste the rules into static/styles.css inside @layer components,
+   add the three tokens to the light :root block (they're the same in both
+   modes), and wrap the cover:
+
+     <figure class="film-frame w-72 md:w-full max-w-[300px] mx-auto">
+         <img src="..." alt="..." class="w-full">
+         <figcaption class="film-edge">&#9656; {{ book['isbn'] or 'NO ISBN' }}</figcaption>
+     </figure>
+
+   Tokens (RGB triplets, like every colour in styles.css):
+
+     --film: 29 32 33;           #1d2021 film stock, both modes
+     --film-edge: 250 189 47;    #fabd2f amber edge print
+     --film-hole: 235 219 178;   #ebdbb2 sprocket holes (a fixed cream: the
+                                 paper colour made them vanish in dark mode)
+*/
+
+/* ---- Film-frame cover (book page) ----
+   House: the cover sits in a strip of film stock, sprocket holes top and
+   bottom, the ISBN printed on the edge in amber like a film edge code.
+   Classic: just the cover; the caption is hidden. */
+.film-frame {
+    position: relative;
+    padding: 20px 10px 30px;
+    background: rgb(var(--film));
+    border: var(--bw-card) solid var(--card-edge);
+    box-shadow: var(--sh-card);
+}
+.film-frame::before,
+.film-frame::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    height: 7px;
+    /* holes: 7px wide every 15px, lit from behind (cream in both modes) */
+    background: repeating-linear-gradient(90deg, rgb(var(--film-hole)) 0 7px, transparent 7px 15px);
+}
+.film-frame::before { top: 6px; }
+.film-frame::after  { bottom: 6px; }
+.film-edge {
+    position: absolute;
+    left: 10px;
+    bottom: 13px;
+    font-size: .65rem;
+    line-height: 1;
+    letter-spacing: .12em;
+    color: rgb(var(--film-edge));
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: calc(100% - 20px);
+}
+[data-style="classic"] .film-frame {
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+}
+[data-style="classic"] .film-frame::before,
+[data-style="classic"] .film-frame::after,
+[data-style="classic"] .film-edge { display: none; }

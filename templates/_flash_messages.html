@@ -1,16 +1,16 @@
 {# Server-side flash messages. Closing, auto-dismiss after 5 s and
    showFlashMessage() for messages raised from JS are in static/common.js;
    the slide animations are in static/styles.css. #}
-<div id="flash-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-md">
+<div id="flash-container" class="fixed top-4 inset-x-4 sm:left-auto sm:right-4 z-50 space-y-2 sm:max-w-md">
     {% for category, message in get_flashed_messages(with_categories=true) %}
-        <div role="status" class="flash-message mb-2 px-4 py-3 rounded-lg shadow-lg text-white flex items-start gap-3 animate-slide-in
-            {% if category == 'success' %}bg-green-500
-            {% elif category in ['danger', 'error', 'warning'] %}bg-red-500
-            {% else %}bg-primary
+        <div role="status" class="flash-message mb-2 px-4 py-3 rounded-lg flex items-start gap-3 animate-slide-in
+            {% if category == 'success' %}flash-success
+            {% elif category in ['danger', 'error', 'warning'] %}flash-error
+            {% else %}flash-info
             {% endif %}">
             <div class="flex-1">{{ message }}</div>
             <button type="button" data-dismiss-flash
-                    class="flex-shrink-0 text-white hover:text-content-secondary transition-colors focus:outline-none"
+                    class="flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
                     aria-label="Close message">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

@@ -44,12 +44,12 @@ async function toggleLike(button) {
         } else {
             console.error('Error toggling like:', data.error);
             if (data.error === 'Cannot like your own activity') {
-                alert('You cannot like your own activity!');
+                showFlashMessage('error', 'You cannot like your own activity!');
             }
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while processing your request.');
+        showFlashMessage('error', 'An error occurred while processing your request.');
     }
 }
 

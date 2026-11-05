@@ -21,7 +21,7 @@
         </div>
 
         <!-- Step 1: clear placeholders -->
-        <div class="bg-secondary rounded-lg border border-card p-4 mb-6">
+        <div class="bg-secondary rounded-lg p-4 mb-6 card">
             <h2 class="text-xl font-display text-content-primary mb-2">1. Placeholder covers ({{ books|length }})</h2>
             {% if not books %}
             <p class="text-content-secondary text-sm">No placeholder covers found.</p>
@@ -29,7 +29,7 @@
             <form method="POST" action="{{ url_for('admin.clear_placeholder_covers') }}" class="mb-4"
                   data-confirm="{{ ("Clear " ~ books|length ~ " placeholder covers? The image files are deleted.") }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent">
+                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn">
                     Clear {{ books|length }} placeholder cover(s)
                 </button>
             </form>
@@ -48,7 +48,7 @@
         </div>
 
         <!-- Step 2: fetch real covers -->
-        <div class="bg-secondary rounded-lg border border-card p-4">
+        <div class="bg-secondary rounded-lg p-4 card">
             <h2 class="text-xl font-display text-content-primary mb-2">2. Fetch missing covers</h2>
             <p class="text-content-secondary text-sm mb-4">
                 {{ missing }} book(s) with an ISBN have no cover. This looks them all up in the background
@@ -60,7 +60,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="scope" value="all"/>
                 <input type="hidden" name="next" value="{{ url_for('admin.placeholder_covers') }}"/>
-                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent">
+                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn">
                     Fetch all {{ missing }} missing covers
                 </button>
             </form>

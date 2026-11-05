@@ -16,7 +16,7 @@
         <div class="space-y-6">
             {% if activities %}
                 {% for activity in activities %}
-                    <div class="bg-secondary rounded-lg shadow-md p-6 pb-16 hover:shadow-xl transition-shadow relative border border-card">
+                    <div class="bg-secondary rounded-lg p-6 pb-16 transition-shadow relative card">
                         <!-- Action buttons in top right -->
                         <div class="absolute top-4 right-4 flex gap-3 items-center">
                             <!-- Dismiss button (only for user's own activities) -->
@@ -38,18 +38,13 @@
                         <div class="flex gap-4">
                             <!-- Book Cover -->
                             <div class="flex-shrink-0">
-                                <a href="/books/book/{{ activity.book_id }}">
+                                <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}">
                                     {% if activity.cover_image_url %}
                                         <img src="{{ url_for('static', filename=activity.cover_image_url) }}"
                                              alt="{{ activity.title }}"
                                              class="w-24 h-36 object-cover rounded-lg shadow-md">
                                     {% else %}
-                                        <div class="w-24 h-36 bg-accent/20 rounded-lg flex items-center justify-center">
-                                            <svg class="w-12 h-12 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                            </svg>
-                                        </div>
+                                        {% with title=activity.title, size='sm', box='w-24 h-36 rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                                     {% endif %}
                                 </a>
                             </div>
@@ -228,13 +223,11 @@
                     </div>
                 {% endfor %}
             {% else %}
-                <div class="text-center py-12">
-                    <svg class="w-24 h-24 mx-auto mb-4 text-content-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                    </svg>
-                    <p class="text-xl text-content-secondary">No activity yet</p>
-                    <p class="text-content-secondary mt-2">Start adding books and reviews to see your activity feed!</p>
-                </div>
+                {% with title='Nothing in your feed yet',
+                         text="Friends' reviews, finished books and wishlist additions show up here. Find friends with the search on your profile.",
+                         links=[(url_for('user.profile', username=current_user.username), 'Find friends')] %}
+                    {% include '_empty_state.html' %}
+                {% endwith %}
             {% endif %}
         </div>
     </div>

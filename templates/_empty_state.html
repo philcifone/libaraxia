@@ -1,0 +1,23 @@
+{# Empty state for a page with nothing to show yet (empty library, a search
+   with no results). Pass title, text and optional links [(url, label), ...];
+   the first link is the main action:
+     {% with title='...', text='...', links=[(url_for(...), 'Add a book')] %}
+         {% include '_empty_state.html' %}
+     {% endwith %} #}
+<div class="container mx-auto px-4 pt-8 pb-32">
+    <div class="card bg-secondary rounded-lg max-w-lg mx-auto p-6 sm:p-8 text-center space-y-4">
+        <h2 class="text-2xl font-display text-content-primary">{{ title }}</h2>
+        <p class="text-content-secondary measure mx-auto">{{ text }}</p>
+        {% if links %}
+        <div class="flex flex-wrap justify-center gap-3 pt-2">
+            {% for url, label in links %}
+            {% if loop.first %}
+            <a href="{{ url }}" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">{{ label }}</a>
+            {% else %}
+            <a href="{{ url }}" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">{{ label }}</a>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>

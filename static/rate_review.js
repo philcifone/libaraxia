@@ -32,7 +32,7 @@ registerActions({
         const dateStarted = document.getElementById('inline_date_started').value;
         const dateCompleted = document.getElementById('inline_date_completed').value;
         if (dateStarted && dateCompleted && new Date(dateStarted) > new Date(dateCompleted)) {
-            alert('Start date cannot be after completion date.');
+            showFlashMessage('error', 'Start date cannot be after completion date.');
             return;
         }
         const fields = { date_started: dateStarted, date_completed: dateCompleted, redirect_to: 'rate_review' };
@@ -41,8 +41,8 @@ registerActions({
     },
 
     // data-session-id, data-book-id
-    deleteSession: el => {
-        if (!confirm('Are you sure you want to delete this reading session?')) return;
+    deleteSession: async el => {
+        if (!await confirmDialog('Delete this reading session?', { ok: 'Delete' })) return;
         postForm('/read/delete_reading_session/' + encodeURIComponent(el.dataset.sessionId),
                  { book_id: el.dataset.bookId });
     },

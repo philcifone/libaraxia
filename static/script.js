@@ -20,7 +20,7 @@ function showLoadingIndicator(message = 'Loading...') {
         overlay.id = 'loading-overlay';
         overlay.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center';
         overlay.innerHTML = `
-            <div class="bg-secondary-bg rounded-lg px-6 py-4 shadow-hard flex items-center gap-3 border border-card">
+            <div class="bg-secondary-bg rounded-lg px-6 py-4 shadow-hard flex items-center gap-3 card">
                 <svg class="animate-spin h-6 w-6 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -59,9 +59,15 @@ function toggleFilters() {
 }
 
 // Clear filters
+// The filter-panel fields. Clearing removes only these, so the search term,
+// shared-library member and sort survive.
+const FILTER_PARAMS = ['genre', 'read_status', 'rating', 'tags[]', 'show_removed', 'page', 'csrf_token'];
+
 function clearFilters() {
-    // Clear URL parameters and redirect to index
-    window.location.href = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    FILTER_PARAMS.forEach(key => params.delete(key));
+    const query = params.toString();
+    window.location.href = window.location.pathname + (query ? '?' + query : '');
 }
 
 // Update active filters display
@@ -141,54 +147,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update active filters display on page load
     updateActiveFilters();
 });
-// view more for toggle description book details
-function toggleDescription() {
-    const description = document.getElementById('description');
-    const button = description.nextElementSibling;
-    const buttonText = button.querySelector('.toggle-text');
-    const arrow = button.querySelector('svg');
-
-    if (description.style.maxHeight && description.style.maxHeight !== '12rem') {
-        // Collapse
-        description.style.maxHeight = '12rem';
-        description.style.overflow = 'hidden';
-        buttonText.textContent = 'Show More';
-        arrow.classList.remove('rotate-180');
-    } else {
-        // Expand - set to scrollHeight to show all content
-        description.style.maxHeight = description.scrollHeight + 'px';
-        description.style.overflow = 'visible';
-        buttonText.textContent = 'Show Less';
-        arrow.classList.add('rotate-180');
-    }
-}
-
-// Toggle friend review card expansion
-function toggleFriendReview(button) {
-    const card = button.closest('.friend-review-card');
-    const expandedContent = card.querySelector('.review-expanded');
-    const expandIcon = card.querySelector('.expand-icon');
-    const previewText = button.querySelector('.review-preview');
-
-    if (expandedContent.classList.contains('hidden')) {
-        // Expand
-        expandedContent.classList.remove('hidden');
-        expandIcon.style.transform = 'rotate(180deg)';
-        button.classList.remove('hover:bg-secondary-hover');
-        if (previewText) {
-            previewText.classList.add('hidden');
-        }
-    } else {
-        // Collapse
-        expandedContent.classList.add('hidden');
-        expandIcon.style.transform = 'rotate(0deg)';
-        button.classList.add('hover:bg-primary-hover');
-        if (previewText) {
-            previewText.classList.remove('hidden');
-        }
-    }
-}
-
 function initRatingSystem() {
     const ratingContainer = document.getElementById('rating-container');
     const ratingText = document.getElementById('rating-text');
@@ -422,14 +380,12 @@ class InfiniteScroll {
                 ? `<img src="/static/${this.escapeHtml(book.cover_image_url)}"
                         alt="${this.escapeHtml(book.title)}"
                         class="book-cover-img object-cover w-full h-full" />`
-                : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
-                        <span class="text-xs italic">No Image</span>
-                   </div>`;
+                : noCoverHtml(book.title, book.author, { size: 'sm' });
 
             return `
                 <div class="book-item">
                     <a href="/books/book/${book.id}"
-                       class="book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4 border border-card">
+                       class="book-link flex gap-4 bg-secondary-bg rounded-lg overflow-hidden hover:bg-secondary-bg/80 p-4 card-link">
                         <div class="book-cover relative flex-shrink-0 w-24 h-32 overflow-hidden rounded">
                             ${removedBadge}
                             ${coverImage}
@@ -451,14 +407,12 @@ class InfiniteScroll {
                 ? `<img src="/static/${this.escapeHtml(book.cover_image_url)}"
                         alt="${this.escapeHtml(book.title)}"
                         class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />`
-                : `<div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
-                        <span class="text-sm italic">No Image Available</span>
-                   </div>`;
+                : noCoverHtml(book.title, book.author);
 
             return `
                 <div class="book-item group">
                     <a href="/books/book/${book.id}"
-                       class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
+                       class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                         <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                             ${removedBadge}
                             ${coverImage}
@@ -538,11 +492,11 @@ function switchView(viewType) {
         });
 
         document.querySelectorAll('.book-link').forEach(link => {
-            link.className = 'book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card';
+            link.className = 'book-link block bg-secondary-bg rounded-lg overflow-hidden card-link';
         });
 
         document.querySelectorAll('.book-cover').forEach(cover => {
-            cover.className = 'book-cover w-full h-64 overflow-hidden bg-primary';
+            cover.className = 'book-cover relative w-full h-64 overflow-hidden bg-primary';   // relative: the Removed badge
         });
 
         document.querySelectorAll('.book-cover-img').forEach(img => {
@@ -562,8 +516,8 @@ function switchView(viewType) {
         });
 
         // Update button states
-        gridBtn?.classList.add('active', 'bg-accent/30', 'text-accent');
-        listBtn?.classList.remove('active', 'bg-accent/30', 'text-accent');
+        gridBtn?.setAttribute('aria-pressed', 'true');
+        listBtn?.setAttribute('aria-pressed', 'false');
 
     } else {
         // List view - set container to flex layout
@@ -575,11 +529,11 @@ function switchView(viewType) {
         });
 
         document.querySelectorAll('.book-link').forEach(link => {
-            link.className = 'book-link flex gap-4 bg-secondary-bg rounded-lg shadow-md overflow-hidden hover:bg-secondary-bg/80 transition-all duration-200 p-4 border border-card';
+            link.className = 'book-link flex gap-4 bg-secondary-bg rounded-lg overflow-hidden hover:bg-secondary-bg/80 p-4 card-link';
         });
 
         document.querySelectorAll('.book-cover').forEach(cover => {
-            cover.className = 'book-cover flex-shrink-0 w-24 h-32 overflow-hidden rounded';
+            cover.className = 'book-cover relative flex-shrink-0 w-24 h-32 overflow-hidden rounded';
         });
 
         document.querySelectorAll('.book-cover-img').forEach(img => {
@@ -599,8 +553,8 @@ function switchView(viewType) {
         });
 
         // Update button states
-        listBtn?.classList.add('active', 'bg-accent/30', 'text-accent');
-        gridBtn?.classList.remove('active', 'bg-accent/30', 'text-accent');
+        listBtn?.setAttribute('aria-pressed', 'true');
+        gridBtn?.setAttribute('aria-pressed', 'false');
     }
 
     // Save preference to localStorage
@@ -633,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isOpen) {
             filterSection.classList.remove('hidden');
             chevron.classList.add('rotate-180');
+            toggleButton.setAttribute('aria-expanded', 'true');
         }
 
         // Toggle on click
@@ -640,6 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCurrentlyHidden = filterSection.classList.contains('hidden');
             filterSection.classList.toggle('hidden');
             chevron.classList.toggle('rotate-180');
+            toggleButton.setAttribute('aria-expanded', String(isCurrentlyHidden));
 
             // Save state to localStorage
             localStorage.setItem('memberFilterOpen', isCurrentlyHidden ? 'true' : 'false');
@@ -668,11 +624,11 @@ document.addEventListener('submit', function (e) {
     const booksTo = form.querySelector('select[name="books_to"]');
     if (booksTo && !booksTo.value) {
         e.preventDefault();
-        alert('Choose who gets the books first.');
+        showFlashMessage('error', 'Choose who gets the books first.');
         booksTo.focus();
         return;
     }
-    if (!confirm('Delete this account permanently? This cannot be undone.')) e.preventDefault();
+    confirmSubmit(form, e, 'Delete this account permanently? This cannot be undone.', { ok: 'Delete account' });
 });
 
 // Open the dialog with server-rendered content from `url` (admin page).
@@ -699,6 +655,4 @@ registerActions({
     toggleFilters: () => toggleFilters(),
     updateActiveFilters: () => updateActiveFilters(),
     showLoading: el => showLoadingIndicator(el.dataset.loading),
-    toggleDescription: () => toggleDescription(),
-    toggleFriendReview: el => toggleFriendReview(el),
 });

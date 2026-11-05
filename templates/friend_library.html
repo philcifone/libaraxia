@@ -16,7 +16,7 @@
         </a>
 
         <!-- Friend Header Card -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 border border-card">
+        <div class="bg-secondary rounded-lg p-6 mb-8 card">
             <div class="flex items-center gap-6">
                 {% if friend.avatar_url %}
                     <img src="{{ url_for('static', filename=friend.avatar_url) }}"
@@ -45,30 +45,30 @@
         </div>
 
         <!-- Filter/Shelf Tabs -->
-        <div class="flex gap-2 mb-6 overflow-x-auto">
+        <div class="flex flex-wrap gap-2 mb-6">
             <a href="{{ url_for('base.friend_library', username=friend.username) }}"
                class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
-                      {% if not shelf %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                      {% if not shelf %}bg-accent text-on-accent{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
                 All Books
             </a>
             <a href="{{ url_for('base.friend_library', username=friend.username, shelf='read') }}"
                class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
-                      {% if shelf == 'read' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                      {% if shelf == 'read' %}bg-accent text-on-accent{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
                 Read
             </a>
             <a href="{{ url_for('base.friend_library', username=friend.username, shelf='currently reading') }}"
                class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
-                      {% if shelf == 'currently reading' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                      {% if shelf == 'currently reading' %}bg-accent text-on-accent{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
                 Currently Reading
             </a>
             <a href="{{ url_for('base.friend_library', username=friend.username, shelf='want to read') }}"
                class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
-                      {% if shelf == 'want to read' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                      {% if shelf == 'want to read' %}bg-accent text-on-accent{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
                 Want to Read
             </a>
             <a href="{{ url_for('base.friend_library', username=friend.username, shelf='wishlist') }}"
                class="px-4 py-2 rounded-lg whitespace-nowrap transition-colors
-                      {% if shelf == 'wishlist' %}bg-accent text-white{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
+                      {% if shelf == 'wishlist' %}bg-accent text-on-accent{% else %}bg-secondary text-content-secondary hover:text-accent{% endif %}">
                 Wishlist
             </a>
         </div>
@@ -81,16 +81,14 @@
             {% for book in books %}
             <div class="book-item group">
                 <a href="{{ url_for('books.show_book', id=book.id) }}"
-                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
+                   class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover w-full h-64 overflow-hidden bg-primary">
                         {% if book.cover_image_url %}
                         <img src="{{ url_for('static', filename=book.cover_image_url) }}"
                              alt="{{ book.title }}"
                              class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
                         {% else %}
-                        <div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
-                            <span class="text-sm italic">No Image Available</span>
-                        </div>
+                        {% with title=book.title, author=book.author, size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                     </div>
 
@@ -107,7 +105,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="bg-secondary rounded-lg p-12 text-center border border-card">
+        <div class="bg-secondary rounded-lg p-12 text-center card">
             <p class="text-content-secondary">
                 {% if shelf == 'wishlist' %}
                     {{ friend.username }} doesn't have any books in their wishlist yet.

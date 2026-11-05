@@ -5,46 +5,7 @@
 
 'use strict';
 
-// ---- Long reviews: "Show more" -------------------------------------------
-
-// Function to check if review texts are truncated and show "show more" buttons
-function initializeReviewToggles() {
-    const reviewTexts = document.querySelectorAll('.review-text');
-
-    reviewTexts.forEach(text => {
-        // Check if content is taller than max-height (120px)
-        if (text.scrollHeight > 120) {
-            // Show the "show more" button
-            const button = text.nextElementSibling;
-            if (button && button.classList.contains('show-more-btn')) {
-                button.classList.remove('hidden');
-            }
-        }
-    });
-}
-
-// Function to toggle review text expansion
-function toggleReviewText(button) {
-    const reviewText = button.previousElementSibling;
-    const isExpanded = reviewText.getAttribute('data-expanded') === 'true';
-
-    if (isExpanded) {
-        // Collapse
-        reviewText.style.maxHeight = '120px';
-        reviewText.style.overflow = 'hidden';
-        reviewText.setAttribute('data-expanded', 'false');
-        button.textContent = 'Show more';
-    } else {
-        // Expand
-        reviewText.style.maxHeight = 'none';
-        reviewText.style.overflow = 'visible';
-        reviewText.setAttribute('data-expanded', 'true');
-        button.textContent = 'Show less';
-    }
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', initializeReviewToggles);
+// Long reviews use the shared "Read more" helper in common.js.
 
 // ---- Stats tabs ----------------------------------------------------------
 
@@ -124,7 +85,7 @@ async function saveField(fieldName) {
     const newValue = input.value.trim();
 
     if (!newValue) {
-        alert(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} cannot be empty!`);
+        showFlashMessage('error', `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} cannot be empty!`);
         return;
     }
 
@@ -132,7 +93,7 @@ async function saveField(fieldName) {
     if (fieldName === 'email') {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(newValue)) {
-            alert('Please enter a valid email address!');
+            showFlashMessage('error', 'Please enter a valid email address!');
             return;
         }
     }
@@ -140,7 +101,7 @@ async function saveField(fieldName) {
     if (fieldName === 'email') {
         body.current_password = document.getElementById('email-password-input').value;
         if (!body.current_password) {
-            alert('Enter your current password to change your email.');
+            showFlashMessage('error', 'Enter your current password to change your email.');
             return;
         }
     }
@@ -172,11 +133,11 @@ async function saveField(fieldName) {
                 }, 1000);
             }
         } else {
-            alert(data.message || `Failed to update ${fieldName}`);
+            showFlashMessage('error', data.message || `Failed to update ${fieldName}`);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert(`An error occurred while updating ${fieldName}`);
+        showFlashMessage('error', `An error occurred while updating ${fieldName}`);
     }
 }
 
@@ -229,22 +190,22 @@ async function savePassword() {
 
     // Validation
     if (!currentPassword) {
-        alert('Please enter your current password');
+        showFlashMessage('error', 'Please enter your current password');
         return;
     }
 
     if (!newPassword) {
-        alert('Please enter a new password');
+        showFlashMessage('error', 'Please enter a new password');
         return;
     }
 
     if (newPassword.length < 6) {
-        alert('New password must be at least 6 characters long');
+        showFlashMessage('error', 'New password must be at least 6 characters long');
         return;
     }
 
     if (newPassword !== confirmPassword) {
-        alert('New passwords do not match');
+        showFlashMessage('error', 'New passwords do not match');
         return;
     }
 
@@ -268,11 +229,11 @@ async function savePassword() {
             // Show success message
             showFlashMessage('success', data.message || 'Password updated successfully!');
         } else {
-            alert(data.message || 'Failed to update password');
+            showFlashMessage('error', data.message || 'Failed to update password');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while updating password');
+        showFlashMessage('error', 'An error occurred while updating password');
     }
 }
 
@@ -295,7 +256,7 @@ async function uploadAvatar(event) {
     // Validate file type
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-        alert('Please upload a valid image file (PNG, JPG, GIF, or WebP)');
+        showFlashMessage('error', 'Please upload a valid image file (PNG, JPG, GIF, or WebP)');
         return;
     }
 
@@ -362,7 +323,7 @@ async function uploadAvatar(event) {
             showFlashMessage('success', data.message || 'Profile picture updated successfully!');
         } else {
             console.error('Upload failed:', data.message);
-            alert(data.message || 'Failed to upload profile picture');
+            showFlashMessage('error', data.message || 'Failed to upload profile picture');
 
             // Hide status text on error
             if (statusText) {
@@ -371,7 +332,7 @@ async function uploadAvatar(event) {
         }
     } catch (error) {
         console.error('Upload error:', error);
-        alert('An error occurred while uploading profile picture: ' + error.message);
+        showFlashMessage('error', 'An error occurred while uploading profile picture: ' + error.message);
 
         // Hide status text on error
         if (statusText) {
@@ -421,7 +382,7 @@ async function saveBio() {
     const newBio = input.value.trim();
 
     if (newBio.length > 500) {
-        alert('Bio must be 500 characters or less!');
+        showFlashMessage('error', 'Bio must be 500 characters or less!');
         return;
     }
 
@@ -446,11 +407,11 @@ async function saveBio() {
             // Show success message
             showFlashMessage('success', data.message || 'Bio updated successfully!');
         } else {
-            alert(data.message || 'Failed to update bio');
+            showFlashMessage('error', data.message || 'Failed to update bio');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while updating bio');
+        showFlashMessage('error', 'An error occurred while updating bio');
     }
 }
 
@@ -539,7 +500,7 @@ if (searchInput && searchResults) {
                             } else {
                                 actionHtml = `<form method="POST" action="/friends/send_request/${userPath}" class="inline">
                                     <input type="hidden" name="csrf_token" value="${escapeHtml(getCSRFToken())}">
-                                    <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent border border-card text-sm transition-colors">
+                                    <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent text-sm btn">
                                         Add Friend
                                     </button>
                                 </form>`;
@@ -571,39 +532,10 @@ if (searchInput && searchResults) {
     });
 }
 
-// ---- Appearance picker ---------------------------------------------------
-
-// Appearance picker: apply instantly, then save; revert if the save fails.
-document.querySelectorAll('#appearance-settings .theme-opt').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const kind = btn.dataset.kind;          // 'style' or 'mode'
-        const root = document.documentElement;
-        const previous = root.dataset[kind];
-        const group = btn.parentElement.querySelectorAll('.theme-opt');
-        const press = value => group.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
-
-        if (btn.dataset.value === previous) return;
-        root.dataset[kind] = btn.dataset.value;
-        press(btn.dataset.value);
-
-        try {
-            const response = await fetch('/user/update_theme', {
-                method: 'POST',
-                headers: getCSRFHeaders(),
-                body: JSON.stringify({ [kind]: btn.dataset.value })
-            });
-            const data = await response.json();
-            if (!response.ok || !data.success) throw new Error(data.message);
-        } catch (err) {
-            root.dataset[kind] = previous;
-            press(previous);
-            showFlashMessage('error', 'Could not save appearance settings.');
-        }
-    });
-});
+// The Appearance picker (style and mode) is handled in sidebar.js, shared
+// with the sidebar's Mode shortcut.
 
 registerActions({
-    toggleReviewText: button => toggleReviewText(button),
     switchTab: button => switchTab(button.dataset.tab),
     editField: button => editField(button.dataset.field),
     saveField: button => saveField(button.dataset.field),

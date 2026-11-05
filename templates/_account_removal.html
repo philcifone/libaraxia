@@ -78,7 +78,7 @@
         </div>
         {% endif %}
 
-        <a href="{{ export_url }}" class="inline-flex items-center gap-2 px-4 py-2 border border-card bg-primary text-content-primary text-sm hover:bg-primary-hover">
+        <a href="{{ export_url }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-content-primary text-sm hover:bg-primary-hover btn btn-outline">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             Export {{ 'my' if is_self else 'their' }} data first (ZIP of CSVs)
         </a>
@@ -94,9 +94,9 @@
     {% endif %}
 
     <div class="flex justify-end gap-3 pt-2 border-t border-card">
-        <button type="button" class="account-removal-cancel px-4 py-2 border border-card bg-primary text-content-primary hover:bg-primary-hover">Cancel</button>
+        <button type="button" class="account-removal-cancel px-4 py-2 bg-primary text-content-primary hover:bg-primary-hover btn btn-outline">Cancel</button>
         {% if not ctx.last_admin %}
-        <button type="submit" class="account-removal-submit px-4 py-2 bg-red-600 text-on-accent hover:bg-red-700">Deactivate</button>
+        <button type="submit" class="account-removal-submit px-4 py-2 bg-red-600 text-on-accent hover:bg-red-700 btn">Deactivate</button>
         {% endif %}
     </div>
 </form>

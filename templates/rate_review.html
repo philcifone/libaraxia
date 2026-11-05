@@ -29,14 +29,12 @@
                          alt="Book Cover"
                          class="w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]">
                 {% else %}
-                    <div class="aspect-[2/3] bg-secondary-bg rounded-lg flex items-center justify-center border border-card">
-                        <span class="text-content-secondary italic">No Image Available</span>
-                    </div>
+                    {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                 {% endif %}
             </div>
 
             <!-- Review Form -->
-            <div class="bg-secondary-bg rounded-lg p-6 md:p-8 border border-card">
+            <div class="bg-secondary-bg rounded-lg p-6 md:p-8 card">
                 <h2 class="font-display text-2xl mb-8 text-center">Rate & Review</h2>
 
                 <form method="post" class="space-y-8" id="review-form">
@@ -49,7 +47,7 @@
                             <h3 class="font-medium text-content-secondary">Reading History</h3>
                             <button type="button"
                                     data-click="showAddSessionForm"
-                                    class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors">
+                                    class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded btn">
                                 Add Session
                             </button>
                         </div>
@@ -80,12 +78,12 @@
                                 <div class="flex gap-2 pt-2 justify-center">
                                     <button type="button"
                                             data-click="saveInlineSession" data-book-id="{{ book.id }}"
-                                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors text-sm">
+                                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm btn">
                                         Save Session
                                     </button>
                                     <button type="button"
                                             data-click="hideInlineSessionForm"
-                                            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors text-sm">
+                                            class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded btn btn-outline text-sm">
                                         Cancel
                                     </button>
                                 </div>
@@ -190,8 +188,7 @@
                     <!-- Submit Button -->
                     <div class="flex justify-center pt-4">
                         <button type="submit"
-                                class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-md
-                                       transition-colors duration-200 font-medium text-lg">
+                                class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-md font-medium text-lg btn">
                             Submit Review
                         </button>
                     </div>

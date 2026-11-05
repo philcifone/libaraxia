@@ -17,7 +17,7 @@
         </div>
 
         <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-            <div class="bg-secondary-bg py-8 px-4 shadow-xl rounded-lg sm:px-10 border border-card">
+            <div class="bg-secondary-bg py-8 px-4 rounded-lg sm:px-10 card">
                 <form method="POST" action="{{ url_for('auth.register') }}" class="space-y-6">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div>
@@ -58,10 +58,7 @@
 
                     <div>
                         <button type="submit" 
-                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md 
-                            shadow-sm text-sm font-medium text-on-accent bg-accent hover:bg-accent-hover 
-                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent 
-                            transition-colors duration-200">
+                            class="w-full flex justify-center py-2 px-4 rounded-md text-sm font-medium text-on-accent bg-accent hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent btn">
                             Create account
                         </button>
                     </div>

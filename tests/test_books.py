@@ -270,3 +270,65 @@ def test_redirect_to_private_address_is_blocked(app):
     with app.app_context(), mock.patch.object(book_utils._session, 'get', return_value=redirect) as get:
         assert book_utils._get_public('http://8.8.8.8/cover.jpg') is None
     assert get.call_count == 1
+
+
+# --- book tools on the edit page (Phase 7.2) ---------------------------------
+
+def test_book_tools_live_on_the_edit_page(client, db, people):
+    """Transfer and permanent delete moved from the book page into a "Book
+    tools" disclosure on the edit page (owner/admin only, like the edit page)."""
+    book = add_book(db, people['bob'], 'Dune', 'Frank Herbert')
+    login(client, 'bob')
+    edit = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert 'id="book-tools"' in edit
+    assert f'action="/books/transfer/{book}"' in edit          # bob shares a household with alice
+    assert f'action="/books/delete/{book}"' in edit
+    assert '<option value="%d">alice</option>' % people['alice'] in edit
+
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert f'/books/delete/{book}' not in page and f'/books/transfer/{book}' not in page
+    assert f'/books/remove/{book}' in page                      # the everyday action stays
+    assert f'/books/edit/{book}#book-tools' in page
+
+
+def test_book_tools_refuse_delete_while_others_have_data(client, db, people):
+    book = add_book(db, people['bob'], 'Dune', 'Frank Herbert')
+    add_review(db, people['alice'], book)
+    login(client, 'bob')
+    edit = ' '.join(client.get(f'/books/edit/{book}').get_data(as_text=True).split())
+    assert "Can't delete: alice has reviews" in edit and f'action="/books/delete/{book}"' not in edit
+
+
+def test_book_tools_without_a_household_have_no_transfer(client, db, people):
+    book = add_book(db, people['carol'], 'Dune', 'Frank Herbert')   # carol has no household
+    login(client, 'carol')
+    edit = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert 'id="book-tools"' in edit and '/books/transfer/' not in edit
+
+
+def test_friend_reviews_are_cards_with_read_more(client, db, people):
+    """7.3: friends' reviews on the book page are cards with the text in
+    place (the shared "Read more" clamp), not a collapsed accordion inside a
+    scroll box."""
+    book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
+    add_review(db, people['bob'], book)             # bob shares alice's household
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'Friend Reviews' in page
+    assert '<article class="bg-primary rounded-lg p-4 card">' in page
+    assert 'toggleFriendReview' not in page and 'max-h-[600px]' not in page
+
+
+def test_read_more_is_one_shared_helper():
+    """Description and reviews (book page, profile) all use common.js's
+    toggleReadMore; the three old hand-rolled toggles are gone."""
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent
+    common = (root / 'static/common.js').read_text()
+    assert 'function toggleReadMore' in common and 'function initReadMore' in common
+    for name in ('toggleDescription', 'toggleFriendReview', 'toggleReviewText'):
+        for path in list((root / 'static').glob('*.js')) + list((root / 'templates').rglob('*.html')):
+            assert name not in path.read_text(), f'{name} still in {path.name}'
+    for template in ('book_detail.html', 'user.html'):
+        text = (root / 'templates' / template).read_text()
+        assert 'data-click="toggleReadMore"' in text

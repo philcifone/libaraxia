@@ -86,3 +86,36 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
+// ---- Appearance: style and mode pickers ------------------------------------
+// Any [data-theme-picker] group of .theme-opt buttons (Profile -> Appearance,
+// the sidebar's Mode shortcut). Applies instantly by setting data-style /
+// data-mode on <html>, then saves; reverts if the save fails. Every picker on
+// the page is kept in step.
+document.addEventListener('click', async event => {
+    const btn = event.target.closest('[data-theme-picker] .theme-opt');
+    if (!btn) return;
+    const kind = btn.dataset.kind;              // 'style' or 'mode'
+    const root = document.documentElement;
+    const previous = root.dataset[kind];
+    const press = value => document.querySelectorAll(`.theme-opt[data-kind="${kind}"]`)
+        .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
+
+    if (btn.dataset.value === previous) return;
+    root.dataset[kind] = btn.dataset.value;
+    press(btn.dataset.value);
+
+    try {
+        const response = await fetch('/user/update_theme', {
+            method: 'POST',
+            headers: getCSRFHeaders(),
+            body: JSON.stringify({ [kind]: btn.dataset.value })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message);
+    } catch (err) {
+        root.dataset[kind] = previous;
+        press(previous);
+        showFlashMessage('error', 'Could not save appearance settings.');
+    }
+});

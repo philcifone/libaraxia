@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function showDuplicateWarning(duplicates) {
+    async function showDuplicateWarning(duplicates) {
         const reasons = [];
         const locations = [];
 
@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         message += '\nAre you sure you want to add this book?';
 
-        return confirm(message);
+        return confirmDialog(message, { ok: 'Add anyway', danger: false });
     }
 
     async function selectBook(bookData, button) {
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const duplicateCheck = await checkForDuplicates(bookData);
 
             if (duplicateCheck.has_duplicates) {
-                const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
+                const userConfirmed = await showDuplicateWarning(duplicateCheck.duplicates);
 
                 if (!userConfirmed) {
                     return;
@@ -255,11 +255,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 button.textContent = "Book info fetched!";
             } else {
                 console.error('Error selecting book:', data.error);
-                alert('Error selecting book. Please try again.');
+                showFlashMessage('error', 'Error selecting book. Please try again.');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error selecting book. Please try again.');
+            showFlashMessage('error', 'Error selecting book. Please try again.');
         }
     }
     
@@ -396,11 +396,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (err) {
                 console.error('Scanner initialization error:', err);
                 if (err.name === 'NotAllowedError') {
-                    alert("Camera access denied. Please allow camera access and try again.");
+                    showFlashMessage('error', "Camera access denied. Please allow camera access and try again.");
                 } else if (err.name === 'NotFoundError') {
-                    alert("No camera found. Please use a device with a camera.");
+                    showFlashMessage('error', "No camera found. Please use a device with a camera.");
                 } else {
-                    alert("Error starting scanner: " + err.message);
+                    showFlashMessage('error', "Error starting scanner: " + err.message);
                 }
                 scannerBtn.textContent = 'Start Scanner';
                 isScanning = false;
@@ -467,7 +467,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (duplicateCheck.has_duplicates) {
-                    const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
+                    const userConfirmed = await showDuplicateWarning(duplicateCheck.duplicates);
 
                     if (!userConfirmed) {
                         interactive.innerHTML = `
@@ -506,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error fetching book:', error);
-            alert('Error fetching book details. Please try again.');
+            showFlashMessage('error', 'Error fetching book details. Please try again.');
         }
     }
 
@@ -530,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isScanning) {
             const reason = cameraUnavailableReason();
             if (reason) {
-                alert(reason);
+                showFlashMessage('error', reason);
                 return;
             }
             startScanner();
