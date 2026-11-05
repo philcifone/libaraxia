@@ -408,7 +408,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 - [ ] **Move large inline scripts into `static/`:** `user.html` (~540 lines), `admin_settings.html` (~270), `rate_review.html`, `goodreads_import.html`, `book_detail.html`.
 - [ ] **Named row access in templates:** replace `book[0]`, `book[8]` with names, so adding columns (VHS in Phase 8) can't break pages.
 - [ ] **Rebuild Tailwind** (`npm run build:css`). The committed `output.css` is from Nov 2025, so classes added since may silently not exist.
-- [ ] **Content-Security-Policy**, once the inline scripts are gone (no `'unsafe-inline'`).
+- [ ] **Content-Security-Policy**, once the inline scripts are gone (no `'unsafe-inline'`). Wishlist search results (`wishlist.js`) show Google Books / Open Library thumbnails straight from their servers, so the browser contacts Google while you search; proxy or download them server-side first, so `img-src 'self'` works and the app makes no third-party requests from the browser.
 - [ ] **Switch routes to `get_db()`** while each page is being moved onto `base.html`. 83 call sites still open their own connection with `get_db_connection()` (admin 13, friends 11, user 11, collections 10, auth 6, base 5, models 4, email_utils 4, feed 4, books 3, read 3, tags 3, app 2, book_utils 1; counted 2026-11-02). It's tidiness, not a bug: about 75 already close in `finally`. Eight close without `finally` (`read.py`: `rate_review`, `manage_session`, `delete_reading_session`; `collections.get_book_collections`; `models.admin_required`; `app.py`: `load_user`, `root`), which only matters on an error and is cleaned up by Python anyway. Code outside a request (`manage.py`, scripts) keeps `get_db_connection()`. Run `pytest` after each file.
 
 **Done when:** every page extends `base.html`; no inline `<script>` over ~20 lines remains; CSP is on without `'unsafe-inline'`; routes use `get_db()`; tests pass.
@@ -425,7 +425,7 @@ Answer any below questions I have, work through any decisions with me, reorganiz
 Bug replication: one column of input forms split into two after manually entering ISBN on add book page. Did not test on other inputs.
 
 #### Additional design theme to add to classic/house group: 
-- skeuomorphic theme similar to OG iphone books app. see docs/skeuomorphic-inspo.jpg - if planning or more details/effort is needed for this feel free to divide theme creation into a separate phase if it better suits your workflow. 
+- skeuomorphic theme similar to OG iphone books app. see docs/skeuomorphic-inspo.jpg (local only, git-ignored) - if planning or more details/effort is needed for this feel free to divide theme creation into a separate phase if it better suits your workflow. 
 - I’m thinking library look for books and blockbuster/video-store look for the vhs page. 
 - Also interested in a 80s neon outrun theme - no literal pictorial depictions, perhaps a glowing neon grid, purple>orange gradient, angled text boxes with contrasting colors (think boxy 80s sports car angles/livery) etc. 
 

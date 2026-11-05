@@ -60,3 +60,6 @@ venv/
 .claude/init
 
 .deploy-failed
+
+# Design reference images: someone else's copyright, kept locally only
+docs/skeuomorphic-inspo.jpg

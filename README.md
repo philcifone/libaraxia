@@ -130,9 +130,13 @@ Found a bug? Have a feature idea? Contributions are welcome! This started as a p
 
 Developer notes (architecture, conventions, security rules) are in [CLAUDE.md](CLAUDE.md).
 
+## Status
+
+A personal project, built for my own household's books. It's public so others can read and learn from it. It's provided as-is under the GPL-3.0, with no support, stability or upgrade path promised. Fork it freely; you run your own copy at your own risk.
+
 ## License
 
-[GPL-3.0](LICENSE)
+[GPL-3.0](LICENSE). Bundled third-party files keep their own licenses: fonts under the SIL Open Font License (`static/fonts/*/OFL.txt`), Bootstrap Icons and Quagga under MIT (see `static/vendor/README.md`).
 
 ---
 Built with ☕ and 🥃 by a 📖 lover, for 📚 lovers.
