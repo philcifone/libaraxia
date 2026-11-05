@@ -47,9 +47,17 @@ def rate_review(book_id):
             flash("Start date cannot be after completion date.", 'error')
             return redirect(request.url)
 
-        # Validate rating
-        if not rating or not rating.isdigit() or not (1 <= int(rating) <= 5):
-            flash("Invalid rating. Please enter a number between 1 and 5.", 'error')
+        # Validate rating: 1-5, or none at all for a written review
+        # (Goodreads imports have reviews without a rating)
+        if rating:
+            if not rating.isdigit() or not (1 <= int(rating) <= 5):
+                flash("Invalid rating. Please enter a number between 1 and 5.", 'error')
+                return redirect(request.url)
+            rating = int(rating)
+        elif (comment or '').strip():
+            rating = None
+        else:
+            flash("Choose a rating or write a review.", 'error')
             return redirect(request.url)
 
         # Update or insert reading session
@@ -60,8 +68,9 @@ def rate_review(book_id):
                 SET date_started = ?, date_completed = ?
                 WHERE session_id = ? AND user_id = ?
             ''', (date_started_obj, date_completed_obj, session_id, current_user.id))
-        else:
-            # Insert new reading session
+        elif date_started_obj or date_completed_obj:
+            # New reading session, only when a date was given: saving a
+            # review without dates used to add an empty session every time
             conn.execute('''
                 INSERT INTO reading_sessions (user_id, book_id, date_started, date_completed)
                 VALUES (?, ?, ?, ?)
@@ -74,7 +83,7 @@ def rate_review(book_id):
             ON CONFLICT(user_id, book_id) DO UPDATE SET
                 rating = excluded.rating,
                 comment = excluded.comment
-        ''', (current_user.id, book_id, int(rating), comment))
+        ''', (current_user.id, book_id, rating, comment))
 
         conn.commit()
 
@@ -100,7 +109,9 @@ def rate_review(book_id):
         FROM reading_sessions
         WHERE user_id = ? AND book_id = ?
         ORDER BY
-            CASE WHEN date_completed IS NULL THEN 1 ELSE 0 END,
+            -- undated past reads first, then by date, then in progress
+            CASE WHEN date_completed IS NULL AND date_started IS NULL THEN 0
+                 WHEN date_completed IS NULL THEN 2 ELSE 1 END,
             COALESCE(date_completed, date_started, created_at) ASC,
             created_at ASC
     '''

@@ -5,15 +5,13 @@ from utils.accounts import removal_context, deactivate_account, delete_account, 
 from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
+from utils.book_utils import missing_cover_sql
 from utils.rate_limiting import limiter
 from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES
 from werkzeug.utils import secure_filename
 import bcrypt
-import csv
 import os
-import re
 from datetime import datetime
-from io import StringIO
 from PIL import Image
 
 # Initialize Blueprint
@@ -792,234 +790,44 @@ def import_goodreads_page():
     """Display the Goodreads import page with instructions"""
     return render_template('goodreads_import.html')
 
-def format_goodreads_date(date_str):
-    """Convert Goodreads date format (YYYY/MM/DD) to SQLite format (YYYY-MM-DD)"""
-    if not date_str:
-        return None
-    # Replace forward slashes with dashes for proper SQLite date sorting
-    return date_str.replace('/', '-')
-
-def goodreads_review_text(review):
-    """Goodreads exports reviews as HTML. Store plain text: <br> becomes a
-    newline (so <br/><br/> is a paragraph break), other tags are dropped and
-    entities like &amp; are decoded. Reviews are shown with pre-wrap."""
-    import html
-    text = (review or '').replace('\r\n', '\n')
-    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
-    text = re.sub(r'<[^>]+>', '', text)
-    text = html.unescape(text)
-    return re.sub(r'\n{3,}', '\n\n', text).strip()
-
-
 @user_blueprint.route('/import_goodreads', methods=['POST'])
 @login_required
 @limiter.limit("3 per hour")
 def import_goodreads():
-    """Import library data from Goodreads CSV export"""
-    import logging
-    logger = logging.getLogger(__name__)
+    """Import a Goodreads CSV export (logic in utils/goodreads.py).
 
+    Returns the full report: an outcome for every row of the file, so the
+    result screen can account for all of them.
+    """
+    from utils.goodreads import decode_csv, import_goodreads as run_import, ImportFileError, OUTCOMES
+
+    file = request.files.get('goodreads_csv')
+    if not file or not file.filename:
+        return jsonify({'success': False, 'message': 'No file selected.'}), 400
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'success': False, 'message': 'The file must be a .csv export.'}), 400
+
+    text, encoding = decode_csv(file.read())
+    conn = get_db()
     try:
-        # Check if file was uploaded
-        if 'goodreads_csv' not in request.files:
-            return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+        report = run_import(conn, current_user.id, text)
+        conn.commit()
+    except ImportFileError as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400  # written for the user
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Goodreads import failed')
+        return jsonify({'success': False,
+                        'message': 'The import failed. Check that the file is a Goodreads CSV export.'}), 500
 
-        file = request.files['goodreads_csv']
-
-        if file.filename == '':
-            return jsonify({'success': False, 'message': 'No file selected'}), 400
-
-        if not file.filename.endswith('.csv'):
-            return jsonify({'success': False, 'message': 'File must be a CSV'}), 400
-
-        # Read CSV content
-        csv_content = file.read().decode('utf-8')
-        csv_reader = csv.DictReader(StringIO(csv_content))
-
-        conn = get_db_connection()
-        stats = {
-            'books_added': 0,
-            'wishlist_added': 0,
-            'ratings_added': 0,
-            'duplicates_skipped': 0,
-            'collection_added': 0,
-            'sessions_added': 0,
-            'rows_processed': 0,
-            'unknown_shelf': 0,
-            'errors': []
-        }
-
-        try:
-            for row in csv_reader:
-                stats['rows_processed'] += 1
-                try:
-                    # Extract book data from Goodreads CSV
-                    title = row.get('Title', '').strip()
-                    author = row.get('Author', '').strip()
-                    isbn = row.get('ISBN13', '').strip() or row.get('ISBN', '').strip()
-                    isbn = isbn.replace('="', '').replace('"', '').strip()  # Clean ISBN formatting
-
-                    publisher = row.get('Publisher', '').strip()
-                    year = row.get('Year Published', '').strip() or row.get('Original Publication Year', '').strip()
-                    pages = row.get('Number of Pages', '').strip()
-                    my_rating = row.get('My Rating', '').strip()
-                    # Format dates to use dashes instead of slashes for proper SQLite sorting
-                    date_read = format_goodreads_date(row.get('Date Read', '').strip())
-                    date_added = format_goodreads_date(row.get('Date Added', '').strip())
-                    bookshelves = row.get('Bookshelves', '').strip()
-                    exclusive_shelf = row.get('Exclusive Shelf', '').strip()
-                    my_review = goodreads_review_text(row.get('My Review', ''))
-
-                    # Skip if no title
-                    if not title:
-                        continue
-
-                    # Determine shelf (use Exclusive Shelf first, then Bookshelves)
-                    shelf = exclusive_shelf or bookshelves
-
-                    # Debug logging
-                    if stats['rows_processed'] <= 3:
-                        logger.info(f"Row {stats['rows_processed']}: Title='{title}', Shelf='{shelf}', Exclusive='{exclusive_shelf}', Bookshelves='{bookshelves}'")
-
-                    # Check if book already exists (by ISBN or title+author)
-                    existing_book = None
-                    if isbn:
-                        existing_book = conn.execute(
-                            'SELECT * FROM books WHERE isbn = ?', (isbn,)
-                        ).fetchone()
-
-                    if not existing_book and title and author:
-                        existing_book = conn.execute(
-                            'SELECT * FROM books WHERE LOWER(title) = LOWER(?) AND LOWER(author) = LOWER(?)',
-                            (title, author)
-                        ).fetchone()
-
-                    # If book doesn't exist, create it
-                    if not existing_book:
-                        # For bulk import, use Goodreads data directly (API calls are too slow)
-                        # Covers can be fetched later via separate feature
-                        final_title = title
-                        final_author = author
-                        final_isbn = isbn
-                        final_publisher = publisher
-                        final_year = year
-                        final_pages = pages
-                        cover_url = ''  # Will fetch covers later
-                        description = ''
-                        subtitle = ''
-                        genre = ''
-
-                        # Insert book into database
-                        cursor = conn.execute('''
-                            INSERT INTO books (title, author, isbn, publisher, publish_year,
-                                             page_count, cover_image_url, description, subtitle,
-                                             genre, added_by)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (final_title, final_author, final_isbn, final_publisher,
-                              final_year, final_pages, cover_url, description, subtitle,
-                              genre, current_user.id))
-
-                        book_id = cursor.lastrowid
-                        stats['books_added'] += 1
-                    else:
-                        book_id = existing_book['id']
-
-                    # Handle different shelves
-                    if shelf in ['to-read', 'want-to-read']:
-                        # Add to wishlist
-                        existing_wishlist = conn.execute(
-                            'SELECT * FROM wishlist WHERE user_id = ? AND book_id = ?',
-                            (current_user.id, book_id)
-                        ).fetchone()
-
-                        if not existing_wishlist:
-                            conn.execute('''
-                                INSERT INTO wishlist (user_id, book_id, notes, added_at)
-                                VALUES (?, ?, ?, ?)
-                            ''', (current_user.id, book_id, my_review or '', date_added or None))
-                            stats['wishlist_added'] += 1
-                            logger.info(f"Added '{title}' to wishlist")
-
-                    elif shelf in ['read', 'currently-reading']:
-                        # Check if already in collections
-                        existing_collection = conn.execute(
-                            'SELECT * FROM collections WHERE user_id = ? AND book_id = ?',
-                            (current_user.id, book_id)
-                        ).fetchone()
-
-                        if existing_collection:
-                            stats['duplicates_skipped'] += 1
-                            logger.info(f"Skipping '{title}' - already in collections")
-                            continue
-
-                        # Map shelf to collection status
-                        if shelf == 'read':
-                            status = 'read'
-                        elif shelf == 'currently-reading':
-                            status = 'currently reading'
-                        else:
-                            status = 'want to read'
-
-                        # Add to collections (date_added is already formatted)
-                        conn.execute('''
-                            INSERT INTO collections (user_id, book_id, status, created_at)
-                            VALUES (?, ?, ?, ?)
-                        ''', (current_user.id, book_id, status, date_added))
-                        stats['collection_added'] += 1
-                        logger.info(f"Added '{title}' to collections with status '{status}'")
-
-                        # Add rating and review if provided
-                        if my_rating and my_rating != '0':
-                            conn.execute('''
-                                INSERT INTO read_data (user_id, book_id, rating, comment)
-                                VALUES (?, ?, ?, ?)
-                            ''', (current_user.id, book_id, int(my_rating), my_review or ''))
-                            stats['ratings_added'] += 1
-
-                        # Add reading session if date_read is provided (date_read is already formatted)
-                        if date_read and shelf == 'read':
-                            conn.execute('''
-                                INSERT INTO reading_sessions (user_id, book_id, date_started, date_completed)
-                                VALUES (?, ?, ?, ?)
-                            ''', (current_user.id, book_id, None, date_read))
-                            stats['sessions_added'] += 1
-                    else:
-                        stats['unknown_shelf'] += 1
-                        if stats['unknown_shelf'] <= 5:
-                            logger.warning(f"Unknown shelf '{shelf}' for book '{title}'")
-
-                except Exception as row_error:
-                    logger.error(f"Error processing row: {row_error}")
-                    stats['errors'].append(f"Error with book '{title}': {str(row_error)}")
-                    continue
-
-            conn.commit()
-
-            logger.info(f"Import completed: {stats}")
-
-            # Return success with detailed stats
-            result = {
-                'success': True,
-                **stats
-            }
-
-            # If nothing was added, include a warning
-            if stats['books_added'] == 0 and stats['wishlist_added'] == 0 and stats['collection_added'] == 0:
-                result['message'] = f"No items imported. Processed {stats['rows_processed']} rows. Unknown shelves: {stats['unknown_shelf']}. Check logs for details."
-
-            return jsonify(result)
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Import error: {str(e)}", exc_info=True)
-            return jsonify({'success': False, 'message': 'The import failed. Check that the file is a Goodreads CSV export.'}), 500
-
-        finally:
-            conn.close()
-
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': 'The import failed. Check that the file is a Goodreads CSV export.'}), 500
+    current_app.logger.info(f"Goodreads import by {current_user.username}: "
+                            f"{report['total_rows']} rows, {report['outcomes']}")
+    covers = conn.execute("SELECT COUNT(*) " + missing_cover_sql(owner=True),
+                          (current_user.id,)).fetchone()[0]
+    return jsonify({'success': True, 'encoding': encoding,
+                    'outcome_labels': list(OUTCOMES.items()),  # a list: jsonify sorts dict keys
+                    'covers_missing': covers, **report})
 
 
 # --- households: invite / accept / decline / remove (utils/households.py) ----

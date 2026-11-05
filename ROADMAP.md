@@ -359,7 +359,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 - [x] **Quagga** 🟢: vendored to `static/vendor/quagga-0.12.1.min.js`; its sha512 matched cdnjs's published SRI. Source, licence and hash in `static/vendor/README.md`. No CDN scripts remain, which helps the Phase 6 CSP.
 
 **Follow-ups found on the way** (not access bugs, so not done here):
-- The Goodreads import and the wishlist add match existing books by ISBN (and the import by title+author) across **everyone's** books, so a match can attach your data to a stranger's copy, which then never shows in your library. Prefer your own, then your household's books, and otherwise create a new one. Belongs with Phase 5.
+- ~~The Goodreads import and the wishlist add match existing books across **everyone's** books.~~ Done in Phase 5 (`utils/book_matching.py`).
 - Household members who aren't also friends can't see each other's profile or feed activity. Fine for one real household where both are friends; revisit only if it ever matters.
 
 **Prod rollout:** migrations 020 and 021 run automatically on deploy. They were rehearsed on the dev DB copy and a fresh DB, not on a prod copy; prod's schema has surprised before (see Phase 2), so rehearse on a copy of the prod DB first, run from the dev checkout (prod doesn't have the new migration files until the deploy): `manage.py backup` on prod, copy the backup here, `venv/bin/python manage.py --db /tmp/prod-copy.db migrate`, then delete the copy.
@@ -368,24 +368,34 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 ## Phase 5: Finish the Goodreads import
 
-`blueprints/user.py` `import_goodreads`, `templates/goodreads_import.html`. What works today: matching by ISBN13/ISBN, then title+author; `to-read` → wishlist; `read` / `currently-reading` → collections + rating/review + one reading session.
+`utils/goodreads.py` (the import), `utils/book_matching.py` (shared matching), `blueprints/user.py` `import_goodreads` / `import_fetch_covers`, `templates/goodreads_import.html`. Tests: `tests/test_goodreads.py`.
 
-- [ ] **Match within your own books** 🆕: matching by ISBN / title+author searches everyone's books, so a match can attach your shelf/review to a stranger's copy that never shows in your library (found in Phase 4). Prefer your own, then your household's, else create the book. Same for the wishlist add-by-ISBN.
-- [ ] **Shelves** → map custom shelves (the comma-separated `Bookshelves` column) to **tags** or **custom collections**. Today a multi-shelf value never matches and is counted as "unknown shelf".
-- [ ] **DNF:** map a "did-not-finish"-style shelf to the `did not finish` status.
-- [x] **Clean HTML** in reviews (`<br/>`, entities) on the way in. Done in 3.4 (`goodreads_review_text`).
-- [ ] **Reviews without a rating** are dropped. Import them, and import ratings for `to-read` books if present.
-- [ ] **Read Count** → multiple reading sessions (today only one).
-- [ ] **Unused columns:** Additional Authors, Private Notes, Owned Copies, Binding.
-- [ ] **Per-row SAVEPOINT**, so a failing row doesn't leave half its data behind.
-- [ ] **Empty values:** store empty year/pages as NULL, not `''`. Don't write a NULL `created_at` when Date Added is missing (it breaks feed ordering).
-- [ ] **Report wishlist duplicates**; they're currently skipped silently.
-- [ ] **Encoding and file checks:** try `utf-8-sig`, fall back to `latin-1`; case-insensitive `.csv` check.
-- [ ] **Covers:** optionally queue a cover fetch for new books, reusing the bulk-fetch logic and the placeholder check from 3.2.
-- [ ] **Large files:** progress indicator or chunked processing.
-- [ ] Update the "Please Note" box on the import page to match what the import now actually does.
+**2026-11-04, done** on branch `phase-5`; background covers added 2026-11-05 (149 tests). One migration: 022 (`cover_jobs`), runs on deploy.
+
+- [x] **Match within your own books**: `BookIndex` matches by any ISBN-10/13 form, then by normalised title + author (a trailing "(Series, #1)" ignored, whitespace collapsed: the export has names like `Stephen        King`). It only looks at your own books, then your household's shelf; everyone else's means a new book. A `to-read` row on a book you or your household own gets *Want to Read* instead of a wishlist row (a wishlist row on your own book hides it from your library, see the `library_books` view). A `read` row on your own wishlist entry moves it into the library.
+  - Wishlist add (manual form and search result) only reuses your own books: already on your wishlist means the duplicate message, already on your shelf is refused ("already in your library", it used to silently hide the book). Household and stranger copies are never reused for a wishlist entry, since *Move to library* would then not make the book yours. Checked before the cover download, so a refusal leaves no orphaned file.
+- [x] **Shelves** become **custom collections** of the same name (chosen over tags: the schema already calls them shelves, they have their own page, and they work for wishlist books, which never appear in the tag-filtered library). The status shelf is left out; an unknown custom *exclusive* shelf is kept as a collection too.
+- [x] **DNF:** an exclusive or regular shelf named `dnf`, `did-not-finish`, `abandoned`, `gave-up`, `unfinished`, `not-finished`, `stopped-reading` (and a couple of spellings) sets `did not finish`. Your export has none, so this is covered by tests only.
+- [x] **Reviews without a rating** are imported (rating NULL), and ratings/reviews on `to-read` books too. To make those editable, `read.rate_review` now accepts a review without a rating (but not neither), and the book page hides the "x / 5" line when there's no rating.
+- [x] **Read Count** → that many sessions; the last is dated Date Read, earlier ones are undated (Goodreads keeps only the last date). A `read` row with no Read Count still gets one session. Undated sessions used to display as "Currently Reading"; they now say "Date unknown" and sort first (book page and review page).
+- [x] **Unused columns**, decided: **Private Notes** → the wishlist note on to-read books (it used to put *My Review* there); on library books there's nowhere to keep them, so the result screen counts them as not imported (your export has none). **Not imported:** Additional Authors (79 rows, almost all translators, editors and illustrators: appending them to `author` would be wrong and break matching), Binding (no format column; revisit with Phase 8's format work), Owned Copies (0 on every row of your export; read books still go to your library), Spoiler.
+- [x] **Per-row SAVEPOINT** inside one transaction for the file (an explicit `BEGIN`: otherwise the first SAVEPOINT opens the transaction and its RELEASE commits each row). A failing row is rolled back completely, reported as an error, and the import carries on.
+- [x] **Empty values:** year/pages are integers or NULL. Dates are validated and zero-padded (`2016/5/9` → `2016-05-09`). `created_at` is never NULL: the Goodreads Date Added when present, else the column default. New books also get Date Added as `books.created_at`, so an import doesn't flood friends' feeds with 300 "added today" entries.
+- [x] **Wishlist duplicates** are reported (outcome *Already imported*), as are re-imported rows. Re-importing the same file is a no-op: all 374 rows come back *already*.
+- [x] **Encoding and file checks:** UTF-8 (BOM or not), else Windows-1252, else Latin-1; the result says when it wasn't UTF-8. Case-insensitive `.csv`. A CSV without the Goodreads columns is refused with a message.
+- [x] **Covers, in the background** (2026-11-05): a cover fetch is now a job (`cover_jobs` table, migration 022; `utils/cover_jobs.py`; `blueprints/covers.py`) run by a daemon thread, so it carries on after you leave the page. Started from the import result screen, **Profile → Fetch Missing Covers** (your own books) and **Admin → placeholder covers** (all books; replaces the old 10-per-click button, whose limit was gunicorn's 30 s request timeout, not API manners). A small panel in the bottom-left corner of every page shows progress with *Stop*, then the result with *Dismiss*; it only polls while you have a job. Each book is tried once per job (an id cursor), so books with no cover online don't loop. If the process dies (deploy restart), the heartbeat goes stale after 3 minutes and the next page load picks the job up where it stopped. 0.5 s pause between books. Measured on the demo DB: about 1.5 s per book, with the odd slow one (one took 25 s of Open Library timeouts).
+- [x] **Large files:** measured: your 374 rows import in 0.02 s (no network calls), so no chunking. The slow part is covers, which is batched with progress (above).
+- [x] "Please Note" and "Where your data goes" on the import page rewritten to match; the garbled rate-limit sentence fixed.
+
+**Found on the way:**
+- [x] Saving a review with no dates added an **empty reading session** every time (`read.rate_review`). Fixed: a session is only added when a date is given. **Existing data:** the dev DB has 8 such sessions (both dates NULL) on 5 books. They now show as "Date unknown", which is harmless; delete them if you want (`DELETE FROM reading_sessions WHERE date_started IS NULL AND date_completed IS NULL AND created_at < '2026-11-05'`, after a backup). Not done in a migration, since Goodreads imports now create undated sessions on purpose.
+- [x] The book page hid **Reading History** unless you had also written a review. It now always shows.
+- [ ] Removing a wishlist book that has your own rating on it keeps the books row (`remove_from_wishlist` won't delete a book anyone has data on), so it becomes a `library_books` row and appears in your library. Rare (a rated to-read book), but the import makes it possible. Fix with Phase 6's wishlist pass or as its own item.
+- [ ] `read.py` passes `datetime.date` objects to sqlite (Python 3.12 deprecates the default date adapter; one test warning). Store `.isoformat()` strings. Phase 6, with the `get_db()` switch.
 
 **Done when:** your own `goodreads_library_export.csv` re-imports into a fresh DB with shelves, DNF, multi-reads and clean reviews, and the result screen accounts for every row.
+
+- **2026-11-04:** checked through the real route on a fresh DB: 374 rows = 123 added to the library + 251 wishlist, 0 errors, all listed by outcome on the result screen. 121 ratings, 82 reviews (no HTML left), 125 sessions (*God Bless You, Mr. Rosewater* and *The Stand* have two each), collections audiobook (42), re-read (7), picture-book (3). DNF is tested but not in your data. A second import of the same file: 374 *already*, nothing changed.
 
 ---
 
@@ -394,7 +404,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 **Goal:** one layout, one shared JS file, no giant inline scripts. That makes the Phase 7 polish a mostly-one-file job and enables a real CSP.
 
 - [ ] **`templates/base.html`** with `{% block title %}`, `{% block content %}` and `{% block scripts %}`, `<html lang="en">`, one `<meta name="csrf-token">`, and the sidebar/flash includes. Move the 27 standalone pages onto it one at a time.
-- [ ] **`static/common.js`** with `getCSRFToken`, `escapeHtml` and `showFlashMessage`. Today the CSRF helper is copy-pasted into 5 JS files.
+- [ ] **`static/common.js`** with `getCSRFToken`, `escapeHtml` and `showFlashMessage`. Retire the legacy `static/sidebar.js` (only `notifications.html` loads it) at the same time: it expects a search box that page doesn't have, so every click throws `null` errors in the console (harmless, seen 2026-11-04). Today the CSRF helper is copy-pasted into 5 JS files.
 - [ ] **Move large inline scripts into `static/`:** `user.html` (~540 lines), `admin_settings.html` (~270), `rate_review.html`, `goodreads_import.html`, `book_detail.html`.
 - [ ] **Named row access in templates:** replace `book[0]`, `book[8]` with names, so adding columns (VHS in Phase 8) can't break pages.
 - [ ] **Rebuild Tailwind** (`npm run build:css`). The committed `output.css` is from Nov 2025, so classes added since may silently not exist.

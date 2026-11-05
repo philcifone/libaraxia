@@ -137,3 +137,49 @@
         </nav>
     </div>
 </div>
+{# Cover-fetch progress panel (static/cover_jobs.js, blueprints/covers.py).
+   Rendered on every page, but stays hidden and never polls unless the user
+   has a cover job to show. A narrow box on the left edge, top to bottom:
+   info toggle, cancel/dismiss, a vertical progress stripe that fills upward,
+   and a collapse toggle. The details card opens to its right.
+   Corners follow the theme (rounded-lg is square in House, rounded in
+   Classic). z-30 so the sidebar drawer (z-40) covers it when open.
+   Anchored by its bottom edge (about 9rem below centre, i.e. roughly centred
+   when expanded) so the [-]/[+] button stays put when the panel collapses. #}
+{% if current_user.is_authenticated %}
+<div id="cover-job-panel" class="hidden fixed z-30 text-sm"
+     style="left: 0.75rem; bottom: max(1rem, calc(50% - 9rem));"
+     data-job='{{ cover_job|tojson }}'
+     data-status-url="{{ url_for('covers.status') }}"
+     data-csrf="{{ csrf_token() }}">
+    <div class="relative flex flex-col items-center gap-2 bg-secondary border border-card shadow-hard rounded-lg"
+         style="width: 2.5rem; padding: 0.5rem 0;">
+        <div class="flex flex-col items-center gap-2" data-role="body">
+            <button type="button" data-role="info-toggle" aria-expanded="true" aria-controls="cover-job-info"
+                    title="Show or hide details"
+                    class="w-6 h-6 rounded-full border-2 border-content-secondary text-content-secondary hover:text-accent font-bold text-xs flex items-center justify-center"
+                    style="font-family: Georgia, serif; font-style: italic; line-height: 1;">i</button>
+            <button type="button" data-role="action" title="Stop fetching covers" aria-label="Stop fetching covers"
+                    class="w-6 h-6 text-lg text-content-secondary hover:text-accent font-bold flex items-center justify-center"
+                    style="line-height: 1;">&times;</button>
+            <div class="relative bg-primary border border-card rounded-lg overflow-hidden" data-role="track"
+                 role="progressbar" aria-label="Cover fetch progress" aria-valuemin="0" aria-valuemax="100"
+                 style="width: 0.75rem; height: 10rem;">
+                <div class="absolute bg-accent" data-role="bar" style="left: 0; right: 0; bottom: 0; height: 0%;"></div>
+            </div>
+            <span class="text-xs text-content-secondary" data-role="pct">0%</span>
+        </div>
+        <button type="button" data-role="collapse" aria-expanded="true" title="Hide progress"
+                class="text-xs text-content-secondary hover:text-accent font-bold" style="line-height: 1;">[-]</button>
+
+        <!-- Details card, open by default; sits to the right of the box -->
+        <div id="cover-job-info" data-role="info" role="status" aria-live="polite"
+             class="absolute bg-secondary border border-card shadow-hard rounded-lg p-3"
+             style="left: calc(100% + 0.5rem); top: 0; width: 18rem; max-width: calc(100vw - 5rem);">
+            <p class="font-display text-content-primary mb-1" data-role="title">Fetching covers</p>
+            <p class="text-xs text-content-secondary" data-role="text"></p>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='cover_jobs.js') }}" defer></script>
+{% endif %}

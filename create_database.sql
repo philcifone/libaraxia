@@ -249,6 +249,27 @@ CREATE TABLE household_invites (
 );
 CREATE INDEX idx_household_invites_invitee ON household_invites(invitee_id);
 
+-- Background "fetch missing covers" runs (utils/cover_jobs.py, migration 022).
+CREATE TABLE cover_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,                  -- who started it (and sees its progress)
+    scope TEXT NOT NULL CHECK (scope IN ('own', 'all')),
+    status TEXT NOT NULL DEFAULT 'running'
+        CHECK (status IN ('running', 'done', 'cancelled')),
+    total INTEGER NOT NULL DEFAULT 0,          -- books missing a cover when it started
+    checked INTEGER NOT NULL DEFAULT 0,
+    found INTEGER NOT NULL DEFAULT 0,
+    last_book_id INTEGER NOT NULL DEFAULT 0,   -- cursor: books are done in id order
+    worker TEXT,                               -- process working on it
+    heartbeat_at TIMESTAMP,                    -- stale => another process may take over
+    dismissed INTEGER NOT NULL DEFAULT 0,      -- hidden from the progress panel
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_cover_jobs_user ON cover_jobs(user_id, dismissed);
+CREATE INDEX idx_cover_jobs_status ON cover_jobs(status);
+
 -- ---------------------------------------------------------------- views
 
 -- Books on their owner's shelf: owned, and not the owner's own wishlist entry.
@@ -292,4 +313,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('018_library_books_view.sql'),
     ('019_clean_goodreads_reviews.sql'),
     ('020_drop_privacy_columns.sql'),
-    ('021_household_invites.sql');
+    ('021_household_invites.sql'),
+    ('022_cover_jobs.sql');

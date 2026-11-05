@@ -822,3 +822,35 @@ def clear_placeholder_covers(conn) -> Dict[str, int]:
         if not still_used and delete_image_file(path):
             deleted += 1
     return {'books': len(found), 'files': deleted}
+
+
+# ------------------------------------------------------------ missing covers
+
+def missing_cover_sql(owner=False):
+    """FROM/WHERE for books with no cover but an ISBN to look one up by.
+    With owner=True it takes one parameter, the owner's user id."""
+    sql = """
+    FROM books
+    WHERE (cover_image_url IS NULL OR cover_image_url = '')
+      AND isbn IS NOT NULL AND isbn != ''
+"""
+    return sql + ("  AND added_by = ?\n" if owner else "")
+
+
+def fetch_cover_for_book(conn, book):
+    """Look up and save a cover for one book (needs id, title, isbn).
+    Placeholder images are refused by `_fetch_image`. Commits and returns
+    True when a cover was saved. Several HTTP calls, so it can take seconds:
+    run it from utils/cover_jobs.py, not inside a request."""
+    try:
+        details = fetch_book_details_from_isbn(book['isbn'])
+    except Exception:
+        current_app.logger.exception(f"Error fetching cover for '{book['title']}'")
+        details = None
+    if not (details and details.get('local_cover_url')):
+        return False
+    conn.execute("UPDATE books SET cover_image_url = ? WHERE id = ? "
+                 "AND (cover_image_url IS NULL OR cover_image_url = '')",
+                 (details['local_cover_url'], book['id']))
+    conn.commit()
+    return True

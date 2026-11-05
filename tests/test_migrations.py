@@ -103,6 +103,7 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
         DROP TABLE schema_migrations;
         DROP VIEW library_books;       -- added by 018
         DROP TABLE household_invites;  -- added by 021
+        DROP TABLE cover_jobs;         -- added by 022
         -- privacy columns from 012, dropped again by 020
         ALTER TABLE wishlist ADD COLUMN privacy TEXT DEFAULT 'friends';
         ALTER TABLE reading_sessions ADD COLUMN privacy TEXT DEFAULT 'friends';

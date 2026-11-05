@@ -57,22 +57,18 @@
         <div class="bg-secondary rounded-lg border border-card p-4">
             <h2 class="text-xl font-display text-content-primary mb-2">2. Fetch missing covers</h2>
             <p class="text-content-secondary text-sm mb-4">
-                {{ missing }} book(s) with an ISBN have no cover. Each click looks up the next {{ batch }}
-                (Open Library and Google Books); books with no ISBN need a cover search from their edit page.
+                {{ missing }} book(s) with an ISBN have no cover. This looks them all up in the background
+                (Open Library and Google Books, a second or two per book); progress shows in the corner of every page,
+                and you can leave this one. Books with no ISBN need a cover search from their edit page.
             </p>
             {% if missing %}
-            <form method="POST" action="{{ url_for('admin.bulk_fetch_covers') }}" class="flex flex-wrap items-center gap-3"
-                  onsubmit="showLoadingIndicator('Fetching covers...')">
+            <form method="POST" action="{{ url_for('covers.start') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <input type="hidden" name="offset" value="{{ offset if offset < missing else 0 }}"/>
+                <input type="hidden" name="scope" value="all"/>
+                <input type="hidden" name="next" value="{{ url_for('admin.placeholder_covers') }}"/>
                 <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent">
-                    Fetch next {{ batch }}
+                    Fetch all {{ missing }} missing covers
                 </button>
-                {% if offset and offset < missing %}
-                <span class="text-xs text-content-secondary">Skipping {{ offset }} that found nothing this round.</span>
-                {% elif offset %}
-                <span class="text-xs text-content-secondary">Every book has been tried once; this starts over.</span>
-                {% endif %}
             </form>
             {% endif %}
         </div>
