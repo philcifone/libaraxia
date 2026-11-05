@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Open work, known bugs and security follow-ups live in [ROADMAP.md](ROADMAP.md)**, as numbered phases worked through in order. Check it before starting a task and tick items off when they're done. Phases 0–8 are core Libaraxia work (Phase 0, the Gruvbox/house-style design refresh, comes first). The archive fork is parked; its plan and the original VHS design notes are in [FORK-SPEC.md](FORK-SPEC.md).
+**Open work, known bugs and security follow-ups live in [ROADMAP.md](ROADMAP.md)**, as numbered phases worked through in order. Check it before starting a task and tick items off when they're done. Phases 0–9 are core Libaraxia work (Phase 0, the Gruvbox/house-style design refresh, comes first). The archive fork is parked; its plan and the original VHS design notes are in [FORK-SPEC.md](FORK-SPEC.md).
 
 ## Project Overview
 

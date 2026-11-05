@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Validate that we have at least ISBN or title
             if (!isbn && !title) {
-                alert('Please provide at least an ISBN or title to fetch a cover');
+                showFlashMessage('error', 'Please provide at least an ISBN or title to fetch a cover');
                 return;
             }
 
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      class="w-full h-72 rounded-lg shadow-md mb-2"
                      loading="lazy">
                 <p class="text-xs text-content-secondary text-center mb-2">${cover.source}</p>
-                <button type="button" class="w-full bg-accent hover:bg-accent-hover text-on-accent text-xs py-1 px-2 rounded transition-colors duration-200">
+                <button type="button" class="w-full bg-accent hover:bg-accent-hover text-on-accent text-xs py-1 px-2 rounded btn">
                     Select
                 </button>
             `;
@@ -113,8 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDiv = document.createElement('div');
         messageDiv.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
             type === 'success'
-                ? 'bg-green-600 text-white'
-                : 'bg-red-600 text-white'
+                ? 'bg-green-600 text-on-accent'
+                : 'bg-red-600 text-on-accent'
         }`;
         messageDiv.textContent = message;
 

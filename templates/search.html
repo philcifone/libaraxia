@@ -19,7 +19,15 @@
         </a>
     </div>
 
+    {% if books %}
     {% include '_book_grid.html' %}
+    {% else %}
+    {% with title=('No books match "' ~ search_term ~ '"') if search_term else 'Nothing to search for',
+            text='This searches titles, authors and years on your shelf and your household\'s. To find a book you don\'t have yet, search Google Books from Add Book.',
+            links=[(url_for('books.add_book'), 'Search Google Books'), (url_for('base.index'), 'Back to library')] %}
+        {% include '_empty_state.html' %}
+    {% endwith %}
+    {% endif %}
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}

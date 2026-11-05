@@ -3,11 +3,12 @@
          data-current-page="{{ current_page | default(1) }}"
          data-has-more="{{ has_more | default(false) | lower }}"
          data-total-count="{{ total_count | default(0) }}">
+        {% include '_view_bar.html' %}
         <div id="book-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             <div class="book-item group">
                 <a href="/books/book/{{ book['id'] }}"
-                   class="book-link block bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card">
+                   class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                         {% if book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
@@ -17,9 +18,7 @@
                              alt="{{ book['title'] }}"
                              class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
                         {% else %}
-                        <div class="flex items-center justify-center h-full bg-primary-bg text-content-secondary">
-                            <span class="text-sm italic">No Image Available</span>
-                        </div>
+                        {% with title=book['title'], author=book['author'], size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                     </div>
 

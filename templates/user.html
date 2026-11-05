@@ -13,8 +13,9 @@
          <span>Back to Catalog</span>
      </a>
         <!-- Profile Info -->
-        <section class="bg-secondary rounded-xl p-4 shadow-lg border border-card">
-            <div class="flex items-center gap-4 p-4">
+        <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
+            <!-- Header row: avatar | name, bio, friend/household actions -->
+            <div class="flex items-start gap-4 sm:gap-6">
                 <!-- Avatar with Upload on Hover -->
                 {% if current_user.id == user['id'] %}
                 <div class="relative flex-shrink-0 flex items-center gap-2 group">
@@ -34,7 +35,7 @@
                         </label>
                         <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" data-change="uploadAvatar" data-username="{{ user['username'] }}">
                     </div>
-                    <label for="avatar-input" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100 cursor-pointer" title="Change profile picture">
+                    <label for="avatar-input" class="text-content-secondary hover:text-accent transition-colors reveal cursor-pointer" title="Change profile picture">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
@@ -62,6 +63,47 @@
                     <h1 class="text-3xl font-display text-content-primary">
                         {{ user['username'].capitalize() }}'s Profile
                     </h1>
+                    <!-- Bio Section -->
+                    {% if current_user.id == user['id'] or (user['bio'] and not is_own_profile) %}
+                    <div class="mt-3">
+                        {% if current_user.id == user['id'] %}
+                        <!-- Editable Bio for Own Profile -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <p class="label text-sm pb-1">Bio</p>
+                                <button id="bio-edit-btn" class="text-content-secondary hover:text-accent transition-colors" data-click="editBio" title="Edit bio">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="bio-display-container">
+                                <p id="bio-display" class="text-content-primary whitespace-pre-wrap">{{ user['bio'] if user['bio'] else 'Add a bio to tell others about yourself...' }}</p>
+                            </div>
+                            <div id="bio-edit-container" class="hidden">
+                                <textarea id="bio-input" aria-label="Bio" class="w-full px-3 py-2 bg-secondary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" rows="4" maxlength="500" placeholder="Tell others about yourself...">{{ user['bio'] if user['bio'] else '' }}</textarea>
+                                <div class="flex items-center justify-between mt-2">
+                                    <span id="bio-char-count" class="text-xs text-content-secondary">0 / 500</span>
+                                    <div class="flex gap-2">
+                                        <button id="bio-save-btn" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded btn" data-click="saveBio">
+                                            Save
+                                        </button>
+                                        <button id="bio-cancel-btn" class="px-3 py-1 bg-primary hover:bg-primary-hover text-content-primary rounded btn btn-outline" data-click="cancelBioEdit">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% elif user['bio'] %}
+                        <!-- Display Bio for Other Users -->
+                        <div class="space-y-2">
+                            <p class="label text-sm pb-1">Bio</p>
+                            <p class="text-content-primary whitespace-pre-wrap">{{ user['bio'] }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
 
                     <!-- Friend Request Actions -->
                     {% if not is_own_profile %}
@@ -72,7 +114,7 @@
                             {% if household.i_am_owner %}
                             <form method="POST" action="{{ url_for('user.household_remove', user_id=user['id']) }}" class="inline-block">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm transition-colors flex items-center gap-1.5" data-confirm="{{ ("Remove " ~ user["username"] ~ " from your household? Their books stay theirs; you just stop sharing a library.") }}">
+                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm btn flex items-center gap-1.5" data-confirm="{{ ("Remove " ~ user["username"] ~ " from your household? Their books stay theirs; you just stop sharing a library.") }}">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                     </svg>
@@ -83,7 +125,7 @@
                             {% else %}
                             <form method="POST" action="{{ url_for('user.household_remove', user_id=current_user.id) }}" class="inline-block">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm transition-colors" data-confirm="{{ "Leave this household? Your books stay yours; you just stop sharing a library." }}">
+                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm btn" data-confirm="{{ "Leave this household? Your books stay yours; you just stop sharing a library." }}">
                                     Leave Household
                                 </button>
                             </form>
@@ -92,23 +134,23 @@
                             <span class="text-sm text-content-secondary">Invited you to share a library:</span>
                             <form method="POST" action="{{ url_for('user.household_accept', invite_id=household.received['id']) }}" class="inline-block">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm transition-colors">Accept</button>
+                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm btn">Accept</button>
                             </form>
                             <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.received['id']) }}" class="inline-block">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary border border-content-secondary rounded transition-colors">Decline</button>
+                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary rounded btn btn-outline">Decline</button>
                             </form>
                         {% elif household.sent %}
                             <span class="text-sm text-content-secondary">Household invite sent</span>
                             <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.sent['id']) }}" class="inline-block">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="cancel" value="1">
-                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary border border-content-secondary rounded transition-colors">Cancel</button>
+                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary rounded btn btn-outline">Cancel</button>
                             </form>
                         {% elif friendship_status == 'friends' and household.can_invite and not household.they_are_in_one %}
                             <form method="POST" action="{{ url_for('user.household_invite', user_id=user['id']) }}" class="inline-block">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm transition-colors flex items-center gap-1.5">
+                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm flex items-center gap-1.5 btn">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                                     </svg>
@@ -124,7 +166,7 @@
                                 <!-- Remove Friend -->
                                 <form method="POST" action="{{ url_for('friends.remove_friend', friend_id=user['id']) }}" class="inline-block">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 text-xs text-content-secondary hover:text-red-500 transition-colors border border-content-secondary hover:border-red-500 rounded" data-confirm="{{ ("Remove " ~ user["username"] ~ " from friends?") }}">
+                                    <button type="submit" class="px-3 py-2 text-xs text-content-secondary hover:text-red-500 hover:border-red-500 rounded btn btn-outline" data-confirm="{{ ("Remove " ~ user["username"] ~ " from friends?") }}">
                                         Remove Friend
                                     </button>
                                 </form>
@@ -135,13 +177,13 @@
                             <div class="flex gap-2">
                                 <form method="POST" action="{{ url_for('friends.accept_request', request_id=friend_request_id) }}" class="inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-on-accent rounded text-sm transition-colors">
+                                    <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-on-accent rounded text-sm btn">
                                         Accept Friend Request
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('friends.decline_request', request_id=friend_request_id) }}" class="inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm transition-colors">
+                                    <button type="submit" class="px-3 py-1 bg-primary hover:bg-primary-hover text-content-primary rounded text-sm btn btn-outline">
                                         Decline
                                     </button>
                                 </form>
@@ -149,7 +191,7 @@
                         {% else %}
                             <form method="POST" action="{{ url_for('friends.send_request', username=user['username']) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors">
+                                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded btn">
                                     Add Friend
                                 </button>
                             </form>
@@ -158,48 +200,6 @@
                     {% endif %}
                 </div>
             </div>
-
-            <!-- Bio Section -->
-            {% if current_user.id == user['id'] or (user['bio'] and not is_own_profile) %}
-            <div class="rounded-lg">
-                {% if current_user.id == user['id'] %}
-                <!-- Editable Bio for Own Profile -->
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <p class="label text-sm pb-1">Bio</p>
-                        <button id="bio-edit-btn" class="text-content-secondary hover:text-accent transition-colors" data-click="editBio" title="Edit bio">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="bio-display-container">
-                        <p id="bio-display" class="text-content-primary whitespace-pre-wrap">{{ user['bio'] if user['bio'] else 'Add a bio to tell others about yourself...' }}</p>
-                    </div>
-                    <div id="bio-edit-container" class="hidden">
-                        <textarea id="bio-input" class="w-full px-3 py-2 bg-secondary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" rows="4" maxlength="500" placeholder="Tell others about yourself...">{{ user['bio'] if user['bio'] else '' }}</textarea>
-                        <div class="flex items-center justify-between mt-2">
-                            <span id="bio-char-count" class="text-xs text-content-secondary">0 / 500</span>
-                            <div class="flex gap-2">
-                                <button id="bio-save-btn" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded transition-colors" data-click="saveBio">
-                                    Save
-                                </button>
-                                <button id="bio-cancel-btn" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors" data-click="cancelBioEdit">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% elif user['bio'] %}
-                <!-- Display Bio for Other Users -->
-                <div class="space-y-2">
-                    <p class="label text-sm pb-1">Bio</p>
-                    <p class="text-content-primary whitespace-pre-wrap">{{ user['bio'] }}</p>
-                </div>
-                {% endif %}
-            </div>
-            {% endif %}
 
             <!-- Privacy Notice for Non-Friends -->
             {% if not are_friends %}
@@ -213,15 +213,15 @@
             </div>
             {% endif %}
 
-            <div class="grid grid-cols-2 gap-6 mt-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 pt-6 border-t border-rule">
                 {% if current_user.id == user['id'] %}
                 <!-- Email (Editable) -->
                 <div class="space-y-2">
                     <p class="label text-sm pb-1">Email</p>
                     <div class="flex items-center gap-2 group">
                         <p id="email-display" class="text-content-primary">{{ user['email'] }}</p>
-                        <input type="email" id="email-input" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['email'] }}">
-                        <button id="email-edit-btn" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100" data-click="editField" data-field="email" title="Edit email">
+                        <input type="email" id="email-input" aria-label="Email" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['email'] }}">
+                        <button id="email-edit-btn" class="text-content-secondary hover:text-accent transition-colors reveal" data-click="editField" data-field="email" title="Edit email">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
@@ -248,8 +248,8 @@
                     <p class="label text-sm pb-1">Username</p>
                     <div class="flex items-center gap-2 group">
                         <p id="username-display" class="text-content-primary">{{ user['username'] }}</p>
-                        <input type="text" id="username-input" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['username'] }}">
-                        <button id="username-edit-btn" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100" data-click="editField" data-field="username" title="Edit username">
+                        <input type="text" id="username-input" aria-label="Username" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['username'] }}">
+                        <button id="username-edit-btn" class="text-content-secondary hover:text-accent transition-colors reveal" data-click="editField" data-field="username" title="Edit username">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
@@ -273,11 +273,11 @@
                     <div class="flex items-center gap-2 group">
                         <p id="password-display" class="text-content-primary">••••••••</p>
                         <div id="password-inputs" class="hidden flex-1 space-y-2">
-                            <input type="password" id="current-password-input" placeholder="Current password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                            <input type="password" id="new-password-input" placeholder="New password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                            <input type="password" id="confirm-password-input" placeholder="Confirm new password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <input type="password" id="current-password-input" aria-label="Current password" placeholder="Current password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <input type="password" id="new-password-input" aria-label="New password" placeholder="New password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <input type="password" id="confirm-password-input" aria-label="Confirm new password" placeholder="Confirm new password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                         </div>
-                        <button id="password-edit-btn" class="text-content-secondary hover:text-accent transition-colors opacity-0 group-hover:opacity-100" data-click="editPassword" title="Change password">
+                        <button id="password-edit-btn" class="text-content-secondary hover:text-accent transition-colors reveal" data-click="editPassword" title="Change password">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
@@ -302,7 +302,7 @@
                 </div>
 
                 <!-- Appearance -->
-                <div class="space-y-3 col-span-2" id="appearance-settings">
+                <div class="space-y-3 sm:col-span-2" id="appearance-settings" data-theme-picker>
                     <p class="label text-sm pb-1">Appearance</p>
                     <div class="flex flex-wrap gap-x-8 gap-y-3">
                         {% for kind, label, options, current in [
@@ -331,7 +331,7 @@
 
                 <!-- Reading Shelves Section -->
         {% if are_friends and reading_lists %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <a href="{{ url_for('base.friend_library', username=user['username']) }}" class="block mb-6">
                 <h2 class="text-2xl font-display text-content-primary hover:text-accent transition-colors">
                     {{ user['username'] }}'s Library →
@@ -371,12 +371,7 @@
                                              alt="Book cover"
                                              class="w-12 h-16 object-cover rounded shadow-sm">
                                     {% else %}
-                                        <div class="w-12 h-16 bg-accent/20 rounded flex items-center justify-center">
-                                            <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                            </svg>
-                                        </div>
+                                        {% with title=none, size='sm', box='w-12 h-16 shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
                                     {% endif %}
                                 {% endfor %}
                             </div>
@@ -389,7 +384,7 @@
 
         <!-- Reading Goal Section -->
         {% if current_user.id == user['id'] %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
 
             {% if user['reading_goal'] and user['reading_goal'] > 0 %}
@@ -431,12 +426,12 @@
             <!-- Update Reading Goal Form -->
             <form method="POST" action="{{ url_for('user.update_reading_goal') }}" class="flex gap-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="number" id="reading_goal" name="reading_goal"
+                    <input type="number" id="reading_goal" name="reading_goal" aria-label="Books to read this year"
                        value="{{ user['reading_goal'] or 0 }}" min="0"
                        placeholder="How many books do you want to read this year?"
                        class="flex-1 px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                 <button type="submit"
-                        class="px-6 py-2 bg-accent text-on-accent rounded-lg transition-colors hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent">
+                        class="px-6 py-2 bg-accent text-on-accent rounded-lg hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent btn">
                     Update Goal
                 </button>
             </form>
@@ -446,13 +441,13 @@
 
         <!-- Friends List Section -->
         {% if are_friends %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Friends{% else %}{{ user['username'] }}'s Friends{% endif %}
                 </h2>
                 {% if is_own_profile %}
-                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent border border-card transition-colors" title="Find new friends">
+                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn" title="Find new friends">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -466,7 +461,7 @@
             <div id="friend-search-container" class="hidden mb-4 bg-primary rounded-lg p-4">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-lg mb-4 font-semibold text-content-primary">Find New Friends</h3>
-                    <button id="close-friend-search" class="text-content-secondary hover:text-content-primary transition-colors">
+                    <button id="close-friend-search" aria-label="Close" class="text-content-secondary hover:text-content-primary transition-colors">
                         <svg class="mb-4 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -475,6 +470,7 @@
                 <div class="mb-3">
                     <input type="text"
                            id="friend-search-input"
+                           aria-label="Search for users"
                            placeholder="Search for users by username..."
                            class="w-full mb-2 px-4 py-2 bg-secondary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
                            autocomplete="off">
@@ -517,7 +513,7 @@
 
         <!-- Wishlist Section -->
         {% if are_friends and wishlist_books %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
@@ -540,19 +536,14 @@
                 {% for book in wishlist_books %}
                 <div class="book-item group">
                     <a href="{% if is_own_profile %}{{ url_for('books.show_book', id=book.id) }}{% else %}{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ user['username'] }}{% endif %}"
-                       class="book-link block bg-primary rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200">
+                       class="book-link block bg-primary rounded-lg overflow-hidden card-link">
                         <div class="book-cover w-full h-56 overflow-hidden">
                             {% if book.cover_image_url %}
                             <img src="{{ url_for('static', filename=book.cover_image_url) }}"
                                  alt="{{ book.title }}"
                                  class="book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
                             {% else %}
-                            <div class="flex items-center justify-center h-full bg-primary text-content-secondary">
-                                <svg class="w-12 h-12 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                </svg>
-                            </div>
+                            {% with title=book.title, author=book.author, size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
                             {% endif %}
                         </div>
 
@@ -573,7 +564,7 @@
 
         <!-- Recently Read/Reviewed Section -->
         {% if are_friends and recent_reviews %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Recent Reviews{% else %}{{ user['username'] }}'s Recent Reviews{% endif %}
@@ -586,18 +577,13 @@
                 <div class="bg-primary rounded-lg p-4 hover:bg-primary-hover transition-colors">
                     <div class="flex gap-4">
                         <!-- Book Cover -->
-                        <a href="{{ url_for('books.show_book', id=review.book_id) }}" class="flex-shrink-0">
+                        <a href="{{ url_for('books.show_book', id=review.book_id) }}" class="flex-shrink-0" aria-label="{{ review.title }}">
                             {% if review.cover_image_url %}
                             <img src="{{ url_for('static', filename=review.cover_image_url) }}"
                                  alt="{{ review.title }}"
                                  class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" />
                             {% else %}
-                            <div class="w-20 h-28 bg-secondary rounded-md flex items-center justify-center border border-card">
-                                <svg class="w-8 h-8 text-accent/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                </svg>
-                            </div>
+                            {% with title=review.title, size='sm', box='w-20 h-28 rounded-md' %}{% include '_no_cover.html' %}{% endwith %}
                             {% endif %}
                         </a>
 
@@ -637,11 +623,9 @@
 
                             <!-- Review Comment -->
                             {% if review.comment %}
-                            <div class="review-text-container">
-                                <p class="review-text text-content-secondary text-sm" data-expanded="false" style="max-height: 120px; overflow: hidden;">{{ review.comment }}</p>
-                                <button class="show-more-btn hidden text-accent hover:text-accent-hover text-sm font-medium mt-1 transition-colors" data-click="toggleReviewText">
-                                    Show more
-                                </button>
+                            <div data-read-more>
+                                <p class="read-more-text text-content-secondary text-sm whitespace-pre-wrap">{{ review.comment }}</p>
+                                <button type="button" class="read-more-toggle" data-click="toggleReadMore" aria-expanded="false" hidden>Read more</button>
                             </div>
                             {% endif %}
                         </div>
@@ -655,7 +639,7 @@
 
         <!-- Statistics Tabs Section -->
         {% if stats %}
-        <section class="bg-secondary rounded-xl shadow-lg overflow-hidden border border-card">
+        <section class="bg-secondary rounded-xl overflow-hidden card">
             <!-- Tab Navigation -->
             <div class="flex">
                 <button data-click="switchTab" data-tab="overview" id="tab-overview" class="tab tab-button active text-content-primary">
@@ -696,6 +680,43 @@
                         </div>
                     </div>
 
+                    {# Books finished per month (user.reading_by_month). One hue, no
+                       legend: the title names the series. Screen readers get the
+                       summary on the bars and the table below. #}
+                    {% set chart = stats.by_month %}
+                    {% if chart %}
+                    {% set busiest = chart.bars|max(attribute='books') %}
+                    <figure class="reading-chart">
+                        <figcaption class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
+                            <span class="text-lg font-display text-content-primary">Books finished per month</span>
+                            <span class="text-sm text-content-secondary">{{ chart.start }} – {{ chart.end }} · {{ chart.total }} book{{ '' if chart.total == 1 else 's' }}</span>
+                        </figcaption>
+                        <div class="chart-bars" role="img"
+                             aria-label="Bar chart of books finished per month, {{ chart.start }} to {{ chart.end }}: {{ chart.total }} in all, most in {{ busiest.name }} ({{ busiest.books }}).">
+                            {% for bar in chart.bars %}
+                            <div class="chart-col" style="--h: {{ bar.pct }}%">
+                                <div class="chart-fill"></div>
+                                <span class="chart-tip">{{ bar.name }}: {{ bar.books }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="chart-labels" aria-hidden="true">
+                            {% for bar in chart.bars %}<span>{{ bar.label }}</span>{% endfor %}
+                        </div>
+                        <details class="mt-4 text-sm">
+                            <summary class="cursor-pointer text-content-secondary hover:text-accent">Show as a table</summary>
+                            <table class="mt-2 w-full max-w-xs">
+                                <thead><tr class="text-left text-content-secondary"><th class="font-normal py-1">Month</th><th class="font-normal py-1 text-right">Books</th></tr></thead>
+                                <tbody>
+                                    {% for bar in chart.bars %}
+                                    <tr class="border-t border-rule"><td class="py-1 text-content-primary">{{ bar.name }}</td><td class="py-1 text-right text-content-primary">{{ bar.books }}</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </details>
+                    </figure>
+                    {% endif %}
+
                 </div>
 
                 <!-- Insights Tab -->
@@ -708,7 +729,7 @@
                         {% if stats.top_genres and stats.top_genres|length > 0 %}
                         <div class="space-y-3">
                             {% for genre in stats.top_genres %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-card">
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg card">
                                 <div class="flex-1">
                                     <p class="font-medium text-content-primary">{{ genre.genre }}</p>
                                 </div>
@@ -729,7 +750,7 @@
                         {% if stats.collection_status and stats.collection_status|length > 0 %}
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {% for status in stats.collection_status %}
-                            <div class="bg-secondary rounded-lg p-4 text-center border border-card">
+                            <div class="bg-secondary rounded-lg p-4 text-center card">
                                 <p class="text-sm text-content-secondary mb-1">{{ status.status.capitalize() }}</p>
                                 <p class="text-3xl font-bold text-accent">{{ status.count }}</p>
                             </div>
@@ -746,7 +767,7 @@
                         {% if stats.top_authors and stats.top_authors|length > 0 %}
                         <div class="space-y-3">
                             {% for author in stats.top_authors %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg border border-card">
+                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg card">
                                 <div class="flex-1">
                                     <p class="font-medium text-content-primary">{{ author.author }}</p>
                                     <p class="text-sm text-content-secondary">{{ author.books_count }} book{{ 's' if author.books_count > 1 else '' }}</p>
@@ -802,7 +823,7 @@
         {% if is_own_profile %}
         <div class="flex justify-center gap-4 flex-wrap">
             <a href="{{ url_for('user.export_library') }}"
-               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent transition-colors hover:bg-accent-hover">
+               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                 </svg>
@@ -810,7 +831,7 @@
             </a>
 
             <a href="{{ url_for('user.import_goodreads_page') }}"
-               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent transition-colors hover:bg-accent-hover">
+               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 8l-5-5-5 5M12 3v12"/>
                 </svg>
@@ -823,14 +844,14 @@
                 <input type="hidden" name="scope" value="own"/>
                 <input type="hidden" name="next" value="{{ url_for('user.profile', username=current_user.username) }}"/>
                 <button type="submit"
-                        class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent transition-colors hover:bg-accent-hover">
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
                     Fetch Missing Covers
                 </button>
             </form>
         </div>
 
         <!-- Account: export everything, deactivate or delete -->
-        <section id="account" class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section id="account" class="bg-secondary rounded-xl p-6 card">
             <h2 class="text-2xl font-display text-content-primary mb-4">Account</h2>
             <div class="flex flex-wrap gap-4 items-center justify-between">
                 <p class="text-sm text-content-secondary max-w-xl">
@@ -839,7 +860,7 @@
                 </p>
                 <div class="flex flex-wrap gap-3">
                     <a href="{{ url_for('user.export_data') }}"
-                       class="inline-flex items-center gap-2 px-4 py-2 border border-card bg-primary text-content-primary hover:bg-primary-hover">
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-content-primary hover:bg-primary-hover btn btn-outline">
                         Export My Data (ZIP)
                     </a>
                     <button type="button" data-click="showModal" data-target="account-removal-dialog"
@@ -849,7 +870,7 @@
                 </div>
             </div>
         </section>
-        <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 bg-secondary text-content-primary border border-card backdrop:bg-black/60">
+        <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 bg-secondary text-content-primary backdrop:bg-black/60 card">
             {% with ctx=account_removal, is_self=True, action_url=url_for('user.delete_account_self'), export_url=url_for('user.export_data') %}
             {% include '_account_removal.html' %}
             {% endwith %}

@@ -4,7 +4,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const tagInput = document.getElementById('tagInput');
     const tagsList = document.getElementById('tagsList');
     const addTagBtn = document.querySelector('.add-tag-btn');
-    
+    // Wishlist books have no tags section; nothing to set up there.
+    if (!tagInput || !addTagBtn) return;
+
     // Get book ID from a data attribute we'll add to the HTML
     const bookId = document.querySelector('[data-book-id]').dataset.bookId;
     
@@ -75,10 +77,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateTagsList(tags) {
         tagsList.innerHTML = tags.map(tag => `
-            <span class="inline-flex items-center px-3 py-0.5 rounded-pill text-sm font-medium bg-gray-100 text-gray-800 mr-2 mb-2">
+            <span class="inline-flex items-center px-3 py-0.5 rounded-pill text-sm font-medium bg-primary text-content-primary border border-rule-strong mr-2 mb-2">
                 ${escapeHtml(tag)}
-                <button class="tag-remove ml-1.5 text-gray-400 hover:text-gray-900 focus:outline-none" data-tag="${escapeHtml(tag)}">
-                    <svg class="w-4 h-4" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                <button type="button" class="tag-remove ml-1.5 text-muted hover:text-red-600" data-tag="${escapeHtml(tag)}"
+                        aria-label="Remove tag ${escapeHtml(tag)}">
+                    <svg class="w-4 h-4" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>

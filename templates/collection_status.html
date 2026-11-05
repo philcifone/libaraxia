@@ -38,14 +38,13 @@
 
             {% if not books %}
             <div class="col-span-full py-16 text-center">
-                <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto border border-card">
+                <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto card">
                     <p class="text-content-secondary text-lg italic">
                         No books in this collection yet.
                     </p>
                 </div>
             </div>
             {% endif %}
-        </div>
     </main>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

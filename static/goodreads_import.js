@@ -21,7 +21,7 @@ function handleGoodreadsImport(input, event) {
     const file = event.target.files[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith('.csv')) {
-        alert('Please select a CSV file');
+        showFlashMessage('error', 'Please select a CSV file');
         event.target.value = '';
         return;
     }
@@ -86,7 +86,7 @@ function renderReport(data) {
             <p class="text-sm text-content-secondary mb-2">${plural(data.covers_missing, 'book')} of yours ha${data.covers_missing === 1 ? 's' : 've'} an ISBN but no cover.
                 Fetching runs in the background (a second or two per book); you can leave this page and follow it in the corner.</p>
             <button type="button" data-click="startCoverFetch"
-                    class="px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover transition-colors">
+                    class="px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
                 Fetch covers
             </button>
             <p id="cover-start-message" class="text-sm text-content-secondary mt-2"></p>
@@ -105,7 +105,7 @@ function renderReport(data) {
             </div>
             ${covers}
             <a href="${esc(importInput().dataset.profileUrl)}"
-               class="inline-block mt-3 px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover transition-colors">
+               class="inline-block mt-3 px-4 py-2 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
                 Return to Profile
             </a>
         </div>`;

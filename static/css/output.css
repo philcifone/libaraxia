@@ -573,8 +573,23 @@ video {
   --sh-xl: none;
   --sh-2xl: none;
   --sh-inner: none;
-  --sh-hard: 4px 4px 0 rgb(var(--ink));
+  --sh-hard: 4px 4px 0 rgb(var(--accent));
   --card-border: rgb(var(--rule-strong));
+  /* Cards and buttons (.card, .card-link, .btn below), after negativeearth.net:
+           2px ink outline, hard accent offset shadow; clickable things "press"
+           toward the shadow on hover. */
+  --bw-card: 2px;
+  --bw-btn: 2px;
+  --card-edge: rgb(var(--ink));
+  --card-edge-nested: rgb(var(--rule-strong));
+  --sh-card: 4px 4px 0 rgb(var(--accent));
+  --sh-card-hover: 2px 2px 0 rgb(var(--accent));
+  --card-press: translate(2px, 2px);
+  --sh-btn: 2px 2px 0 rgb(var(--accent));
+  --sh-btn-hover: 1px 1px 0 rgb(var(--accent));
+  --btn-press: translate(1px, 1px);
+  --bw-outline: 2px;
+  --outline-edge: rgb(var(--ink));
 }
 
 :root[data-style="classic"] {
@@ -596,6 +611,19 @@ video {
   --sh-inner: inset 0 2px 4px 0 rgb(0 0 0 / .05);
   --sh-hard: var(--sh-lg);
   --card-border: transparent;
+  /* The original look: no outlines, soft shadows, book cards grow on hover */
+  --bw-card: 1px;
+  --bw-btn: 0;
+  --card-edge: transparent;
+  --card-edge-nested: transparent;
+  --sh-card: var(--sh-lg);
+  --sh-card-hover: var(--sh-xl);
+  --card-press: scale(1.05);
+  --sh-btn: none;
+  --sh-btn-hover: none;
+  --btn-press: none;
+  --bw-outline: 1px;
+  --outline-edge: rgb(var(--rule-strong));
 }
 
 /* ---- House palette (Gruvbox). Light is the default for any style-less page. ---- */
@@ -614,6 +642,8 @@ video {
   /* #3c3836 */
   --accent: 121 116 14;
   /* #79740e */
+  --chart-bar: var(--accent);
+  /* chart bars; own token so a theme can lift it to 3:1 */
   --accent-hover: 95 91 11;
   /* #5f5b0b */
   --on-accent: 251 248 241;
@@ -791,6 +821,8 @@ video {
 
 @media (prefers-color-scheme: dark) {
   :root[data-style="classic"]:not([data-mode="light"]) {
+    --chart-bar: 106 159 42;
+    /* #6a9f2a: the accent is under 3:1 on these greys */
     color-scheme: dark;
     --paper: 66 66 66;
     /* #424242 */
@@ -838,6 +870,8 @@ video {
 }
 
 :root[data-style="classic"][data-mode="dark"] {
+  --chart-bar: 106 159 42;
+  /* #6a9f2a: the accent is under 3:1 on these greys */
   color-scheme: dark;
   --paper: 66 66 66;
   /* #424242 */
@@ -930,6 +964,27 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   border-color: rgb(var(--rule-strong));
 }
 
+/* House: form controls get the same 2px ink outline as cards (no shadow).
+       Scoped to the style and specific enough to beat the templates'
+       `border border-rule-strong` utilities. */
+
+:root:not([data-style="classic"]) :is(
+        input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+        input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
+        select, textarea) {
+  border-width: 2px;
+  border-color: rgb(var(--ink));
+}
+
+/* Let form controls shrink inside flex rows. A flex item's min-width defaults
+       to its intrinsic width, which for a text input is ~20 characters (about
+       200px in Courier Prime), so "input flex-1 + button" rows pushed the button
+       out of the card on phones. */
+
+input, select, textarea {
+  min-width: 0;
+}
+
 .\!container {
   width: 100% !important;
 }
@@ -985,6 +1040,428 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
   .container {
     max-width: 1536px;
+  }
+}
+
+/* ---- Cards and buttons ----
+       The look comes from the shape variables of the active style (see Themes).
+       .card       a panel (static: shadow, no movement)
+       .card-link  a clickable card (book grid): presses on hover/focus
+       .btn        any filled button or button-like link; the fill colour stays a
+                   utility (bg-accent, bg-red-600, ...) so one class serves all. */
+
+.card,
+    .card-link {
+  border: var(--bw-card) solid var(--card-edge);
+  box-shadow: var(--sh-card);
+}
+
+/* A card inside a card is a section, not another layer: hairline, no shadow */
+
+.card .card {
+  border-width: 1px;
+  border-color: var(--card-edge-nested);
+  box-shadow: none;
+}
+
+.card-link {
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.card-link:hover,
+    .card-link:focus-visible {
+  transform: var(--card-press);
+  box-shadow: var(--sh-card-hover);
+}
+
+.\!btn {
+  border: var(--bw-btn) solid rgb(var(--ink)) !important;
+  box-shadow: var(--sh-btn) !important;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, color .15s ease !important;
+}
+
+.btn {
+  border: var(--bw-btn) solid rgb(var(--ink));
+  box-shadow: var(--sh-btn);
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, color .15s ease;
+}
+
+/* Unfilled button: surface background, outline (a colour utility such as
+       border-red-400 still wins, for danger outlines) */
+
+.btn-outline {
+  border-width: var(--bw-outline);
+  border-color: var(--outline-edge);
+}
+
+.\!btn:hover:not(:disabled),
+    .\!btn:active:not(:disabled) {
+  transform: var(--btn-press) !important;
+  box-shadow: var(--sh-btn-hover) !important;
+}
+
+.btn:hover:not(:disabled),
+    .btn:active:not(:disabled) {
+  transform: var(--btn-press);
+  box-shadow: var(--sh-btn-hover);
+}
+
+.\!btn:hover:not(:disabled),
+    .\!btn:active:not(:disabled) {
+  transform: var(--btn-press) !important;
+  box-shadow: var(--sh-btn-hover) !important;
+}
+
+.\!btn:disabled {
+  box-shadow: none !important;
+  opacity: .6 !important;
+  cursor: not-allowed !important;
+}
+
+.btn:disabled {
+  box-shadow: none;
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Floating add-book button (and its menu items): the big hard shadow */
+
+.fab {
+  border: var(--bw-btn) solid rgb(var(--ink));
+  box-shadow: var(--sh-hard);
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.fab:hover,
+    .fab:focus-visible {
+  transform: var(--card-press);
+  box-shadow: var(--sh-card-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-link, .btn, .fab {
+    transition: none;
+  }
+
+  .fab:hover, .fab:focus-visible {
+    transform: none;
+  }
+
+  .card-link:hover, .card-link:focus-visible,
+        .btn:hover:not(:disabled), .btn:active:not(:disabled) {
+    transform: none;
+  }
+
+   .\!btn {
+    transition: none !important;
+  }
+
+  
+        .\!btn:hover:not(:disabled), .\!btn:active:not(:disabled) {
+    transform: none !important;
+  }
+
+   .\!btn {
+    transition: none !important;
+  }
+
+  
+        .\!btn:hover:not(:disabled), .\!btn:active:not(:disabled) {
+    transform: none !important;
+  }
+
+   .\!btn {
+    transition: none !important;
+  }
+
+  
+        .\!btn:hover:not(:disabled), .\!btn:active:not(:disabled) {
+    transform: none !important;
+  }
+}
+
+/* ---- Small details from philcifone.com / negativeearth.net (House only) ---- */
+
+/* Numbered lists: zero-padded markers, "01 — Step" */
+
+:root:not([data-style="classic"]) ol.numbered {
+  list-style: none;
+  counter-reset: step;
+  padding-left: 0;
+}
+
+:root:not([data-style="classic"]) ol.numbered > li {
+  counter-increment: step;
+}
+
+:root:not([data-style="classic"]) ol.numbered > li::before {
+  content: counter(step, decimal-leading-zero) " \2014  ";
+  color: rgb(var(--accent));
+  font-weight: 700;
+}
+
+/* Links that open another site get a north-east arrow (internal "more"
+       links already end in a written →) */
+
+:root:not([data-style="classic"]) a[target="_blank"]::after {
+  content: "\00a0\2197";
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* A row of cover thumbnails (collections shelves): scrolls sideways inside
+       its card and snaps to whole covers, instead of running past the edge. */
+
+.shelf-row {
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  padding-bottom: .25rem;
+}
+
+.shelf-row > * {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+/* Controls shown on hover (edit pencils, delete buttons). Phones have no
+       hover, so there they're always visible; keyboard focus shows them too. */
+
+.reveal {
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.group:hover .reveal,
+    .group:focus-within .reveal,
+    .reveal:focus-visible,
+    .reveal:focus-within {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .reveal {
+    opacity: 1;
+  }
+}
+
+/* "Read more" (common.js initReadMore): long text clamped to about six
+       lines, fading out at the bottom while it's cut off. */
+
+.read-more-text {
+  max-height: var(--read-more-height, 9.5rem);
+  overflow: hidden;
+  transition: max-height .3s ease;
+}
+
+.read-more-text.is-clipped {
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+          mask-image: linear-gradient(to bottom, #000 60%, transparent);
+}
+
+.read-more-toggle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  --tw-text-opacity: 1;
+  color: rgb(var(--accent) / var(--tw-text-opacity, 1));
+}
+
+.read-more-toggle:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .read-more-text {
+    transition: none;
+  }
+}
+
+/* ---- No cover (templates/_no_cover.html, noCoverHtml() in common.js) ----
+       A plain binding: the theme's surface with a spine band down the left
+       and the title set on it, so a shelf of coverless books is still
+       readable. The box takes its size from the caller. Sizes:
+         lg  book page, review page: title and author
+         md  grid cards: title and author
+         sm  feed and profile thumbnails: title only
+       With no title (shelf-preview strips) it's just the binding. */
+
+.no-cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .5rem;
+  padding: 1rem .75rem 1rem 1.25rem;
+  overflow: hidden;
+  text-align: center;
+  overflow-wrap: anywhere;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--rule-strong));
+  border-left: 6px solid rgb(var(--accent));
+  border-radius: inherit;
+}
+
+.no-cover-title {
+  font-family: "Young Serif", serif;
+  font-size: 1rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.no-cover-author {
+  font-size: .75rem;
+  color: rgb(var(--ink-2));
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.no-cover-lg .no-cover-title {
+  font-size: 1.5rem;
+}
+
+.no-cover-lg .no-cover-author {
+  font-size: .9rem;
+}
+
+.no-cover-sm .no-cover-title {
+  font-size: .7rem;
+  -webkit-line-clamp: 4;
+}
+
+/* ---- Cover loading skeleton ----
+       Grid covers (img.book-cover-img) shimmer until they load; common.js
+       sets data-loaded on load or error. An attribute, not a class: the
+       grid/list switch in script.js rewrites className wholesale. On the
+       image itself rather than its box, so object-contain's letterboxing
+       doesn't keep shimmering. */
+
+img.book-cover-img:not([data-loaded]) {
+  background: linear-gradient(100deg,
+            rgb(var(--surface)) 30%, rgb(var(--fill)) 50%, rgb(var(--surface)) 70%);
+  background-size: 300% 100%;
+  animation: cover-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes cover-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to   {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  img.book-cover-img:not([data-loaded]) {
+    animation: none;
+    background: rgb(var(--fill));
+  }
+}
+
+/* Grid/list switch in the view bar: the pressed one is filled. */
+
+.view-toggle-btn {
+  color: rgb(var(--ink-2));
+  background: rgb(var(--paper));
+}
+
+.view-toggle-btn:hover {
+  color: rgb(var(--accent));
+}
+
+.view-toggle-btn[aria-pressed="true"] {
+  background: rgb(var(--accent));
+  color: rgb(var(--on-accent));
+}
+
+/* ---- Reading chart (profile → Overview) ----
+       Plain HTML bars, one per month; height comes from --h on each bar.
+       The whole column is the hover/focus target, and the tooltip sits just
+       above the bar top. Edge columns anchor their tooltip inwards so it
+       never runs off the card on a phone. */
+
+.chart-bars {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  height: 9rem;
+  align-items: end;
+  border-bottom: 1px solid rgb(var(--rule-strong));
+}
+
+.chart-col {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  outline-offset: 2px;
+}
+
+.chart-fill {
+  width: 100%;
+  height: var(--h);
+  background: rgb(var(--chart-bar));
+  border-radius: min(var(--r), 4px) min(var(--r), 4px) 0 0;
+}
+
+.chart-tip {
+  position: absolute;
+  bottom: calc(var(--h) + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 2px 6px;
+  font-size: .75rem;
+  background: rgb(var(--ink));
+  color: rgb(var(--paper));
+  border-radius: var(--r-sm);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+}
+
+.chart-col:nth-child(-n+2) .chart-tip {
+  left: 0;
+  transform: none;
+}
+
+.chart-col:nth-last-child(-n+2) .chart-tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.chart-col:hover .chart-tip,
+    .chart-col:focus-visible .chart-tip {
+  opacity: 1;
+}
+
+.chart-labels {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  margin-top: 4px;
+  font-size: .75rem;
+  text-align: center;
+  color: rgb(var(--ink-2));
+}
+
+/* Twelve month names don't fit at phone width: label every other one. */
+
+@media (max-width: 639px) {
+  .chart-labels > :nth-child(even) {
+    visibility: hidden;
   }
 }
 
@@ -1170,6 +1647,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   inset: 0px;
 }
 
+.inset-x-4 {
+  left: 1rem;
+  right: 1rem;
+}
+
 .bottom-6 {
   bottom: 1.5rem;
 }
@@ -1222,6 +1704,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   z-index: 10;
 }
 
+.z-20 {
+  z-index: 20;
+}
+
 .z-30 {
   z-index: 30;
 }
@@ -1234,16 +1720,12 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   z-index: 50;
 }
 
-.col-span-2 {
-  grid-column: span 2 / span 2;
+.order-last {
+  order: 9999;
 }
 
 .col-span-full {
   grid-column: 1 / -1;
-}
-
-.m-8 {
-  margin: 2rem;
 }
 
 .mx-1 {
@@ -1259,6 +1741,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .my-2 {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.my-8 {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
 }
 
 .-ml-px {
@@ -1325,6 +1812,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   margin-right: 0.75rem;
 }
 
+.mr-auto {
+  margin-right: auto;
+}
+
 .mt-0\.5 {
   margin-top: 0.125rem;
 }
@@ -1377,13 +1868,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-.line-clamp-4 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
 }
 
 .block {
@@ -1512,10 +1996,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .max-h-32 {
   max-height: 8rem;
-}
-
-.max-h-48 {
-  max-height: 12rem;
 }
 
 .max-h-96 {
@@ -1662,6 +2142,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   flex-shrink: 0;
 }
 
+.shrink-0 {
+  flex-shrink: 0;
+}
+
 .flex-grow {
   flex-grow: 1;
 }
@@ -1683,11 +2167,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .-translate-y-full {
   --tw-translate-y: -100%;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.translate-x-full {
-  --tw-translate-x: 100%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
@@ -1751,6 +2230,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   resize: vertical;
 }
 
+.resize {
+  resize: both;
+}
+
 .list-inside {
   list-style-position: inside;
 }
@@ -1761,6 +2244,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .list-disc {
   list-style-type: disc;
+}
+
+.list-none {
+  list-style-type: none;
 }
 
 .appearance-none {
@@ -1795,6 +2282,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .items-center {
   align-items: center;
+}
+
+.items-baseline {
+  align-items: baseline;
 }
 
 .items-stretch {
@@ -1841,9 +2332,23 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   gap: 2rem;
 }
 
+.gap-x-3 {
+  -moz-column-gap: 0.75rem;
+       column-gap: 0.75rem;
+}
+
+.gap-x-4 {
+  -moz-column-gap: 1rem;
+       column-gap: 1rem;
+}
+
 .gap-x-8 {
   -moz-column-gap: 2rem;
        column-gap: 2rem;
+}
+
+.gap-y-1 {
+  row-gap: 0.25rem;
 }
 
 .gap-y-3 {
@@ -1937,6 +2442,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   white-space: nowrap;
 }
 
+.whitespace-pre-line {
+  white-space: pre-line;
+}
+
 .whitespace-pre-wrap {
   white-space: pre-wrap;
 }
@@ -1985,6 +2494,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   border-bottom-width: 2px;
 }
 
+.border-l {
+  border-left-width: 1px;
+}
+
 .border-r {
   border-right-width: 1px;
 }
@@ -2013,10 +2526,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .border-content-secondary {
   --tw-border-opacity: 1;
   border-color: rgb(var(--ink-2) / var(--tw-border-opacity, 1));
-}
-
-.border-content-secondary\/30 {
-  border-color: rgb(var(--ink-2) / 0.3);
 }
 
 .border-gray-600 {
@@ -2075,10 +2584,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   background-color: rgb(var(--accent) / 0.2);
 }
 
-.bg-accent\/30 {
-  background-color: rgb(var(--accent) / 0.3);
-}
-
 .bg-black {
   --tw-bg-opacity: 1;
   background-color: rgb(var(--black) / var(--tw-bg-opacity, 1));
@@ -2098,24 +2603,9 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   background-color: rgb(var(--ink) / var(--tw-bg-opacity, 1));
 }
 
-.bg-gray-100 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--fill) / var(--tw-bg-opacity, 1));
-}
-
-.bg-gray-600 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--rule) / var(--tw-bg-opacity, 1));
-}
-
 .bg-gray-700 {
   --tw-bg-opacity: 1;
   background-color: rgb(var(--fill) / var(--tw-bg-opacity, 1));
-}
-
-.bg-green-500 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--green) / var(--tw-bg-opacity, 1));
 }
 
 .bg-green-600 {
@@ -2149,11 +2639,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .bg-primary\/50 {
   background-color: rgb(var(--paper) / 0.5);
-}
-
-.bg-red-500 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--red) / var(--tw-bg-opacity, 1));
 }
 
 .bg-red-600 {
@@ -2229,6 +2714,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   padding: 1rem;
 }
 
+.p-5 {
+  padding: 1.25rem;
+}
+
 .p-6 {
   padding: 1.5rem;
 }
@@ -2245,6 +2734,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .px-2 {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
+}
+
+.px-2\.5 {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
 }
 
 .px-3 {
@@ -2371,14 +2865,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   padding-right: 2.5rem;
 }
 
-.pr-2 {
-  padding-right: 0.5rem;
-}
-
-.pr-4 {
-  padding-right: 1rem;
-}
-
 .pt-2 {
   padding-top: 0.5rem;
 }
@@ -2393,6 +2879,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .pt-4 {
   padding-top: 1rem;
+}
+
+.pt-6 {
+  padding-top: 1.5rem;
 }
 
 .pt-8 {
@@ -2508,10 +2998,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   color: rgb(var(--accent) / var(--tw-text-opacity, 1));
 }
 
-.text-accent\/30 {
-  color: rgb(var(--accent) / 0.3);
-}
-
 .text-blue-400 {
   --tw-text-opacity: 1;
   color: rgb(var(--blue) / var(--tw-text-opacity, 1));
@@ -2551,11 +3037,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   color: rgb(var(--rule) / var(--tw-text-opacity, 1));
 }
 
-.text-gray-800 {
-  --tw-text-opacity: 1;
-  color: rgb(var(--ink-2) / var(--tw-text-opacity, 1));
-}
-
 .text-green-400 {
   --tw-text-opacity: 1;
   color: rgb(var(--green) / var(--tw-text-opacity, 1));
@@ -2564,6 +3045,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .text-green-500 {
   --tw-text-opacity: 1;
   color: rgb(var(--green) / var(--tw-text-opacity, 1));
+}
+
+.text-muted {
+  --tw-text-opacity: 1;
+  color: rgb(var(--muted) / var(--tw-text-opacity, 1));
 }
 
 .text-on-accent {
@@ -2636,6 +3122,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   opacity: 0.75;
 }
 
+.opacity-80 {
+  opacity: 0.8;
+}
+
 .shadow-hard {
   --tw-shadow: var(--sh-hard);
   --tw-shadow-colored: var(--sh-hard);
@@ -2657,12 +3147,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .shadow-sm {
   --tw-shadow: var(--sh-sm);
   --tw-shadow-colored: var(--sh-sm);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
-
-.shadow-xl {
-  --tw-shadow: var(--sh-xl);
-  --tw-shadow-colored: var(--sh-xl);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
@@ -2689,6 +3173,14 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .filter {
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.transition {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-backdrop-filter;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 
 .transition-all {
@@ -2863,12 +3355,46 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   }
 }
 
+/* Toast colours, used by both the Jinja partial and showFlashMessage().
+   Text on accent/red fills uses --on-accent (4.5:1+ in every style and mode). */
+
+.flash-message {
+  border: 1px solid rgb(var(--rule-strong));
+  box-shadow: var(--sh-hard);
+}
+
+.flash-success {
+  background: rgb(var(--accent));
+  color: rgb(var(--on-accent));
+}
+
+.flash-error   {
+  background: rgb(var(--red-strong));
+  color: rgb(var(--on-accent));
+}
+
+.flash-info    {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+}
+
 .animate-slide-in  {
   animation: slide-in 0.3s ease-out;
 }
 
 .animate-slide-out {
   animation: slide-out 0.3s ease-out;
+}
+
+/* ---------- Dialogs (confirmDialog() in common.js, account removal) ---------- */
+
+dialog::backdrop {
+  background: rgb(var(--black) / .55);
+}
+
+.confirm-dialog {
+  padding: 0;
+  width: min(28rem, calc(100vw - 2rem));
 }
 
 /* ---------- Star rating (templates/rate_review.html) ---------- */
@@ -2918,9 +3444,9 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   padding-bottom: 0.5rem;
 }
 
-.file\:text-white::file-selector-button {
+.file\:text-on-accent::file-selector-button {
   --tw-text-opacity: 1;
-  color: rgb(var(--ink) / var(--tw-text-opacity, 1));
+  color: rgb(var(--on-accent) / var(--tw-text-opacity, 1));
 }
 
 .backdrop\:bg-black\/60::backdrop {
@@ -2943,12 +3469,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .last\:border-b-0:last-child {
   border-bottom-width: 0px;
-}
-
-.hover\:scale-105:hover {
-  --tw-scale-x: 1.05;
-  --tw-scale-y: 1.05;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
 .hover\:scale-110:hover {
@@ -3008,11 +3528,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 .hover\:bg-content-secondary\/20:hover {
   background-color: rgb(var(--ink-2) / 0.2);
-}
-
-.hover\:bg-gray-700:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--fill) / var(--tw-bg-opacity, 1));
 }
 
 .hover\:bg-green-700:hover {
@@ -3084,16 +3599,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   color: rgb(var(--ink) / var(--tw-text-opacity, 1));
 }
 
-.hover\:text-content-secondary:hover {
-  --tw-text-opacity: 1;
-  color: rgb(var(--ink-2) / var(--tw-text-opacity, 1));
-}
-
-.hover\:text-gray-900:hover {
-  --tw-text-opacity: 1;
-  color: rgb(var(--ink) / var(--tw-text-opacity, 1));
-}
-
 .hover\:text-on-accent:hover {
   --tw-text-opacity: 1;
   color: rgb(var(--on-accent) / var(--tw-text-opacity, 1));
@@ -3128,21 +3633,13 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   text-decoration-line: underline;
 }
 
-.hover\:shadow-lg:hover {
-  --tw-shadow: var(--sh-lg);
-  --tw-shadow-colored: var(--sh-lg);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+.hover\:opacity-100:hover {
+  opacity: 1;
 }
 
 .hover\:shadow-md:hover {
   --tw-shadow: var(--sh-md);
   --tw-shadow-colored: var(--sh-md);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
-
-.hover\:shadow-xl:hover {
-  --tw-shadow: var(--sh-xl);
-  --tw-shadow-colored: var(--sh-xl);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
@@ -3194,10 +3691,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   color: rgb(var(--accent) / var(--tw-text-opacity, 1));
 }
 
-.group:hover .group-hover\:opacity-100 {
-  opacity: 1;
-}
-
 .group:hover .group-hover\:opacity-90 {
   opacity: 0.9;
 }
@@ -3214,6 +3707,22 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 }
 
 @media (min-width: 640px) {
+  .sm\:left-auto {
+    left: auto;
+  }
+
+  .sm\:right-4 {
+    right: 1rem;
+  }
+
+  .sm\:order-none {
+    order: 0;
+  }
+
+  .sm\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+
   .sm\:mx-auto {
     margin-left: auto;
     margin-right: auto;
@@ -3263,6 +3772,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
     max-width: 28rem;
   }
 
+  .sm\:flex-none {
+    flex: none;
+  }
+
   .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3275,8 +3788,24 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
     gap: 0.5rem;
   }
 
+  .sm\:gap-4 {
+    gap: 1rem;
+  }
+
+  .sm\:gap-6 {
+    gap: 1.5rem;
+  }
+
   .sm\:p-4 {
     padding: 1rem;
+  }
+
+  .sm\:p-6 {
+    padding: 1.5rem;
+  }
+
+  .sm\:p-8 {
+    padding: 2rem;
   }
 
   .sm\:px-10 {
@@ -3299,6 +3828,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
     padding-bottom: 0.5rem;
   }
 
+  .sm\:py-4 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
   .sm\:text-base {
     font-size: 1rem;
     line-height: 1.5rem;
@@ -3315,8 +3849,8 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
     grid-column: span 2 / span 2;
   }
 
-  .md\:h-12 {
-    height: 3rem;
+  .md\:m-8 {
+    margin: 2rem;
   }
 
   .md\:h-6 {
@@ -3325,10 +3859,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
   .md\:w-1\/2 {
     width: 50%;
-  }
-
-  .md\:w-12 {
-    width: 3rem;
   }
 
   .md\:w-6 {
@@ -3393,10 +3923,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
   .lg\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .lg\:flex-row {
-    flex-direction: row;
   }
 
   .lg\:px-8 {

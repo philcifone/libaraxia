@@ -52,7 +52,7 @@ The restyle goes before VHS so the VHS screens are only built once, in the new s
 
 ## 3. Phase 0: upstream foundations
 
-These are worth doing for Libaraxia alone. In [ROADMAP.md](ROADMAP.md), the schema/runner/tests/`base.html` items are core work (Phases 1, 2 and 6), and feature flags + plugin hook are parked as fork prep (Phase 9). They matter more now because two codebases will depend on them.
+These are worth doing for Libaraxia alone. In [ROADMAP.md](ROADMAP.md), the schema/runner/tests/`base.html` items are core work (Phases 1, 2 and 6), and feature flags + plugin hook are parked as fork prep (Phase 10). They matter more now because two codebases will depend on them.
 
 **First:** the working tree has a large set of uncommitted changes from the 2026-10-28 security pass (renames into `docs/`, untracking `node_modules/`, blueprint fixes). Commit those before anything else so the fork starts from a clean, known point.
 
@@ -156,7 +156,7 @@ Gruvbox extras seen on photo.philcifone.com: yellow `#d79921` (hover ink) and gr
 - Bracketed counts: `All · [415]`. Arrows: `→` for internal links, `↗` for external, `▸` before filenames and captions.
 - Links in accent with a 1px underline, offset `.2em`, 2px on hover. Focus: `2px solid var(--accent)`, offset `3px`.
 - Lowercase wordmark.
-- Covers shown like contact-sheet frames: a `--film` border with a mono "edge" caption under the image (e.g. `▸ 9780670671908` or the accession number).
+- Covers shown like contact-sheet frames: a `--film` border with a mono "edge" caption under the image (e.g. `▸ 9780670671908` or the accession number). A working version was built in Libaraxia Phase 7.1 and taken off books; it's parked in `docs/parked/film-frame.css`.
 
 ### 4.2 Implementation
 *Scheduled in two steps: ROADMAP Phase 0 (design refresh: tokens, fonts, radius, shadows, shared partials, done via `tailwind.config.js` without template edits) and Phase 7 (design polish: light theme, class cleanup, film-frame covers).*

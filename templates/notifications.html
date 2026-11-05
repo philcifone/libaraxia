@@ -17,7 +17,7 @@
 
         <!-- Friend Requests Section -->
         {% if friend_requests %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <h2 class="text-xl font-display text-content-primary mb-4 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -49,13 +49,13 @@
                     <div class="flex gap-3 flex-shrink-0">
                         <form method="POST" action="{{ url_for('friends.accept_request', request_id=request.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium transition-colors">
+                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium btn">
                                 Accept
                             </button>
                         </form>
                         <form method="POST" action="{{ url_for('friends.decline_request', request_id=request.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="px-6 py-2 bg-primary-hover hover:bg-content-secondary/20 text-content-secondary rounded-lg font-medium transition-colors border border-content-secondary/30">
+                            <button type="submit" class="px-6 py-2 bg-primary-hover hover:bg-content-secondary/20 text-content-secondary rounded-lg font-medium btn btn-outline">
                                 Decline
                             </button>
                         </form>
@@ -68,7 +68,7 @@
 
         <!-- Household Invites Section -->
         {% if household_invites %}
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <h2 class="text-xl font-display text-content-primary mb-4">Household Invites</h2>
             <div class="space-y-4">
                 {% for invite in household_invites %}
@@ -90,13 +90,13 @@
                     <div class="flex gap-3 flex-shrink-0">
                         <form method="POST" action="{{ url_for('user.household_accept', invite_id=invite.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium transition-colors">
+                            <button type="submit" class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium btn">
                                 Accept
                             </button>
                         </form>
                         <form method="POST" action="{{ url_for('user.household_decline', invite_id=invite.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="px-6 py-2 bg-primary-hover hover:bg-content-secondary/20 text-content-secondary rounded-lg font-medium transition-colors border border-content-secondary/30">
+                            <button type="submit" class="px-6 py-2 bg-primary-hover hover:bg-content-secondary/20 text-content-secondary rounded-lg font-medium btn btn-outline">
                                 Decline
                             </button>
                         </form>
@@ -108,7 +108,7 @@
         {% endif %}
 
         <!-- Recent Activity Section -->
-        <section class="bg-secondary rounded-xl p-6 shadow-lg border border-card">
+        <section class="bg-secondary rounded-xl p-6 card">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-display text-content-primary flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@
                 <form method="POST" action="{{ url_for('friends.mark_all_read') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit"
-                            class="px-4 py-2 text-sm bg-primary-hover hover:bg-accent/20 text-content-secondary hover:text-accent rounded-lg transition-colors border border-content-secondary/30">
+                            class="px-4 py-2 text-sm bg-primary-hover hover:bg-accent/20 text-content-secondary hover:text-accent rounded-lg btn btn-outline">
                         Mark all as read
                     </button>
                 </form>

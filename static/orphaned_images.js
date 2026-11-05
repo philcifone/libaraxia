@@ -22,11 +22,11 @@ registerActions({
     confirmDeletion: (form, event) => {
         const count = document.querySelectorAll('.orphan-checkbox:checked').length;
         if (count === 0) {
-            alert('Please select at least one file to delete.');
             event.preventDefault();
-        } else if (!confirm(`Are you sure you want to delete ${count} orphaned image file(s)? This action cannot be undone.`)) {
-            event.preventDefault();
+            showFlashMessage('error', 'Select at least one file to delete.');
+            return;
         }
+        confirmSubmit(form, event, `Delete ${count} orphaned image file(s)? This cannot be undone.`, { ok: 'Delete' });
     },
 });
 

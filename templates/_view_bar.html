@@ -1,0 +1,66 @@
+{# View bar above the book grid (7.2b): the book count, sort and the
+   grid/list switch, always visible. Search and filters stay in the header
+   dropdown (_search_sort_filter.html).
+
+   The sort form submits to the page it's on (library, shared library or
+   search) and carries every other query parameter along, so sorting keeps
+   your filters, search term and member choice. #}
+{% set sort_by = sort_by|default('title') %}
+{% set sort_order = sort_order|default('asc') %}
+{# The direction's wording depends on what's sorted: A–Z makes no sense for a year. #}
+{% set order_labels = {
+    'title': ('A–Z', 'Z–A'),
+    'author': ('A–Z', 'Z–A'),
+    'publish_year': ('Oldest first', 'Newest first'),
+    'created_at': ('Oldest first', 'Newest first'),
+} %}
+{% set asc_label, desc_label = order_labels.get(sort_by, order_labels['title']) %}
+{# Phone: count and the switch on one row, sort full-width below (order-last).
+   From sm up it's one line: count on the left, sort and switch on the right. #}
+<div class="view-bar flex flex-wrap items-center gap-3 mb-6">
+    <p class="mr-auto text-sm text-content-secondary">
+        {{ total_count|default(books|length) }} book{{ '' if total_count|default(books|length) == 1 else 's' }}
+    </p>
+
+        <form method="GET" action="{{ request.path }}" id="sort-form" class="order-last sm:order-none w-full sm:w-auto flex items-center gap-2">
+            {% for key in request.args %}
+            {% if key not in ('sort_by', 'sort_order', 'page', 'csrf_token') %}
+            {% for value in request.args.getlist(key) %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endfor %}
+            {% endif %}
+            {% endfor %}
+            <label for="sort_by" class="text-sm text-content-secondary">Sort</label>
+            <select name="sort_by" id="sort_by" data-change="submitSortForm"
+                    class="flex-1 sm:flex-none min-w-0 bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-2 py-1.5 text-sm
+                           focus:ring-2 focus:ring-accent focus:border-transparent">
+                <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
+                <option value="author" {% if sort_by == 'author' %}selected{% endif %}>Author</option>
+                <option value="publish_year" {% if sort_by == 'publish_year' %}selected{% endif %}>Year</option>
+                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date added</option>
+            </select>
+            <select name="sort_order" id="sort_order" aria-label="Sort direction" data-change="submitSortForm"
+                    class="flex-1 sm:flex-none min-w-0 bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-2 py-1.5 text-sm
+                           focus:ring-2 focus:ring-accent focus:border-transparent">
+                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>{{ asc_label }}</option>
+                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>{{ desc_label }}</option>
+            </select>
+            <noscript><button type="submit" class="btn btn-outline px-3 py-1.5 text-sm rounded-lg">Sort</button></noscript>
+        </form>
+
+        {# script.js switchView() sets aria-pressed and remembers the choice. #}
+        <div class="flex border border-rule-strong rounded-lg overflow-hidden" role="group" aria-label="View">
+            <button type="button" id="grid-view-btn" data-click="switchView" data-view="grid"
+                    class="view-toggle-btn px-2.5 py-1.5" aria-pressed="true" aria-label="Grid view">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
+                </svg>
+            </button>
+            <button type="button" id="list-view-btn" data-click="switchView" data-view="list"
+                    class="view-toggle-btn px-2.5 py-1.5 border-l border-rule-strong" aria-pressed="false" aria-label="List view">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/>
+                </svg>
+            </button>
+        </div>
+</div>

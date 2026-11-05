@@ -93,10 +93,10 @@
             .catch(() => { timer = setTimeout(poll, POLL_MS * 3); });  // offline or restarting: back off
     }
 
-    part('action').addEventListener('click', () => {
+    part('action').addEventListener('click', async () => {
         if (!job) return;
         const verb = job.status === 'running' ? 'stop' : 'dismiss';
-        if (verb === 'stop' && !confirm('Stop fetching covers? Covers found so far are kept.')) return;
+        if (verb === 'stop' && !await confirmDialog('Stop fetching covers? Covers found so far are kept.')) return;
         post(`/covers/${encodeURIComponent(job.id)}/${verb}`).then(data => {
             clearTimeout(timer);
             job = verb === 'stop' ? data.job : null;

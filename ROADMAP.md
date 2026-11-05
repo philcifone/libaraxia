@@ -3,7 +3,7 @@
 The phased plan for Libaraxia: every open action item, security follow-up and bug found so far, in the order to work through them. This is the **single list of open work**. Tick items (`[x]`) as they land, and move a finished phase to [Done](#done) with a date.
 
 - Assembled **2026-11-02** from the old `ACTION_ITEMS.md` (security audit of 2026-10-28), [FORK-SPEC.md](FORK-SPEC.md) (2026-11-01), and a screenshot/data pass on 2026-11-02 against an anonymised copy of `library.db`.
-- **Phases 0–8 are all core Libaraxia work** and don't depend on the fork. The archive fork is parked as Phase 9, a future idea. [FORK-SPEC.md](FORK-SPEC.md) holds the fork plan, and also the original VHS design notes (Phase 8).
+- **Phases 0–9 are all core Libaraxia work** and don't depend on the fork. The archive fork is parked as Phase 10, a future idea. [FORK-SPEC.md](FORK-SPEC.md) holds the fork plan, and also the original VHS design notes (Phase 8).
 - Items marked 🆕 are new findings from 2026-11-02.
 
 Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
@@ -19,11 +19,12 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 4 ✅ | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
 | 5 ✅ | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 ✅ | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
-| 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Film-frame covers, page fixes, a11y (theme toggle done early) |
+| 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
 | 8 | [VHS / UPC support](#phase-8-vhs--upc-support) | Built in the new style | A VHS can be scanned or entered, filtered and displayed |
-| 9 | [Fork (parked)](#phase-9-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
+| 9 | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
+| 10 | [Fork (parked)](#phase-10-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
-Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 9 is the part that matters.
+Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 9 → 10 is the part that matters.
 
 **Why the refresh can go first without the `base.html` refactor:** the templates already use *semantic* Tailwind names: `text-content-secondary` ×319, `text-content-primary` ×222, `bg-primary` ×118, `bg-accent`/`text-accent` ×212, `font-display` ×40, plus Tailwind's default `white`, `gray-600/700`, `red`, `yellow`, `green`, `blue` and `shadow-*`. Re-pointing those names in `tailwind.config.js` recolours, re-fonts and squares off nearly every page **without editing templates**. Hand edits are limited to the shared partials, a find-and-replace adding borders to cards, and the text colour on coloured buttons. Per-page cleanup waits for Phase 7, when there's one layout to edit.
 
@@ -430,60 +431,124 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 ## Phase 7: Design polish
 
+**Status 2026-11-05 (paused here):** 7.0–7.3 done and merged to `main`; 7.2b layout done, the rest deferred. Two open questions for Phil before closing the phase:
+1. **Friends' reviews on the book page.** Today the "Friend Reviews" section shows household members only, because friends' reviews hang on their own copy of the book. Proposed: match the friend's copy by ISBN (10/13 normalised), then by normalised title + author, and rename the section "Friends & household". No privacy change (friends already see reviews on profiles).
+2. **"Find friends" on the empty feed.** It links to your profile, where the username search is closed. Either open the search directly ("Add a friend by username") or drop the link. Side note: the search matches any 2+ letters of a username, so it doubles as a user list for logged-in users; switch to exact-username match if registration ever opens.
+
 **Goal:** finish what the Phase 0 refresh deliberately left out, now that every page extends `base.html` (Phase 6) and edits happen in one place. Phase 0 is the house-style reference.
 
-### User additions:
-Answer any below questions I have, work through any decisions with me, reorganize the ROADMAP accordingly, and delete this section as needed.
-#### Book details page "readjusts" when information auto populates. 
-Bug replication: one column of input forms split into two after manually entering ISBN on add book page. Did not test on other inputs.
+**Decided with Phil, 2026-11-05:**
+- **negativeearth.net shadows, full match in House.** Taken from the site's CSS:
+  - **Cards:** 2px ink border and a `4px 4px 0` olive (accent) offset shadow. A clickable card moves `2px,2px` on hover/press and its shadow drops to `2px`.
+  - **Buttons:** a `2–3px` shadow that drops to `1px` as the button moves `1px`.
+  - **Dark mode:** the border turns light; the shadow stays accent.
+  - **Libaraxia's rules on top:** only clickable things press (a static panel that moves on hover looks clickable when it isn't), inputs get the 2px border but no shadow, and there's no movement under `prefers-reduced-motion`. Classic keeps its soft shadows.
+- **New styles go in their own phase** ([Phase 9](#phase-9-more-styles)), after VHS: Shelf (iBooks-style), Outrun, and a video-store rack for VHS **inside Shelf**. Phase 7 lays the groundwork they need: component classes (7.1) instead of utility strings repeated in every template.
+- **7.2b changes how Phil uses the app: ask him before starting it.**
+- **Order:** 7.0 → 7.1 → 7.2 → 7.3 → 7.2b.
 
-#### Additional design theme to add to classic/house group: 
-- skeuomorphic theme similar to OG iphone books app. see docs/skeuomorphic-inspo.jpg (local only, git-ignored) - if planning or more details/effort is needed for this feel free to divide theme creation into a separate phase if it better suits your workflow. 
-- I’m thinking library look for books and blockbuster/video-store look for the vhs page. 
-- Also interested in a 80s neon outrun theme - no literal pictorial depictions, perhaps a glowing neon grid, purple>orange gradient, angled text boxes with contrasting colors (think boxy 80s sports car angles/livery) etc. 
+### 7.0 Layout bugs found on phones (done 2026-11-05)
+Found by a headless sweep: every GET page × House/Classic × light/dark × 390/768/1280px, checking page overflow, controls past their card's edge, and console/CSP errors. Now 0 problems; `tests/test_layout.py` pins each cause.
+- [x] **Add book: one column of inputs split into two after a manual ISBN lookup** (reported by Phil).
+  - The cause: the server-rendered "Data source" line had a bare `col-span-2`. Below `md` the form grid has no column template, so spanning two columns made the grid invent a second one and every later field flowed into it.
+  - The other entry paths (title search, barcode) fill the form in JS without that line, so they never split.
+  - Now `md:col-span-2`. The form card's `m-8 p-8` also left inputs only 260px of a 390px phone; it now has phone padding.
+- [x] **Add book and wishlist: a stray `</div>`** closed the method card early, so the form sat outside the page container, and the last close ate into `base.html`'s wrapper. The same mistake was in `collection_status.html` (a stray close) and `book_detail.html` (two divs never closed). `test_every_page_loads` now fails on any page whose tags don't balance.
+- [x] **Inputs and buttons past the card edge on phones** (reported by Phil). The places:
+  - add/wishlist search row and method tabs
+  - the book page's tag input
+  - profile → reading goal
+  - collections → new shelf
+  - The cause: a flex item's `min-width` defaults to its intrinsic width, about 20 characters (~200px in Courier Prime) for a text input. So `input flex-1` never shrank and pushed the button out. Fixed once in `styles.css` (`min-width: 0` on form controls). Method tabs get short labels on phones; friend-library shelf tabs wrap.
+- [x] **Toasts and some coloured buttons were unreadable in House.** `text-white` on an accent/red fill: Tailwind's `white` is the ink colour in House, so that was dark-on-olive (light mode) and pale-on-bright-green (dark mode). Toasts now use `.flash-success/-error/-info` (shared by the Jinja partial and `showFlashMessage`), and 11 other spots use `text-on-accent`; a test greps for the pattern. Toasts also keep a 16px gutter on phones.
+- [x] `tags.js` threw on wishlist books' pages (no tags section there).
 
-#### random:
-- can we more replicate the card & button shadows from negativeearth.net? 
-
-### 7.1 Finish the house style
+### 7.1 Component classes and the house style
+- [x] **Component classes** in `styles.css` (2026-11-05).
+  - The classes: `.card` (a panel), `.card-link` (a clickable card: the book grids, wishlist cards), `.btn` (any filled button; the fill stays a utility such as `bg-accent` / `bg-red-600`), `.btn-outline` (an unfilled button) and `.fab`.
+  - They read per-style shape variables: `--bw-card`, `--bw-btn`, `--card-edge`, `--sh-card`, `--sh-card-hover`, `--card-press`, `--sh-btn`, `--sh-btn-hover`, `--btn-press`, `--bw-outline`, `--outline-edge`.
+  - About 170 class strings in templates and `static/*.js` moved over. A card inside a card turns into a hairline section with no shadow.
+  - `tests/test_layout.py` fails if a `shadow-*` / `transition-colors` / `hover:scale-105` utility sits on the same element (utilities win over components and would switch the press off), or if a bordered panel or filled button skips the classes.
+- [x] **negativeearth shadows in House:**
+  - cards: 2px ink outline, `4px` accent offset, pressing to `2px` on hover
+  - buttons: `2px` → `1px`
+  - form controls: a 2px ink outline, no shadow
+  - FAB, toasts and loading overlay: `--sh-hard` (now the accent offset)
+  - no movement under `prefers-reduced-motion`
+  - **Classic** gets the same classes with its original values: soft shadows, book cards scale 1.05 on hover, borderless buttons. Checked in a headless browser: computed transform and shadow at rest and on hover, both styles.
 - [x] **Theme toggle** (done early, 2026-11-02): Profile → Appearance has **Style** (House = Gruvbox/square/bold lines, Classic = the original 2024 look, with a new light version) and **Mode** (System/Light/Dark), saved per user (migration 013). Styles are CSS-variable sets on `<html data-style data-mode>`. To add a style: one shape block and a light + dark palette in `static/styles.css`, plus a line in `THEME_STYLES` in `models.py`.
-- [ ] Optional: a quick sidebar shortcut for Mode, so it doesn't need a trip to the profile.
-- [x] ~~Delete the now-inert `rounded-*` / `shadow-*` classes from templates and `static/*.js` page by page. Decide whether avatars go square (framed like photos).~~ **Won't do (2026-11-02):** these classes now drive the Classic style, so they must stay.
-- [ ] **Film-frame covers:** a `--film` border with a mono "edge" caption under the cover (`▸ 9780670671908`), contact-sheet style.
-- [ ] Remaining details from the sites:
-  - zero-padded numbered markers (`01 — TITLE`)
-  - `→` for internal links, `↗` for external
-  - `--measure: 66ch` for review and description text
+- [x] **Sidebar Mode shortcut** (System / Light / Dark above Logout). One handler in `sidebar.js` drives every `[data-theme-picker]` (sidebar and profile) and keeps them in step.
+  - **Found on the way:** the add-book FAB (`z-50`) sat on top of the open sidebar, covering the Mode switch and Logout on phones. Its container (which includes the invisible menu above the button) also swallowed clicks on the page underneath.
+  - Now the FAB is `z-30` and click-through except the button itself, and its menu backdrop is `z-20`.
+- [x] ~~Delete the now-inert `rounded-*` / `shadow-*` classes from templates.~~ **Won't do (2026-11-02):** they drive the Classic style, so they stay. (The `shadow-*` utilities on cards and buttons did go, replaced by the component classes.)
+- [x] **Film-frame covers** on the book page (House): the cover sits in a strip of film stock with sprocket holes, and the ISBN is printed along the edge in amber (`▸ 9780143129554`). Classic shows the plain cover. `--film`, `--film-edge` and `--film-hole` are fixed in both modes (film is dark either way).
+  - **Removed 2026-11-05:** Phil didn't like it on books. The CSS, tokens and markup are parked in `docs/parked/film-frame.css` (not loaded) for VHS/DVD covers (9.1 rack, or the fork).
+- [x] Remaining details from the sites (House only):
+  - [x] zero-padded numbered markers (`01 — Step`) on `ol.numbered` (the Goodreads export steps)
+  - [x] `↗` after links that open another site (`target="_blank"`); internal "more" links already end in `→`
+  - [x] `.measure` (66ch) on description and review text (was already in place)
 
-### 7.2 Page fixes seen in the 2026-11-02 screenshots 🆕
-- **Decided 2026-11-04: keep a separate edit page** (no in-place editing on the book page). Security is the same either way, since the server checks ownership on every save. In-place editing would need per-field save endpoints or a JS form-state layer, its own validation and error display, and more inline script just before Phase 6 removes inline scripts for CSP. Edits are rare in a household catalog, so it would be a lot of work for a small gain. The book page stays a clean read view; the edit page holds the owner/admin tools.
-- [ ] **Book tools on the edit page (from Phil, 2026-11-04):** combine *Transfer Book Ownership* and *Delete permanently…* into one "Book tools" disclosure, styled with the transfer section's arrow, and move it to the edit page. Edit is already owner/admin only (`can_manage` on the page, ownership check in `edit_book`), so the tools stay owner/admin only for free. *Remove from Library / Put Back* stays on the book page: it's the normal, everyday action.
-- [ ] **Book detail on mobile:** the 3-column metadata grid collapses to 2 with awkward wrapping ("Dial Press Trade / Paperback"). Use one column on narrow screens.
-- [ ] **Profile card on desktop:** the avatar and title float above a two-column field list. Tighten it into a header row.
+### 7.2 Page fixes seen in the 2026-11-02 screenshots
+- **Decided 2026-11-04: keep a separate edit page** (no in-place editing on the book page).
+  - Security is the same either way, since the server checks ownership on every save.
+  - In-place editing would need per-field save endpoints or a JS form-state layer, plus its own validation and error display. Edits are rare in a household catalog, so that's a lot of work for a small gain.
+  - The book page stays a clean read view; the edit page holds the owner/admin tools.
+- [x] **Book tools on the edit page (from Phil, 2026-11-04; done 2026-11-05):** combine *Transfer Book Ownership* and *Delete permanently…* into one "Book tools" disclosure, styled with the transfer section's arrow, and move it to the edit page. Edit is already owner/admin only (`can_manage` on the page, ownership check in `edit_book`), so the tools stay owner/admin only for free. *Remove from Library / Put Back* stays on the book page: it's the normal, everyday action.
+  - Now `_book_tools.html`, included by `edit_book.html`. `books._book_tools_context()` supplies its data and `_transfer_candidates()` is the shared "who can receive it" query. The book page links to `Edit Book → Book tools`. The edit page's back link now goes to the book, not the catalog.
+- [x] **Book detail on mobile:** the 3-column metadata grid collapses to 2 with awkward wrapping ("Dial Press Trade / Paperback"). Use one column on narrow screens. *(One column on phones, two from `sm`, three from `lg`: at `md` the column beside the cover is too narrow for three.)*
+- [x] **Profile card on desktop:** the avatar and title float above a two-column field list. Tighten it into a header row.
+  - Avatar | name, bio and friend/household actions in one row, then a hairline and the fields: two columns, one on phones.
+  - The avatar row had its own `p-4` inside the card's, which is why it sat 16px in from everything else.
+- [x] **Add book:** after an ISBN lookup (a full page load) the method tabs reset to *Search*; keep *ISBN* selected. 🆕 2026-11-05
+- [x] **Found on the way:**
+  - The household and decline buttons (`bg-orange-600`, `bg-gray-600 text-white`) were missed by the `.btn` pass; they're now `.btn` / `.btn-outline`, and the lint tests cover orange and gray fills.
+  - The book page's tag chips were hard-coded light gray (a bright chip in dark mode) and their remove button had no label and no focus outline. Now themed and labelled.
 
-### 7.2b Search, sort and list view (from Phil, 2026-11-05)
+### 7.2b Search, sort and list view (from Phil, 2026-11-05; layout done, the rest deferred)
 
 Go over the whole search/sort/filter bar (`_search_sort_filter.html`, `script.js`) and the grid/list toggle, and make them friendlier. What they do today, found while answering "which search do I use in a bookstore?":
 
-- [ ] **Two searches that look alike but aren't.** The header magnifier (`/books/search`) searches your and your household's shelf by title, author or year (substring). It **hides removed books** unless the Removed filter says otherwise, so "Read but not owned" and given-away books don't show; it doesn't search your **wishlist** or by **ISBN**. Add Book's search queries **Google Books**, not your library. Make the difference obvious, or merge them into one "find" that also covers wishlist and removed books, with results labelled *On your shelf* / *Household's* / *Removed* / *On wishlist*.
-- [ ] **A "Do I have this?" scan for bookstores.** Today the best in-store check is Add Book → barcode (or type the ISBN): the duplicate warning says *In library* / *Removed from library* / *In wishlist*, and you just don't add it. That's a detour through an add form, and it doesn't show whether you've **read** it or how you rated it. A dedicated lookup (scan or type → owned? read? your rating? on wishlist? household's?) with one-tap *Add to wishlist* or *Add to library* would fit the use better. Needs HTTPS for the camera, and builds on the Phase 8 scanner fixes.
-- [ ] **Search bar layout:** the grid/list toggle and the sort controls are hidden inside the header search dropdown, so you have to open "search" to change the view. Give view and sort their own visible spot above the grid; keep search in the dropdown (or the reverse), and decide whether sort applies instantly (it does today) and filters need *Apply* (they do today), which is inconsistent.
+- [ ] **Two searches that look alike but aren't.**
+  - The header magnifier (`/books/search`) searches your and your household's shelf by title, author or year (substring). It **hides removed books** unless the Removed filter says otherwise, so "Read but not owned" and given-away books don't show. It doesn't search your **wishlist** or by **ISBN**.
+  - Add Book's search queries **Google Books**, not your library.
+  - Make the difference obvious, or merge them into one "find" that also covers wishlist and removed books, with results labelled *On your shelf* / *Household's* / *Removed* / *On wishlist*.
+- [ ] **A "Do I have this?" scan for bookstores.**
+  - Today the best in-store check is Add Book → barcode (or type the ISBN): the duplicate warning says *In library* / *Removed from library* / *In wishlist*, and you just don't add it. That's a detour through an add form, and it doesn't show whether you've **read** it or how you rated it.
+  - A dedicated lookup (scan or type → owned? read? your rating? on wishlist? household's?) with one-tap *Add to wishlist* or *Add to library* would fit the use better.
+  - Needs HTTPS for the camera, and builds on the Phase 8 scanner fixes.
+- [x] **Search bar layout:** the grid/list toggle and the sort controls are hidden inside the header search dropdown, so you have to open "search" to change the view. Give view and sort their own visible spot above the grid; keep search in the dropdown (or the reverse).
+  - **Done (2026-11-05, Phil chose "layout fix only"):** `_view_bar.html` above the grid on the library, shared library and search pages: book count, sort (field + direction) and a Grid/List switch with `aria-pressed`. Search and filters stay in the dropdown.
+  - Fixed on the way: sorting always went to `/base/index` with only the sort fields, so it dropped your filters and threw you out of the shared library or search. Sort and filter forms now submit to the page they're on and carry the other parameters. *Clear filters* removes only filter parameters (it used to drop the search term too). The direction reads *Oldest/Newest first* for Year and Date added instead of A–Z. The GET forms no longer carry the CSRF token (it ended up in URLs, history and logs).
+  - The two-searches merge and the "Do I have this?" lookup are deferred; the lookup builds on the Phase 8 scanner fixes.
+  - Also decide whether sort applies instantly (it does today) and filters need *Apply* (they do today), which is inconsistent.
 - [ ] **List view** is the grid restyled by `switchView` swapping class strings in JS (`script.js`). Make it a real layout (CSS class on the container, columns for author/year/status/rating), so it can show more than the grid and doesn't drift from `_book_grid.html`.
 - [ ] Search matching is a plain `LIKE '%term%'`: no accent/punctuation folding (the duplicate check's `_normalise` already does that), no subtitle, no tags. Consider the same normalisation, and SQLite FTS5 if it ever needs ranking.
 
 ### 7.3 Quick wins and accessibility
-- [ ] Replace `alert()` / `confirm()` with the toast and a small styled confirm modal.
-- [ ] Cover loading skeletons; consistent no-cover styling (pairs with 3.2). Today it's a "No Image Available" text box (grid, detail, friend library, wishlists, rate/review), a book icon (feed, profile), and omitted (collections thumbnails). Make one `_no_cover.html` partial and use it everywhere; Phil to pick text or icon.
-- [ ] Collections shelves as horizontal scroll-snap rows.
-- [ ] Book detail: larger framed cover, tidy metadata grid, reviews as cards, smoother "read more".
-- [ ] Empty states for an empty library, wishlist, feed and search.
-- [ ] Stats: a small reading-over-time chart on the profile (after 3.1 fixes the numbers).
-- [ ] Accessibility:
-  - `<html lang="en">` everywhere (free with `base.html`)
-  - labels/`aria-label` on form inputs and icon-only buttons
-  - check focus styles from 0.5 on every page
+- [x] Replace `alert()` / `confirm()` with the toast and a small styled confirm modal (built from `.card` / `.btn`).
+  - **Done:** 47 `alert()`s are toasts. `confirmDialog()` / `confirmSubmit()` in `common.js` are a native `<dialog>` card (Esc and Cancel keep things, destructive wording gets a red OK with focus on Cancel); every `data-confirm` uses it and replays the click or submit. `test_no_native_alert_or_confirm` keeps them out.
+- [x] Cover loading skeletons; consistent no-cover styling (pairs with 3.2).
+  - **Done:** Phil picked "title on a plain binding". `_no_cover.html` (and its JS twin `noCoverHtml()` in `common.js`) is the surface colour with an accent spine band and the title and author set in Young Serif; `sm` thumbnails show the title only, and shelf-preview strips (no title in the query) just the binding. It replaces the "No Image Available" boxes and book icons on the grid, list view, book page, review page, friend library, wishlists, feed, profile and collections.
+  - Grid covers shimmer until loaded (`img.book-cover-img:not([data-loaded])`, set by a capture-phase `load`/`error` listener in `common.js`). An attribute, not a class, because the grid/list switch in `script.js` rewrites `className`. That rewrite also dropped `relative` from the cover box, un-anchoring the *Removed* badge after a view switch; fixed.
+- [x] Collections shelves as horizontal scroll-snap rows (`.shelf-row`; the cover strip overflowed its card on phones).
+- [x] Book detail: larger framed cover, tidy metadata grid, reviews as cards, smoother "read more".
+  - **Done:** larger cover (the film frame was tried and removed, see 7.1), metadata grid 1/2/3 columns, transfer and delete moved to Edit → Book tools. Household reviews are cards with the text in place, not an accordion in a scroll box. One shared "Read more" (`initReadMore` / `toggleReadMore` in `common.js`) for the description and reviews on the book page and profile; it only shows when the text overflows and animates both ways. Replaces three hand-rolled toggles.
+  - Note: the "Friend Reviews" section shows **household members'** reviews only (`get_library_members`), not friends', despite its name and the code comment. Left as is; decide whether friends' reviews belong there (the access model already lets friends see the book page when they have data on it).
+- [x] Empty states for an empty library, wishlist, feed and search (`_empty_state.html`). The library one tells filtered-to-nothing apart from empty; the feed one says it shows friends' activity (it used to say "start adding books"). Also fixed the shared-library text, which told you to do something that doesn't exist.
+- [x] Stats: a small reading-over-time chart on the profile (after 3.1 fixes the numbers).
+  - **Done:** Overview tab, books finished per month (`user.reading_by_month`). Twelve months ending now, or ending at the last finished book when the log has gone quiet; the range is always printed. HTML bars, no chart library, hover tooltips, a summary for screen readers and a "Show as a table" view. Bars use a `--chart-bar` token: Classic dark lifts it to `#6a9f2a` because its accent is under 3:1 on those greys.
+- [x] Accessibility:
+  - [x] `<html lang="en">` everywhere (free with `base.html`)
+  - [x] labels/`aria-label` on form inputs and icon-only buttons: 39 unnamed controls, now 0 in a headless audit of every page; `test_every_field_and_button_has_a_name` checks the templates.
+  - [x] focus styles from 0.5 on every page: a headless check focuses every control in House and Classic; all show an outline or a ring. (Tailwind 3's `focus:outline-none` is a *transparent* outline, so a check has to look at the colour, not just the style.)
+  - [x] hover-only controls (delete ×, edit pencils) use `.reveal`: always visible on touch screens, and shown on keyboard focus.
 
-**Done when:** `grep -rE "rounded-(sm|md|lg|xl|2xl|3xl)|\brounded\b" templates static/*.js` is empty; light and dark both render correctly at phone and desktop widths; screenshots are retaken in both themes.
+**Done when:**
+- Every page uses the component classes, and House matches negativeearth's borders and shadows.
+- The headless sweep (every page × House/Classic × light/dark × 390/768/1280px) finds no horizontal overflow, no control past its card, and no console or CSP errors.
+- No `alert()` / `confirm()` is left in `static/*.js`.
+- The 7.2 and 7.3 items are done. 7.2b is done or deliberately deferred.
+- The README screenshots stay deferred to after Phase 8 (see 0.7).
 
 ---
 
@@ -519,9 +584,33 @@ Reported by Phil (2026-11-02): camera only fills half the barcode window, it oft
 
 ---
 
-## Phase 9: The archive fork (parked)
+## Phase 9: More styles
 
-**Not planned yet.** It's listed so the idea isn't lost; nothing in Phases 0–8 depends on it. The plan is in [FORK-SPEC.md](FORK-SPEC.md). In short:
+From Phil, 2026-11-05. New choices next to House and Classic under Profile → Appearance. They come after Phase 8 because the Shelf style's video-store rack needs VHS records. Each style is a shape block and palettes in `styles.css` (as today), plus a scoped `[data-style=…]` stylesheet for structure, built on the 7.1 component classes. Do one style at a time, with the same headless sweep as 7.0.
+
+### 9.1 Shelf (iBooks-style skeuomorphic) 🟢
+Reference: `docs/skeuomorphic-inspo.jpg` (local only, git-ignored): the 2010 iPad iBooks shelf.
+- [ ] Wood-grain page and shelves. Light mode = maple, dark = walnut. Texture as a small tiling image (self-made or CC0, in `static/`), or a CSS gradient approximation if that looks good enough.
+- [ ] **Library grid as shelves:** covers only (title/author on hover/focus and in list view), fixed row height so a shelf ledge runs under each row (a per-card ledge that bridges the gaps), soft drop shadow on covers.
+- [ ] Embossed toolbar and buttons (gradient, inset highlight), system sans with a light text shadow.
+- [ ] **Video-store rack for VHS** (Shelf only; House and Classic show VHS like books, with a badge): tapes spine-out in a rack, navy and marquee yellow, ticket-stub labels. Generic, no Blockbuster or other branding. Needs Phase 8. Candidate for the tape/sleeve cover: the parked film frame, `docs/parked/film-frame.css`.
+- [ ] Forms, profile and admin pages stay plain-but-themed (wood frame, paper panels); only the library views go full skeuomorphic.
+
+### 9.2 Outrun (80s neon) 🟢
+- [ ] **Dark only:** the Mode setting is ignored (documented on the Appearance picker).
+- [ ] Perspective neon grid behind the page (fixed pseudo-element, CSS gradients + `perspective`; no images, no literal scenery).
+- [ ] Purple → orange gradient on the top bar and headings; glow (`text-shadow` / `box-shadow`) on headings, accents and focus only, never on body text.
+- [ ] Angled card and button corners via `clip-path` (boxy 80s car livery), with contrasting stripes on buttons. `clip-path` also clips borders and focus outlines, so draw those inside the shape.
+- [ ] An OFL display font for headings (e.g. Audiowide or Orbitron) in `static/fonts/`; body text stays readable (Courier Prime or a plain sans).
+- [ ] Contrast check: text on the gradient and neon fills passes 4.5:1; animations respect `prefers-reduced-motion`.
+
+**Done when:** each style renders every page in its modes at phone and desktop widths with a clean sweep; Shelf shows books on shelves and VHS in the rack.
+
+---
+
+## Phase 10: The archive fork (parked)
+
+**Not planned yet.** It's listed so the idea isn't lost; nothing in Phases 0–9 depends on it. The plan is in [FORK-SPEC.md](FORK-SPEC.md). In short:
 1. Tag `v2.0.0` and create the fork repo with an `upstream` remote.
 2. Turn off the social layer by config and rebrand.
 3. Archival data model: accessioning, condition, provenance, locations, audit log.

@@ -2,6 +2,7 @@
 import pytest
 
 from conftest import add_book, add_review, add_user, login, scalar
+from test_layout import unbalanced_tags
 
 
 def test_root_sends_first_visitor_to_register(client):
@@ -77,7 +78,8 @@ SKIP = {'static', 'auth.verify_email', 'books.thumbnail'}
 
 
 def test_every_page_loads(app, client, db, people):
-    """Every GET route answers without a server error, as an admin with real-ish data."""
+    """Every GET route answers without a server error, as an admin with real-ish
+    data, and every HTML page closes the tags it opens (see test_layout.py)."""
     alice, bob, carol = people['alice'], people['bob'], people['carol']
     book = add_book(db, alice, 'Dune', 'Frank Herbert')
     add_review(db, bob, book)
@@ -100,6 +102,8 @@ def test_every_page_loads(app, client, db, people):
         url = rule.build({a: filled[a] for a in rule.arguments})[1]
         r = client.get(url)
         assert r.status_code < 400, f'{url} -> {r.status_code}'
+        if r.status_code == 200 and r.mimetype == 'text/html':
+            assert unbalanced_tags(r.get_data(as_text=True)) == [], url
         checked.append(url)
     assert len(checked) > 35
 
@@ -107,7 +111,9 @@ def test_every_page_loads(app, client, db, people):
              '/base/library/carol', '/wishlist/user/carol', '/books/search?q=dune',
              '/admin/users/%d/removal' % alice]
     for url in extra:
-        assert client.get(url).status_code < 400, url
+        r = client.get(url)
+        assert r.status_code < 400, url
+        assert unbalanced_tags(r.get_data(as_text=True)) == [], url
 
 
 def test_every_template_page_extends_base():

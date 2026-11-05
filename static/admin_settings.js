@@ -62,7 +62,7 @@ function showEditForm(userId, username, email, isActive, isAdmin, avatarUrl) {
         adminBtn.className = 'w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors';
     } else {
         adminBtn.textContent = 'Make Admin';
-        adminBtn.className = 'w-full px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors';
+        adminBtn.className = 'w-full px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn';
     }
 
     if (isActive) {
@@ -70,7 +70,7 @@ function showEditForm(userId, username, email, isActive, isAdmin, avatarUrl) {
         activeBtn.className = 'w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors';
     } else {
         activeBtn.textContent = 'Activate';
-        activeBtn.className = 'w-full px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors';
+        activeBtn.className = 'w-full px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn';
     }
 
     // Scroll to the form panel smoothly
@@ -135,7 +135,7 @@ async function uploadUserAvatar(event) {
     // Validate file type
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-        alert('Please upload a valid image file (PNG, JPG, GIF, or WebP)');
+        showFlashMessage('error', 'Please upload a valid image file (PNG, JPG, GIF, or WebP)');
         return;
     }
 
@@ -188,9 +188,9 @@ async function uploadUserAvatar(event) {
                 }
             }
 
-            alert(data.message || 'Avatar uploaded successfully!');
+            showFlashMessage('success', data.message || 'Avatar uploaded successfully!');
         } else {
-            alert(data.message || 'Failed to upload avatar');
+            showFlashMessage('error', data.message || 'Failed to upload avatar');
 
             // Hide status text on error
             if (statusText) {
@@ -199,7 +199,7 @@ async function uploadUserAvatar(event) {
         }
     } catch (error) {
         console.error('Upload error:', error);
-        alert('An error occurred while uploading avatar');
+        showFlashMessage('error', 'An error occurred while uploading avatar');
 
         // Hide status text on error
         if (statusText) {
@@ -215,7 +215,7 @@ async function uploadUserAvatar(event) {
 async function removeUserAvatar() {
     if (!currentEditUserId) return;
 
-    if (!confirm('Remove this user\'s avatar?')) return;
+    if (!await confirmDialog('Remove this user\'s avatar?')) return;
 
     try {
         // Get CSRF token
@@ -259,13 +259,13 @@ async function removeUserAvatar() {
                 }
             }
 
-            alert(data.message || 'Avatar removed successfully!');
+            showFlashMessage('success', data.message || 'Avatar removed successfully!');
         } else {
-            alert(data.message || 'Failed to remove avatar');
+            showFlashMessage('error', data.message || 'Failed to remove avatar');
         }
     } catch (error) {
         console.error('Remove error:', error);
-        alert('An error occurred while removing avatar');
+        showFlashMessage('error', 'An error occurred while removing avatar');
     }
 }
 

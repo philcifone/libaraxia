@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function showDuplicateWarning(duplicates) {
+    async function showDuplicateWarning(duplicates) {
         const reasons = [];
         const locations = [];
 
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         message += '\nAre you sure you want to add this book to your wishlist?';
 
-        return confirm(message);
+        return confirmDialog(message, { ok: 'Add anyway', danger: false });
     }
 
     async function selectBook(bookData, button) {
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const duplicateCheck = await checkForDuplicates(bookData);
 
             if (duplicateCheck.has_duplicates) {
-                const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
+                const userConfirmed = await showDuplicateWarning(duplicateCheck.duplicates);
 
                 if (!userConfirmed) {
                     return;
@@ -278,13 +278,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             } else {
                 console.error('Error selecting book:', data.error);
-                alert(data.error || 'Error adding book to wishlist. Please try again.');
+                showFlashMessage('error', data.error || 'Error adding book to wishlist. Please try again.');
                 button.innerHTML = originalButtonHTML;
                 button.disabled = false;
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error adding book to wishlist. Please try again.');
+            showFlashMessage('error', 'Error adding book to wishlist. Please try again.');
             button.disabled = false;
         }
     }
@@ -329,14 +329,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Create book card
         const bookCard = document.createElement('div');
-        bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-all duration-200 border border-card';
+        bookCard.className = 'group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link';
 
         const coverImageUrl = book.cover_image_url ? `/static/${escapeHtml(book.cover_image_url)}` : '';
         const coverHTML = book.cover_image_url
             ? `<img src="${coverImageUrl}" alt="${escapeHtml(book.title)}" class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />`
-            : `<div class="flex items-center justify-center h-64 bg-primary-bg text-content-secondary">
-                   <span class="text-sm italic">No Image Available</span>
-               </div>`;
+            : noCoverHtml(book.title, book.author, { box: 'w-full h-72' });
 
         const csrfToken = getCSRFToken();
 
@@ -359,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <form action="/wishlist/move_to_library/${book.id}" method="POST">
                     <input type="hidden" name="csrf_token" value="${csrfToken}"/>
                     <button type="submit"
-                            class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-md transition-colors duration-200 shadow-lg flex items-center justify-center">
+                            class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-md flex items-center justify-center btn">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
@@ -519,11 +517,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (err) {
                 console.error('Scanner initialization error:', err);
                 if (err.name === 'NotAllowedError') {
-                    alert("Camera access denied. Please allow camera access and try again.");
+                    showFlashMessage('error', "Camera access denied. Please allow camera access and try again.");
                 } else if (err.name === 'NotFoundError') {
-                    alert("No camera found. Please use a device with a camera.");
+                    showFlashMessage('error', "No camera found. Please use a device with a camera.");
                 } else {
-                    alert("Error starting scanner: " + err.message);
+                    showFlashMessage('error', "Error starting scanner: " + err.message);
                 }
                 scannerBtn.textContent = 'Start Scanner';
                 isScanning = false;
@@ -578,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (duplicateCheck.has_duplicates) {
-                    const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
+                    const userConfirmed = await showDuplicateWarning(duplicateCheck.duplicates);
 
                     if (!userConfirmed) {
                         interactive.innerHTML = `
@@ -616,7 +614,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error fetching book:', error);
-            alert('Error fetching book details. Please try again.');
+            showFlashMessage('error', 'Error fetching book details. Please try again.');
         }
     }
 
@@ -641,7 +639,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isScanning) {
                 const reason = cameraUnavailableReason();
                 if (reason) {
-                    alert(reason);
+                    showFlashMessage('error', reason);
                     return;
                 }
                 startScanner();
@@ -680,7 +678,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const isbn = isbnInput.value.trim();
 
             if (!isbn) {
-                alert('Please enter an ISBN');
+                showFlashMessage('error', 'Please enter an ISBN');
                 return;
             }
 
@@ -708,7 +706,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
 
                     if (duplicateCheck.has_duplicates) {
-                        const userConfirmed = showDuplicateWarning(duplicateCheck.duplicates);
+                        const userConfirmed = await showDuplicateWarning(duplicateCheck.duplicates);
 
                         if (!userConfirmed) {
                             isbnFetchBtn.innerHTML = originalButtonHTML;
@@ -718,13 +716,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     fillBookForm(data.book_details);
-                    alert('Book details loaded! Please review and add to wishlist.');
+                    showFlashMessage('success', 'Book details loaded! Please review and add to wishlist.');
                 } else {
-                    alert(data.error || 'Book not found for this ISBN');
+                    showFlashMessage('error', data.error || 'Book not found for this ISBN');
                 }
             } catch (error) {
                 console.error('Error fetching ISBN:', error);
-                alert('Error fetching book details. Please try again.');
+                showFlashMessage('error', 'Error fetching book details. Please try again.');
             } finally {
                 isbnFetchBtn.innerHTML = originalButtonHTML;
                 isbnFetchBtn.disabled = false;

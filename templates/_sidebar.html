@@ -122,8 +122,23 @@
             </a>
             {% endif %}
 
+            <!-- Mode shortcut: the same setting as Profile -> Appearance (static/sidebar.js) -->
+            <div class="mt-auto px-4 pt-4 pb-2" data-theme-picker>
+                <p class="label text-xs pb-1 mb-2">Mode</p>
+                <div class="flex" role="group" aria-label="Colour mode">
+                    {% for key, name in theme_modes.items() %}
+                    <button type="button"
+                            class="theme-opt flex-1 px-2 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
+                            data-kind="mode" data-value="{{ key }}"
+                            aria-pressed="{{ 'true' if key == theme_mode else 'false' }}">
+                        {{ name }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
             <!-- Logout at the bottom: a POST form, so a link or image elsewhere can't log you out -->
-            <form method="POST" action="{{ url_for('auth.logout') }}" class="mt-auto">
+            <form method="POST" action="{{ url_for('auth.logout') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit"
                         class="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-500
@@ -152,7 +167,7 @@
      data-job='{{ cover_job|tojson }}'
      data-status-url="{{ url_for('covers.status') }}"
      data-csrf="{{ csrf_token() }}">
-    <div class="relative flex flex-col items-center gap-2 bg-secondary border border-card shadow-hard rounded-lg"
+    <div class="relative flex flex-col items-center gap-2 bg-secondary shadow-hard rounded-lg card"
          style="width: 2.5rem; padding: 0.5rem 0;">
         <div class="flex flex-col items-center gap-2" data-role="body">
             <button type="button" data-role="info-toggle" aria-expanded="true" aria-controls="cover-job-info"
@@ -174,7 +189,7 @@
 
         <!-- Details card, open by default; sits to the right of the box -->
         <div id="cover-job-info" data-role="info" role="status" aria-live="polite"
-             class="absolute bg-secondary border border-card shadow-hard rounded-lg p-3"
+             class="absolute bg-secondary shadow-hard rounded-lg p-3 card"
              style="left: calc(100% + 0.5rem); top: 0; width: 18rem; max-width: calc(100vw - 5rem);">
             <p class="font-display text-content-primary mb-1" data-role="title">Fetching covers</p>
             <p class="text-xs text-content-secondary" data-role="text"></p>

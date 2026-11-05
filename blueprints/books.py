@@ -390,7 +390,37 @@ def edit_book(id):
             flash("Book updated successfully!", "success")
             return redirect(url_for("base.index"))
 
-    return render_template("edit_book.html", book=book, book_details=book_details)
+    return render_template("edit_book.html", book=book, book_details=book_details,
+                           **_book_tools_context(conn, book))
+
+
+def _transfer_candidates(conn):
+    """Who the current user may hand a book to: their household (admins:
+    anyone, e.g. for unowned books after a user was deleted). The transfer
+    route enforces the same rule on POST."""
+    if current_user.is_admin:
+        return conn.execute('SELECT id, username FROM users ORDER BY username').fetchall()
+    member_ids = get_library_members(current_user.id)
+    if len(member_ids) <= 1:
+        return []
+    marks = ','.join('?' * len(member_ids))
+    return conn.execute(f'SELECT id, username FROM users WHERE id IN ({marks}) ORDER BY username',
+                        member_ids).fetchall()
+
+
+def _book_tools_context(conn, book):
+    """Template data for _book_tools.html (edit page; owner or admin only)."""
+    owner = (conn.execute('SELECT username FROM users WHERE id = ?', (book['added_by'],)).fetchone()
+             if book['added_by'] is not None else None)
+    in_wishlist = conn.execute('SELECT 1 FROM wishlist WHERE user_id = ? AND book_id = ?',
+                               (current_user.id, book['id'])).fetchone() is not None
+    return {
+        'library_members': _transfer_candidates(conn),
+        'owner_username': owner['username'] if owner else None,
+        # Who else has reviews/history on it: a hard delete is refused while anyone does
+        'others_with_data': other_users_with_book_data(conn, book['id'], book['added_by']),
+        'in_wishlist': in_wishlist,
+    }
 
 @books_blueprint.route("/book/<int:id>")
 @login_required
@@ -491,22 +521,8 @@ def show_book(id):
     collection_status = collection_status['status'] if collection_status else 'untracked'
 
     can_manage = current_user.is_admin or book['added_by'] == current_user.id
-    owner = (conn.execute('SELECT username FROM users WHERE id = ?', (book['added_by'],)).fetchone()
-             if book['added_by'] is not None else None)
 
-    # Get library members for transfer functionality
     library_member_ids = get_library_members(current_user.id)
-    library_members = []
-    if current_user.is_admin:
-        # Admins can give a book to anyone (e.g. unowned books after a user was deleted)
-        library_members = conn.execute('SELECT id, username FROM users ORDER BY username').fetchall()
-    elif len(library_member_ids) > 1:
-        # Get full user info for library members
-        placeholders = ','.join(['?' for _ in library_member_ids])
-        library_members = conn.execute(
-            f'SELECT id, username FROM users WHERE id IN ({placeholders})',
-            library_member_ids
-        ).fetchall()
 
     # Get friend reviews for this book
     # Friends are users who share the library with current user or are connected via friend requests
@@ -549,13 +565,7 @@ def show_book(id):
         wishlist_owner=wishlist_owner,
         wishlist_owner_user=wishlist_owner_user,
         wishlist_owner_entry=wishlist_owner_entry,
-        library_members=library_members,
         friend_reviews=friend_reviews,
-        owner_username=owner['username'] if owner else None,
-        # Who else has reviews/history on it: a hard delete is refused while
-        # anyone does (only computed for people who can delete)
-        others_with_data=(other_users_with_book_data(conn, id, book['added_by'])
-                          if can_manage else []),
         can_manage=can_manage,
     )
 

@@ -33,8 +33,8 @@ registerActions({
                                        el.dataset.dateStarted, el.dataset.dateCompleted),
 
     // data-session-id, data-book-id; comes back to this page afterwards
-    deleteSession: el => {
-        if (!confirm('Are you sure you want to delete this reading session?')) return;
+    deleteSession: async el => {
+        if (!await confirmDialog('Delete this reading session?', { ok: 'Delete' })) return;
         postForm('/read/delete_reading_session/' + encodeURIComponent(el.dataset.sessionId), {
             book_id: el.dataset.bookId,
             redirect_to: 'book_detail',
