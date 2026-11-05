@@ -1,19 +1,9 @@
-<!DOCTYPE html>
-<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Activity Feed - Libaraxia</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
+{% extends 'base.html' %}
 
-<body class="bg-primary text-content-primary p-6">
-    {% include '_sidebar.html' %}
+{% block title %}Activity Feed - Libaraxia{% endblock %}
+{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
-
+{% block content %}
     <!-- Main Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
         <!-- Page Header -->
@@ -31,7 +21,7 @@
                         <div class="absolute top-4 right-4 flex gap-3 items-center">
                             <!-- Dismiss button (only for user's own activities) -->
                             {% if activity.user_id == current_user.id %}
-                            <form method="POST" action="/feed/dismiss_activity" class="inline" onsubmit="return confirm('Are you sure you want to dismiss this activity from the feed? This will hide it for all users.');">
+                            <form method="POST" action="/feed/dismiss_activity" class="inline" data-confirm="Are you sure you want to dismiss this activity from the feed? This will hide it for all users.">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <input type="hidden" name="activity_type" value="{{ activity.type }}">
                                 <input type="hidden" name="book_id" value="{{ activity.book_id }}">
@@ -207,7 +197,8 @@
                         <div class="absolute bottom-6 right-6 z-10">
                             {% if activity.user_id != current_user.id %}
                             <button
-                                onclick="toggleLike('{{ activity.type }}', {{ activity.book_id | tojson }}, {{ activity.user_id | tojson }}, this)"
+                                data-click="toggleLike" data-activity-type="{{ activity.type }}"
+                                data-book-id="{{ activity.book_id|tojson }}" data-activity-user-id="{{ activity.user_id|tojson }}"
                                 class="like-button flex items-center gap-1 text-content-secondary hover:text-red-500 transition-colors"
                                 data-liked="{{ 'true' if activity.user_liked else 'false' }}"
                                 title="{{ 'Unlike' if activity.user_liked else 'Like' }}">
@@ -248,63 +239,9 @@
         </div>
     </div>
     <!-- End Main Container -->
+{% endblock %}
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <script>
-        async function toggleLike(activityType, bookId, activityUserId, button) {
-            const isLiked = button.dataset.liked === 'true';
-            const endpoint = isLiked ? '/feed/unlike_activity' : '/feed/like_activity';
-
-            // Get CSRF token from meta tag or form
-            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value ||
-                              document.querySelector('meta[name="csrf-token"]')?.content;
-
-            try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        activity_type: activityType,
-                        book_id: bookId,
-                        activity_user_id: activityUserId
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    // Toggle the liked state
-                    button.dataset.liked = isLiked ? 'false' : 'true';
-
-                    // Update the heart icon
-                    const svg = button.querySelector('svg');
-                    if (isLiked) {
-                        svg.classList.remove('fill-red-500', 'text-red-500');
-                        svg.classList.add('fill-none');
-                        button.title = 'Like';
-                    } else {
-                        svg.classList.remove('fill-none');
-                        svg.classList.add('fill-red-500', 'text-red-500');
-                        button.title = 'Unlike';
-                    }
-
-                    // Update the like count
-                    const likeCountSpan = button.querySelector('.like-count');
-                    likeCountSpan.textContent = data.like_count > 0 ? data.like_count : '';
-                } else {
-                    console.error('Error toggling like:', data.error);
-                    if (data.error === 'Cannot like your own activity') {
-                        alert('You cannot like your own activity!');
-                    }
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while processing your request.');
-            }
-        }
-    </script>
-</body>
-</html>
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='activity_feed.js') }}"></script>
+{% endblock %}

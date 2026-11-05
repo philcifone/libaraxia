@@ -1,5 +1,5 @@
 from flask import current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify
-from utils.database import get_db_connection
+from utils.database import get_db
 from flask_login import login_required, current_user
 from models import can_view_book
 
@@ -8,64 +8,61 @@ collections_blueprint = Blueprint('collections', __name__, template_folder='temp
 @collections_blueprint.route('/collections', methods=['GET'])
 @login_required
 def view_collections():
-    conn = get_db_connection()
-    try:
-        # Fetch default reading lists (status-based collections) with book count
+    conn = get_db()
+    # Fetch default reading lists (status-based collections) with book count
+    cursor = conn.execute('''
+        SELECT c.status, COUNT(b.id) as book_count
+        FROM collections c
+        JOIN books b ON c.book_id = b.id
+        WHERE c.user_id = ?
+        GROUP BY c.status
+    ''', (current_user.id,))
+    reading_lists = cursor.fetchall()
+
+    # Fetch cover previews for each reading status (up to 8 covers)
+    reading_list_covers = {}
+    for reading_list in reading_lists:
+        status = reading_list['status']
         cursor = conn.execute('''
-            SELECT c.status, COUNT(b.id) as book_count
+            SELECT b.cover_image_url
             FROM collections c
             JOIN books b ON c.book_id = b.id
-            WHERE c.user_id = ?
-            GROUP BY c.status
-        ''', (current_user.id,))
-        reading_lists = cursor.fetchall()
+            WHERE c.user_id = ? AND c.status = ?
+            ORDER BY c.collection_id DESC
+            LIMIT 8
+        ''', (current_user.id, status))
+        reading_list_covers[status] = [row['cover_image_url'] for row in cursor.fetchall()]
 
-        # Fetch cover previews for each reading status (up to 8 covers)
-        reading_list_covers = {}
-        for reading_list in reading_lists:
-            status = reading_list['status']
-            cursor = conn.execute('''
-                SELECT b.cover_image_url
-                FROM collections c
-                JOIN books b ON c.book_id = b.id
-                WHERE c.user_id = ? AND c.status = ?
-                ORDER BY c.collection_id DESC
-                LIMIT 8
-            ''', (current_user.id, status))
-            reading_list_covers[status] = [row['cover_image_url'] for row in cursor.fetchall()]
+    # Fetch custom collections
+    cursor = conn.execute('''
+        SELECT uc.collection_id, uc.name, COUNT(b.id) as book_count
+        FROM user_collections uc
+        LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
+        LEFT JOIN books b ON cb.book_id = b.id
+        WHERE uc.user_id = ?
+        GROUP BY uc.collection_id, uc.name
+    ''', (current_user.id,))
+    custom_collections = cursor.fetchall()
 
-        # Fetch custom collections
+    # Fetch cover previews for each custom collection (up to 8 covers)
+    custom_collection_covers = {}
+    for collection in custom_collections:
+        collection_id = collection['collection_id']
         cursor = conn.execute('''
-            SELECT uc.collection_id, uc.name, COUNT(b.id) as book_count
-            FROM user_collections uc
-            LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
-            LEFT JOIN books b ON cb.book_id = b.id
-            WHERE uc.user_id = ?
-            GROUP BY uc.collection_id, uc.name
-        ''', (current_user.id,))
-        custom_collections = cursor.fetchall()
+            SELECT b.cover_image_url
+            FROM collection_books cb
+            JOIN books b ON cb.book_id = b.id
+            WHERE cb.collection_id = ?
+            ORDER BY cb.added_at DESC
+            LIMIT 8
+        ''', (collection_id,))
+        custom_collection_covers[collection_id] = [row['cover_image_url'] for row in cursor.fetchall()]
 
-        # Fetch cover previews for each custom collection (up to 8 covers)
-        custom_collection_covers = {}
-        for collection in custom_collections:
-            collection_id = collection['collection_id']
-            cursor = conn.execute('''
-                SELECT b.cover_image_url
-                FROM collection_books cb
-                JOIN books b ON cb.book_id = b.id
-                WHERE cb.collection_id = ?
-                ORDER BY cb.added_at DESC
-                LIMIT 8
-            ''', (collection_id,))
-            custom_collection_covers[collection_id] = [row['cover_image_url'] for row in cursor.fetchall()]
-
-        return render_template('collections.html',
-                             reading_lists=reading_lists,
-                             custom_collections=custom_collections,
-                             reading_list_covers=reading_list_covers,
-                             custom_collection_covers=custom_collection_covers)
-    finally:
-        conn.close()
+    return render_template('collections.html',
+                         reading_lists=reading_lists,
+                         custom_collections=custom_collections,
+                         reading_list_covers=reading_list_covers,
+                         custom_collection_covers=custom_collection_covers)
 
 @collections_blueprint.route('/collections/create', methods=['POST'])
 @login_required
@@ -75,7 +72,7 @@ def create_custom_collection():
         flash('Collection name is required.', 'error')
         return redirect(url_for('collections.view_collections'))
     
-    conn = get_db_connection()
+    conn = get_db()
     try:
         cursor = conn.execute('''
             INSERT INTO user_collections (user_id, name)
@@ -85,8 +82,6 @@ def create_custom_collection():
         flash('Collection created successfully!', 'success')
     except Exception as e:
         flash('Error creating collection.', 'error')
-    finally:
-        conn.close()
     
     return redirect(url_for('collections.view_collections'))
 
@@ -98,7 +93,7 @@ def add_to_custom_collection(collection_id):
     if not book_id:
         return jsonify({'success': False, 'error': 'Missing book ID'}), 400
     
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Verify the collection belongs to the user
         cursor = conn.execute('''
@@ -120,8 +115,6 @@ def add_to_custom_collection(collection_id):
     except Exception as e:
         current_app.logger.exception('Error adding book to collection')
         return jsonify({'success': False, 'error': 'Could not update collection'}), 500
-    finally:
-        conn.close()
 
 @collections_blueprint.route('/collections/<int:collection_id>/remove', methods=['POST'])
 @login_required
@@ -131,7 +124,7 @@ def remove_from_custom_collection(collection_id):
     if not book_id:
         return jsonify({'success': False, 'error': 'Missing book ID'}), 400
     
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Verify the collection belongs to the user
         cursor = conn.execute('''
@@ -151,46 +144,41 @@ def remove_from_custom_collection(collection_id):
     except Exception as e:
         current_app.logger.exception('Error removing book from collection')
         return jsonify({'success': False, 'error': 'Could not update collection'}), 500
-    finally:
-        conn.close()
 
 @collections_blueprint.route('/collections/<int:collection_id>/view', methods=['GET'])
 @login_required
 def view_custom_collection(collection_id):
-    conn = get_db_connection()
-    try:
-        # Get collection details
-        cursor = conn.execute('''
-            SELECT uc.*, COUNT(cb.book_id) as book_count
-            FROM user_collections uc
-            LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
-            WHERE uc.collection_id = ? AND uc.user_id = ?
-            GROUP BY uc.collection_id
-        ''', (collection_id, current_user.id))
-        collection = cursor.fetchone()
-        
-        if not collection:
-            flash('Collection not found.', 'error')
-            return redirect(url_for('collections.view_collections'))
-        
-        # Get books in collection
-        cursor = conn.execute('''
-            SELECT b.id, b.title, b.author, b.cover_image_url
-            FROM books b
-            JOIN collection_books cb ON b.id = cb.book_id
-            WHERE cb.collection_id = ?
-        ''', (collection_id,))
-        books = cursor.fetchall()
-        
-        return render_template('collection_status.html',
-                             collection=collection,
-                             books=books,
-                             is_custom=True,
-                             status=None,  # custom shelves have no reading status
-                             is_own_profile=True,  # the query above only finds your own shelves
-                             target_username=current_user.username)
-    finally:
-        conn.close()
+    conn = get_db()
+    # Get collection details
+    cursor = conn.execute('''
+        SELECT uc.*, COUNT(cb.book_id) as book_count
+        FROM user_collections uc
+        LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
+        WHERE uc.collection_id = ? AND uc.user_id = ?
+        GROUP BY uc.collection_id
+    ''', (collection_id, current_user.id))
+    collection = cursor.fetchone()
+    
+    if not collection:
+        flash('Collection not found.', 'error')
+        return redirect(url_for('collections.view_collections'))
+    
+    # Get books in collection
+    cursor = conn.execute('''
+        SELECT b.id, b.title, b.author, b.cover_image_url
+        FROM books b
+        JOIN collection_books cb ON b.id = cb.book_id
+        WHERE cb.collection_id = ?
+    ''', (collection_id,))
+    books = cursor.fetchall()
+    
+    return render_template('collection_status.html',
+                         collection=collection,
+                         books=books,
+                         is_custom=True,
+                         status=None,  # custom shelves have no reading status
+                         is_own_profile=True,  # the query above only finds your own shelves
+                         target_username=current_user.username)
 
 @collections_blueprint.route('/collections/status/add', methods=['POST'])
 @login_required
@@ -202,7 +190,7 @@ def add_to_status_collection():
         flash('Missing book ID or status.', 'danger')
         return redirect(request.referrer)
     
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Only books in the user's circle (models.can_view_book)
         if not can_view_book(conn, current_user, book_id):
@@ -236,8 +224,6 @@ def add_to_status_collection():
     except Exception as e:
         current_app.logger.exception('Error updating collection')
         flash('Failed to update the reading status.', 'danger')
-    finally:
-        conn.close()
     
     return redirect(request.referrer)
 
@@ -247,46 +233,43 @@ def view_by_status(status):
     # Get optional username parameter (defaults to current user)
     username = request.args.get('username', current_user.username)
 
-    conn = get_db_connection()
-    try:
-        # Get the target user
-        target_user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+    conn = get_db()
+    # Get the target user
+    target_user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
 
-        if not target_user:
-            flash('User not found!', 'danger')
-            return redirect(url_for('base.index'))
+    if not target_user:
+        flash('User not found!', 'danger')
+        return redirect(url_for('base.index'))
 
-        target_user_id = target_user['id']
-        is_own_profile = (target_user_id == current_user.id)
+    target_user_id = target_user['id']
+    is_own_profile = (target_user_id == current_user.id)
 
-        # Check friendship status if viewing someone else's profile
-        if not is_own_profile:
-            from models import get_friendship_status
-            friendship_status = get_friendship_status(current_user.id, target_user_id)
+    # Check friendship status if viewing someone else's profile
+    if not is_own_profile:
+        from models import get_friendship_status
+        friendship_status = get_friendship_status(current_user.id, target_user_id)
 
-            # Only allow viewing if they are friends
-            if friendship_status not in ('self', 'friends'):
-                flash('You must be friends to view this shelf!', 'warning')
-                return redirect(url_for('user.profile', username=username))
+        # Only allow viewing if they are friends
+        if friendship_status not in ('self', 'friends'):
+            flash('You must be friends to view this shelf!', 'warning')
+            return redirect(url_for('user.profile', username=username))
 
-        # Fetch books for the target user
-        cursor = conn.execute('''
-            SELECT b.id, b.title, b.author, b.cover_image_url
-            FROM collections c
-            JOIN books b ON c.book_id = b.id
-            WHERE c.user_id = ? AND c.status = ?
-        ''', (target_user_id, status))
-        books = cursor.fetchall()
+    # Fetch books for the target user
+    cursor = conn.execute('''
+        SELECT b.id, b.title, b.author, b.cover_image_url
+        FROM collections c
+        JOIN books b ON c.book_id = b.id
+        WHERE c.user_id = ? AND c.status = ?
+    ''', (target_user_id, status))
+    books = cursor.fetchall()
 
-        return render_template('collection_status.html',
-                             status=status,
-                             books=books,
-                             is_custom=False,
-                             collection=None,
-                             target_username=username,
-                             is_own_profile=is_own_profile)
-    finally:
-        conn.close()
+    return render_template('collection_status.html',
+                         status=status,
+                         books=books,
+                         is_custom=False,
+                         collection=None,
+                         target_username=username,
+                         is_own_profile=is_own_profile)
 
 @collections_blueprint.route('/manage_book_collections', methods=['POST'])
 @login_required
@@ -298,7 +281,7 @@ def manage_book_collections():
         flash('Missing required information', 'error')
         return redirect(request.referrer)
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Verify the collection belongs to the user
         owns_collection = conn.execute('''
@@ -337,15 +320,13 @@ def manage_book_collections():
     except Exception as e:
         current_app.logger.exception('Error managing collection')
         flash('Error managing collection.', 'error')
-    finally:
-        conn.close()
 
     return redirect(request.referrer)
 
 @collections_blueprint.route('/delete_collection/<int:collection_id>', methods=['POST'])
 @login_required
 def delete_collection(collection_id):
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Verify ownership and delete
         cursor = conn.execute('''
@@ -365,20 +346,17 @@ def delete_collection(collection_id):
     except Exception as e:
         current_app.logger.exception('Error deleting collection')
         flash('Error deleting collection.', 'error')
-    finally:
-        conn.close()
     
     return redirect(url_for('collections.view_collections'))
 
 @collections_blueprint.route('/get_book_collections/<int:book_id>')
 @login_required
 def get_book_collections(book_id):
-    conn = get_db_connection()
+    conn = get_db()
     collections = conn.execute('''
         SELECT uc.collection_id as id, uc.name 
         FROM user_collections uc
         JOIN collection_books cb ON uc.collection_id = cb.collection_id
         WHERE uc.user_id = ? AND cb.book_id = ?
     ''', (current_user.id, book_id)).fetchall()
-    conn.close()
     return jsonify({'collections': [dict(c) for c in collections]})

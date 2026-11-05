@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>Orphaned Images - Admin</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="bg-primary min-h-screen">
-    {% include '_sidebar.html' %}
+{% extends 'base.html' %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% block title %}Orphaned Images - Admin{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
 
+{% block content %}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
         <!-- Back Nav -->
         <a href="{{ url_for('admin.settings') }}"
@@ -47,15 +39,15 @@
         {% else %}
             <!-- Orphaned Files List -->
             <div class="bg-secondary rounded-lg border border-gray-700 p-6">
-                <form method="POST" action="{{ url_for('admin.cleanup_orphaned_images') }}" onsubmit="return confirmDeletion()">
+                <form method="POST" action="{{ url_for('admin.cleanup_orphaned_images') }}" data-submit="confirmDeletion">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center gap-4">
-                            <button type="button" onclick="selectAll()" class="text-sm text-content-secondary hover:text-accent transition-colors">
+                            <button type="button" data-click="selectAll" class="text-sm text-content-secondary hover:text-accent transition-colors">
                                 Select All
                             </button>
-                            <button type="button" onclick="deselectAll()" class="text-sm text-content-secondary hover:text-accent transition-colors">
+                            <button type="button" data-click="deselectAll" class="text-sm text-content-secondary hover:text-accent transition-colors">
                                 Deselect All
                             </button>
                             <span class="text-sm text-content-secondary">
@@ -76,7 +68,7 @@
                                         name="files[]"
                                         value="{{ file.path }}"
                                         class="orphan-checkbox w-4 h-4 text-accent bg-gray-700 border-gray-600 rounded focus:ring-accent focus:ring-2"
-                                        onchange="updateSelectedCount()"
+                                        data-change="updateSelectedCount"
                                     >
                                     <a
                                         href="{{ url_for('static', filename=file.path) }}"
@@ -87,7 +79,7 @@
                                             src="{{ url_for('static', filename=file.path) }}"
                                             alt="Thumbnail"
                                             class="w-16 h-16 object-cover rounded border border-gray-600 hover:border-accent transition-colors"
-                                            onerror="this.src='{{ url_for('static', filename='no-cover.svg') }}'"
+                                            data-fallback-src="{{ url_for('static', filename='no-cover.svg') }}"
                                         >
                                     </a>
                                     <div class="flex-1 min-w-0">
@@ -118,39 +110,9 @@
             </div>
         {% endif %}
     </div>
+{% endblock %}
 
-    <script>
-        function selectAll() {
-            document.querySelectorAll('.orphan-checkbox').forEach(checkbox => {
-                checkbox.checked = true;
-            });
-            updateSelectedCount();
-        }
-
-        function deselectAll() {
-            document.querySelectorAll('.orphan-checkbox').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            updateSelectedCount();
-        }
-
-        function updateSelectedCount() {
-            const count = document.querySelectorAll('.orphan-checkbox:checked').length;
-            document.getElementById('selected-count').textContent = count;
-        }
-
-        function confirmDeletion() {
-            const count = document.querySelectorAll('.orphan-checkbox:checked').length;
-            if (count === 0) {
-                alert('Please select at least one file to delete.');
-                return false;
-            }
-            return confirm(`Are you sure you want to delete ${count} orphaned image file(s)? This action cannot be undone.`);
-        }
-
-        // Initialize count on page load
-        updateSelectedCount();
-    </script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='orphaned_images.js') }}"></script>
+{% endblock %}

@@ -1,15 +1,9 @@
-<!DOCTYPE html>
-<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>Unowned Books - Admin</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="bg-primary min-h-screen">
-    {% include '_sidebar.html' %}
-    {% include '_flash_messages.html' %}
+{% extends 'base.html' %}
 
+{% block title %}Unowned Books - Admin{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% block content %}
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
         <a href="{{ url_for('admin.settings') }}"
            class="inline-flex items-center text-content-secondary hover:text-accent transition-colors mb-6">
@@ -33,7 +27,7 @@
         {% else %}
         <form method="POST" action="{{ url_for('admin.reassign_books') }}"
               class="bg-secondary rounded-lg border border-card p-4 mb-6 flex flex-wrap items-center gap-3"
-              onsubmit='return confirm({{ ("Give all " ~ books|length ~ " unowned books to the selected user?")|tojson }})'>
+              data-confirm="{{ ("Give all " ~ books|length ~ " unowned books to the selected user?") }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="hidden" name="all" value="1"/>
             <label for="reassign-all" class="text-sm text-content-primary">Give all {{ books|length }} to</label>
@@ -73,5 +67,4 @@
         {% endif %}
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% endblock %}

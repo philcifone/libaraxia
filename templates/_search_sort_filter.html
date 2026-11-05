@@ -6,7 +6,7 @@
     <!-- Search and Sort Container -->
     <div class="flex flex-col lg:flex-row gap-4 items-stretch bg-secondary-bg rounded-lg p-4 shadow-lg border border-card">
         <!-- Search Form -->
-        <form method="GET" action="{{ url_for('books.search') }}" class="flex-1" onsubmit="showLoadingIndicator('Searching...')">
+        <form method="GET" action="{{ url_for('books.search') }}" class="flex-1" data-submit="showLoading" data-loading="Searching...">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="relative">
                 <input type="text"
@@ -32,7 +32,7 @@
             <div class="flex bg-primary-bg rounded-lg p-1">
                 <button type="button"
                         id="grid-view-btn"
-                        onclick="switchView('grid')"
+                        data-click="switchView" data-view="grid"
                         class="view-toggle-btn active p-2 rounded hover:bg-accent/20 transition-colors"
                         aria-label="Grid view">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -41,7 +41,7 @@
                 </button>
                 <button type="button"
                         id="list-view-btn"
-                        onclick="switchView('list')"
+                        data-click="switchView" data-view="list"
                         class="view-toggle-btn p-2 rounded hover:bg-accent/20 transition-colors"
                         aria-label="List view">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -60,7 +60,7 @@
             <label for="sort_by" class="text-content-secondary font-medium text-sm">Sort:</label>
             <select name="sort_by"
                     id="sort_by"
-                    onchange="submitSortForm()"
+                    data-change="submitSortForm"
                     class="bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                            focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
                 <option value="title" {% if sort_by=="title" %}selected{% endif %}>Title</option>
@@ -71,7 +71,7 @@
 
             <select name="sort_order"
                     id="sort_order"
-                    onchange="submitSortForm()"
+                    data-change="submitSortForm"
                     class="bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                            focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-sm">
                 <option value="asc" {% if sort_order=="asc" %}selected{% endif %}>A-Z</option>
@@ -86,7 +86,7 @@
             <div class="flex flex-wrap items-center gap-2">
                 <span class="text-content-secondary text-sm font-medium">Active filters:</span>
                 <div id="active-filter-pills" class="flex flex-wrap gap-2"></div>
-                <button onclick="clearFilters()"
+                <button type="button" data-click="clearFilters"
                         class="ml-auto text-accent hover:text-accent-hover text-sm font-medium transition-colors">
                     Clear all
                 </button>
@@ -97,7 +97,7 @@
     <!-- Filter Section - Collapsible -->
     <div class="bg-secondary-bg rounded-lg shadow-lg overflow-hidden border border-card">
         <!-- Filter Toggle Button -->
-        <button onclick="toggleFilters()"
+        <button data-click="toggleFilters"
                 type="button"
                 class="w-full px-4 py-3 flex items-center justify-between
                        text-content-primary hover:bg-primary-hover transition-colors group">
@@ -129,7 +129,7 @@
                     <div class="space-y-2">
                         <label for="genre" class="block text-sm font-medium text-content-secondary">Genre</label>
                         <select name="genre" id="genre"
-                                onchange="updateActiveFilters()"
+                                data-change="updateActiveFilters"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Genres</option>
@@ -145,7 +145,7 @@
                     <div class="space-y-2">
                         <label for="read_status" class="block text-sm font-medium text-content-secondary">Read Status</label>
                         <select name="read_status" id="read_status"
-                                onchange="updateActiveFilters()"
+                                data-change="updateActiveFilters"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Statuses</option>
@@ -161,7 +161,7 @@
                     <div class="space-y-2">
                         <label for="rating" class="block text-sm font-medium text-content-secondary">Minimum Rating</label>
                         <select name="rating" id="rating"
-                                onchange="updateActiveFilters()"
+                                data-change="updateActiveFilters"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Ratings</option>
@@ -179,7 +179,7 @@
                 <div class="space-y-2 md:w-1/2 lg:w-1/4">
                     <label for="show_removed" class="block text-sm font-medium text-content-secondary">Removed books</label>
                     <select name="show_removed" id="show_removed"
-                            onchange="updateActiveFilters()"
+                            data-change="updateActiveFilters"
                             class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                    focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                         <option value="">On the shelf only</option>
@@ -199,7 +199,7 @@
                                 <input type="checkbox"
                                        name="tags[]"
                                        value="{{ tag }}"
-                                       onchange="updateActiveFilters()"
+                                       data-change="updateActiveFilters"
                                        {% if tag in request.args.getlist('tags[]') %}checked{% endif %}
                                        class="form-checkbox text-accent rounded border-rule-strong
                                               focus:ring-accent focus:ring-offset-0 cursor-pointer">
@@ -214,13 +214,13 @@
                 <!-- Filter Actions -->
                 <div class="flex justify-end gap-3 pt-2 border-t border-gray-700">
                     <button type="button"
-                            onclick="clearFilters()"
+                            data-click="clearFilters"
                             class="px-4 py-2 text-content-primary bg-primary-bg hover:bg-primary-hover
                                    rounded-lg border border-gray-600 transition-all font-medium">
                         Clear Filters
                     </button>
                     <button type="submit"
-                            onclick="showLoadingIndicator('Applying filters...')"
+                            data-click="showLoading" data-loading="Applying filters..."
                             class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg
                                    transition-all font-medium shadow-md hover:shadow-lg">
                         Apply Filters

@@ -54,7 +54,7 @@ npm run watch:css    # rebuild on change
 ### Blueprints (`/blueprints/`, URL prefix in brackets)
 - **auth** (`/auth`): register, login (with remember-me), logout, email verification and resend. Registration can be closed with `ALLOW_REGISTRATION=False`.
 - **base** (`/base`): main library view at `/base/index` with search/sort/filter and infinite scroll; shared (household) library; friends' libraries.
-- **books** (`/books`): add, edit, remove from library / restore (deaccession), delete for mistakes (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
+- **books** (`/books`): add, edit, `/books/thumbnail` (search-result cover proxy), remove from library / restore (deaccession), delete for mistakes (POST), detail page, ISBN/title lookup, cover fetching, ownership transfer within a household.
 - **collections** (`/collections`): reading status (read, currently reading, want to read, did not finish) and custom user collections.
 - **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only; logic in `utils/goodreads.py`), household invite/accept/decline/remove/leave (logic in `utils/households.py`).
 - **read** (`/read`): ratings/reviews and reading sessions (dates started/completed).
@@ -115,24 +115,26 @@ Decided and enforced in Phase 4; `tests/test_access.py` and `tests/test_househol
 There are no per-item privacy settings (private/friends/public); the unused columns from migration 012 were dropped in 020. Household members who aren't also friends see each other's books (shared library, book pages) but not each other's profiles or feed activity.
 
 ### Frontend
-- **No base layout.** Each page template is standalone and `{% include %}`s `_sidebar.html`, `_flash_messages.html`, and where relevant `_search_sort_filter.html`, `_book_grid.html` and `_add_book_fab.html`.
+- **Layout:** every page `{% extends 'base.html' %}` (blocks `title`, `html_class`, `body_class`, `head`, `sidebar`, `content`, `scripts`; auth pages override `sidebar` with nothing). `base.html` includes `_sidebar.html` and `_flash_messages.html` and sets `<meta name="csrf-token">`; pages include `_search_sort_filter.html`, `_book_grid.html` and `_add_book_fab.html` where relevant. `tests/test_pages.py` fails if a page stops extending it.
 - **Themes:** two per-user settings on `<html data-style=… data-mode=…>` (injected by a context processor in `app.py`, edited at Profile → Appearance, stored in `users.theme_style` / `users.color_mode`). Style `house` = Gruvbox, Courier Prime, square, strong borders; `classic` = the original look (Outfit, rounded, soft shadows). Mode `system|light|dark`. Every colour, radius, shadow and the body font are CSS variables in `static/styles.css`; `tailwind.config.js` maps Tailwind names onto them. Use the semantic classes (`bg-secondary`, `text-content-primary`, `bg-accent text-on-accent`, `border-card` for card outlines, `rounded-pill` for badges) rather than raw colours. Fonts are served from `static/fonts/`.
 - **Vanilla JS in `/static/`:**
   - `static/vendor/`: vendored third-party JS (Quagga for barcode scanning), with source and hashes in its README. Don't load scripts from CDNs.
-  - `script.js`: library grid, filters, infinite scroll, status updates; defines `escapeHtml()` and `getCSRFToken()`.
+  - `common.js`: loaded in `<head>` by `base.html` on every page. `getCSRFToken`, `getCSRFHeaders`, `addCSRFToFormData`, `escapeHtml`, `coverSrc`, `showFlashMessage`, `dismissFlash`, `postForm`, and the `data-click`/`data-change`/`data-submit`/`data-confirm`/`data-fallback-src` dispatcher (`registerActions`). Don't redefine these in page scripts.
+  - One file per page that needs script: `user.js`, `admin_settings.js`, `book_detail.js`, `rate_review.js`, `goodreads_import.js`, `activity_feed.js`, `orphaned_images.js`, `fab.js` (the add-book button partial), loaded in the page's `{% block scripts %}`.
+  - `script.js`: library grid, filters, infinite scroll, status updates (and a few book-page helpers).
   - `add_book.js`: add form, ISBN/title search, barcode scanning via Quagga (`static/vendor/`).
   - `edit_book.js`: edit form, cover fetching.
   - `wishlist.js`: wishlist add/search/barcode.
   - `tags.js`: tag add/remove.
-  - `sidebar.js`: legacy sidebar toggle, only loaded by `notifications.html`.
+  - `sidebar.js`: hamburger menu and search dropdown, loaded by `_sidebar.html`.
   - `cover_jobs.js`: the floating cover-fetch progress panel, loaded by `_sidebar.html`; it only shows and polls when the user has a job (`cover_job`, from a context processor in `app.py`).
-- Large inline `<script>` blocks also live in `user.html`, `admin_settings.html`, `rate_review.html`, `goodreads_import.html` and `book_detail.html`.
 
 ## Product direction (from Phil, 2026-11-05)
 
 Not scheduled and not to be worked on until Phil picks them up; they belong in a future ROADMAP phase.
 
 - **The catalog is for physical books Phil owns.** Audiobooks don't really belong in it: either leave them out of imports, or later integrate with Phil's Audiobookshelf server, which tracks audiobooks better than this project should.
+  - A third option (Phil, 2026-11-05): put listened-to audiobooks on the **"Read but not owned"** collection, the same way an ex-wishlist book you've read is kept (`wishlist._keep_as_not_owned`: marked removed so it stays out of the library, review kept). The Goodreads import's `audiobook` shelf (42 books in Phil's export) would be the obvious source. Undecided; pick one of the three when audiobooks come up.
 - **Revisit book info and cover fetching.** Today it's clunky (many sources), slow, and covers still aren't always right.
 - **Granular Goodreads import:** a selection grid with sorting, so the user picks which rows to import and where they go. Ideally covers would come with the import, if that's possible at all (the export has no cover URLs).
 - Goodreads `to-read` rows go to the wishlist on purpose, not the library with *Want to Read*: that would add books Phil doesn't own. (Rows for books he or his household already own do get *Want to Read*.)
@@ -143,9 +145,9 @@ Not scheduled and not to be worked on until Phil picks them up; they belong in a
 - The first registered user becomes admin. Admin routes use `@admin_required` from models.py.
 - Passwords are hashed with the raw `bcrypt` module (not Flask-Bcrypt).
 - Usernames must match `^[A-Za-z0-9_.-]{3,30}$` (`models.is_valid_username`); this is enforced on register, rename and admin create.
-- CSRF: Flask-WTF `CSRFProtect` is global. Forms include `csrf_token()`; fetch calls send the `X-CSRFToken` header (both `X-CSRFToken` and `X-CSRF-Token` are accepted) using the per-file `getCSRFToken()` helper, which reads a hidden `csrf_token` input or a `<meta name="csrf-token">`.
+- CSRF: Flask-WTF `CSRFProtect` is global. Forms include `csrf_token()`; fetch calls send the `X-CSRFToken` header (both `X-CSRFToken` and `X-CSRF-Token` are accepted) using `getCSRFToken()` from `common.js`, which reads a hidden `csrf_token` input or the `<meta name="csrf-token">` that `base.html` puts on every page.
 - Session and remember-me cookies are HttpOnly and SameSite=Lax. They are `Secure` only in production; remember-me lasts 30 days.
-- `after_request` sets `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN` and `Referrer-Policy`. There is no CSP yet.
+- `after_request` sets a **Content-Security-Policy** (`script-src 'self'`, `img-src 'self' data: blob:`, `connect-src 'self'`, `worker-src 'self' blob:` for Quagga; inline `style=` allowed), plus `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN` and `Referrer-Policy`. `CSP_REPORT_ONLY=true` makes it report-only.
 - Rate limiting:
   - No global default (it caused 429s while browsing). Per-route `@limiter.limit()` on auth, profile updates, friend and household requests, and imports (`utils/rate_limiting.py`).
   - Storage is in memory, so each gunicorn worker counts separately (effective limit = limit x workers). Redis is the fix if that ever matters.
@@ -154,8 +156,9 @@ Not scheduled and not to be worked on until Phil picks them up; they belong in a
 ### Security conventions (follow these in new code)
 - **Image paths from the browser** (hidden form fields such as `existing_cover_url` and `fetched_cover_url`) must pass `is_safe_upload_path()` before being stored. Never call `os.remove` on a DB path without going through `delete_image_file()`.
 - **Server-side fetches of URLs** must go through `book_utils._get_public()` / `_fetch_image()` (public-IP check on every redirect).
+- **No inline JS** (the CSP blocks it): no `<script>` without `src`, no `onclick=`/`onchange=`/`onerror=` in templates or in HTML built by JS. Use `data-click` / `data-change` / `data-submit="name"` with `registerActions({name: (el, event) => ...})`, `data-confirm="..."` for confirmations, `data-fallback-src` for image fallbacks (all in `common.js`). Pass server values to page scripts in `data-` attributes, not Jinja inside JS. `tests/test_csp.py` enforces this.
+- **Remote images** (search-result covers) go through `coverSrc(url)` → `/books/thumbnail`, never straight into `img.src`.
 - **Never put data into `innerHTML`/template literals unescaped.** Use `escapeHtml()` (or `textContent`), and `encodeURIComponent` for URL path segments.
-- **Jinja values inside JS** must use `|tojson`. In inline handlers, use a single-quoted attribute: `onclick='return confirm({{ msg|tojson }})'`.
 - **State-changing routes are POST-only** with CSRF. Check ownership in the SQL (`WHERE ... AND user_id = ?`) for anything addressed by id.
 - **Reusing an existing book record** (by ISBN or title) goes through `utils/book_matching.py`. Never match against all of `books`: your data would hang on a stranger's copy that never shows in your library.
 - Don't return `str(e)` to clients in new code; log it and return a generic message.
@@ -179,6 +182,7 @@ Read via python-dotenv from `.env`:
 - **TRUSTED_PROXY_COUNT**: number of reverse proxies to trust for `X-Forwarded-*` (default 0 = off).
 - **EMAIL_VERIFICATION_REQUIRED** and **MAIL_SERVER / MAIL_PORT / MAIL_USE_TLS / MAIL_USERNAME / MAIL_PASSWORD / MAIL_DEFAULT_SENDER**: email verification.
 - **PORT**: dev server port.
+- **CSP_REPORT_ONLY**: `true` sends the Content-Security-Policy as report-only (escape hatch; default enforced).
 
 **Load order:** `app.py` calls `load_dotenv()` at import, before `config.py` is imported, and `utils/database.database_path()` reads `DATABASE_PATH` on every call. So every setting works from `.env` or the real environment (real env wins). A relative `DATABASE_PATH` is relative to the project directory, not the cwd. The app logs the DB path at startup and warns if the file doesn't exist.
 
@@ -200,7 +204,7 @@ row = conn.execute('SELECT * FROM table WHERE id = ?', (id,)).fetchone()
 conn.execute('UPDATE ...', (...))
 conn.commit()          # explicit; roll back in an except that swallows a failed write
 ```
-Outside a request (manage.py, scripts) use `get_db_connection()` in try/finally and close it. Many older routes still open their own connection that way; that's correct, just verbose, and move to `get_db()` in ROADMAP Phase 6. Never use `with get_db_connection() as conn:` (it commits but doesn't close).
+Never call `conn.close()` on it. Outside a request (`manage.py`, scripts, the `cover_jobs` thread) use `get_db_connection()` in try/finally and close it. Never use `with get_db_connection() as conn:` (it commits but doesn't close).
 
 #### API Response Pattern
 ```python

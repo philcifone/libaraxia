@@ -191,6 +191,38 @@ def test_placeholder_reason_blank_strip_tiny_and_real():
     assert placeholder_reason(_cover_like()) is None
 
 
+def _page(ink='black', accent=None, accent_share=0.0):
+    """A white 300x450 'page' with some lines of text-like ink, and optionally
+    a coloured block covering accent_share of the area."""
+    from PIL import Image, ImageDraw
+    img = Image.new('RGB', (300, 450), 'white')
+    d = ImageDraw.Draw(img)
+    for y in range(60, 200, 24):                     # title-page lines of "text"
+        d.rectangle([60, y, 240, y + 6], fill=ink)
+    if accent:
+        side = int((300 * 450 * accent_share) ** 0.5)
+        d.rectangle([20, 380, 20 + side, 380 + side], fill=accent)
+    return img
+
+
+def test_placeholder_reason_title_page_scan():
+    """Google Books sometimes offers a scanned title page as the cover:
+    mostly white, grey ink, no colour."""
+    from utils.book_utils import placeholder_reason
+    assert 'page scan' in placeholder_reason(_page())
+    assert 'page scan' in placeholder_reason(_page(ink='#555555'))
+
+
+def test_white_covers_with_colour_are_kept():
+    """A white jacket with a little colour (Blink: 0.9% blue) is a real cover,
+    and so is a colourless one that isn't mostly white (a grey photo cover)."""
+    from PIL import Image
+    from utils.book_utils import placeholder_reason
+    assert placeholder_reason(_page(accent='#2255cc', accent_share=0.012)) is None
+    grey_photo = _cover_like(seed=3).convert('L').convert('RGB')
+    assert placeholder_reason(grey_photo) is None
+
+
 def test_dhash_survives_resize_and_reencode():
     """Why a perceptual hash and not SHA-256: the saved copy is resized and
     re-encoded, and must still match."""

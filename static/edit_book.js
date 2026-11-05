@@ -1,22 +1,5 @@
+// Shared helpers (getCSRFToken, escapeHtml, ...) are in common.js.
 // Edit Book - Fetch Cover Functionality
-
-// CSRF Token Helper Functions
-function getCSRFToken() {
-    const tokenInput = document.querySelector('input[name="csrf_token"]');
-    if (tokenInput) return tokenInput.value;
-    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-    if (tokenMeta) return tokenMeta.content;
-    console.warn('CSRF token not found');
-    return null;
-}
-
-function getCSRFHeaders() {
-    const token = getCSRFToken();
-    return {
-        'X-CSRFToken': token,
-        'Content-Type': 'application/json'
-    };
-}
 
 document.addEventListener('DOMContentLoaded', function() {
     const fetchCoverBtn = document.getElementById('fetchCoverBtn');

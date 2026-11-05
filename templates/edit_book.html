@@ -1,17 +1,10 @@
-<!DOCTYPE html>
-<html class="h-full bg-primary-bg" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>Edit Book</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="h-full">
-    {% include '_sidebar.html' %}
+{% extends 'base.html' %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% block title %}Edit Book{% endblock %}
+{% block html_class %}h-full bg-primary-bg{% endblock %}
+{% block body_class %}h-full{% endblock %}
 
+{% block content %}
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
         <div class="flex items-center mb-8">
@@ -34,7 +27,7 @@
                         <input type="text" 
                                id="title" 
                                name="title"
-                               value="{{ book_details.title if book.details else book[1] }}"
+                               value="{{ book_details.title if book_details else book['title'] }}"
                                required
                                class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                     </div>
@@ -44,7 +37,7 @@
                         <input type="text" 
                                id="subtitle" 
                                name="subtitle"
-                               value="{{ book_details.subtitle if book.details }}"
+                               value="{{ book_details.subtitle if book_details else (book['subtitle'] or '') }}"
                                class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                     </div>
 
@@ -53,7 +46,7 @@
                         <input type="text" 
                                id="author" 
                                name="author"
-                               value="{{ book_details.author if book_details else book[2] }}"
+                               value="{{ book_details.author if book_details else book['author'] }}"
                                required
                                class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                     </div>
@@ -64,7 +57,7 @@
                             <input type="text" 
                                    id="year" 
                                    name="year"
-                                   value="{{ book_details.year if book_details else book[4] }}"
+                                   value="{{ book_details.year if book_details else book['publish_year'] }}"
                                    class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                         </div>
 
@@ -75,7 +68,7 @@
                                    name="page_count"
                                    min="0"
                                    step="1"
-                                   value="{{ book_details.page_count if book_details else book[7] }}"
+                                   value="{{ book_details.page_count if book_details else book['page_count'] }}"
                                    class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                         </div>
                     </div>
@@ -88,7 +81,7 @@
                         <input type="text" 
                                id="isbn" 
                                name="isbn"
-                               value="{{ book_details.isbn if book_details else book[5] }}"
+                               value="{{ book_details.isbn if book_details else book['isbn'] }}"
                                class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                     </div>
 
@@ -97,7 +90,7 @@
                         <input type="text" 
                                id="publisher" 
                                name="publisher"
-                               value="{{ book_details.publisher if book_details else book[3] }}"
+                               value="{{ book_details.publisher if book_details else book['publisher'] }}"
                                class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                     </div>
 
@@ -106,7 +99,7 @@
                         <input type="text" 
                                id="genre" 
                                name="genre"
-                               value="{{ book_details.genre if book.details else book[12] }}"
+                               value="{{ book_details.genre if book_details else book['genre'] }}"
                                required
                                class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
                     </div>
@@ -115,10 +108,10 @@
                         <label class="block text-sm font-medium text-content-secondary">Book Cover</label>
 
                         <!-- Current Cover Preview -->
-                        {% if book[8] %}
+                        {% if book['cover_image_url'] %}
                         <div id="currentCoverPreview" class="mb-4">
                             <p class="text-xs text-content-secondary mb-2">Current Cover:</p>
-                            <img src="{{ url_for('static', filename=book[8]) }}"
+                            <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                                  alt="Current cover"
                                  class="max-w-[200px] rounded-lg shadow-md">
                         </div>
@@ -165,7 +158,7 @@
                     <textarea id="description" 
                               name="description"
                               rows="6"
-                              class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none">{{ book_details.description if book_details else book[9] }}</textarea>
+                              class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none">{{ book_details.description if book_details else book['description'] }}</textarea>
                 </div>
 
                 <!-- Submit Button -->
@@ -181,5 +174,4 @@
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script src="{{ url_for('static', filename='edit_book.js') }}"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>Admin Settings</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="bg-primary min-h-screen">
-    {% include '_sidebar.html' %}
+{% extends 'base.html' %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% block title %}Admin Settings{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
 
+{% block content %}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
         <h1 class="text-3xl font-display text-content-primary mb-8">Admin Settings</h1>
 
@@ -117,7 +109,7 @@
                                     </div>
                                 </div>
                                 <form method="POST" action="{{ url_for('admin.remove_library_member') }}"
-                                      onsubmit='return confirm({{ ("Remove " ~ member.username ~ " from this shared library?")|tojson }});'>
+                                      data-confirm="{{ ("Remove " ~ member.username ~ " from this shared library?") }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <input type="hidden" name="user_id" value="{{ member.user_id }}">
                                     <button type="submit"
@@ -146,7 +138,7 @@
         <div class="bg-secondary rounded-lg p-6 mb-8 border border-card" id="user-form-panel">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-content-primary" id="form-title">Create New User</h2>
-                <button type="button" onclick="resetToCreateForm()" id="cancel-edit-btn" class="hidden text-content-secondary hover:text-accent transition-colors text-sm">
+                <button type="button" data-click="resetToCreateForm" id="cancel-edit-btn" class="hidden text-content-secondary hover:text-accent transition-colors text-sm">
                     Cancel & Create New User
                 </button>
             </div>
@@ -197,7 +189,7 @@
                                 <div class="h-16 w-16 rounded-full bg-accent flex items-center justify-center text-on-accent text-2xl font-bold" id="edit-avatar-placeholder">
                                     U
                                 </div>
-                                <input type="file" id="admin-avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" onchange="uploadUserAvatar(event)">
+                                <input type="file" id="admin-avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" data-change="uploadUserAvatar">
                             </div>
                             <!-- Camera icon to right of avatar -->
                             <label for="admin-avatar-input" class="text-content-secondary hover:text-accent transition-colors cursor-pointer" title="Change avatar">
@@ -213,7 +205,7 @@
                             <p class="text-sm text-content-secondary" id="edit-email-display">email@example.com</p>
                         </div>
                         <!-- Remove Avatar Button -->
-                        <button type="button" id="remove-avatar-btn" onclick="removeUserAvatar()" class="hidden px-3 py-1 text-sm text-red-400 hover:text-red-300 border border-red-400/50 rounded hover:bg-red-900/20 transition-colors">
+                        <button type="button" id="remove-avatar-btn" data-click="removeUserAvatar" class="hidden px-3 py-1 text-sm text-red-400 hover:text-red-300 border border-red-400/50 rounded hover:bg-red-900/20 transition-colors">
                             Remove Avatar
                         </button>
                     </div>
@@ -277,7 +269,7 @@
                 <!-- Deactivate / delete: opens the shared dialog (templates/_account_removal.html) -->
                 <div class="pt-4 border-t border-gray-700">
                     <button type="button" id="remove-user-btn"
-                            onclick="openAccountRemoval('/admin/users/' + encodeURIComponent(this.dataset.userId) + '/removal')"
+                            data-click="openUserRemoval"
                             class="w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -383,278 +375,9 @@
             </a>
         </div>
     </div>
+{% endblock %}
 
-    <script>
-        // Store current editing user ID globally
-        let currentEditUserId = null;
-
-        // Switch to edit user form
-        function showEditForm(userId, username, email, isActive, isAdmin, avatarUrl) {
-            console.log('Showing edit form for', username);
-            currentEditUserId = userId;
-
-            // Update the panel title
-            document.getElementById('form-title').textContent = 'Edit User: ' + username;
-
-            // Show cancel button
-            document.getElementById('cancel-edit-btn').classList.remove('hidden');
-
-            // Hide create form
-            document.getElementById('create-user-form').classList.add('hidden');
-
-            // Show edit form
-            const editForm = document.getElementById('edit-user-form');
-            editForm.classList.remove('hidden');
-
-            // Populate user info
-            const avatarImg = document.getElementById('edit-avatar-img');
-            const avatarPlaceholder = document.getElementById('edit-avatar-placeholder');
-            const removeAvatarBtn = document.getElementById('remove-avatar-btn');
-
-            if (avatarUrl && avatarUrl !== '') {
-                // Show image, hide placeholder
-                avatarImg.src = '/static/' + avatarUrl;
-                avatarImg.classList.remove('hidden');
-                avatarPlaceholder.classList.add('hidden');
-                removeAvatarBtn.classList.remove('hidden');
-            } else {
-                // Show placeholder, hide image
-                avatarImg.classList.add('hidden');
-                avatarPlaceholder.classList.remove('hidden');
-                avatarPlaceholder.textContent = username[0].toUpperCase();
-                removeAvatarBtn.classList.add('hidden');
-            }
-
-            document.getElementById('edit-username').textContent = username;
-            document.getElementById('edit-email-display').textContent = email;
-
-            // Set all hidden user IDs
-            document.getElementById('edit-user-id-email').value = userId;
-            document.getElementById('edit-user-id-password').value = userId;
-            document.getElementById('edit-user-id-admin').value = userId;
-            document.getElementById('edit-user-id-active').value = userId;
-            document.getElementById('remove-user-btn').dataset.userId = userId;
-
-            // Update toggle button styles
-            const adminBtn = document.getElementById('admin-toggle-btn');
-            const activeBtn = document.getElementById('active-toggle-btn');
-
-            if (isAdmin) {
-                adminBtn.textContent = 'Revoke Admin';
-                adminBtn.className = 'w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors';
-            } else {
-                adminBtn.textContent = 'Make Admin';
-                adminBtn.className = 'w-full px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors';
-            }
-
-            if (isActive) {
-                activeBtn.textContent = 'Deactivate';
-                activeBtn.className = 'w-full px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400 rounded-lg transition-colors';
-            } else {
-                activeBtn.textContent = 'Activate';
-                activeBtn.className = 'w-full px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors';
-            }
-
-            // Scroll to the form panel smoothly
-            document.getElementById('user-form-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        // Reset back to create user form
-        function resetToCreateForm() {
-            console.log('Resetting to create form');
-
-            // Update the panel title
-            document.getElementById('form-title').textContent = 'Create New User';
-
-            // Hide cancel button
-            document.getElementById('cancel-edit-btn').classList.add('hidden');
-
-            // Show create form
-            document.getElementById('create-user-form').classList.remove('hidden');
-
-            // Hide edit form
-            document.getElementById('edit-user-form').classList.add('hidden');
-
-            // Clear create form inputs
-            document.getElementById('create-user-form').reset();
-        }
-
-        // Initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing admin user management');
-
-            // Add click handlers to all edit buttons
-            const editButtons = document.querySelectorAll('.edit-user-btn');
-            console.log('Found', editButtons.length, 'edit buttons');
-
-            editButtons.forEach(function(btn) {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Edit button clicked for user:', this.dataset.username);
-
-                    const userId = parseInt(this.dataset.userId);
-                    const username = this.dataset.username;
-                    const email = this.dataset.email;
-                    const isActive = parseInt(this.dataset.isActive) === 1;
-                    const isAdmin = parseInt(this.dataset.isAdmin) === 1;
-                    const avatarUrl = this.dataset.avatarUrl;
-
-                    showEditForm(userId, username, email, isActive, isAdmin, avatarUrl);
-                });
-            });
-
-            console.log('Admin user management initialized successfully');
-        });
-
-        // Upload avatar for user being edited
-        async function uploadUserAvatar(event) {
-            const file = event.target.files[0];
-            if (!file || !currentEditUserId) return;
-
-            console.log('Uploading avatar for user', currentEditUserId, file);
-
-            // Validate file type
-            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
-            if (!allowedTypes.includes(file.type)) {
-                alert('Please upload a valid image file (PNG, JPG, GIF, or WebP)');
-                return;
-            }
-
-            // Show loading text
-            const statusText = document.getElementById('admin-avatar-status');
-            if (statusText) {
-                statusText.classList.remove('hidden');
-            }
-
-            // Create FormData and append file and user_id
-            const formData = new FormData();
-            formData.append('avatar', file);
-            formData.append('user_id', currentEditUserId);
-
-            try {
-                // Get CSRF token from meta tag or form
-                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-                formData.append('csrf_token', csrfToken);
-
-                const response = await fetch('/admin/upload_user_avatar', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                console.log('Upload response:', data);
-
-                if (response.ok && data.success) {
-                    // Hide status text
-                    if (statusText) {
-                        statusText.classList.add('hidden');
-                    }
-
-                    // Update avatar display
-                    const avatarImg = document.getElementById('edit-avatar-img');
-                    const avatarPlaceholder = document.getElementById('edit-avatar-placeholder');
-                    const removeAvatarBtn = document.getElementById('remove-avatar-btn');
-
-                    avatarImg.src = data.avatar_url + '?t=' + new Date().getTime();
-                    avatarImg.classList.remove('hidden');
-                    avatarPlaceholder.classList.add('hidden');
-                    removeAvatarBtn.classList.remove('hidden');
-
-                    // Update avatar in user table if visible
-                    const userRow = document.querySelector(`tr[data-user-id="${currentEditUserId}"]`);
-                    if (userRow) {
-                        const tableAvatar = userRow.querySelector('.user-table-avatar');
-                        if (tableAvatar) {
-                            tableAvatar.src = data.avatar_url + '?t=' + new Date().getTime();
-                        }
-                    }
-
-                    alert(data.message || 'Avatar uploaded successfully!');
-                } else {
-                    alert(data.message || 'Failed to upload avatar');
-
-                    // Hide status text on error
-                    if (statusText) {
-                        statusText.classList.add('hidden');
-                    }
-                }
-            } catch (error) {
-                console.error('Upload error:', error);
-                alert('An error occurred while uploading avatar');
-
-                // Hide status text on error
-                if (statusText) {
-                    statusText.classList.add('hidden');
-                }
-            }
-
-            // Reset file input
-            event.target.value = '';
-        }
-
-        // Remove avatar for user being edited
-        async function removeUserAvatar() {
-            if (!currentEditUserId) return;
-
-            if (!confirm('Remove this user\'s avatar?')) return;
-
-            try {
-                // Get CSRF token
-                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-
-                const response = await fetch('/admin/remove_user_avatar', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ user_id: currentEditUserId })
-                });
-
-                const data = await response.json();
-                console.log('Remove response:', data);
-
-                if (response.ok && data.success) {
-                    // Update avatar display
-                    const avatarImg = document.getElementById('edit-avatar-img');
-                    const avatarPlaceholder = document.getElementById('edit-avatar-placeholder');
-                    const removeAvatarBtn = document.getElementById('remove-avatar-btn');
-                    const username = document.getElementById('edit-username').textContent;
-
-                    avatarImg.classList.add('hidden');
-                    avatarPlaceholder.classList.remove('hidden');
-                    avatarPlaceholder.textContent = username[0].toUpperCase();
-                    removeAvatarBtn.classList.add('hidden');
-
-                    // Update avatar in user table if visible
-                    const userRow = document.querySelector(`tr[data-user-id="${currentEditUserId}"]`);
-                    if (userRow) {
-                        const tableAvatarContainer = userRow.querySelector('.user-avatar-container');
-                        if (tableAvatarContainer) {
-                            // Replace image with placeholder
-                            tableAvatarContainer.innerHTML = `
-                                <div class="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-on-accent text-sm font-bold">
-                                    ${username[0].toUpperCase()}
-                                </div>
-                            `;
-                        }
-                    }
-
-                    alert(data.message || 'Avatar removed successfully!');
-                } else {
-                    alert(data.message || 'Failed to remove avatar');
-                }
-            } catch (error) {
-                console.error('Remove error:', error);
-                alert('An error occurred while removing avatar');
-            }
-        }
-
-    </script>
-    <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 bg-secondary text-content-primary border border-card backdrop:bg-black/60">
-        <div id="account-removal-body"></div>
-    </dialog>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='admin_settings.js') }}"></script>
+{% endblock %}

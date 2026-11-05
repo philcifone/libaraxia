@@ -1,217 +1,9 @@
-// CSRF Token Helper Function
-function getCSRFToken() {
-    // Try to get CSRF token from a hidden input in the page
-    const tokenInput = document.querySelector('input[name="csrf_token"]');
-    if (tokenInput) {
-        return tokenInput.value;
-    }
-    // Fallback: try to get from meta tag if you add one later
-    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-    if (tokenMeta) {
-        return tokenMeta.content;
-    }
-    console.warn('CSRF token not found');
-    return null;
-}
+// Library pages (grid, search, sort, filters, infinite scroll) and a few
+// helpers for the book page. Shared helpers (getCSRFToken, escapeHtml, ...)
+// are in common.js. Markup calls into this file through data-click /
+// data-change / data-submit (registered at the bottom), never inline handlers.
 
-// Escape text for use inside HTML, including attribute values
-function escapeHtml(text) {
-    return String(text ?? '').replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    })[c]);
-}
-
-// Helper function to add CSRF token to FormData
-function addCSRFToFormData(formData) {
-    const token = getCSRFToken();
-    if (token) {
-        formData.append('csrf_token', token);
-    }
-    return formData;
-}
-
-// Helper function to get headers with CSRF token
-function getCSRFHeaders() {
-    const token = getCSRFToken();
-    return {
-        'X-CSRFToken': token,
-        'Content-Type': 'application/json'
-    };
-}
-
-// // NEW JAVASCRIPT FOR BETTER SEARCH BAR NOT WORKING ROLLED BACK
-//
-// // Initialize everything on page load
-// document.addEventListener("DOMContentLoaded", () => {
-//     // Panel controls
-//     const hamburger = document.getElementById("hamburger");
-//     const sidebar = document.getElementById("sidebar");
-//     const filterPanel = document.getElementById("filter-panel");
-//     const searchToggle = document.getElementById("search-toggle");
-//     const filterToggle = document.getElementById("filter-toggle");
-//     const closeFilterBtn = document.getElementById("close-filter-panel");
-
-//     // Sidebar toggle
-//     hamburger?.addEventListener("click", (e) => {
-//         sidebar.classList.toggle("-translate-x-full");
-//         e.stopPropagation();
-//     });
-
-//     // Filter panel toggle
-//     filterToggle?.addEventListener("click", (e) => {
-//         filterPanel.classList.toggle("translate-x-full");
-//         e.stopPropagation();
-//     });
-
-//     // Close filter panel
-//     closeFilterBtn?.addEventListener("click", () => {
-//         filterPanel.classList.add("translate-x-full");
-//     });
-
-//     // Close panels when clicking outside
-//     document.addEventListener("click", (e) => {
-//         if (!sidebar?.contains(e.target) && !hamburger?.contains(e.target)) {
-//             sidebar?.classList.add("-translate-x-full");
-//         }
-//         if (!filterPanel?.contains(e.target) && !filterToggle?.contains(e.target)) {
-//             filterPanel?.classList.add("translate-x-full");
-//         }
-//     });
-
-//     // New search functionality
-//     searchToggle?.addEventListener("click", (e) => {
-//         searchContainer.classList.toggle("invisible");
-//         searchContainer.classList.toggle("opacity-0");
-//         searchContainer.classList.toggle("-translate-y-full");
-//         e.stopPropagation();
-            
-//         if (!searchContainer.classList.contains("invisible")) {
-//             setTimeout(() => {
-//                 searchContainer.querySelector("#search_term")?.focus();
-//             }, 100);
-//         }
-//     });
-
-//     // Escape key handler
-//     document.addEventListener("keydown", (e) => {
-//         if (e.key === "Escape") {
-//             sidebar?.classList.add("-translate-x-full");
-//             filterPanel?.classList.add("translate-x-full");
-//         }
-//     });
-
-//     // Set up search and filter handlers
-//     const searchInput = document.getElementById('search_term');
-//     searchInput?.addEventListener('input', (e) => handleSearch(e.target.value));
-    
-//     document.querySelectorAll('.sort-select').forEach(select => {
-//         select.addEventListener('change', handleSort);
-//     });
-    
-//     document.querySelectorAll('[data-filter]').forEach(filter => {
-//         filter.addEventListener('change', handleSort);
-//     });
-// });
-
-// // Utility functions
-// function debounce(func, wait) {
-//     let timeout;
-//     return function executedFunction(...args) {
-//         const later = () => {
-//             clearTimeout(timeout);
-//             func(...args);
-//         };
-//         clearTimeout(timeout);
-//         timeout = setTimeout(later, wait);
-//     };
-// }
-
-// // Event handlers
-// const handleSearch = debounce((searchTerm) => {
-//     const form = document.getElementById('search-form');
-//     if (searchTerm.length === 0 || searchTerm.length >= 2) {
-//         form.submit();
-//     }
-// }, 500);
-
-// function handleSort() {
-//     const sortBy = document.getElementById('sort_by').value;
-//     const sortOrder = document.getElementById('sort_order').value;
-//     const activeFilters = getActiveFilters();
-    
-//     const params = new URLSearchParams(window.location.search);
-//     params.set('sort_by', sortBy);
-//     params.set('sort_order', sortOrder);
-    
-//     Object.entries(activeFilters).forEach(([key, value]) => {
-//         if (value) params.set(key, value);
-//     });
-    
-//     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-//     fetchResults(params);
-// }
-
-// function getActiveFilters() {
-//     const filters = {};
-//     document.querySelectorAll('[data-filter]').forEach(filter => {
-//         const value = filter.type === 'checkbox' ? filter.checked : filter.value;
-//         if (value) {
-//             filters[filter.name] = value;
-//         }
-//     });
-//     return filters;
-// }
-
-// async function fetchResults(params) {
-//     try {
-//         const response = await fetch(`/api/books?${params.toString()}`);
-//         const data = await response.json();
-//         updateBookGrid(data.books);
-//         updateFilterIndicators(getActiveFilters());
-//     } catch (error) {
-//         console.error('Error fetching results:', error);
-//         document.getElementById('error-message')?.classList.remove('hidden');
-//     }
-// }
-
-// function updateFilterIndicators(activeFilters) {
-//     const container = document.getElementById('active-filters');
-//     if (!container) return;
-    
-//     container.innerHTML = '';
-//     Object.entries(activeFilters).forEach(([key, value]) => {
-//         const pill = document.createElement('span');
-//         pill.className = 'inline-flex items-center px-2 py-1 rounded-pill text-sm bg-accent/10 text-accent';
-//         pill.innerHTML = `
-//             ${key}: ${value}
-//             <button onclick="removeFilter('${key}')" class="ml-1 hover:text-accent-hover">×</button>
-//         `;
-//         container.appendChild(pill);
-//     });
-// }
-
-// function removeFilter(filterName) {
-//     const element = document.querySelector(`[name="${filterName}"]`);
-//     if (element) {
-//         if (element.type === 'checkbox') {
-//             element.checked = false;
-//         } else {
-//             element.value = '';
-//         }
-//         handleSort();
-//     }
-// }
-
-// function clearFilters() {
-//     document.querySelectorAll('[data-filter]').forEach(filter => {
-//         if (filter.type === 'checkbox') {
-//             filter.checked = false;
-//         } else {
-//             filter.value = '';
-//         }
-//     });
-//     handleSort();
-// }
+'use strict';
 
 // Sort form submission with loading indicator
 function submitSortForm() {
@@ -233,7 +25,7 @@ function showLoadingIndicator(message = 'Loading...') {
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span class="text-content-primary font-medium" id="loading-message">${message}</span>
+                <span class="text-content-primary font-medium" id="loading-message">${escapeHtml(message)}</span>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -349,89 +141,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update active filters display on page load
     updateActiveFilters();
 });
-document.addEventListener("DOMContentLoaded", () => {
-    const hamburger = document.getElementById("hamburger");
-    const sidebar = document.getElementById("sidebar");
-    const content = document.querySelector(".content");
-    const searchToggle = document.getElementById("search-toggle");
-    const searchContainer = document.querySelector(".search-form-container");
-
-    // Only set up search functionality if elements exist
-    if (searchToggle && searchContainer) {
-        // Toggle search dropdown with animation
-        searchToggle.addEventListener("click", (event) => {
-            // Toggle visibility and transform classes
-            searchContainer.classList.toggle("invisible");
-            searchContainer.classList.toggle("opacity-0");
-            searchContainer.classList.toggle("-translate-y-full");
-            event.stopPropagation();
-
-            // Focus search input when opening
-            if (!searchContainer.classList.contains("invisible")) {
-                setTimeout(() => {
-                    searchContainer.querySelector("#search_term").focus();
-                }, 100);
-            }
-        });
-        // Close search dropdown when clicking outside
-        document.addEventListener("click", (event) => {
-            if (!searchContainer.contains(event.target) && !searchToggle.contains(event.target)) {
-                searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
-            }
-        });
-    }
-    // Toggle sidebar
-    hamburger.addEventListener("click", (event) => {
-        sidebar.classList.toggle("-translate-x-full");
-
-        // Animate hamburger icon
-        const spans = hamburger.querySelectorAll("span");
-        spans[0].classList.toggle("rotate-45");
-        spans[0].classList.toggle("translate-y-2");
-        spans[1].classList.toggle("opacity-0");
-        spans[2].classList.toggle("-rotate-45");
-        spans[2].classList.toggle("-translate-y-2");
-
-        event.stopPropagation();
-    });
-    // Close sidebar when clicking outside
-    document.addEventListener("click", (event) => {
-        if (!sidebar.contains(event.target) && !hamburger.contains(event.target)) {
-            sidebar.classList.add("-translate-x-full");
-
-            // Reset hamburger icon
-            const spans = hamburger.querySelectorAll("span");
-            spans[0].classList.remove("rotate-45", "translate-y-2");
-            spans[1].classList.remove("opacity-0");
-            spans[2].classList.remove("-rotate-45", "-translate-y-2");
-        }
-    });
-    // Handle escape key
-    document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-            // Close search if it exists
-            if (searchContainer) {
-                searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
-            }
-
-            // Close sidebar if it exists
-            if (sidebar) {
-                sidebar.classList.add("-translate-x-full");
-            }
-
-            // Reset hamburger if it exists
-            if (hamburger) {
-                const spans = hamburger.querySelectorAll("span");
-                if (spans.length >= 3) {
-                    spans[0].classList.remove("rotate-45", "translate-y-2");
-                    spans[1].classList.remove("opacity-0");
-                    spans[2].classList.remove("-rotate-45", "-translate-y-2");
-                }
-            }
-        }
-    });
-});
-
 // view more for toggle description book details
 function toggleDescription() {
     const description = document.getElementById('description');
@@ -451,25 +160,6 @@ function toggleDescription() {
         description.style.overflow = 'visible';
         buttonText.textContent = 'Show Less';
         arrow.classList.add('rotate-180');
-    }
-}
-
-// toggle friend review expansion
-function toggleReview(reviewId, button) {
-    const reviewText = document.getElementById(reviewId);
-    const buttonText = button.querySelector('.toggle-text');
-    const arrow = button.querySelector('svg');
-
-    if (reviewText.classList.contains('line-clamp-4')) {
-        // Expand
-        reviewText.classList.remove('line-clamp-4');
-        buttonText.textContent = 'Show Less';
-        arrow.classList.add('rotate-180');
-    } else {
-        // Collapse
-        reviewText.classList.add('line-clamp-4');
-        buttonText.textContent = 'Show More';
-        arrow.classList.remove('rotate-180');
     }
 }
 
@@ -497,33 +187,6 @@ function toggleFriendReview(button) {
             previewText.classList.remove('hidden');
         }
     }
-}
-
-// toast for collections
-function updateStatus(selectElement) {
-    const form = document.getElementById("status-form");
-    const toast = document.getElementById("toast");
-
-    // Send the form data via POST
-    fetch(form.action, {
-        method: "POST",
-        body: new FormData(form),
-    })
-    .then((response) => {
-        if (response.ok) {
-            // Show a toast notification
-            toast.style.display = "block";
-            setTimeout(() => {
-                toast.style.display = "none";
-            }, 2000); // Hide toast after 2 seconds
-        } else {
-            alert("Failed to update status.");
-        }
-    })
-    .catch((error) => {
-        console.error("Error updating status:", error);
-        alert("An error occurred.");
-    });
 }
 
 function initRatingSystem() {
@@ -587,127 +250,6 @@ function initRatingSystem() {
 
 // Initialize when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initRatingSystem);
-
-// index.html javascript for filter functions
-
-// On page load, check if filters should be shown
-document.addEventListener('DOMContentLoaded', function () {
-    // Show filters if any filter parameters are present
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.toString() && urlParams.toString() !== '') {
-        const filterPanel = document.getElementById('filter-panel');
-        filterPanel.classList.add('active');
-
-        // Update the toggle button arrow
-        const filterToggle = document.getElementById('filterToggle');
-        filterToggle.innerHTML = 'Filters ▲';
-    }
-});
-
-function submitSortForm() {
-    // Preserve filter state when sorting
-    const filterPanel = document.getElementById('filter-panel');
-    if (filterPanel.classList.contains('active')) {
-        const sortForm = document.getElementById('sort-form');
-        const showFiltersInput = document.createElement('input');
-        showFiltersInput.type = 'hidden';
-        showFiltersInput.name = 'show_filters';
-        showFiltersInput.value = '1';
-        sortForm.appendChild(showFiltersInput);
-    }
-    document.getElementById('sort-form').submit();
-}
-
-// book details
-
-function toggleCollection(checkbox, bookId, collectionId) {
-    const action = checkbox.checked ? 'add' : 'remove';
-    console.log(`Toggling collection: ${action} book ${bookId} to collection ${collectionId}`);
-    
-    // Create form data
-    const formData = new FormData();
-    formData.append('book_id', bookId);
-    
-    // Add CSRF token to form data
-    addCSRFToFormData(formData);
-
-    // Make the request
-    fetch(`/collections/${collectionId}/${action}`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) {
-            return response.text().then(text => {
-                console.error('Error response:', text);
-                throw new Error(`HTTP error! status: ${response.status}`);
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Success:', data);
-        if (!data.success) {
-            checkbox.checked = !checkbox.checked;
-            alert('Failed to update collection: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        checkbox.checked = !checkbox.checked;
-        alert('Error updating collection. Please try again.');
-    });
-}
-
-// Collection Tags
-function updateCollectionTags() {
-    const selectedCollection = document.getElementById('collections');
-    const tagsContainer = document.getElementById('collection-tags');
-    const bookId = document.querySelector('input[name="book_id"]').value;
-
-    fetch(`/collections/get_book_collections/${bookId}`)
-        .then(response => response.json())
-        .then(data => {
-            tagsContainer.innerHTML = data.collections.map(collection => `
-                <span class="collection-tag">
-                    ${collection.name}
-                    <button onclick="removeFromCollection(${collection.id}, ${bookId})" class="tag-remove">×</button>
-                </span>
-            `).join('');
-        });
-}
-
-function removeFromCollection(collectionId, bookId) {
-    fetch(`/collections/${collectionId}/remove`, {
-        method: 'POST',
-        headers: getCSRFHeaders(),
-        body: JSON.stringify({ book_id: bookId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) updateCollectionTags();
-    });
-}
-
-function createCollection() {
-    const input = document.querySelector('.collection-input');
-    const name = input.value;
-    if (!name) return;
-
-    fetch('/collections/create_custom_collection', {
-        method: 'POST',
-        headers: getCSRFHeaders(),
-        body: JSON.stringify({ name })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        }
-    });
-}
 
 // ============================================================================
 // INFINITE SCROLL PAGINATION
@@ -1020,8 +562,8 @@ function switchView(viewType) {
         });
 
         // Update button states
-        gridBtn.classList.add('active', 'bg-accent/30', 'text-accent');
-        listBtn.classList.remove('active', 'bg-accent/30', 'text-accent');
+        gridBtn?.classList.add('active', 'bg-accent/30', 'text-accent');
+        listBtn?.classList.remove('active', 'bg-accent/30', 'text-accent');
 
     } else {
         // List view - set container to flex layout
@@ -1057,8 +599,8 @@ function switchView(viewType) {
         });
 
         // Update button states
-        listBtn.classList.add('active', 'bg-accent/30', 'text-accent');
-        gridBtn.classList.remove('active', 'bg-accent/30', 'text-accent');
+        listBtn?.classList.add('active', 'bg-accent/30', 'text-accent');
+        gridBtn?.classList.remove('active', 'bg-accent/30', 'text-accent');
     }
 
     // Save preference to localStorage
@@ -1147,3 +689,16 @@ async function openAccountRemoval(url) {
         body.textContent = 'Could not load this account. Reload the page and try again.';
     }
 }
+
+// Handlers named in data-click / data-change / data-submit attributes
+// (_search_sort_filter.html, book_detail.html).
+registerActions({
+    switchView: el => switchView(el.dataset.view),
+    submitSortForm: () => submitSortForm(),
+    clearFilters: () => clearFilters(),
+    toggleFilters: () => toggleFilters(),
+    updateActiveFilters: () => updateActiveFilters(),
+    showLoading: el => showLoadingIndicator(el.dataset.loading),
+    toggleDescription: () => toggleDescription(),
+    toggleFriendReview: el => toggleFriendReview(el),
+});

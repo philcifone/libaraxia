@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 import bcrypt
 import os
 from datetime import datetime
-from utils.database import get_db_connection, get_db
+from utils.database import get_db
 from utils import households
 from utils.book_utils import missing_cover_sql
 from models import admin_required, is_valid_username, USERNAME_RULES
@@ -19,66 +19,63 @@ admin_blueprint = Blueprint('admin', __name__, template_folder='templates')
 @admin_required
 def settings():
     """Admin settings page - user management"""
-    conn = get_db_connection()
-    try:
-        # Get all users with their stats
-        users = conn.execute("""
-            SELECT
-                u.id,
-                u.username,
-                u.email,
-                u.is_active,
-                u.is_admin,
-                u.avatar_url,
-                COUNT(DISTINCT rd.book_id) as books_read,
-                COUNT(DISTINCT c.book_id) as books_in_library
-            FROM users u
-            LEFT JOIN read_data rd ON u.id = rd.user_id
-            LEFT JOIN collections c ON u.id = c.user_id
-            GROUP BY u.id
-            ORDER BY u.username ASC
-        """).fetchall()
+    conn = get_db()
+    # Get all users with their stats
+    users = conn.execute("""
+        SELECT
+            u.id,
+            u.username,
+            u.email,
+            u.is_active,
+            u.is_admin,
+            u.avatar_url,
+            COUNT(DISTINCT rd.book_id) as books_read,
+            COUNT(DISTINCT c.book_id) as books_in_library
+        FROM users u
+        LEFT JOIN read_data rd ON u.id = rd.user_id
+        LEFT JOIN collections c ON u.id = c.user_id
+        GROUP BY u.id
+        ORDER BY u.username ASC
+    """).fetchall()
 
-        # Get system stats
-        stats = {
-            'total_users': conn.execute('SELECT COUNT(*) FROM users').fetchone()[0],
-            'active_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_active = 1').fetchone()[0],
-            'total_books': conn.execute('SELECT COUNT(*) FROM library_books WHERE removed_at IS NULL').fetchone()[0],
-            'admin_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0],
-            'unowned_books': conn.execute('SELECT COUNT(*) FROM books WHERE added_by IS NULL').fetchone()[0],
-        }
+    # Get system stats
+    stats = {
+        'total_users': conn.execute('SELECT COUNT(*) FROM users').fetchone()[0],
+        'active_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_active = 1').fetchone()[0],
+        'total_books': conn.execute('SELECT COUNT(*) FROM library_books WHERE removed_at IS NULL').fetchone()[0],
+        'admin_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0],
+        'unowned_books': conn.execute('SELECT COUNT(*) FROM books WHERE added_by IS NULL').fetchone()[0],
+    }
 
-        # Get library membership info
-        library_members = conn.execute("""
-            SELECT
-                lm.id,
-                lm.library_id,
-                lm.user_id,
-                lm.role,
-                lm.added_at,
-                u.username,
-                u.avatar_url,
-                adder.username as added_by_username
-            FROM library_members lm
-            JOIN users u ON lm.user_id = u.id
-            LEFT JOIN users adder ON lm.added_by = adder.id
-            ORDER BY lm.library_id, lm.added_at
-        """).fetchall()
+    # Get library membership info
+    library_members = conn.execute("""
+        SELECT
+            lm.id,
+            lm.library_id,
+            lm.user_id,
+            lm.role,
+            lm.added_at,
+            u.username,
+            u.avatar_url,
+            adder.username as added_by_username
+        FROM library_members lm
+        JOIN users u ON lm.user_id = u.id
+        LEFT JOIN users adder ON lm.added_by = adder.id
+        ORDER BY lm.library_id, lm.added_at
+    """).fetchall()
 
-        # Group members by library_id
-        libraries = {}
-        for member in library_members:
-            lib_id = member['library_id']
-            if lib_id not in libraries:
-                libraries[lib_id] = []
-            libraries[lib_id].append(dict(member))
+    # Group members by library_id
+    libraries = {}
+    for member in library_members:
+        lib_id = member['library_id']
+        if lib_id not in libraries:
+            libraries[lib_id] = []
+        libraries[lib_id].append(dict(member))
 
-        return render_template('admin_settings.html',
-                             users=users,
-                             stats=stats,
-                             libraries=libraries)
-    finally:
-        conn.close()
+    return render_template('admin_settings.html',
+                         users=users,
+                         stats=stats,
+                         libraries=libraries)
 
 
 @admin_blueprint.route("/create_user", methods=["POST"])
@@ -104,7 +101,7 @@ def create_user():
         flash(USERNAME_RULES, "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Check if username already exists
         existing_user = conn.execute(
@@ -138,8 +135,6 @@ def create_user():
     except Exception as e:
         current_app.logger.error(f"Error creating user: {str(e)}")
         flash("Error creating user", "error")
-    finally:
-        conn.close()
 
     return redirect(url_for('admin.settings'))
 
@@ -156,7 +151,7 @@ def toggle_user():
         flash("You cannot deactivate your own account", "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         user = conn.execute('SELECT username, is_active FROM users WHERE id = ?', (user_id,)).fetchone()
 
@@ -175,8 +170,6 @@ def toggle_user():
     except Exception as e:
         current_app.logger.error(f"Error toggling user status: {str(e)}")
         flash("Error updating user status", "error")
-    finally:
-        conn.close()
 
     return redirect(url_for('admin.settings'))
 
@@ -256,7 +249,7 @@ def toggle_admin():
         flash("You cannot change your own admin status", "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         user = conn.execute('SELECT username, is_admin FROM users WHERE id = ?', (user_id,)).fetchone()
 
@@ -282,8 +275,6 @@ def toggle_admin():
     except Exception as e:
         current_app.logger.error(f"Error toggling admin status: {str(e)}")
         flash("Error updating admin status", "error")
-    finally:
-        conn.close()
 
     return redirect(url_for('admin.settings'))
 
@@ -300,7 +291,7 @@ def update_user_email():
         flash("Email address is required", "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Check if user exists
         user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
@@ -324,8 +315,6 @@ def update_user_email():
     except Exception as e:
         current_app.logger.error(f"Error updating email: {str(e)}")
         flash("Error updating email address", "error")
-    finally:
-        conn.close()
 
     return redirect(url_for('admin.settings'))
 
@@ -346,7 +335,7 @@ def reset_user_password():
         flash("Password must be at least 6 characters", "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Check if user exists
         user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
@@ -365,8 +354,6 @@ def reset_user_password():
     except Exception as e:
         current_app.logger.error(f"Error resetting password: {str(e)}")
         flash("Error resetting password", "error")
-    finally:
-        conn.close()
 
     return redirect(url_for('admin.settings'))
 
@@ -457,39 +444,36 @@ def upload_user_avatar():
             # Get relative path for database storage (use forward slashes for URLs)
             relative_path = f'uploads/avatars/{unique_filename}'
 
-            conn = get_db_connection()
-            try:
-                # Get old avatar URL to delete old file
-                old_avatar = conn.execute('SELECT avatar_url, username FROM users WHERE id = ?', (user_id,)).fetchone()
+            conn = get_db()
+            # Get old avatar URL to delete old file
+            old_avatar = conn.execute('SELECT avatar_url, username FROM users WHERE id = ?', (user_id,)).fetchone()
 
-                if not old_avatar:
-                    return jsonify({'success': False, 'message': 'User not found'}), 404
+            if not old_avatar:
+                return jsonify({'success': False, 'message': 'User not found'}), 404
 
-                # Update database with new avatar URL
-                conn.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (relative_path, user_id))
-                conn.commit()
-                logger.info(f"Database updated for user {old_avatar['username']}")
+            # Update database with new avatar URL
+            conn.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (relative_path, user_id))
+            conn.commit()
+            logger.info(f"Database updated for user {old_avatar['username']}")
 
-                # Delete old avatar file if it exists
-                if old_avatar['avatar_url']:
-                    old_file_path = os.path.join(current_app.root_path, 'static', old_avatar['avatar_url'])
-                    if os.path.exists(old_file_path):
-                        try:
-                            os.remove(old_file_path)
-                            logger.info(f"Deleted old avatar: {old_file_path}")
-                        except Exception as e:
-                            logger.warning(f"Could not delete old avatar: {str(e)}")
+            # Delete old avatar file if it exists
+            if old_avatar['avatar_url']:
+                old_file_path = os.path.join(current_app.root_path, 'static', old_avatar['avatar_url'])
+                if os.path.exists(old_file_path):
+                    try:
+                        os.remove(old_file_path)
+                        logger.info(f"Deleted old avatar: {old_file_path}")
+                    except Exception as e:
+                        logger.warning(f"Could not delete old avatar: {str(e)}")
 
-                current_app.logger.info(f"Admin {current_user.username} uploaded avatar for user: {old_avatar['username']}")
+            current_app.logger.info(f"Admin {current_user.username} uploaded avatar for user: {old_avatar['username']}")
 
-                return jsonify({
-                    'success': True,
-                    'message': 'Avatar uploaded successfully',
-                    'avatar_url': url_for('static', filename=relative_path)
-                })
+            return jsonify({
+                'success': True,
+                'message': 'Avatar uploaded successfully',
+                'avatar_url': url_for('static', filename=relative_path)
+            })
 
-            finally:
-                conn.close()
 
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
@@ -514,37 +498,34 @@ def remove_user_avatar():
         except (ValueError, TypeError):
             return jsonify({'success': False, 'message': 'Invalid user ID'}), 400
 
-        conn = get_db_connection()
-        try:
-            # Get user's current avatar
-            user = conn.execute('SELECT username, avatar_url FROM users WHERE id = ?', (user_id,)).fetchone()
+        conn = get_db()
+        # Get user's current avatar
+        user = conn.execute('SELECT username, avatar_url FROM users WHERE id = ?', (user_id,)).fetchone()
 
-            if not user:
-                return jsonify({'success': False, 'message': 'User not found'}), 404
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
 
-            # Delete avatar file if it exists
-            if user['avatar_url']:
-                old_file_path = os.path.join(current_app.root_path, 'static', user['avatar_url'])
-                if os.path.exists(old_file_path):
-                    try:
-                        os.remove(old_file_path)
-                        current_app.logger.info(f"Deleted avatar file: {old_file_path}")
-                    except Exception as e:
-                        current_app.logger.warning(f"Could not delete avatar file: {str(e)}")
+        # Delete avatar file if it exists
+        if user['avatar_url']:
+            old_file_path = os.path.join(current_app.root_path, 'static', user['avatar_url'])
+            if os.path.exists(old_file_path):
+                try:
+                    os.remove(old_file_path)
+                    current_app.logger.info(f"Deleted avatar file: {old_file_path}")
+                except Exception as e:
+                    current_app.logger.warning(f"Could not delete avatar file: {str(e)}")
 
-            # Update database to remove avatar URL
-            conn.execute('UPDATE users SET avatar_url = NULL WHERE id = ?', (user_id,))
-            conn.commit()
+        # Update database to remove avatar URL
+        conn.execute('UPDATE users SET avatar_url = NULL WHERE id = ?', (user_id,))
+        conn.commit()
 
-            current_app.logger.info(f"Admin {current_user.username} removed avatar for user: {user['username']}")
+        current_app.logger.info(f"Admin {current_user.username} removed avatar for user: {user['username']}")
 
-            return jsonify({
-                'success': True,
-                'message': 'Avatar removed successfully'
-            })
+        return jsonify({
+            'success': True,
+            'message': 'Avatar removed successfully'
+        })
 
-        finally:
-            conn.close()
 
     except Exception as e:
         current_app.logger.error(f"Error removing avatar: {str(e)}", exc_info=True)
@@ -597,19 +578,16 @@ def reassign_books():
 @admin_required
 def orphaned_images():
     """Display orphaned images that can be cleaned up"""
-    conn = get_db_connection()
-    try:
-        from utils.image_utils import find_orphaned_images
-        orphaned_data = find_orphaned_images(conn)
+    conn = get_db()
+    from utils.image_utils import find_orphaned_images
+    orphaned_data = find_orphaned_images(conn)
 
-        return render_template(
-            'admin/orphaned_images.html',
-            orphaned_files=orphaned_data['orphaned_files'],
-            total_size_mb=orphaned_data['total_size_mb'],
-            count=orphaned_data['count']
-        )
-    finally:
-        conn.close()
+    return render_template(
+        'admin/orphaned_images.html',
+        orphaned_files=orphaned_data['orphaned_files'],
+        total_size_mb=orphaned_data['total_size_mb'],
+        count=orphaned_data['count']
+    )
 
 
 @admin_blueprint.route("/cleanup_orphaned_images", methods=["POST"])
@@ -689,7 +667,7 @@ def add_library_member():
         flash("User ID is required", "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Check if user exists
         user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
@@ -732,8 +710,6 @@ def add_library_member():
     except Exception as e:
         current_app.logger.error(f"Error adding library member: {str(e)}")
         flash("Error adding user to library", "error")
-    finally:
-        conn.close()
 
     return redirect(url_for('admin.settings'))
 
@@ -749,7 +725,7 @@ def remove_library_member():
         flash("User ID is required", "error")
         return redirect(url_for('admin.settings'))
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Get user info
         user = conn.execute(
@@ -773,8 +749,6 @@ def remove_library_member():
     except Exception as e:
         current_app.logger.error(f"Error removing library member: {str(e)}")
         flash("Error removing user from library", "error")
-    finally:
-        conn.close()
 
     return redirect(url_for('admin.settings'))
 

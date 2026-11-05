@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
-from utils.database import get_db_connection
+from utils.database import get_db
 from models import can_view_book
 import sqlite3
 from datetime import datetime
@@ -17,7 +17,7 @@ def add_tag():
     if not book_id or not tags:
         return jsonify({'error': 'Missing required data'}), 400
     
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Only books in the user's circle (models.can_view_book)
         if not can_view_book(conn, current_user, book_id):
@@ -49,8 +49,6 @@ def add_tag():
     except Exception as e:
         current_app.logger.exception('Error updating tags')
         return jsonify({'error': 'Something went wrong with the tags.'}), 500
-    finally:
-        conn.close()
 
 @tags_blueprint.route('/remove', methods=['POST'])
 @login_required
@@ -62,7 +60,7 @@ def remove_tag():
     if not book_id or not tag_name:
         return jsonify({'error': 'Missing required data'}), 400
     
-    conn = get_db_connection()
+    conn = get_db()
     try:
         conn.execute('''
             DELETE FROM book_tags 
@@ -84,22 +82,17 @@ def remove_tag():
     except Exception as e:
         current_app.logger.exception('Error updating tags')
         return jsonify({'error': 'Something went wrong with the tags.'}), 500
-    finally:
-        conn.close()
 
 @tags_blueprint.route('/get/<int:book_id>', methods=['GET'])
 @login_required
 def get_tags(book_id):
-    conn = get_db_connection()
-    try:
-        tags = conn.execute('''
-            SELECT tag_name FROM book_tags 
-            WHERE user_id = ? AND book_id = ?
-            ORDER BY created_at DESC
-        ''', (current_user.id, book_id)).fetchall()
-        
-        return jsonify({
-            'tags': [tag[0] for tag in tags]
-        })
-    finally:
-        conn.close()
+    conn = get_db()
+    tags = conn.execute('''
+        SELECT tag_name FROM book_tags 
+        WHERE user_id = ? AND book_id = ?
+        ORDER BY created_at DESC
+    ''', (current_user.id, book_id)).fetchall()
+    
+    return jsonify({
+        'tags': [tag[0] for tag in tags]
+    })

@@ -72,7 +72,8 @@ def test_security_headers(client):
 
 
 # Routes that are GET but act, or need arguments filled in below.
-SKIP = {'static', 'auth.verify_email'}
+# books.thumbnail needs a ?url= and 404s without one; tests/test_csp.py covers it.
+SKIP = {'static', 'auth.verify_email', 'books.thumbnail'}
 
 
 def test_every_page_loads(app, client, db, people):
@@ -107,6 +108,28 @@ def test_every_page_loads(app, client, db, people):
              '/admin/users/%d/removal' % alice]
     for url in extra:
         assert client.get(url).status_code < 400, url
+
+
+def test_every_template_page_extends_base():
+    """Phase 6: one layout. Every full-page template extends base.html; the
+    partials (leading underscore) are included, never extended."""
+    import pathlib
+    templates = pathlib.Path(__file__).resolve().parent.parent / 'templates'
+    pages = [p for p in templates.rglob('*.html') if not p.name.startswith('_') and p.name != 'base.html']
+    assert len(pages) > 20
+    standalone = [str(p.relative_to(templates)) for p in pages
+                  if not p.read_text().startswith("{% extends 'base.html' %}")]
+    assert standalone == []
+
+
+def test_pages_render_the_shared_layout(client, people):
+    """base.html supplies the CSRF meta tag and common.js; auth pages skip the sidebar."""
+    html = client.get('/auth/login').get_data(as_text=True)
+    assert html.count('<html') == 1 and 'name="csrf-token"' in html and 'common.js' in html
+    assert 'id="hamburger"' not in html
+    login(client, 'alice')
+    html = client.get('/base/index').get_data(as_text=True)
+    assert html.count('<html') == 1 and 'id="hamburger"' in html and 'sidebar.js' in html
 
 
 def test_missing_book_is_404(client, people):
@@ -146,3 +169,23 @@ def test_quagga_is_served_locally(client, db, people):
         html = client.get(page, follow_redirects=True).get_data(as_text=True)
         assert 'vendor/quagga-0.12.1.min.js' in html and 'cdnjs' not in html, page
     assert client.get('/static/vendor/quagga-0.12.1.min.js').status_code == 200
+
+
+def test_edit_form_keeps_subtitle_and_genre(client, db, people):
+    """Regression (Phase 6): the edit form tested `book.details` (always
+    undefined) instead of `book_details`, so the subtitle field rendered empty
+    and saving the form wiped the book's subtitle."""
+    book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
+    db.execute("UPDATE books SET subtitle = 'Book One', genre = 'Science Fiction' WHERE id = ?", (book,))
+    db.commit()
+    login(client, 'alice')
+    html = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert 'value="Book One"' in html and 'value="Science Fiction"' in html and 'value="Dune"' in html
+
+
+def test_book_grid_uses_named_columns(client, db, people):
+    """Templates read rows by column name, so the grid links to the right book."""
+    book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
+    login(client, 'alice')
+    html = client.get('/base/index').get_data(as_text=True)
+    assert f'href="/books/book/{book}"' in html and 'by Frank Herbert' in html

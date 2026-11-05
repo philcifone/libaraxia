@@ -1,19 +1,26 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
-from utils.database import get_db_connection
+from utils.database import get_db
 from models import can_view_book
 from datetime import datetime
 
 # Define the blueprint
 read_blueprint = Blueprint('read', __name__, template_folder='templates')
 
+
+def _iso(day):
+    """A date as the 'YYYY-MM-DD' text the column holds, or None.
+
+    sqlite3's built-in date adapter (which produced the same text) is
+    deprecated since Python 3.12, so convert explicitly."""
+    return day.isoformat() if day else None
+
 @read_blueprint.route('/rate_review/<int:book_id>', methods=['GET', 'POST'])
 @login_required
 def rate_review(book_id):
-    conn = get_db_connection()
+    conn = get_db()
     # Only books in the user's circle (models.can_view_book)
     if not can_view_book(conn, current_user, book_id):
-        conn.close()
         abort(404)
 
     if request.method == 'POST':
@@ -67,14 +74,14 @@ def rate_review(book_id):
                 UPDATE reading_sessions
                 SET date_started = ?, date_completed = ?
                 WHERE session_id = ? AND user_id = ?
-            ''', (date_started_obj, date_completed_obj, session_id, current_user.id))
+            ''', (_iso(date_started_obj), _iso(date_completed_obj), session_id, current_user.id))
         elif date_started_obj or date_completed_obj:
             # New reading session, only when a date was given: saving a
             # review without dates used to add an empty session every time
             conn.execute('''
                 INSERT INTO reading_sessions (user_id, book_id, date_started, date_completed)
                 VALUES (?, ?, ?, ?)
-            ''', (current_user.id, book_id, date_started_obj, date_completed_obj))
+            ''', (current_user.id, book_id, _iso(date_started_obj), _iso(date_completed_obj)))
 
         # Insert or update the review/rating (separate from sessions)
         conn.execute('''
@@ -117,7 +124,6 @@ def rate_review(book_id):
     '''
     sessions = conn.execute(sessions_query, (current_user.id, book_id)).fetchall()
 
-    conn.close()
 
     # Convert book data to the format you use (e.g., book[1])
     books = {1: {"id": book["id"], "title": book["title"], "author": book["author"], "cover_image_url": book["cover_image_url"]}} if book else {}
@@ -134,10 +140,9 @@ def rate_review(book_id):
 @login_required
 def manage_session(book_id):
     """Add or update a reading session"""
-    conn = get_db_connection()
+    conn = get_db()
     # Only books in the user's circle (models.can_view_book)
     if not can_view_book(conn, current_user, book_id):
-        conn.close()
         abort(404)
 
     # Get form data
@@ -157,13 +162,11 @@ def manage_session(book_id):
             # Check if start date is in the future
             if date_started_obj > today:
                 flash("Start date cannot be in the future.", 'error')
-                conn.close()
                 if redirect_to == 'rate_review':
                     return redirect(url_for('read.rate_review', book_id=book_id))
                 return redirect(url_for('books.show_book', id=book_id))
         except ValueError:
             flash("Invalid start date format.", 'error')
-            conn.close()
             if redirect_to == 'rate_review':
                 return redirect(url_for('read.rate_review', book_id=book_id))
             return redirect(url_for('books.show_book', id=book_id))
@@ -174,13 +177,11 @@ def manage_session(book_id):
             # Check if completion date is in the future
             if date_completed_obj > today:
                 flash("Completion date cannot be in the future.", 'error')
-                conn.close()
                 if redirect_to == 'rate_review':
                     return redirect(url_for('read.rate_review', book_id=book_id))
                 return redirect(url_for('books.show_book', id=book_id))
         except ValueError:
             flash("Invalid completion date format.", 'error')
-            conn.close()
             if redirect_to == 'rate_review':
                 return redirect(url_for('read.rate_review', book_id=book_id))
             return redirect(url_for('books.show_book', id=book_id))
@@ -188,7 +189,6 @@ def manage_session(book_id):
     # Validate that start date is before completion date
     if date_started_obj and date_completed_obj and date_started_obj > date_completed_obj:
         flash("Start date cannot be after completion date.", 'error')
-        conn.close()
         if redirect_to == 'rate_review':
             return redirect(url_for('read.rate_review', book_id=book_id))
         return redirect(url_for('books.show_book', id=book_id))
@@ -200,18 +200,17 @@ def manage_session(book_id):
             UPDATE reading_sessions
             SET date_started = ?, date_completed = ?
             WHERE session_id = ? AND user_id = ?
-        ''', (date_started_obj, date_completed_obj, session_id, current_user.id))
+        ''', (_iso(date_started_obj), _iso(date_completed_obj), session_id, current_user.id))
         flash("Reading session updated successfully!", 'success')
     else:
         # Insert new reading session
         conn.execute('''
             INSERT INTO reading_sessions (user_id, book_id, date_started, date_completed)
             VALUES (?, ?, ?, ?)
-        ''', (current_user.id, book_id, date_started_obj, date_completed_obj))
+        ''', (current_user.id, book_id, _iso(date_started_obj), _iso(date_completed_obj)))
         flash("Reading session added successfully!", 'success')
 
     conn.commit()
-    conn.close()
 
     # Redirect based on preference
     if redirect_to == 'rate_review':
@@ -222,7 +221,7 @@ def manage_session(book_id):
 @read_blueprint.route('/delete_reading_session/<int:session_id>', methods=['POST'])
 @login_required
 def delete_reading_session(session_id):
-    conn = get_db_connection()
+    conn = get_db()
 
     # Get book_id and redirect preference
     book_id = request.form.get('book_id')
@@ -245,7 +244,6 @@ def delete_reading_session(session_id):
     else:
         flash("Session not found or you don't have permission to delete it.", 'error')
 
-    conn.close()
 
     # Redirect based on preference
     if book_id:

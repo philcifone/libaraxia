@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response, jsonify, current_app
 from flask_login import current_user, login_required, logout_user
-from utils.database import get_db_connection, get_db
+from utils.database import get_db
 from utils.accounts import removal_context, deactivate_account, delete_account, AccountError
 from utils.export import library_csv, data_zip
 from utils import households
@@ -162,164 +162,161 @@ def profile(username):
         return redirect(url_for('auth.login'))
 
     # Fetch the user details from the database
-    conn = get_db_connection()
-    try:
-        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+    conn = get_db()
+    user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
 
-        if not user:
-            return "User not found!", 404
+    if not user:
+        return "User not found!", 404
 
-        # Convert user data to dictionary format
-        user = dict(user)
+    # Convert user data to dictionary format
+    user = dict(user)
 
-        # Get friendship status
-        friendship_status = get_friendship_status(current_user.id, user['id'])
+    # Get friendship status
+    friendship_status = get_friendship_status(current_user.id, user['id'])
 
-        # If viewing someone else's profile and not friends, show limited info
-        is_own_profile = current_user.id == user['id']
-        are_friends = friendship_status in ('self', 'friends')
+    # If viewing someone else's profile and not friends, show limited info
+    is_own_profile = current_user.id == user['id']
+    are_friends = friendship_status in ('self', 'friends')
 
-        # Get user's reading stats (only if friends or own profile)
-        stats = calculate_user_stats(conn, user['id']) if are_friends else None
+    # Get user's reading stats (only if friends or own profile)
+    stats = calculate_user_stats(conn, user['id']) if are_friends else None
 
-        # Library stats (only if friends or own profile)
-        library_stats = calculate_library_stats(conn, user['id']) if are_friends else None
+    # Library stats (only if friends or own profile)
+    library_stats = calculate_library_stats(conn, user['id']) if are_friends else None
 
-        # Get pending friend request ID if applicable
-        friend_request_id = None
-        if friendship_status == 'request_received':
-            friend_request = conn.execute('''
-                SELECT id FROM friend_requests
-                WHERE sender_id = ? AND receiver_id = ? AND status = 'pending'
-            ''', (user['id'], current_user.id)).fetchone()
-            if friend_request:
-                friend_request_id = friend_request['id']
+    # Get pending friend request ID if applicable
+    friend_request_id = None
+    if friendship_status == 'request_received':
+        friend_request = conn.execute('''
+            SELECT id FROM friend_requests
+            WHERE sender_id = ? AND receiver_id = ? AND status = 'pending'
+        ''', (user['id'], current_user.id)).fetchone()
+        if friend_request:
+            friend_request_id = friend_request['id']
 
-        # Get friends list (only if friends or own profile)
-        friends = []
-        if are_friends:
-            friends_query = '''
-                SELECT
-                    u.id, u.username, u.avatar_url,
-                    f.created_at as friends_since
-                FROM friendships f
-                JOIN users u ON (
-                    CASE
-                        WHEN f.user_id_1 = ? THEN f.user_id_2
-                        ELSE f.user_id_1
-                    END = u.id
-                )
-                WHERE f.user_id_1 = ? OR f.user_id_2 = ?
-                ORDER BY u.username
-            '''
-            friends = [dict(f) for f in conn.execute(friends_query, (user['id'], user['id'], user['id'])).fetchall()]
+    # Get friends list (only if friends or own profile)
+    friends = []
+    if are_friends:
+        friends_query = '''
+            SELECT
+                u.id, u.username, u.avatar_url,
+                f.created_at as friends_since
+            FROM friendships f
+            JOIN users u ON (
+                CASE
+                    WHEN f.user_id_1 = ? THEN f.user_id_2
+                    ELSE f.user_id_1
+                END = u.id
+            )
+            WHERE f.user_id_1 = ? OR f.user_id_2 = ?
+            ORDER BY u.username
+        '''
+        friends = [dict(f) for f in conn.execute(friends_query, (user['id'], user['id'], user['id'])).fetchall()]
 
-        # Get current year for the reading goal section
-        from datetime import datetime
-        current_year = datetime.now().year
+    # Get current year for the reading goal section
+    from datetime import datetime
+    current_year = datetime.now().year
 
-        # Get wishlist books for the user
-        wishlist_books = []
-        if are_friends:
-            wishlist_query = """
-                SELECT
-                    b.id,
-                    b.title,
-                    b.author,
-                    b.cover_image_url,
-                    w.notes,
-                    w.added_at
-                FROM wishlist w
-                JOIN books b ON w.book_id = b.id
-                WHERE w.user_id = ?
-                ORDER BY w.added_at DESC
-                LIMIT 20
-            """
-            wishlist_books = [dict(row) for row in conn.execute(wishlist_query, (user['id'],)).fetchall()]
+    # Get wishlist books for the user
+    wishlist_books = []
+    if are_friends:
+        wishlist_query = """
+            SELECT
+                b.id,
+                b.title,
+                b.author,
+                b.cover_image_url,
+                w.notes,
+                w.added_at
+            FROM wishlist w
+            JOIN books b ON w.book_id = b.id
+            WHERE w.user_id = ?
+            ORDER BY w.added_at DESC
+            LIMIT 20
+        """
+        wishlist_books = [dict(row) for row in conn.execute(wishlist_query, (user['id'],)).fetchall()]
 
-        # Get reading shelves data (like collections page)
-        reading_lists = []
-        reading_list_covers = {}
-        if are_friends:
-            # Get count for each reading status
-            reading_lists = conn.execute("""
-                SELECT status, COUNT(*) as book_count
-                FROM collections
-                WHERE user_id = ?
-                GROUP BY status
-            """, (user['id'],)).fetchall()
-            reading_lists = [dict(row) for row in reading_lists]
+    # Get reading shelves data (like collections page)
+    reading_lists = []
+    reading_list_covers = {}
+    if are_friends:
+        # Get count for each reading status
+        reading_lists = conn.execute("""
+            SELECT status, COUNT(*) as book_count
+            FROM collections
+            WHERE user_id = ?
+            GROUP BY status
+        """, (user['id'],)).fetchall()
+        reading_lists = [dict(row) for row in reading_lists]
 
-            # Get cover previews for each status
-            statuses = ['read', 'currently reading', 'want to read', 'did not finish']
-            for status in statuses:
-                covers = conn.execute("""
-                    SELECT b.cover_image_url
-                    FROM collections c
-                    JOIN books b ON c.book_id = b.id
-                    WHERE c.user_id = ? AND c.status = ?
-                    ORDER BY c.created_at DESC
-                    LIMIT 8
-                """, (user['id'], status)).fetchall()
-                reading_list_covers[status] = [row['cover_image_url'] for row in covers]
+        # Get cover previews for each status
+        statuses = ['read', 'currently reading', 'want to read', 'did not finish']
+        for status in statuses:
+            covers = conn.execute("""
+                SELECT b.cover_image_url
+                FROM collections c
+                JOIN books b ON c.book_id = b.id
+                WHERE c.user_id = ? AND c.status = ?
+                ORDER BY c.created_at DESC
+                LIMIT 8
+            """, (user['id'], status)).fetchall()
+            reading_list_covers[status] = [row['cover_image_url'] for row in covers]
 
-        # Check if this user is in current user's shared library
-        in_shared_library = shares_library_with(current_user.id, user['id']) if not is_own_profile else False
-        # Which household button to show on someone else's profile
-        household = None
-        if not is_own_profile:
-            mine = households.membership(conn, current_user.id)
-            household = {
-                'i_am_owner': bool(mine and mine['role'] == 'owner'),
-                'can_invite': households.can_invite(conn, current_user.id),
-                'sent': households.pending_invite(conn, current_user.id, user['id']),
-                'received': households.pending_invite(conn, user['id'], current_user.id),
-                'they_are_in_one': households.membership(conn, user['id']) is not None,
-            }
+    # Check if this user is in current user's shared library
+    in_shared_library = shares_library_with(current_user.id, user['id']) if not is_own_profile else False
+    # Which household button to show on someone else's profile
+    household = None
+    if not is_own_profile:
+        mine = households.membership(conn, current_user.id)
+        household = {
+            'i_am_owner': bool(mine and mine['role'] == 'owner'),
+            'can_invite': households.can_invite(conn, current_user.id),
+            'sent': households.pending_invite(conn, current_user.id, user['id']),
+            'received': households.pending_invite(conn, user['id'], current_user.id),
+            'they_are_in_one': households.membership(conn, user['id']) is not None,
+        }
 
-        # Get recent reviews/ratings for the user
-        recent_reviews = []
-        if are_friends:
-            reviews_query = """
-                SELECT
-                    r.book_id,
-                    r.rating,
-                    r.comment,
-                    b.title,
-                    b.author,
-                    b.cover_image_url,
-                    rs.date_completed
-                FROM read_data r
-                JOIN books b ON r.book_id = b.id
-                LEFT JOIN reading_sessions rs ON r.user_id = rs.user_id AND r.book_id = rs.book_id
-                WHERE r.user_id = ?
-                ORDER BY rs.date_completed DESC, r.rowid DESC
-                LIMIT 5
-            """
-            recent_reviews = [dict(row) for row in conn.execute(reviews_query, (user['id'],)).fetchall()]
+    # Get recent reviews/ratings for the user
+    recent_reviews = []
+    if are_friends:
+        reviews_query = """
+            SELECT
+                r.book_id,
+                r.rating,
+                r.comment,
+                b.title,
+                b.author,
+                b.cover_image_url,
+                rs.date_completed
+            FROM read_data r
+            JOIN books b ON r.book_id = b.id
+            LEFT JOIN reading_sessions rs ON r.user_id = rs.user_id AND r.book_id = rs.book_id
+            WHERE r.user_id = ?
+            ORDER BY rs.date_completed DESC, r.rowid DESC
+            LIMIT 5
+        """
+        recent_reviews = [dict(row) for row in conn.execute(reviews_query, (user['id'],)).fetchall()]
 
-        return render_template(
-            'user.html',
-            user=user,
-            stats=stats,
-            library_stats=library_stats,
-            current_year=current_year,
-            friendship_status=friendship_status,
-            is_own_profile=is_own_profile,
-            are_friends=are_friends,
-            friend_request_id=friend_request_id,
-            friends=friends,
-            wishlist_books=wishlist_books,
-            reading_lists=reading_lists,
-            reading_list_covers=reading_list_covers,
-            in_shared_library=in_shared_library,
-            household=household,
-            recent_reviews=recent_reviews,
-            account_removal=(removal_context(conn, current_user.id, viewer_is_admin=False)
-                             if is_own_profile else None),
-        )
-    finally:
-        conn.close()
+    return render_template(
+        'user.html',
+        user=user,
+        stats=stats,
+        library_stats=library_stats,
+        current_year=current_year,
+        friendship_status=friendship_status,
+        is_own_profile=is_own_profile,
+        are_friends=are_friends,
+        friend_request_id=friend_request_id,
+        friends=friends,
+        wishlist_books=wishlist_books,
+        reading_lists=reading_lists,
+        reading_list_covers=reading_list_covers,
+        in_shared_library=in_shared_library,
+        household=household,
+        recent_reviews=recent_reviews,
+        account_removal=(removal_context(conn, current_user.id, viewer_is_admin=False)
+                         if is_own_profile else None),
+    )
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])
 @login_required
@@ -337,7 +334,7 @@ def update_reading_goal():
             flash('Reading goal must be a positive number!', 'danger')
             return redirect(url_for('user.profile', username=current_user.username))
 
-        conn = get_db_connection()
+        conn = get_db()
         try:
             conn.execute('UPDATE users SET reading_goal = ? WHERE id = ?', (goal_value, current_user.id))
             conn.commit()
@@ -345,8 +342,6 @@ def update_reading_goal():
         except Exception as e:
             conn.rollback()
             flash('An error occurred while updating your reading goal.', 'danger')
-        finally:
-            conn.close()
 
     except ValueError:
         flash('Reading goal must be a valid number!', 'danger')
@@ -414,25 +409,22 @@ def update_username():
         if not is_valid_username(new_username):
             return jsonify({'success': False, 'message': USERNAME_RULES}), 400
 
-        conn = get_db_connection()
-        try:
-            # Check if username is already taken by another user
-            existing_user = conn.execute('SELECT id FROM users WHERE username = ? AND id != ?',
-                                        (new_username, current_user.id)).fetchone()
-            if existing_user:
-                return jsonify({'success': False, 'message': 'Username is already taken'}), 400
+        conn = get_db()
+        # Check if username is already taken by another user
+        existing_user = conn.execute('SELECT id FROM users WHERE username = ? AND id != ?',
+                                    (new_username, current_user.id)).fetchone()
+        if existing_user:
+            return jsonify({'success': False, 'message': 'Username is already taken'}), 400
 
-            # Update username
-            conn.execute('UPDATE users SET username = ? WHERE id = ?', (new_username, current_user.id))
-            conn.commit()
+        # Update username
+        conn.execute('UPDATE users SET username = ? WHERE id = ?', (new_username, current_user.id))
+        conn.commit()
 
-            # Update the current_user object
-            current_user.username = new_username
+        # Update the current_user object
+        current_user.username = new_username
 
-            return jsonify({'success': True, 'message': 'Username updated successfully'})
+        return jsonify({'success': True, 'message': 'Username updated successfully'})
 
-        finally:
-            conn.close()
 
     except Exception as e:
         return jsonify({'success': False, 'message': 'An error occurred while updating username'}), 500
@@ -450,19 +442,16 @@ def update_bio():
         if len(new_bio) > 500:
             return jsonify({'success': False, 'message': 'Bio must be 500 characters or less'}), 400
 
-        conn = get_db_connection()
-        try:
-            # Update bio
-            conn.execute('UPDATE users SET bio = ? WHERE id = ?', (new_bio if new_bio else None, current_user.id))
-            conn.commit()
+        conn = get_db()
+        # Update bio
+        conn.execute('UPDATE users SET bio = ? WHERE id = ?', (new_bio if new_bio else None, current_user.id))
+        conn.commit()
 
-            # Update the current_user object
-            current_user.bio = new_bio if new_bio else None
+        # Update the current_user object
+        current_user.bio = new_bio if new_bio else None
 
-            return jsonify({'success': True, 'message': 'Bio updated successfully'})
+        return jsonify({'success': True, 'message': 'Bio updated successfully'})
 
-        finally:
-            conn.close()
 
     except Exception as e:
         return jsonify({'success': False, 'message': 'An error occurred while updating bio'}), 500
@@ -478,7 +467,7 @@ def update_theme():
     if style not in THEME_STYLES or mode not in THEME_MODES:
         return jsonify({'success': False, 'message': 'Unknown theme setting'}), 400
 
-    conn = get_db_connection()
+    conn = get_db()
     try:
         conn.execute('UPDATE users SET theme_style = ?, color_mode = ? WHERE id = ?',
                      (style, mode, current_user.id))
@@ -486,8 +475,6 @@ def update_theme():
     except Exception:
         current_app.logger.exception('Error saving theme settings')
         return jsonify({'success': False, 'message': 'Could not save appearance settings'}), 500
-    finally:
-        conn.close()
 
     current_user.theme_style, current_user.theme_mode = style, mode
     return jsonify({'success': True, 'style': style, 'mode': mode})
@@ -513,30 +500,27 @@ def update_password():
         if len(new_password) < 8:
             return jsonify({'success': False, 'message': 'Password must be at least 8 characters long'}), 400
 
-        conn = get_db_connection()
-        try:
-            # Get current user's password
-            user = conn.execute('SELECT password FROM users WHERE id = ?', (current_user.id,)).fetchone()
+        conn = get_db()
+        # Get current user's password
+        user = conn.execute('SELECT password FROM users WHERE id = ?', (current_user.id,)).fetchone()
 
-            if not user:
-                return jsonify({'success': False, 'message': 'User not found'}), 404
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
 
-            # Verify current password
-            if not bcrypt.checkpw(current_password.encode('utf-8'), user['password'].encode('utf-8')):
-                return jsonify({'success': False, 'message': 'Current password is incorrect'}), 400
+        # Verify current password
+        if not bcrypt.checkpw(current_password.encode('utf-8'), user['password'].encode('utf-8')):
+            return jsonify({'success': False, 'message': 'Current password is incorrect'}), 400
 
-            # Hash new password
-            hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        # Hash new password
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
 
-            # Update password
-            conn.execute('UPDATE users SET password = ? WHERE id = ?',
-                        (hashed_password.decode('utf-8'), current_user.id))
-            conn.commit()
+        # Update password
+        conn.execute('UPDATE users SET password = ? WHERE id = ?',
+                    (hashed_password.decode('utf-8'), current_user.id))
+        conn.commit()
 
-            return jsonify({'success': True, 'message': 'Password updated successfully'})
+        return jsonify({'success': True, 'message': 'Password updated successfully'})
 
-        finally:
-            conn.close()
 
     except Exception as e:
         return jsonify({'success': False, 'message': 'An error occurred while updating password'}), 500
@@ -631,40 +615,37 @@ def upload_avatar():
             relative_path = f'uploads/avatars/{unique_filename}'
             logger.info(f"Relative path for DB: {relative_path}")
 
-            conn = get_db_connection()
-            try:
-                # Get old avatar URL to delete old file
-                old_avatar = conn.execute('SELECT avatar_url FROM users WHERE id = ?',
-                                         (current_user.id,)).fetchone()
-                logger.info(f"Old avatar: {old_avatar['avatar_url'] if old_avatar else None}")
+            conn = get_db()
+            # Get old avatar URL to delete old file
+            old_avatar = conn.execute('SELECT avatar_url FROM users WHERE id = ?',
+                                     (current_user.id,)).fetchone()
+            logger.info(f"Old avatar: {old_avatar['avatar_url'] if old_avatar else None}")
 
-                # Update database with new avatar URL
-                conn.execute('UPDATE users SET avatar_url = ? WHERE id = ?',
-                           (relative_path, current_user.id))
-                conn.commit()
-                logger.info(f"Database updated successfully")
+            # Update database with new avatar URL
+            conn.execute('UPDATE users SET avatar_url = ? WHERE id = ?',
+                       (relative_path, current_user.id))
+            conn.commit()
+            logger.info(f"Database updated successfully")
 
-                # Delete old avatar file if it exists
-                if old_avatar and old_avatar['avatar_url']:
-                    old_file_path = os.path.join(current_app.root_path, 'static', old_avatar['avatar_url'])
-                    if os.path.exists(old_file_path):
-                        try:
-                            os.remove(old_file_path)
-                            logger.info(f"Deleted old avatar: {old_file_path}")
-                        except Exception as e:
-                            logger.warning(f"Could not delete old avatar: {str(e)}")
+            # Delete old avatar file if it exists
+            if old_avatar and old_avatar['avatar_url']:
+                old_file_path = os.path.join(current_app.root_path, 'static', old_avatar['avatar_url'])
+                if os.path.exists(old_file_path):
+                    try:
+                        os.remove(old_file_path)
+                        logger.info(f"Deleted old avatar: {old_file_path}")
+                    except Exception as e:
+                        logger.warning(f"Could not delete old avatar: {str(e)}")
 
-                avatar_url = url_for('static', filename=relative_path)
-                logger.info(f"Generated avatar URL: {avatar_url}")
+            avatar_url = url_for('static', filename=relative_path)
+            logger.info(f"Generated avatar URL: {avatar_url}")
 
-                return jsonify({
-                    'success': True,
-                    'message': 'Profile picture updated successfully',
-                    'avatar_url': avatar_url
-                })
+            return jsonify({
+                'success': True,
+                'message': 'Profile picture updated successfully',
+                'avatar_url': avatar_url
+            })
 
-            finally:
-                conn.close()
         else:
             logger.error(f"Invalid file type: {file.filename}")
             return jsonify({'success': False, 'message': 'Invalid file type. Allowed: png, jpg, jpeg, gif, webp'}), 400

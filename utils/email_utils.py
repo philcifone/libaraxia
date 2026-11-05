@@ -7,7 +7,7 @@ from flask_mail import Message
 from itsdangerous import URLSafeTimedSerializer
 import secrets
 from datetime import datetime, timedelta
-from utils.database import get_db_connection
+from utils.database import get_db
 
 
 def get_serializer():
@@ -32,15 +32,12 @@ def generate_verification_token(user_id):
     expires_at = (datetime.now() + timedelta(seconds=current_app.config['EMAIL_VERIFICATION_TOKEN_MAX_AGE'])).isoformat()
 
     # Store token in database
-    conn = get_db_connection()
-    try:
-        conn.execute('''
-            INSERT INTO email_verification_tokens (user_id, token, expires_at)
-            VALUES (?, ?, ?)
-        ''', (user_id, token, expires_at))
-        conn.commit()
-    finally:
-        conn.close()
+    conn = get_db()
+    conn.execute('''
+        INSERT INTO email_verification_tokens (user_id, token, expires_at)
+        VALUES (?, ?, ?)
+    ''', (user_id, token, expires_at))
+    conn.commit()
 
     return token
 
@@ -145,16 +142,13 @@ The Libaraxia Team
         mail.send(msg)
 
         # Update the user record with the timestamp of when verification was sent
-        conn = get_db_connection()
-        try:
-            conn.execute('''
-                UPDATE users
-                SET email_verification_sent_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ''', (user_id,))
-            conn.commit()
-        finally:
-            conn.close()
+        conn = get_db()
+        conn.execute('''
+            UPDATE users
+            SET email_verification_sent_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (user_id,))
+        conn.commit()
 
         return True
 
@@ -173,7 +167,7 @@ def verify_token(token):
     Returns:
         dict: User data if token is valid, None otherwise
     """
-    conn = get_db_connection()
+    conn = get_db()
     try:
         # Get the token from database
         token_data = conn.execute('''
@@ -212,8 +206,6 @@ def verify_token(token):
     except Exception as e:
         current_app.logger.error(f'Error verifying token: {str(e)}')
         return None
-    finally:
-        conn.close()
 
 
 def resend_verification_email(user_id):
@@ -226,30 +218,27 @@ def resend_verification_email(user_id):
     Returns:
         bool: True if email was sent successfully, False otherwise
     """
-    conn = get_db_connection()
-    try:
-        user = conn.execute('''
-            SELECT id, username, email, email_verified
-            FROM users
-            WHERE id = ?
-        ''', (user_id,)).fetchone()
+    conn = get_db()
+    user = conn.execute('''
+        SELECT id, username, email, email_verified
+        FROM users
+        WHERE id = ?
+    ''', (user_id,)).fetchone()
 
-        if not user:
-            return False
+    if not user:
+        return False
 
-        if user['email_verified']:
-            return False  # Already verified
+    if user['email_verified']:
+        return False  # Already verified
 
-        # Invalidate old tokens
-        conn.execute('''
-            UPDATE email_verification_tokens
-            SET used = 1
-            WHERE user_id = ? AND used = 0
-        ''', (user_id,))
-        conn.commit()
+    # Invalidate old tokens
+    conn.execute('''
+        UPDATE email_verification_tokens
+        SET used = 1
+        WHERE user_id = ? AND used = 0
+    ''', (user_id,))
+    conn.commit()
 
-        # Send new verification email
-        return send_verification_email(user['email'], user['username'], user['id'])
+    # Send new verification email
+    return send_verification_email(user['email'], user['username'], user['id'])
 
-    finally:
-        conn.close()

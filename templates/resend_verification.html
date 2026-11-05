@@ -1,15 +1,11 @@
-<!DOCTYPE html>
-<html class="h-full bg-primary-bg" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Resend Verification Email - Libaraxia</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="h-full">
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% extends 'base.html' %}
 
+{% block title %}Resend Verification Email - Libaraxia{% endblock %}
+{% block html_class %}h-full bg-primary-bg{% endblock %}
+{% block body_class %}h-full{% endblock %}
+{% block sidebar %}{% endblock %}
+
+{% block content %}
     <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div class="sm:mx-auto sm:w-full sm:max-w-md">
             <h1 class="text-center text-3xl font-display text-content-primary">
@@ -71,5 +67,4 @@
             </div>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}

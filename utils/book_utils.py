@@ -1,6 +1,6 @@
 from flask import current_app
 from werkzeug.utils import secure_filename
-from PIL import Image, ImageOps, ImageStat
+from PIL import Image, ImageChops, ImageOps, ImageStat
 from io import BytesIO
 import re
 import requests
@@ -10,7 +10,7 @@ import socket
 import time
 import uuid
 from typing import Optional, Dict, Any, List, Iterable
-from utils.database import get_db_connection
+from utils.database import get_db
 from flask_login import current_user
 from urllib.parse import urljoin, urlparse
 from utils.image_utils import is_safe_upload_path
@@ -546,6 +546,32 @@ PLACEHOLDER_MAX_DISTANCE = 6      # bits; real covers were all 14 or more away
 BLANK_STDDEV = 2.0                # greyscale std-dev of a plain white/grey image
 MIN_COVER_ASPECT = 0.5            # height / width; the 500x80 strips are 0.16
 
+# Scanned title pages, "praise for" pages and publisher-logo pages: Google
+# Books sometimes offers the first page instead of the jacket. They are
+# mostly white with grey/black ink and no colour. White covers do exist, but
+# measured on the 682 covers in static/uploads (Nov 2026) every real one under
+# 80% white or with even ~1% coloured pixels was kept, and everything at
+# 80%+ white with under 0.6% colour was a page scan or a placeholder box.
+# Closest real cover: Gladwell's "Blink" (90% white, 0.9% blue).
+PAGE_SCAN_WHITE = 0.80            # share of near-white pixels (grey >= 230)
+PAGE_SCAN_MAX_COLOUR = 0.006      # share of visibly coloured pixels
+
+
+def looks_like_page_scan(img: Image.Image) -> bool:
+    """True for a mostly white, colourless image: a title page, not a jacket."""
+    small = img.convert('RGB')
+    small.thumbnail((200, 300))
+    grey = small.convert('L').histogram()
+    pixels = sum(grey)
+    if sum(grey[230:]) / pixels < PAGE_SCAN_WHITE:
+        return False
+    # Coloured = clearly saturated and not near-black (HSV S > 70, V > 50).
+    # Masks and a histogram instead of a per-pixel Python loop.
+    _, sat, val = small.convert('HSV').split()
+    coloured = ImageChops.multiply(sat.point(lambda x: 255 if x > 70 else 0),
+                                   val.point(lambda x: 255 if x > 50 else 0))
+    return coloured.histogram()[255] / pixels < PAGE_SCAN_MAX_COLOUR
+
 
 def cover_dhash(img: Image.Image) -> int:
     """64-bit difference hash of an image (see the note above)."""
@@ -567,6 +593,8 @@ def placeholder_reason(img: Image.Image) -> Optional[str]:
         return f"a strip, not a cover ({img.width}x{img.height})"
     if ImageStat.Stat(img.convert('L')).stddev[0] < BLANK_STDDEV:
         return "blank"
+    if looks_like_page_scan(img):
+        return "a page scan (mostly white, no colour), not a jacket"
     h = cover_dhash(img)
     for known, name in KNOWN_PLACEHOLDER_DHASHES.items():
         if bin(h ^ known).count('1') <= PLACEHOLDER_MAX_DISTANCE:
@@ -598,6 +626,35 @@ def _fetch_image(url: str) -> Optional[Image.Image]:
         current_app.logger.debug(f"Cover {url} is a placeholder ({reason}), skipping")
         return None
     return img
+
+
+# Hosts whose cover thumbnails the add-book and wishlist search results show.
+# The browser gets them through /books/thumbnail (thumbnail_jpeg below), so it
+# never contacts these hosts itself and the CSP can keep img-src 'self'.
+THUMBNAIL_HOSTS = {'books.google.com', 'books.googleusercontent.com', 'covers.openlibrary.org'}
+THUMBNAIL_SIZE = (256, 384)
+
+
+def thumbnail_jpeg(url: str) -> Optional[bytes]:
+    """Fetch a search-result cover from an allowed host as small JPEG bytes.
+
+    None if the host isn't allowed or there's no real image. The image is
+    decoded and re-encoded, so only a plain JPEG is ever served from our
+    origin, whatever the remote end sent.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https') or parsed.hostname not in THUMBNAIL_HOSTS:
+        return None
+    # Google hands out http:// links; ask for https (redirects are still
+    # checked hop by hop in _get_public).
+    img = _fetch_image(parsed._replace(scheme='https').geturl())
+    if img is None:
+        return None
+    img = ImageOps.exif_transpose(img).convert('RGB')
+    img.thumbnail(THUMBNAIL_SIZE)
+    out = BytesIO()
+    img.save(out, 'JPEG', quality=80)
+    return out.getvalue()
 
 def _save_cover_image(img: Image.Image) -> str:
     """Normalize, resize and save a cover image. Returns the path relative to static/."""
@@ -684,32 +741,29 @@ def get_filter_options(owner_ids):
     """
     owner_ids = list(owner_ids) or [current_user.id]
     placeholders = ','.join('?' for _ in owner_ids)
-    conn = get_db_connection()
-    try:
-        # One spelling per genre, case-insensitively
-        genres = conn.execute(f"""
-            SELECT MIN(genre) FROM library_books
-            WHERE added_by IN ({placeholders}) AND genre IS NOT NULL AND genre != ''
-            GROUP BY LOWER(genre)
-            ORDER BY LOWER(genre)
-        """, owner_ids).fetchall()
-        read_statuses = conn.execute("""
-            SELECT DISTINCT status FROM collections
-            WHERE user_id = ? AND status IS NOT NULL
-            ORDER BY status
-        """, (current_user.id,)).fetchall()
-        tags = conn.execute("""
-            SELECT DISTINCT tag_name FROM book_tags
-            WHERE user_id = ? AND tag_name IS NOT NULL
-            ORDER BY tag_name
-        """, (current_user.id,)).fetchall()
-        return {
-            'genres': [r[0] for r in genres],
-            'read_statuses': [r[0] for r in read_statuses],
-            'tags': [r[0] for r in tags],
-        }
-    finally:
-        conn.close()
+    conn = get_db()
+    # One spelling per genre, case-insensitively
+    genres = conn.execute(f"""
+        SELECT MIN(genre) FROM library_books
+        WHERE added_by IN ({placeholders}) AND genre IS NOT NULL AND genre != ''
+        GROUP BY LOWER(genre)
+        ORDER BY LOWER(genre)
+    """, owner_ids).fetchall()
+    read_statuses = conn.execute("""
+        SELECT DISTINCT status FROM collections
+        WHERE user_id = ? AND status IS NOT NULL
+        ORDER BY status
+    """, (current_user.id,)).fetchall()
+    tags = conn.execute("""
+        SELECT DISTINCT tag_name FROM book_tags
+        WHERE user_id = ? AND tag_name IS NOT NULL
+        ORDER BY tag_name
+    """, (current_user.id,)).fetchall()
+    return {
+        'genres': [r[0] for r in genres],
+        'read_statuses': [r[0] for r in read_statuses],
+        'tags': [r[0] for r in tags],
+    }
 
 
 # ------------------------------------------------------------ duplicate check

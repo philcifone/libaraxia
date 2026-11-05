@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>Libaraxia - Collections</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-</head>
-<body class="bg-primary min-h-screen">
-    {% include '_sidebar.html' %}
+{% extends 'base.html' %}
 
-    <!-- Flash Messages -->
-    {% include '_flash_messages.html' %}
+{% block title %}Libaraxia - Collections{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
 
+{% block content %}
     <main class="px-6 py-20 max-w-7xl mx-auto">
         <!-- Back Navigation -->
         <a href="{{ url_for('base.index') }}" 
@@ -132,7 +124,7 @@
                             </a>
                             <form action="{{ url_for('collections.delete_collection', collection_id=collection['collection_id']) }}"
                                   method="POST"
-                                  onsubmit="return confirm('Are you sure you want to delete this collection?');"
+                                  data-confirm="Are you sure you want to delete this collection?"
                                   class="opacity-0 group-hover:opacity-100 transition-opacity">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit"
@@ -150,5 +142,4 @@
     </main>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% endblock %}

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_user, logout_user
 import bcrypt
 import sqlite3
-from utils.database import get_db_connection
+from utils.database import get_db
 from utils.email_utils import send_verification_email, verify_token, resend_verification_email
 from utils.rate_limiting import limiter
 from models import User, is_valid_username, USERNAME_RULES
@@ -13,11 +13,8 @@ auth_blueprint = Blueprint('auth', __name__, template_folder='templates')
 @limiter.limit("5 per hour", methods=["POST"])
 def register():
     if not current_app.config.get('ALLOW_REGISTRATION', True):
-        conn = get_db_connection()
-        try:
-            has_users = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0] > 0
-        finally:
-            conn.close()
+        conn = get_db()
+        has_users = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0] > 0
         if has_users:
             flash('Registration is closed. Ask the library admin for an account.', 'warning')
             return redirect(url_for('auth.login'))
@@ -39,7 +36,7 @@ def register():
         # Ensure password is hashed using bcrypt
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        conn = get_db_connection()
+        conn = get_db()
         cursor = conn.cursor()
         try:
             # Check if this is the first user being created
@@ -81,13 +78,10 @@ def register():
             return redirect(url_for('auth.login'))
         except sqlite3.IntegrityError:
             flash('Email or username already registered!', 'danger')
-        finally:
-            conn.close()
             
     # Check if any users exist - if not, show a special message
-    conn = get_db_connection()
+    conn = get_db()
     user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-    conn.close()
     
     first_run = user_count == 0
     return render_template('register.html', first_run=first_run)
@@ -99,9 +93,8 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        conn = get_db_connection()
+        conn = get_db()
         user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
-        conn.close()
 
         if user:
             user_dict = dict(user)
@@ -133,29 +126,26 @@ def login():
                 flash(f"Welcome, {user_obj.username}!", 'success')
 
                 # Check for unread notifications and display them
-                conn = get_db_connection()
-                try:
-                    unread_notifications = conn.execute("""
-                        SELECT message, created_at FROM notifications
+                conn = get_db()
+                unread_notifications = conn.execute("""
+                    SELECT message, created_at FROM notifications
+                    WHERE user_id = ? AND is_read = 0
+                    ORDER BY created_at DESC
+                    LIMIT 5
+                """, (user_obj.id,)).fetchall()
+
+                # Flash each notification
+                for notif in unread_notifications:
+                    flash(notif['message'], 'info')
+
+                # Mark all as read
+                if unread_notifications:
+                    conn.execute("""
+                        UPDATE notifications
+                        SET is_read = 1
                         WHERE user_id = ? AND is_read = 0
-                        ORDER BY created_at DESC
-                        LIMIT 5
-                    """, (user_obj.id,)).fetchall()
-
-                    # Flash each notification
-                    for notif in unread_notifications:
-                        flash(notif['message'], 'info')
-
-                    # Mark all as read
-                    if unread_notifications:
-                        conn.execute("""
-                            UPDATE notifications
-                            SET is_read = 1
-                            WHERE user_id = ? AND is_read = 0
-                        """, (user_obj.id,))
-                        conn.commit()
-                finally:
-                    conn.close()
+                    """, (user_obj.id,))
+                    conn.commit()
 
                 return redirect(url_for('base.index'))
         flash('Invalid email or password!', 'danger')
@@ -191,28 +181,25 @@ def resend_verification():
             return render_template('resend_verification.html')
 
         # Get user by email
-        conn = get_db_connection()
-        try:
-            user = conn.execute('SELECT id, username, email, email_verified FROM users WHERE email = ?', (email,)).fetchone()
+        conn = get_db()
+        user = conn.execute('SELECT id, username, email, email_verified FROM users WHERE email = ?', (email,)).fetchone()
 
-            if not user:
-                # Don't reveal if email exists or not for security
-                flash('If an account with that email exists and is not verified, a verification email has been sent.', 'info')
-                return render_template('resend_verification.html')
+        if not user:
+            # Don't reveal if email exists or not for security
+            flash('If an account with that email exists and is not verified, a verification email has been sent.', 'info')
+            return render_template('resend_verification.html')
 
-            if user['email_verified']:
-                flash('This email address is already verified. You can log in.', 'info')
-                return redirect(url_for('auth.login'))
+        if user['email_verified']:
+            flash('This email address is already verified. You can log in.', 'info')
+            return redirect(url_for('auth.login'))
 
-            # Resend verification email
-            success = resend_verification_email(user['id'])
-            if success:
-                flash('Verification email sent! Please check your inbox.', 'success')
-            else:
-                flash('Could not send verification email. Please try again later or contact support.', 'danger')
+        # Resend verification email
+        success = resend_verification_email(user['id'])
+        if success:
+            flash('Verification email sent! Please check your inbox.', 'success')
+        else:
+            flash('Could not send verification email. Please try again later or contact support.', 'danger')
 
-        finally:
-            conn.close()
 
         return render_template('resend_verification.html')
 

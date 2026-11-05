@@ -27,7 +27,6 @@
 
     <!-- Main FAB button -->
     <button id="fab-toggle"
-            onclick="toggleFabMenu()"
             class="font-display px-6 py-4 bg-accent hover:bg-accent-hover
                    text-on-accent rounded-pill font-bold shadow-hard border border-card
                    hover:scale-105 transition-all duration-300
@@ -39,37 +38,6 @@
 
 <!-- Backdrop overlay -->
 <div id="fab-backdrop"
-     class="fixed inset-0 z-40 hidden"
-     onclick="closeFabMenu()"></div>
+     class="fixed inset-0 z-40 hidden"></div>
 
-<script>
-    let fabOpen = false;
-
-    function toggleFabMenu() {
-        fabOpen = !fabOpen;
-        const menu = document.getElementById('fab-menu');
-        const icon = document.getElementById('fab-icon');
-        const backdrop = document.getElementById('fab-backdrop');
-
-        if (fabOpen) {
-            menu.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
-            menu.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
-            icon.style.transform = 'rotate(45deg)';
-            backdrop.classList.remove('hidden');
-        } else {
-            closeFabMenu();
-        }
-    }
-
-    function closeFabMenu() {
-        fabOpen = false;
-        const menu = document.getElementById('fab-menu');
-        const icon = document.getElementById('fab-icon');
-        const backdrop = document.getElementById('fab-backdrop');
-
-        menu.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
-        menu.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
-        icon.style.transform = 'rotate(0deg)';
-        backdrop.classList.add('hidden');
-    }
-</script>
+<script src="{{ url_for('static', filename='fab.js') }}" defer></script>
