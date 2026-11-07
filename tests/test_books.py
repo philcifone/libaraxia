@@ -306,15 +306,15 @@ def test_book_tools_without_a_household_have_no_transfer(client, db, people):
     assert 'id="book-tools"' in edit and '/books/transfer/' not in edit
 
 
-def test_friend_reviews_are_cards_with_read_more(client, db, people):
-    """7.3: friends' reviews on the book page are cards with the text in
+def test_household_reviews_are_cards_with_read_more(client, db, people):
+    """7.3: household members' reviews on the book page are cards with the text in
     place (the shared "Read more" clamp), not a collapsed accordion inside a
     scroll box."""
     book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     add_review(db, people['bob'], book)             # bob shares alice's household
     login(client, 'alice')
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'Friend Reviews' in page
+    assert 'Household Reviews' in page and 'Friend Reviews' not in page
     assert '<article class="bg-primary rounded-lg p-4 card">' in page
     assert 'toggleFriendReview' not in page and 'max-h-[600px]' not in page
 

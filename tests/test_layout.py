@@ -302,7 +302,8 @@ def test_empty_states(client, db, people):
     page = text('/books/search?search_term=zzzz')
     assert 'No books match &#34;zzzz&#34;' in page or 'No books match "zzzz"' in page
     assert 'Your wishlist is empty' in text('/wishlist/view')
-    assert 'Nothing in your feed yet' in text('/feed/activity') and 'Find friends' in text('/feed/activity')
+    feed = text('/feed/activity')
+    assert 'Nothing in your feed yet' in feed and 'Find friends' not in feed   # link removed 2026-11-07
 
     add_book(db, people['carol'], 'Dune', 'Frank Herbert')
     assert 'Your library is empty' not in text('/base/index') and 'Dune' in text('/base/index')

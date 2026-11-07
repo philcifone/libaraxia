@@ -19,7 +19,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 4 ✅ | [Access & privacy](#phase-4-access--privacy) | Remaining security follow-ups | Every page has a decided and enforced access rule |
 | 5 ✅ | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 ✅ | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
-| 7 | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
+| 7 ✅ | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
 | 8 | [VHS / UPC support](#phase-8-vhs--upc-support) | Built in the new style | A VHS can be scanned or entered, filtered and displayed |
 | 9 | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
 | 10 | [Fork (parked)](#phase-10-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
@@ -431,9 +431,9 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
 
 ## Phase 7: Design polish
 
-**Status 2026-11-05 (paused here):** 7.0–7.3 done and merged to `main`; 7.2b layout done, the rest deferred. Two open questions for Phil before closing the phase:
-1. **Friends' reviews on the book page.** Today the "Friend Reviews" section shows household members only, because friends' reviews hang on their own copy of the book. Proposed: match the friend's copy by ISBN (10/13 normalised), then by normalised title + author, and rename the section "Friends & household". No privacy change (friends already see reviews on profiles).
-2. **"Find friends" on the empty feed.** It links to your profile, where the username search is closed. Either open the search directly ("Add a friend by username") or drop the link. Side note: the search matches any 2+ letters of a username, so it doubles as a user list for logged-in users; switch to exact-username match if registration ever opens.
+**Status 2026-11-07: done.** 7.0–7.3 done and merged to `main`; 7.2b layout done, the rest deferred (the two-searches merge and the "Do I have this?" lookup build on Phase 8). The final headless sweep was skipped by Phil's call; 7.0's sweep and `tests/test_layout.py` stand in for it. The two open questions are settled (Phil, 2026-11-07):
+1. **Friends' reviews on the book page:** the section only ever showed household members' reviews, so it's renamed "Household Reviews" (`household_reviews` in `books.show_book`). No ISBN/title matching of friends' copies; friends' reviews stay on their profiles.
+2. **"Find friends" on the empty feed:** the link (to your profile, where the search is closed) and the sentence pointing at it are removed. Side note still stands: the user search matches any 2+ letters of a username, so switch to exact-username match if registration ever opens.
 
 **Goal:** finish what the Phase 0 refresh deliberately left out, now that every page extends `base.html` (Phase 6) and edits happen in one place. Phase 0 is the house-style reference.
 
@@ -534,7 +534,7 @@ Go over the whole search/sort/filter bar (`_search_sort_filter.html`, `script.js
 - [x] Collections shelves as horizontal scroll-snap rows (`.shelf-row`; the cover strip overflowed its card on phones).
 - [x] Book detail: larger framed cover, tidy metadata grid, reviews as cards, smoother "read more".
   - **Done:** larger cover (the film frame was tried and removed, see 7.1), metadata grid 1/2/3 columns, transfer and delete moved to Edit → Book tools. Household reviews are cards with the text in place, not an accordion in a scroll box. One shared "Read more" (`initReadMore` / `toggleReadMore` in `common.js`) for the description and reviews on the book page and profile; it only shows when the text overflows and animates both ways. Replaces three hand-rolled toggles.
-  - Note: the "Friend Reviews" section shows **household members'** reviews only (`get_library_members`), not friends', despite its name and the code comment. Left as is; decide whether friends' reviews belong there (the access model already lets friends see the book page when they have data on it).
+  - The "Friend Reviews" section only showed **household members'** reviews (`get_library_members`); renamed "Household Reviews" on 2026-11-07 (see the status above).
 - [x] Empty states for an empty library, wishlist, feed and search (`_empty_state.html`). The library one tells filtered-to-nothing apart from empty; the feed one says it shows friends' activity (it used to say "start adding books"). Also fixed the shared-library text, which told you to do something that doesn't exist.
 - [x] Stats: a small reading-over-time chart on the profile (after 3.1 fixes the numbers).
   - **Done:** Overview tab, books finished per month (`user.reading_by_month`). Twelve months ending now, or ending at the last finished book when the log has gone quiet; the range is always printed. HTML bars, no chart library, hover tooltips, a summary for screen readers and a "Show as a table" view. Bars use a `--chart-bar` token: Classic dark lifts it to `#6a9f2a` because its accent is under 3:1 on those greys.

@@ -224,8 +224,7 @@
                 {% endfor %}
             {% else %}
                 {% with title='Nothing in your feed yet',
-                         text="Friends' reviews, finished books and wishlist additions show up here. Find friends with the search on your profile.",
-                         links=[(url_for('user.profile', username=current_user.username), 'Find friends')] %}
+                         text="Friends' reviews, finished books and wishlist additions show up here." %}
                     {% include '_empty_state.html' %}
                 {% endwith %}
             {% endif %}

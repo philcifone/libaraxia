@@ -524,12 +524,13 @@ def show_book(id):
 
     library_member_ids = get_library_members(current_user.id)
 
-    # Get friend reviews for this book
-    # Friends are users who share the library with current user or are connected via friend requests
-    friend_reviews = []
+    # Reviews of this book by the user's household (people who share their
+    # library). Friends' reviews aren't here: they hang on the friend's own
+    # copy of the book, and show on the friend's profile instead.
+    household_reviews = []
     if library_member_ids:
         placeholders = ','.join(['?' for _ in library_member_ids])
-        friend_reviews = conn.execute(f"""
+        household_reviews = conn.execute(f"""
             SELECT
                 u.id,
                 u.username,
@@ -565,7 +566,7 @@ def show_book(id):
         wishlist_owner=wishlist_owner,
         wishlist_owner_user=wishlist_owner_user,
         wishlist_owner_entry=wishlist_owner_entry,
-        friend_reviews=friend_reviews,
+        household_reviews=household_reviews,
         can_manage=can_manage,
     )
 
