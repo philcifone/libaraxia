@@ -3,11 +3,14 @@
     <!-- Hamburger Menu -->
     <button id="hamburger" 
             class="p-2 hover:bg-primary/20 rounded-lg transition-colors" 
-            aria-label="Menu">
+            aria-label="Menu"
+            aria-controls="sidebar"
+            aria-expanded="false">
+        <!-- Bars become an X when open; styled in static/styles.css -->
         <div class="flex flex-col gap-1.5 justify-center h-full">
-            <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
-            <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
-            <span class="block w-6 h-0.5 bg-content-primary transition-all"></span>
+            <span class="hamburger-bar"></span>
+            <span class="hamburger-bar"></span>
+            <span class="hamburger-bar"></span>
         </div>
     </button>
     

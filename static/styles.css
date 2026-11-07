@@ -674,6 +674,23 @@
     }
 }
 
+/* ---------- Hamburger icon (templates/_sidebar.html, sidebar.js) ----------
+   Three 2px bars, 6px apart. When the sidebar is open (aria-expanded="true")
+   the outer bars move 8px to the centre and rotate into an X, and the middle
+   bar collapses to nothing. It is scaled to zero as well as faded, so no ends
+   can show past the X. The icon follows aria-expanded, which sidebar.js sets
+   from one place, so it can't drift out of step with the sidebar. */
+.hamburger-bar {
+    display: block;
+    width: 1.5rem;
+    height: 2px;
+    background-color: rgb(var(--ink));
+    transition: transform 200ms ease, opacity 200ms ease;
+}
+#hamburger[aria-expanded="true"] .hamburger-bar:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+#hamburger[aria-expanded="true"] .hamburger-bar:nth-child(2) { transform: scaleX(0); opacity: 0; }
+#hamburger[aria-expanded="true"] .hamburger-bar:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+
 /* ---------- Flash messages (templates/_flash_messages.html, common.js) ---------- */
 @keyframes slide-in {
     from { transform: translateX(100%); opacity: 0; }

@@ -35,31 +35,30 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+    // One place sets the open/closed state. The sidebar slides with a class;
+    // the hamburger icon (bars <-> X) follows aria-expanded in styles.css, so
+    // the two can't drift apart the way separately toggled classes could.
+    const setSidebarOpen = (open) => {
+        sidebar.classList.toggle("-translate-x-full", !open);
+        hamburger.setAttribute("aria-expanded", String(open));
+    };
+    const sidebarIsOpen = () => hamburger.getAttribute("aria-expanded") === "true";
+
     // Toggle sidebar
     hamburger.addEventListener("click", (event) => {
-        sidebar.classList.toggle("-translate-x-full");
-
-        // Animate hamburger icon
-        const spans = hamburger.querySelectorAll("span");
-        spans[0].classList.toggle("rotate-45");
-        spans[0].classList.toggle("translate-y-2");
-        spans[1].classList.toggle("opacity-0");
-        spans[2].classList.toggle("-rotate-45");
-        spans[2].classList.toggle("-translate-y-2");
-
+        setSidebarOpen(!sidebarIsOpen());
         event.stopPropagation();
     });
     // Close sidebar when clicking outside
     document.addEventListener("click", (event) => {
         if (!sidebar.contains(event.target) && !hamburger.contains(event.target)) {
-            sidebar.classList.add("-translate-x-full");
-
-            // Reset hamburger icon
-            const spans = hamburger.querySelectorAll("span");
-            spans[0].classList.remove("rotate-45", "translate-y-2");
-            spans[1].classList.remove("opacity-0");
-            spans[2].classList.remove("-rotate-45", "-translate-y-2");
+            setSidebarOpen(false);
         }
+    });
+    // A page restored from the back/forward cache keeps its old DOM, so a
+    // sidebar left open when you followed a link would come back open.
+    window.addEventListener("pageshow", (event) => {
+        if (event.persisted) setSidebarOpen(false);
     });
     // Handle escape key
     document.addEventListener("keydown", (event) => {
@@ -69,20 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 searchContainer.classList.add("invisible", "opacity-0", "-translate-y-full");
             }
 
-            // Close sidebar if it exists
-            if (sidebar) {
-                sidebar.classList.add("-translate-x-full");
-            }
-
-            // Reset hamburger if it exists
-            if (hamburger) {
-                const spans = hamburger.querySelectorAll("span");
-                if (spans.length >= 3) {
-                    spans[0].classList.remove("rotate-45", "translate-y-2");
-                    spans[1].classList.remove("opacity-0");
-                    spans[2].classList.remove("-rotate-45", "-translate-y-2");
-                }
-            }
+            setSidebarOpen(false);
         }
     });
 });

@@ -462,6 +462,7 @@ Found by a headless sweep: every GET page × House/Classic × light/dark × 390/
   - The cause: a flex item's `min-width` defaults to its intrinsic width, about 20 characters (~200px in Courier Prime) for a text input. So `input flex-1` never shrank and pushed the button out. Fixed once in `styles.css` (`min-width: 0` on form controls). Method tabs get short labels on phones; friend-library shelf tabs wrap.
 - [x] **Toasts and some coloured buttons were unreadable in House.** `text-white` on an accent/red fill: Tailwind's `white` is the ink colour in House, so that was dark-on-olive (light mode) and pale-on-bright-green (dark mode). Toasts now use `.flash-success/-error/-info` (shared by the Jinja partial and `showFlashMessage`), and 11 other spots use `text-on-accent`; a test greps for the pattern. Toasts also keep a 16px gutter on phones.
 - [x] `tags.js` threw on wishlist books' pages (no tags section there).
+- [x] **Hamburger X sometimes showed two dots on reopen** (reported by Phil, 2026-11-07): the ends of the middle bar showing past the rotated outer bars. The icon was six Tailwind classes toggled separately from three handlers. Now one `setSidebarOpen()` in `sidebar.js` sets `aria-expanded`, and `.hamburger-bar` in `styles.css` draws the X from it, with the middle bar scaled to zero as well as faded. Also closes the sidebar on a back/forward-cache restore.
 
 ### 7.1 Component classes and the house style
 - [x] **Component classes** in `styles.css` (2026-11-05).

@@ -1914,10 +1914,6 @@ img.book-cover-img:not([data-loaded]) {
   aspect-ratio: 16 / 9;
 }
 
-.h-0\.5 {
-  height: 0.125rem;
-}
-
 .h-10 {
   height: 2.5rem;
 }
@@ -2160,11 +2156,6 @@ img.book-cover-img:not([data-loaded]) {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-.-translate-y-2 {
-  --tw-translate-y: -0.5rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
 .-translate-y-full {
   --tw-translate-y: -100%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
@@ -2175,28 +2166,13 @@ img.book-cover-img:not([data-loaded]) {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-.translate-y-2 {
-  --tw-translate-y: 0.5rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
 .translate-y-4 {
   --tw-translate-y: 1rem;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-.-rotate-45 {
-  --tw-rotate: -45deg;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
 .rotate-180 {
   --tw-rotate: 180deg;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.rotate-45 {
-  --tw-rotate: 45deg;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
@@ -2596,11 +2572,6 @@ img.book-cover-img:not([data-loaded]) {
 .bg-blue-600 {
   --tw-bg-opacity: 1;
   background-color: rgb(var(--blue-strong) / var(--tw-bg-opacity, 1));
-}
-
-.bg-content-primary {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--ink) / var(--tw-bg-opacity, 1));
 }
 
 .bg-gray-700 {
@@ -3328,6 +3299,34 @@ img.book-cover-img:not([data-loaded]) {
    Colours are RGB channels so Tailwind alpha modifiers (bg-accent/20) work.
    To add a style: add a shape block and a light + dark palette below, then add
    it to THEME_STYLES in models.py. */
+
+/* ---------- Hamburger icon (templates/_sidebar.html, sidebar.js) ----------
+   Three 2px bars, 6px apart. When the sidebar is open (aria-expanded="true")
+   the outer bars move 8px to the centre and rotate into an X, and the middle
+   bar collapses to nothing. It is scaled to zero as well as faded, so no ends
+   can show past the X. The icon follows aria-expanded, which sidebar.js sets
+   from one place, so it can't drift out of step with the sidebar. */
+
+.hamburger-bar {
+  display: block;
+  width: 1.5rem;
+  height: 2px;
+  background-color: rgb(var(--ink));
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+#hamburger[aria-expanded="true"] .hamburger-bar:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+
+#hamburger[aria-expanded="true"] .hamburger-bar:nth-child(2) {
+  transform: scaleX(0);
+  opacity: 0;
+}
+
+#hamburger[aria-expanded="true"] .hamburger-bar:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
 
 /* ---------- Flash messages (templates/_flash_messages.html, common.js) ---------- */
 
