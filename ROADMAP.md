@@ -20,7 +20,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 5 ✅ | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 ✅ | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
 | 7 ✅ | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
-| 8 | [VHS / UPC support](#phase-8-vhs--upc-support) | Built in the new style | A VHS can be scanned or entered, filtered and displayed |
+| 8 | [VHS / UPC support](#phase-8-vhs--upc-support) | Built in the new style | Videos are their own section: a VHS can be scanned or entered, watched, reviewed and shared, and never shows up among the books |
 | 9 | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
 | 10 | [Fork (parked)](#phase-10-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
@@ -570,20 +570,27 @@ Reported by Phil (2026-11-02): camera only fills half the barcode window, it oft
 
 **Status 2026-11-07 (branch `phase-8`):** one shared module, `static/scanner.js`, used by `add_book.js` and `wishlist.js`. It owns the camera (`getUserMedia`, 1280×720 ideal, continuous autofocus where offered, stream stopped on scan / Stop / tab hidden / page left) and hands the decoder only the pixels inside the visible target box, so the decoder is a small `{available(), decode(canvas)}` object (`quaggaDecoder`) that can be swapped. The "camera only fills half the window" bug was Quagga appending its own canvases into `#interactive.viewport`, its default target; the decoder now gets a detached element instead. A code is accepted after 3 identical reads in a row with a valid EAN-13/UPC-A check digit, and handed over as 13 digits (UPC-A gets its leading 0). Readers are EAN-13 and UPC-A only (EAN-8/UPC-E dropped: never on books or tapes, and a source of partial misreads). Default camera on iPhones is the "Back Ultra Wide Camera": on Phil's iPhone 17 Pro Max it was the only one that read barcodes, since the main camera can't focus closer than about 20 cm and the Ultra Wide has macro autofocus. Elsewhere it's the plain back camera (Android ultra-wides are often fixed-focus); a camera picker appears when there are two or more, remembered in `localStorage`. `BarcodeDetector` not used (not on iOS WebKit or Firefox). quagga2 1.12.1 vendored with hash; since it decodes on the main thread, the CSP's `worker-src` dropped `blob:`. Checked end to end in headless Chromium with a fake camera: EAN-13 and UPC-A read and confirmed in about 0.5 s with the stream released, a bad check digit never accepted. Tests: `tests/test_scanner_js.py` (check digits, confirmer, camera choice, under node), vendor hash and CSP checks in `test_csp.py`. `generate-cert.sh` now writes subjectAltNames (localhost + LAN IPs), which iOS requires.
 
-- [ ] **Scanner dispatch:** an EAN-13 starting `978`/`979`, or a valid ISBN-10, takes the book path; any other UPC/EAN takes the media path. Store UPC-A as EAN-13.
-- [ ] **Migration** `NNN_add_media_type.sql`: `media_type`, `barcode`, `catalog_number`, `runtime_minutes` on `books`, appended at the end; indexes; folded into `create_database.sql`.
-- [ ] **Field labels by media type** in one place (`utils/media.py`).
-- [ ] **Lookups** (`utils/media_lookup.py`): UPCitemdb → title cleanup → TMDb; Discogs for music video. Keys optional. All requests go through the SSRF guard. Manual entry is the primary path.
-- [ ] **Routes/UI:**
-  - `fetch_barcode_details` (keep `fetch_isbn_details` as an alias)
-  - media-type selector on the add form
-  - duplicate check on `barcode`
-  - `media_type` filter and a `VHS` badge in the grid
-  - VHS fields on the detail/edit pages
-  - wishlist scanner dispatch
-- [ ] Stats that sum pages ignore non-book rows. Goodreads import stays book-only.
+### 8.1 Design: videos are their own section (decided with Phil, 2026-11-07)
+Supersedes FORK-SPEC §5.4's "VHS in the library grid with a badge". Phil wants tapes kept apart from books.
 
-**Done when:** scanning a retail VHS fills the form or opens it pre-set to VHS with the barcode; a saved VHS shows with a badge, filters correctly, and shows runtime/studio/barcode; book flows are unchanged (tests).
+- **Own sidebar section, "Videos"**, with its own grid, search/filter, add form, detail page and stats. The Library, its counts, book stats, the Goodreads import and the cover fetcher stay **books-only**, exactly as today.
+- **Same table underneath:** a video is a `books` row with `media_type = 'video'` and a `format` (`'VHS'` now; LaserDisc/DVD/Betamax possible later without a migration). A separate table would duplicate reviews, tags, collections, sessions and wishlist, which all hang off `books.id`.
+- **Separation lives in the views:** `library_books` gets `AND media_type = 'book'`, so every page and count already built on it ignores videos with no other edits. A new `library_videos` view feeds the Videos pages. Every query that reads `books` directly (about 50: feed, collections, wishlist, export, cover jobs, book matching, admin) is checked and filtered where needed, and tests assert a video never appears on a book page or in a book count.
+- **Per-tape data:** the catalog record (title, director in `author`, studio in `publisher`, year, runtime, barcode, catalogue number, sleeve photo), plus **Watched / Want to watch** and **rating + review**.
+- **Sharing:** same access rules as books. Household members see a shared Videos view, friends can browse your Videos, `can_view_book` covers video detail pages. Tape reviews appear in friends' feeds, worded "watched".
+- **Defaults (Phil can override):** no video wishlist for now (a tape scanned on the wishlist page says so); the cover fetcher skips videos; tags and custom collections are shared with books (a collection may hold both); export includes videos, marked by type.
+
+### 8.2 Build
+- [ ] **Scanner dispatch** (server + `add_book.js`/`wishlist.js`): an EAN-13 starting `978`/`979`, or a valid ISBN-10, takes the book path; any other EAN-13/UPC-A takes the video path. UPC-A is stored as EAN-13 (the scanner already hands it over that way). A server-side twin of the check-digit helpers in `utils/media.py`.
+- [ ] **Migration** `023_add_videos.sql`: on `books`, appended at the end, `media_type TEXT NOT NULL DEFAULT 'book' CHECK (media_type IN ('book','video'))`, `format`, `barcode`, `catalog_number`, `runtime_minutes`; indexes on `media_type` and `barcode`; `collections.status` CHECK extended with `'watched'` and `'want to watch'` (a table rebuild); `library_books` restricted to books and `library_videos` added (drop/recreate both). Folded into `create_database.sql`.
+- [ ] **`utils/media.py`:** media types, formats, field labels by type (Author ↔ Director, Publisher ↔ Studio, Pages ↔ Runtime, ISBN ↔ Barcode), statuses by type, barcode helpers. One place, used by templates and JS (via `data-` attributes).
+- [ ] **Books-only audit:** every direct `books` query checked; book stats, counts, filters, Goodreads import, cover jobs and book matching exclude videos. Tests for each.
+- [ ] **Videos section (routes/UI):** sidebar entry; `/videos` grid with search/sort/filter (format, status, rating); add form (manual entry first, scanner on it); detail/edit pages showing runtime, studio, barcode, catalogue number; Watched / Want to watch; rating + review; household and friends' Videos views; duplicate check on `barcode`; `fetch_barcode_details` (keep `fetch_isbn_details` as an alias).
+- [ ] **Feed:** video reviews and "watched" activity in friends' feeds.
+- [ ] **Video stats** on the profile, separate from book stats.
+- [ ] **Lookups** (`utils/media_lookup.py`), last and optional: ask Phil which services first. Candidates: UPCitemdb (no key, rate-limited), TMDb (key), Discogs (token). All through the SSRF guard; manual entry stays the main path.
+
+**Done when:** a VHS can be scanned or typed in from the Videos section and lands there with its barcode; it shows runtime/studio/barcode, can be marked watched and reviewed, and household/friends see it under Videos; no video appears in the Library, book stats, Goodreads import or cover fetching (tests); book flows are unchanged.
 
 ---
 
@@ -596,7 +603,7 @@ Reference: `docs/skeuomorphic-inspo.jpg` (local only, git-ignored): the 2010 iPa
 - [ ] Wood-grain page and shelves. Light mode = maple, dark = walnut. Texture as a small tiling image (self-made or CC0, in `static/`), or a CSS gradient approximation if that looks good enough.
 - [ ] **Library grid as shelves:** covers only (title/author on hover/focus and in list view), fixed row height so a shelf ledge runs under each row (a per-card ledge that bridges the gaps), soft drop shadow on covers.
 - [ ] Embossed toolbar and buttons (gradient, inset highlight), system sans with a light text shadow.
-- [ ] **Video-store rack for VHS** (Shelf only; House and Classic show VHS like books, with a badge): tapes spine-out in a rack, navy and marquee yellow, ticket-stub labels. Generic, no Blockbuster or other branding. Needs Phase 8. Candidate for the tape/sleeve cover: the parked film frame, `docs/parked/film-frame.css`.
+- [ ] **Video-store rack for VHS** (Shelf only; in House and Classic the Videos grid looks like the book grid): tapes spine-out in a rack, navy and marquee yellow, ticket-stub labels. Generic, no Blockbuster or other branding. Needs Phase 8. Candidate for the tape/sleeve cover: the parked film frame, `docs/parked/film-frame.css`.
 - [ ] Forms, profile and admin pages stay plain-but-themed (wood frame, paper panels); only the library views go full skeuomorphic.
 
 ### 9.2 Outrun (80s neon) 🟢
