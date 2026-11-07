@@ -2106,6 +2106,10 @@ img.book-cover-img:not([data-loaded]) {
   max-width: 120px;
 }
 
+.max-w-\[16rem\] {
+  max-width: 16rem;
+}
+
 .max-w-\[200px\] {
   max-width: 200px;
 }
@@ -3414,6 +3418,39 @@ dialog::backdrop {
 .rating-group:hover .rating-star:hover ~ .rating-star {
   color: #9ca3af;
   /* gray-400 */
+}
+
+/* Barcode scanner (static/scanner.js). The video fills the viewport with
+   object-fit: cover, so there are no bars and no half-filled box. Only the
+   area inside .scanner-box is decoded; the rest is dimmed so it's obvious
+   where the barcode goes. The box is wide and short like a barcode. */
+
+.scanner-live {
+  position: relative;
+}
+
+.scanner-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+
+.scanner-box {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 28%;
+  bottom: 28%;
+  border: 3px solid #fbf8f1;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / .45);
+  pointer-events: none;
+}
+
+.scanner-box-hit {
+  border-color: #b8bb26;
 }
 
 .file\:mr-4::file-selector-button {

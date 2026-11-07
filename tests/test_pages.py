@@ -169,12 +169,16 @@ def test_no_global_rate_limit_but_login_is_limited(client, db, people, monkeypat
         limiter.reset()
 
 
-def test_quagga_is_served_locally(client, db, people):
+def test_scanner_scripts_are_served_locally(client, db, people):
+    """Both scanning pages load quagga2 and the shared scanner from static/."""
     login(client, 'bob')
     for page in ('/books/add', '/wishlist/view'):
         html = client.get(page, follow_redirects=True).get_data(as_text=True)
-        assert 'vendor/quagga-0.12.1.min.js' in html and 'cdnjs' not in html, page
-    assert client.get('/static/vendor/quagga-0.12.1.min.js').status_code == 200
+        assert 'vendor/quagga2-1.12.1.min.js' in html and 'cdnjs' not in html, page
+        assert html.index('vendor/quagga2-1.12.1.min.js') < html.index('/static/scanner.js'), page
+        assert 'id="camera-select"' in html, page
+    for path in ('/static/vendor/quagga2-1.12.1.min.js', '/static/scanner.js'):
+        assert client.get(path).status_code == 200, path
 
 
 def test_edit_form_keeps_subtitle_and_genre(client, db, people):

@@ -118,13 +118,14 @@ There are no per-item privacy settings (private/friends/public); the unused colu
 - **Layout:** every page `{% extends 'base.html' %}` (blocks `title`, `html_class`, `body_class`, `head`, `sidebar`, `content`, `scripts`; auth pages override `sidebar` with nothing). `base.html` includes `_sidebar.html` and `_flash_messages.html` and sets `<meta name="csrf-token">`; pages include `_search_sort_filter.html`, `_book_grid.html` and `_add_book_fab.html` where relevant. `tests/test_pages.py` fails if a page stops extending it.
 - **Themes:** two per-user settings on `<html data-style=… data-mode=…>` (injected by a context processor in `app.py`, edited at Profile → Appearance, stored in `users.theme_style` / `users.color_mode`). Style `house` = Gruvbox, Courier Prime, square, strong borders; `classic` = the original look (Outfit, rounded, soft shadows). Mode `system|light|dark`. Every colour, radius, shadow and the body font are CSS variables in `static/styles.css`; `tailwind.config.js` maps Tailwind names onto them. Use the semantic classes (`bg-secondary`, `text-content-primary`, `bg-accent text-on-accent`, `border-card` for card outlines, `rounded-pill` for badges) rather than raw colours. Fonts are served from `static/fonts/`.
 - **Vanilla JS in `/static/`:**
-  - `static/vendor/`: vendored third-party JS (Quagga for barcode scanning), with source and hashes in its README. Don't load scripts from CDNs.
+  - `static/vendor/`: vendored third-party JS (quagga2 for barcode decoding), with source and hashes in its README (`tests/test_csp.py` checks the hashes). Don't load scripts from CDNs.
+  - `scanner.js`: the barcode scanner shared by the add-book and wishlist pages (`createBarcodeScanner`): camera, camera picker, target box, check digits and read confirmation. The decoder sits behind a small interface (`quaggaDecoder`). Its pure helpers are tested under node in `tests/test_scanner_js.py`.
   - `common.js`: loaded in `<head>` by `base.html` on every page. `getCSRFToken`, `getCSRFHeaders`, `addCSRFToFormData`, `escapeHtml`, `coverSrc`, `showFlashMessage`, `dismissFlash`, `postForm`, and the `data-click`/`data-change`/`data-submit`/`data-confirm`/`data-fallback-src` dispatcher (`registerActions`). Don't redefine these in page scripts.
   - One file per page that needs script: `user.js`, `admin_settings.js`, `book_detail.js`, `rate_review.js`, `goodreads_import.js`, `activity_feed.js`, `orphaned_images.js`, `fab.js` (the add-book button partial), loaded in the page's `{% block scripts %}`.
   - `script.js`: library grid, filters, infinite scroll, status updates (and a few book-page helpers).
-  - `add_book.js`: add form, ISBN/title search, barcode scanning via Quagga (`static/vendor/`).
+  - `add_book.js`: add form, ISBN/title search, what a scanned code means (scanning itself is `scanner.js`).
   - `edit_book.js`: edit form, cover fetching.
-  - `wishlist.js`: wishlist add/search/barcode.
+  - `wishlist.js`: wishlist add/search, scanned codes (via `scanner.js`).
   - `tags.js`: tag add/remove.
   - `sidebar.js`: hamburger menu and search dropdown, loaded by `_sidebar.html`.
   - `cover_jobs.js`: the floating cover-fetch progress panel, loaded by `_sidebar.html`; it only shows and polls when the user has a job (`cover_job`, from a context processor in `app.py`).
@@ -147,7 +148,7 @@ Not scheduled and not to be worked on until Phil picks them up; they belong in a
 - Usernames must match `^[A-Za-z0-9_.-]{3,30}$` (`models.is_valid_username`); this is enforced on register, rename and admin create.
 - CSRF: Flask-WTF `CSRFProtect` is global. Forms include `csrf_token()`; fetch calls send the `X-CSRFToken` header (both `X-CSRFToken` and `X-CSRF-Token` are accepted) using `getCSRFToken()` from `common.js`, which reads a hidden `csrf_token` input or the `<meta name="csrf-token">` that `base.html` puts on every page.
 - Session and remember-me cookies are HttpOnly and SameSite=Lax. They are `Secure` only in production; remember-me lasts 30 days.
-- `after_request` sets a **Content-Security-Policy** (`script-src 'self'`, `img-src 'self' data: blob:`, `connect-src 'self'`, `worker-src 'self' blob:` for Quagga; inline `style=` allowed), plus `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN` and `Referrer-Policy`. `CSP_REPORT_ONLY=true` makes it report-only.
+- `after_request` sets a **Content-Security-Policy** (`script-src 'self'`, `img-src 'self' data: blob:`, `connect-src 'self'`, `worker-src 'self'`; inline `style=` allowed), plus `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN` and `Referrer-Policy`. `CSP_REPORT_ONLY=true` makes it report-only.
 - Rate limiting:
   - No global default (it caused 429s while browsing). Per-route `@limiter.limit()` on auth, profile updates, friend and household requests, and imports (`utils/rate_limiting.py`).
   - Storage is in memory, so each gunicorn worker counts separately (effective limit = limit x workers). Redis is the fix if that ever matters.

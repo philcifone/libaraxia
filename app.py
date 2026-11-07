@@ -78,7 +78,8 @@ def create_app():
     # attributes are still allowed: there are a handful, and injected CSS is
     # far less dangerous than injected script. Images are ours too: remote
     # search-result covers go through /books/thumbnail. data: is for upload
-    # previews, blob: workers for the Quagga barcode scanner.
+    # previews. No worker-src blob: the barcode scanner (static/scanner.js)
+    # decodes on the main thread, so it starts no workers.
     # CSP_REPORT_ONLY=true sends it as Report-Only (logged in the browser
     # console, not enforced), an escape hatch if something turns out blocked.
     csp = '; '.join([
@@ -88,7 +89,7 @@ def create_app():
         "img-src 'self' data: blob:",
         "font-src 'self'",
         "connect-src 'self'",
-        "worker-src 'self' blob:",
+        "worker-src 'self'",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",

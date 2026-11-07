@@ -6,10 +6,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('book-search');
     const searchBtn = document.getElementById('search-btn');
     const resultsContainer = document.getElementById('search-results');
-    const scannerBtn = document.getElementById('toggle-scanner');
     let searchTimeout;
-    let isScanning = false;
-    let isProcessingBarcode = false;
+
+    // Barcode scanner (static/scanner.js): camera, picker, confirmation and
+    // check digits live there; this page only decides what a code means.
+    const scanner = createBarcodeScanner({
+        container: document.getElementById('interactive'),
+        button: document.getElementById('toggle-scanner'),
+        cameraSelect: document.getElementById('camera-select'),
+        onCode: ({ code }) => fetchBookByISBN(code),
+    });
 
     // Tab Switching
     methodButtons.forEach(button => {
@@ -25,9 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
             activeSection.classList.remove('hidden');
 
             // Handle scanner state
-            if (method !== 'barcode' && window.Quagga && Quagga.initialized) {
-                stopScanner();
-            }
+            if (method !== 'barcode') scanner.stop();
         });
     });
 
@@ -490,64 +494,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Barcode Scanner Functionality
-    function startScanner() {
-
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector("#interactive"),
-                constraints: {
-                    width: 640,
-                    height: 480,
-                    facingMode: "environment"
-                },
-            },
-            decoder: {
-                readers: [
-                    "ean_reader",
-                    "ean_8_reader",
-                    "upc_reader",
-                    "upc_e_reader"
-                ]
-            },
-            locate: true
-        }, function(err) {
-            if (err) {
-                console.error('Scanner initialization error:', err);
-                if (err.name === 'NotAllowedError') {
-                    showFlashMessage('error', "Camera access denied. Please allow camera access and try again.");
-                } else if (err.name === 'NotFoundError') {
-                    showFlashMessage('error', "No camera found. Please use a device with a camera.");
-                } else {
-                    showFlashMessage('error', "Error starting scanner: " + err.message);
-                }
-                scannerBtn.textContent = 'Start Scanner';
-                isScanning = false;
-                return;
-            }
-            Quagga.start();
-        });
-
-        Quagga.onDetected(function(result) {
-            if (isProcessingBarcode) {
-                return;
-            }
-
-            const code = result.codeResult.code;
-
-            if (/^\d{10}(\d{3})?$/.test(code)) {
-                isProcessingBarcode = true;
-                stopScanner();
-                fetchBookByISBN(code).finally(() => {
-                    isProcessingBarcode = false;
-                });
-            } else {
-            }
-        });
-    }
-
     async function fetchBookByISBN(isbn) {
         try {
             const interactive = document.querySelector('#interactive');
@@ -564,7 +510,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
 
             // Use wishlist endpoint
-            const response = await fetch(`/wishlist/fetch_isbn_details?isbn=${isbn}`);
+            const response = await fetch(`/wishlist/fetch_isbn_details?isbn=${encodeURIComponent(isbn)}`);
             const data = await response.json();
 
             if (data.success && data.book_details) {
@@ -606,7 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 interactive.innerHTML = `
                     <div class="flex items-center justify-center h-full">
                         <div class="text-white text-center">
-                            <p class="text-red-500">Book not found for ISBN: ${isbn}</p>
+                            <p class="text-red-500">Book not found for ISBN: ${escapeHtml(isbn)}</p>
                             <p class="mt-2">Try scanning again or use ISBN lookup</p>
                         </div>
                     </div>
@@ -616,39 +562,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error fetching book:', error);
             showFlashMessage('error', 'Error fetching book details. Please try again.');
         }
-    }
-
-    function stopScanner() {
-        if (window.Quagga) {
-            Quagga.offDetected();
-            Quagga.offProcessed();
-
-            if (Quagga.initialized) {
-                Quagga.stop();
-            }
-
-            isScanning = false;
-            if (scannerBtn) {
-                scannerBtn.textContent = 'Start Scanner';
-            }
-        }
-    }
-
-    if (scannerBtn) {
-        scannerBtn.addEventListener('click', () => {
-            if (!isScanning) {
-                const reason = cameraUnavailableReason();
-                if (reason) {
-                    showFlashMessage('error', reason);
-                    return;
-                }
-                startScanner();
-                scannerBtn.textContent = 'Stop Scanner';
-            } else {
-                stopScanner();
-            }
-            isScanning = !isScanning;
-        });
     }
 
     // Handle image upload preview
@@ -730,10 +643,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Clean up on page unload
-    window.addEventListener('beforeunload', () => {
-        stopScanner();
-    });
 
     // Global function to clear and hide form (called from template button)
     window.clearAndHideForm = function() {

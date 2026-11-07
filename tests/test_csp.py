@@ -64,3 +64,27 @@ def test_thumbnail_proxy_only_fetches_cover_hosts(client, people, monkeypatch):
 def test_thumbnail_proxy_needs_login(client, people):
     r = client.get('/books/thumbnail', query_string={'url': 'https://covers.openlibrary.org/b/id/1-L.jpg'})
     assert r.status_code in (302, 401)
+
+
+def test_vendored_scripts_match_their_listed_hash():
+    """Every vendored script is in static/vendor/README.md with its sha512,
+    so a swapped or edited file is noticed."""
+    import base64
+    import hashlib
+    vendor = STATIC / 'vendor'
+    readme = (vendor / 'README.md').read_text()
+    files = sorted(vendor.glob('*.js'))
+    assert files
+    for path in files:
+        digest = base64.b64encode(hashlib.sha512(path.read_bytes()).digest()).decode()
+        row = next((line for line in readme.splitlines() if f'`{path.name}`' in line), None)
+        assert row is not None, f'{path.name} is not listed in vendor/README.md'
+        assert digest in row, f'{path.name} does not match its listed hash'
+
+
+def test_csp_starts_no_blob_workers(client, people):
+    """The scanner decodes on the main thread, so workers stay 'self' only."""
+    login(client, 'alice')
+    csp = client.get('/base/index').headers['Content-Security-Policy']
+    directives = dict(d.strip().split(' ', 1) for d in csp.split(';'))
+    assert directives['worker-src'] == "'self'"

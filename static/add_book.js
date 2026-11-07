@@ -6,10 +6,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('book-search');
     const searchBtn = document.getElementById('search-btn');
     const resultsContainer = document.getElementById('search-results');
-    const scannerBtn = document.getElementById('toggle-scanner');
     let searchTimeout;
-    let isScanning = false;
-    let isProcessingBarcode = false;  // Flag to prevent multiple detections
+
+    // Barcode scanner (static/scanner.js): camera, picker, confirmation and
+    // check digits live there; this page only decides what a code means.
+    const scanner = createBarcodeScanner({
+        container: document.getElementById('interactive'),
+        button: document.getElementById('toggle-scanner'),
+        cameraSelect: document.getElementById('camera-select'),
+        onCode: ({ code }) => fetchBookByISBN(code),
+    });
 
     // Tab Switching
     methodButtons.forEach(button => {
@@ -25,9 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
             activeSection.classList.remove('hidden');
             
             // Handle scanner state
-            if (method !== 'barcode' && window.Quagga && Quagga.initialized) {
-                stopScanner();
-            }
+            if (method !== 'barcode') scanner.stop();
         });
     });
 
@@ -369,75 +373,6 @@ document.addEventListener('DOMContentLoaded', function() {
         performSearch();
     });
 
-    // Barcode Scanner Functionality
-    function startScanner() {
-
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector("#interactive"),
-                constraints: {
-                    width: 640,
-                    height: 480,
-                    facingMode: "environment"  // Use back camera on mobile
-                },
-            },
-            decoder: {
-                readers: [
-                    "ean_reader",       // EAN-13 (most common book barcodes)
-                    "ean_8_reader",     // EAN-8
-                    "upc_reader",       // UPC-A
-                    "upc_e_reader"      // UPC-E
-                ]
-            },
-            locate: true  // Help locate barcode in image
-        }, function(err) {
-            if (err) {
-                console.error('Scanner initialization error:', err);
-                if (err.name === 'NotAllowedError') {
-                    showFlashMessage('error', "Camera access denied. Please allow camera access and try again.");
-                } else if (err.name === 'NotFoundError') {
-                    showFlashMessage('error', "No camera found. Please use a device with a camera.");
-                } else {
-                    showFlashMessage('error', "Error starting scanner: " + err.message);
-                }
-                scannerBtn.textContent = 'Start Scanner';
-                isScanning = false;
-                return;
-            }
-            Quagga.start();
-        });
-
-        Quagga.onDetected(function(result) {
-            // Prevent multiple detections
-            if (isProcessingBarcode) {
-                return;
-            }
-
-            const code = result.codeResult.code;
-
-            // Validate it looks like an ISBN (10 or 13 digits)
-            if (/^\d{10}(\d{3})?$/.test(code)) {
-                // Set flag to prevent more detections
-                isProcessingBarcode = true;
-
-                // Stop scanner immediately
-                stopScanner();
-
-                // Show feedback to user (remove alert, just use visual feedback)
-
-                // Fetch book details using the code
-                fetchBookByISBN(code).finally(() => {
-                    // Reset flag after fetch completes (success or failure)
-                    isProcessingBarcode = false;
-                });
-            } else {
-                // Continue scanning for valid ISBN
-            }
-        });
-    }
-
     async function fetchBookByISBN(isbn) {
         try {
             // Show loading in the scanner area
@@ -455,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
 
             // Make request to backend
-            const response = await fetch(`/books/fetch_isbn_details?isbn=${isbn}`);
+            const response = await fetch(`/books/fetch_isbn_details?isbn=${encodeURIComponent(isbn)}`);
             const data = await response.json();
 
             if (data.success && data.book_details) {
@@ -498,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 interactive.innerHTML = `
                     <div class="flex items-center justify-center h-full">
                         <div class="text-white text-center">
-                            <p class="text-red-500">Book not found for ISBN: ${isbn}</p>
+                            <p class="text-red-500">Book not found for ISBN: ${escapeHtml(isbn)}</p>
                             <p class="mt-2">Try scanning again or use ISBN lookup</p>
                         </div>
                     </div>
@@ -509,37 +444,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showFlashMessage('error', 'Error fetching book details. Please try again.');
         }
     }
-
-    function stopScanner() {
-        if (window.Quagga) {
-            // Remove all event listeners
-            Quagga.offDetected();
-            Quagga.offProcessed();
-
-            // Stop the scanner
-            if (Quagga.initialized) {
-                Quagga.stop();
-            }
-
-            isScanning = false;
-            scannerBtn.textContent = 'Start Scanner';
-        }
-    }
-
-    scannerBtn.addEventListener('click', () => {
-        if (!isScanning) {
-            const reason = cameraUnavailableReason();
-            if (reason) {
-                showFlashMessage('error', reason);
-                return;
-            }
-            startScanner();
-            scannerBtn.textContent = 'Stop Scanner';
-        } else {
-            stopScanner();
-        }
-        isScanning = !isScanning;
-    });
 
     // Handle image upload preview
     const imageInput = document.getElementById('image');
@@ -555,8 +459,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Clean up on page unload
-    window.addEventListener('beforeunload', () => {
-        stopScanner();
-    });
 });
