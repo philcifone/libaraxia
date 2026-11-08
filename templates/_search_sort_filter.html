@@ -1,35 +1,35 @@
-{# Header search dropdown: search and filters, opened by the magnifying glass
-   in the top bar (sidebar.js). Sort and the grid/list switch live in the view
-   bar above the grid (_view_bar.html). Both forms are GET, so no CSRF token:
-   it would only end up in URLs and logs.
+{# Search and filters, one row under the page's tabs: the search box (3/4)
+   and the filter button (1/4: icon, count of active filters, arrow). The
+   filter panel drops down from the row over the grid (toggleFilters in
+   script.js; click outside or Escape closes it). Sort and the grid/list
+   switch live in the view bar above the grid (_view_bar.html). Both forms
+   are GET, so no CSRF token: it would only end up in URLs and logs.
 
    Shared by every section. The Library leaves the options out: search goes
-   to books.search. Movies pass `m` (media_labels) and `search_action` (the
-   grid page itself), so search and filters stay on that page; their
-   filter_options add `formats`. #}
-<!-- Main container with transitions for smooth show/hide -->
-<div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl space-y-4 bg-primary
-            transform -translate-y-full transition-all duration-300 ease-in-out opacity-0 invisible
-            search-form-container z-30">
-
-    <!-- Search -->
-    <div class="bg-secondary-bg rounded-lg p-4 card">
-        <!-- Search Form -->
-        <form method="GET" action="{{ search_action or url_for('books.search') }}" data-submit="showLoading" data-loading="Searching...">
+   to books.search. Movies and Vinyls pass `m` (media_labels) and
+   `search_action` (the grid page itself), so search and filters stay on
+   that page; their filter_options add `formats`. `top_padding` is for a
+   page without tabs above it (search results), to clear the fixed header. #}
+<div class="search-form-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 {{ 'pt-20' if top_padding }}">
+  <div class="relative z-30">
+    <div class="grid grid-cols-4 gap-2">
+        <!-- Search -->
+        <form method="GET" action="{{ search_action or url_for('books.search') }}" class="col-span-3"
+              role="search" data-submit="showLoading" data-loading="Searching...">
             {% if search_action %}
             {# Searching a section page keeps its sort and view #}
             {% for key in ('sort_by', 'sort_order', 'view') %}{% if request.args.get(key) %}
             <input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">
             {% endif %}{% endfor %}
             {% endif %}
-            <div class="relative">
+            <div class="relative h-full">
                 <input type="text"
                        id="search_term"
                        aria-label="Search {{ 'these ' ~ m.plural if m else 'your library' }}"
                        name="search_term"
-                       placeholder="{{ 'Title, director, studio, barcode...' if m and m.type == 'video' else 'Search by title, author, year...' }}"
+                       placeholder="{{ m.search_placeholder if m else 'Search by title, author, year...' }}"
                        value="{{ request.args.get('search_term', '') }}"
-                       class="w-full pl-4 pr-10 py-2.5 bg-primary-bg border border-rule-strong rounded-lg
+                       class="w-full h-full pl-4 pr-10 py-2.5 bg-secondary-bg border border-rule-strong rounded-lg
                               focus:ring-2 focus:ring-accent focus:border-transparent
                               placeholder-gray-400 text-content-primary transition-all">
                 <button type="submit" aria-label="Search"
@@ -40,48 +40,32 @@
                 </button>
             </div>
         </form>
-    </div>
 
-    <!-- Active Filters Display -->
-    <div id="active-filters-display" class="hidden">
-        <div class="bg-secondary-bg rounded-lg px-4 py-2 card">
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-content-secondary text-sm font-medium">Active filters:</span>
-                <div id="active-filter-pills" class="flex flex-wrap gap-2"></div>
-                <button type="button" data-click="clearFilters"
-                        class="ml-auto text-accent hover:text-accent-hover text-sm font-medium transition-colors">
-                    Clear all
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filter Section - Collapsible -->
-    <div class="bg-secondary-bg rounded-lg overflow-hidden card">
-        <!-- Filter Toggle Button -->
-        <button data-click="toggleFilters"
-                type="button"
-                class="w-full px-4 py-3 flex items-center justify-between
-                       text-content-primary hover:bg-primary-hover transition-colors group">
-            <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <!-- Filter toggle: the funnel, how many filters are on, the arrow -->
+        <button data-click="toggleFilters" id="filter-toggle"
+                type="button" aria-label="Filters" aria-expanded="false" aria-controls="filter-panel"
+                class="col-span-1 px-2 py-2.5 flex items-center justify-center gap-3 bg-secondary-bg border border-rule-strong rounded-lg
+                       text-content-primary hover:bg-primary-hover group">
+            {# The count sits on the funnel's corner, so icon, count and arrow
+               fit a phone's quarter width #}
+            <span class="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                <span class="font-medium">Advanced Filters</span>
-                <span id="filter-count-badge" class="hidden px-2 py-0.5 bg-accent text-on-accent text-xs rounded-pill"></span>
-            </div>
+                <span id="filter-count-badge" class="hidden absolute -top-2 -right-3 min-w-[1.1rem] px-1 bg-accent text-on-accent text-[10px] leading-4 text-center rounded-pill"></span>
+            </span>
             <svg xmlns="http://www.w3.org/2000/svg"
                  class="h-5 w-5 transform transition-transform duration-200 group-hover:text-accent"
-                 id="filterArrow"
-                 fill="none"
-                 viewBox="0 0 24 24"
-                 stroke="currentColor">
+                 id="filterArrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
         </button>
+    </div>
 
-        <!-- Filter Panel -->
-        <div class="filter-content hidden transition-all duration-200" id="filter-panel">
+    <!-- Filter panel: drops down from the row, over the grid. Taller than a
+         phone screen, it scrolls inside. -->
+    <div class="absolute left-0 right-0 top-full mt-2 bg-secondary-bg rounded-lg card
+                max-h-[70vh] overflow-y-auto hidden" id="filter-panel">
             {# Filters apply to the page you're on (library, shared library or
                search results), keeping its search term, member and sort. #}
             <form id="filter-form" method="GET" action="{{ request.path }}" class="p-4 space-y-4">
@@ -110,7 +94,7 @@
                     </div>
 
                     {% if filter_options.formats %}
-                    <!-- Format Filter (Movies) -->
+                    <!-- Format Filter (Movies, Vinyls) -->
                     <div class="space-y-2">
                         <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>
                         <select name="format" id="format"
@@ -209,6 +193,18 @@
                     </button>
                 </div>
             </form>
+    </div>
+  </div>
+
+    <!-- Active filters, under the row while any are set -->
+    <div id="active-filters-display" class="hidden mt-2">
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-content-secondary text-sm font-medium">Active filters:</span>
+            <div id="active-filter-pills" class="flex flex-wrap gap-2"></div>
+            <button type="button" data-click="clearFilters"
+                    class="ml-auto text-accent hover:text-accent-hover text-sm font-medium transition-colors">
+                Clear all
+            </button>
         </div>
     </div>
 </div>

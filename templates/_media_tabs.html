@@ -1,12 +1,13 @@
-{# Tabs at the top of the Videos pages, like the Library's. Needs `tab`:
-   'mine', 'shared', 'friends' or 'friend' (a friend's videos). #}
+{# Tabs at the top of the Movies and Vinyls pages, like the Library's. Needs
+   `m` (media.media_labels) and `tab`: 'mine', 'shared', 'friends' or
+   'friend' (a friend's shelf). #}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
     <div class="bg-secondary rounded-xl overflow-hidden card">
         <div class="flex items-stretch">
             {% for key, url, label, wide in [
-                ('mine', url_for('videos.index'), 'My Movies', ''),
-                ('shared', url_for('videos.shared'), 'Household', ' Movies'),
-                ('friends', url_for('videos.friends'), "Friends'", ' Movies'),
+                ('mine', url_for(m.bp ~ '.index'), 'My ' ~ m.section, ''),
+                ('shared', url_for(m.bp ~ '.shared'), 'Household', ' ' ~ m.section),
+                ('friends', url_for(m.bp ~ '.friends'), "Friends'", ' ' ~ m.section),
             ] %}
             {% set active = tab == key or (key == 'friends' and tab == 'friend') %}
             <a href="{{ url }}" class="tab {% if active %}tab-active{% endif %}" {% if active %}aria-current="page"{% endif %}>

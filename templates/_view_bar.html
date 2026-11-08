@@ -16,7 +16,7 @@
     'runtime_minutes': ('Shortest first', 'Longest first'),
 } %}
 {% set asc_label, desc_label = order_labels.get(sort_by, order_labels['title']) %}
-{# `m` (utils/media.py) is set on the Videos pages: "videos", "Director". #}
+{# `m` (utils/media.py) is set on the Movies and Vinyls pages: "movies", "Director". #}
 {% set noun = m.noun if m else 'book' %}
 {# Phone: count and the switch on one row, sort full-width below (order-last).
    From sm up it's one line: count on the left, sort and switch on the right. #}
@@ -41,8 +41,8 @@
                 <option value="author" {% if sort_by == 'author' %}selected{% endif %}>{{ m.creator if m else 'Author' }}</option>
                 <option value="publish_year" {% if sort_by == 'publish_year' %}selected{% endif %}>Year</option>
                 <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date added</option>
-                {% if m and m.type == 'video' %}
-                <option value="runtime_minutes" {% if sort_by == 'runtime_minutes' %}selected{% endif %}>Runtime</option>
+                {% if m and m.type != 'book' %}
+                <option value="runtime_minutes" {% if sort_by == 'runtime_minutes' %}selected{% endif %}>{{ m.length }}</option>
                 {% endif %}
             </select>
             <select name="sort_order" id="sort_order" aria-label="Sort direction" data-change="submitSortForm"

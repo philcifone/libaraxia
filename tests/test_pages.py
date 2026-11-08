@@ -74,8 +74,8 @@ def test_security_headers(client):
 
 # Routes that are GET but act, or need arguments filled in below.
 # books.thumbnail needs a ?url= and 404s without one; tests/test_csp.py covers it.
-# videos.lookup needs ?barcode= or ?title= and answers 400 without; test_videos.py covers it.
-SKIP = {'static', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'videos.search'}
+# videos.lookup needs ?barcode= or ?title=, records.lookup ?mbid=; both answer 400 without (test_videos.py, test_records.py cover them).
+SKIP = {'static', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'records.lookup', 'videos.search'}
 
 
 def test_every_page_loads(app, client, db, people):
@@ -119,6 +119,15 @@ def test_every_page_loads(app, client, db, people):
              f'/videos/{video}', f'/videos/edit/{video}', f'/read/rate_review/{video}',
              '/videos/?q=jaws&format=VHS&sort_by=runtime_minutes&sort_order=desc',
              '/videos/add?barcode=012345678905', '/videos/user/alice']
+    # Vinyls (Phase 8.7), the same way
+    record = db.execute("INSERT INTO books (title, author, publisher, runtime_minutes, catalog_number, format, "
+                        "description, added_by, media_type) VALUES ('Blue', 'Joni Mitchell', 'Reprise', 36, "
+                        "'MS 2038', 'LP', 'A1 All I Want\nA2 My Old Man', ?, 'record')", (alice,)).lastrowid
+    db.execute("INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)", (alice, video))
+    db.commit()
+    extra += [f'/records/{record}', f'/records/edit/{record}', f'/read/rate_review/{record}',
+              '/records/?search_term=blue&format=LP&sort_by=runtime_minutes', '/records/user/alice',
+              '/wishlist/add?type=record', '/wishlist/view?show=vinyls', f'/user/alice']
     for url in extra:
         r = client.get(url)
         assert r.status_code < 400, url

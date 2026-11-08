@@ -387,7 +387,7 @@ def test_view_switch_keeps_cover_positioning():
 
 def test_view_bar_sorts_in_place(client, db, people):
     """7.2b: sort and grid/list sit in a bar above the grid, not inside the
-    search dropdown. Sorting stays on the page you're on and keeps the other
+    search row. Sorting stays on the page you're on and keeps the other
     parameters; filters likewise. GET forms carry no CSRF token."""
     add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
@@ -424,3 +424,20 @@ def test_clear_filters_keeps_search_and_sort():
     script = (ROOT / 'static/script.js').read_text()
     body = script[script.index('function clearFilters'):][:400]
     assert 'FILTER_PARAMS.forEach' in body and 'window.location.pathname;' not in body
+
+
+def test_search_row_sits_under_the_tabs(client, people):
+    """Search and the filter button are one row under the page's tabs (the
+    header's magnifying glass is gone), on every grid page and the wishlist."""
+    login(client, 'alice')
+    for url in ('/base/index', '/base/shared-library', '/videos/', '/records/shared'):
+        page = client.get(url).get_data(as_text=True)
+        assert 'id="search-toggle"' not in page, url
+        tabs = page.index('class="tab ')
+        row = page.index('search-form-container')
+        assert tabs < row, url
+        assert 'id="filter-toggle"' in page and 'aria-controls="filter-panel"' in page, url
+    search = client.get('/books/search?search_term=x').get_data(as_text=True)
+    assert 'search-form-container' in search and 'pt-20' in search
+    wishlist = client.get('/wishlist/view').get_data(as_text=True)
+    assert 'id="search-toggle"' not in wishlist

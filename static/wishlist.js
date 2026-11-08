@@ -1,31 +1,13 @@
-// Your wishlist page (templates/wishlist.html): the filter over the cards,
-// opened by the magnifying glass in the top bar. Adding is the shared add
+// Your wishlist page (templates/wishlist.html): the filter box under the
+// tabs, over the cards. Adding is the shared add
 // page (add_item.js), so this file is only about the list.
 
 'use strict';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const toggle = document.getElementById('search-toggle');
-    const panel = document.querySelector('.wishlist-search-container');
     const input = document.getElementById('wishlist-search');
     const count = document.getElementById('wishlist-search-count');
-    if (!toggle || !panel || !input) return;
-
-    const hide = () => panel.classList.add('invisible', 'opacity-0', '-translate-y-full');
-
-    toggle.addEventListener('click', event => {
-        event.stopPropagation();
-        panel.classList.toggle('invisible');
-        panel.classList.toggle('opacity-0');
-        panel.classList.toggle('-translate-y-full');
-        if (!panel.classList.contains('invisible')) setTimeout(() => input.focus(), 100);
-    });
-    document.addEventListener('click', event => {
-        if (!panel.contains(event.target) && !toggle.contains(event.target)) hide();
-    });
-    document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') hide();
-    });
+    if (!input) return;
 
     // Filter the cards by title and creator (data-search on each card); a
     // section with nothing left in it hides too

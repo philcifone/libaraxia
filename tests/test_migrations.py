@@ -43,6 +43,67 @@ def schema(path):
     return out
 
 
+# Migration 023's books and collections, with their CHECK constraints (024
+# replaced them with the media_types / statuses lookup tables).
+BOOKS_023 = """
+    CREATE TABLE books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL, author TEXT NOT NULL, publisher TEXT, publish_year INTEGER,
+        isbn TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, page_count INTEGER,
+        cover_image_url TEXT, description TEXT, local_thumbnail TEXT, subtitle TEXT,
+        genre TEXT, added_by INTEGER, removed_at TIMESTAMP, removed_note TEXT,
+        media_type TEXT NOT NULL DEFAULT 'book' CHECK (media_type IN ('book', 'video')),
+        format TEXT, barcode TEXT, catalog_number TEXT, runtime_minutes INTEGER,
+        FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+    CREATE INDEX idx_books_added_by ON books(added_by);
+    CREATE INDEX idx_books_media_type ON books(media_type);
+    CREATE INDEX idx_books_barcode ON books(barcode);
+    CREATE TABLE collections (
+        collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        book_id INTEGER NOT NULL,
+        status TEXT CHECK(status IN ('read', 'want to read', 'currently reading', 'did not finish',
+                                     'watched', 'want to watch')) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    );
+    CREATE INDEX idx_collections_created_at ON collections(created_at);
+"""
+
+
+def wind_back_to_023(conn):
+    """Turn a fresh (empty) database into one at migration 023: books and
+    collections with their old CHECKs, no lookup tables, no library_records."""
+    conn.executescript(f"""
+        PRAGMA foreign_keys = OFF;
+        DROP VIEW library_books;
+        DROP VIEW library_videos;
+        DROP VIEW library_records;
+        DROP TABLE books;
+        DROP TABLE collections;
+        DROP TABLE statuses;
+        DROP TABLE media_types;
+        {BOOKS_023}
+        CREATE VIEW library_books AS SELECT b.* FROM books b
+        WHERE b.media_type = 'book' AND b.added_by IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = b.added_by);
+        CREATE VIEW library_videos AS SELECT b.* FROM books b
+        WHERE b.media_type = 'video' AND b.added_by IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = b.added_by);
+        DELETE FROM schema_migrations WHERE name = '024_add_records.sql';
+    """)
+
+
+def fresh_db(path):
+    conn = sqlite3.connect(path)
+    with open(os.path.join(ROOT, 'create_database.sql'), encoding='utf-8') as f:
+        conn.executescript(f.read())
+    return conn
+
+
 def test_fresh_database_has_every_migration_and_clean_fks(template_db):
     conn = connect(template_db)
     applied = {r[0] for r in conn.execute('SELECT name FROM schema_migrations')}
@@ -95,10 +156,9 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
     check fails with "foreign key mismatch". Baseline + migrate must still work,
     and 014 must still remove orphaned collections rows."""
     path = tmp_path / 'prod-like.db'
-    conn = sqlite3.connect(path)
-    with open(os.path.join(ROOT, 'create_database.sql'), encoding='utf-8') as f:
-        conn.executescript(f.read())
+    conn = fresh_db(path)
     # Wind the schema back to "migration 013, never baselined".
+    wind_back_to_023(conn)
     conn.executescript("""
         DROP TABLE schema_migrations;
         DROP VIEW library_books;       -- added by 018
@@ -208,3 +268,60 @@ def test_good_migration_is_recorded(scratch_migrations):
     manage.apply_migration(conn, '902_ok.sql')
     assert conn.execute('SELECT COUNT(*) FROM parent').fetchone()[0] == 2
     assert [r[0] for r in conn.execute('SELECT name FROM schema_migrations')] == ['902_ok.sql']
+
+
+def test_024_keeps_data_ids_and_counters(template_db, tmp_path):
+    """024 rebuilds books and collections: every row, id, column order and
+    AUTOINCREMENT counter survives, and the views come back (plus
+    library_records)."""
+    path = tmp_path / 'at-023.db'
+    conn = fresh_db(path)
+    wind_back_to_023(conn)
+    conn.executescript("""
+        INSERT INTO users (id, username, email, password) VALUES (1, 'phil', 'p@example.test', 'x');
+        INSERT INTO books (id, title, author, added_by) VALUES (1, 'A book', 'A', 1);
+        INSERT INTO books (id, title, author, added_by, media_type, format, barcode)
+            VALUES (2, 'A tape', 'D', 1, 'video', 'VHS', '0012345678905');
+        INSERT INTO books (id, title, author, added_by) VALUES (3, 'Deleted later', 'A', 1);
+        INSERT INTO collections (collection_id, user_id, book_id, status) VALUES (1, 1, 1, 'read');
+        INSERT INTO collections (collection_id, user_id, book_id, status) VALUES (2, 1, 2, 'watched');
+        INSERT INTO collections (collection_id, user_id, book_id, status) VALUES (3, 1, 3, 'read');
+        INSERT INTO read_data (user_id, book_id, rating) VALUES (1, 2, 4);
+        DELETE FROM collections WHERE collection_id = 3;
+        DELETE FROM books WHERE id = 3;   -- counters are now above MAX(id)
+    """)
+    conn.close()
+
+    run_manage('--db', str(path), 'migrate', '-y')
+
+    conn = connect(path)
+    assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    assert [tuple(r) for r in conn.execute('SELECT id, media_type, format FROM books ORDER BY id')] == [
+        (1, 'book', None), (2, 'video', 'VHS')]
+    assert [tuple(r) for r in conn.execute('SELECT book_id, status FROM collections ORDER BY 1')] == [
+        (1, 'read'), (2, 'watched')]
+    assert conn.execute('SELECT rating FROM read_data WHERE book_id = 2').fetchone()[0] == 4
+    seq = dict(conn.execute("SELECT name, seq FROM sqlite_sequence WHERE name IN ('books', 'collections')"))
+    assert seq == {'books': 3, 'collections': 3}, 'deleted ids must not be reused'
+    assert [r[0] for r in conn.execute('SELECT id FROM library_videos')] == [2]
+    conn.close()
+    assert schema(path) == schema(template_db)
+
+
+def test_unknown_media_type_or_status_is_refused(db):
+    """The lookup tables do what the CHECKs did (foreign keys are on)."""
+    db.execute("INSERT INTO users (id, username, email, password) VALUES (900, 'u900', 'u900@x.test', 'x')")
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute("INSERT INTO books (title, author, media_type) VALUES ('x', 'y', 'cd')")
+    book = db.execute("INSERT INTO books (title, author, media_type) VALUES ('x', 'y', 'record')").lastrowid
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (900, ?, 'bogus')", (book,))
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (900, ?, 'listened')", (book,))
+
+
+def test_lookup_tables_match_utils_media(db):
+    """utils/media.py and the media_types / statuses tables list the same values."""
+    from utils import media
+    assert {r[0] for r in db.execute('SELECT name FROM media_types')} == set(media.MEDIA_TYPES)
+    in_db = {(r[0], r[1]) for r in db.execute('SELECT status, media_type FROM statuses')}
+    assert in_db == {(s, t) for t, statuses in media.STATUSES.items() for s in statuses}

@@ -1,40 +1,63 @@
-"""Media types: books and videos in one `books` table (Phase 8, migration 023).
+"""Media types: books, videos and records in one `books` table (Phase 8,
+migrations 023 and 024).
 
-A video is a `books` row with media_type = 'video' and a `format` ('VHS'
-for now). The columns are shared and relabelled by type:
+A video is a `books` row with media_type = 'video', a record one with
+media_type = 'record'; both have a `format` ('VHS', 'DVD'; 'LP', '7in', ...).
+The columns are shared and relabelled by type:
 
-    column            book               video
-    author            Author             Director
-    publisher         Publisher          Studio
-    publish_year      Publication Year   Release Year
-    page_count        Page Count         (unused; runtime_minutes instead)
-    isbn              ISBN               (unused; barcode instead)
+    column            book               video            record
+    author            Author             Director         Artist
+    publisher         Publisher          Studio           Label
+    publish_year      Publication Year   Release Year     Year
+    page_count        Page Count         (unused)         (unused)
+    runtime_minutes   (unused)           Runtime          Length
+    isbn              ISBN               (unused)         (unused)
+    barcode           (unused)           Barcode          (unused for now)
+    catalog_number    (unused)           Catalogue No.    Cat. No.
+    description       Description        Synopsis         Tracklist and notes
 
 The Library (and everything built on the `library_books` view) is books
-only; the Videos section reads `library_videos`. Everything that differs by
-type lives here, so templates (via `media_labels`) and JS (via data-
-attributes) don't each keep their own copy.
+only; the Movies section reads `library_videos` and Vinyls reads
+`library_records`. Everything that differs by type lives here, so templates
+(via `media_labels`) and JS (via data- attributes) don't each keep their own
+copy. The database has the same lists of types and statuses in its
+`media_types` and `statuses` tables (migration 024); a test checks they
+agree with MEDIA_TYPES and STATUSES.
 
 The barcode helpers are the server-side twin of the check-digit code in
 static/scanner.js: the scanner hands over 13 digits (UPC-A gets a leading
-0), and `classify_code` decides whether that's a book or a video.
+0), and `classify_code` decides whether that's a book or a video. Records
+aren't scanned (Phil, 2026-11-07): Add Vinyl is title search only.
 """
 import re
 
 BOOK = 'book'
 VIDEO = 'video'
-MEDIA_TYPES = (BOOK, VIDEO)
+RECORD = 'record'
+MEDIA_TYPES = (BOOK, VIDEO, RECORD)
 
-# Physical formats a video row can have. Adding one needs no migration
-# (books.format has no CHECK), just an entry here.
-VIDEO_FORMATS = ('VHS', 'DVD')    # Phil, 2026-11-07: no LaserDisc or Betamax
-DEFAULT_VIDEO_FORMAT = 'VHS'
+# Physical formats by type. Adding one needs no migration (books.format has
+# no CHECK), just an entry here. Books have none.
+FORMATS = {
+    VIDEO: ('VHS', 'DVD'),        # Phil, 2026-11-07: no LaserDisc or Betamax
+    # Speed isn't stored: it follows from the format (LP 33, 7" 45); the odd
+    # exception goes in the notes. CD and Cassette since the section became
+    # Music (Phil, 2026-11-08); the type stays 'record' in code and the DB.
+    RECORD: ('LP', 'EP', '7in', '10in', '12in', 'CD', 'Cassette'),
+}
+DEFAULT_FORMAT = {VIDEO: 'VHS', RECORD: 'LP'}
+VIDEO_FORMATS = FORMATS[VIDEO]
+DEFAULT_VIDEO_FORMAT = DEFAULT_FORMAT[VIDEO]
 
 # What the UI calls a format, where that differs from the stored value. A VHS
 # tape is a "Cartridge" (Phil's name, after a novel); the DB keeps 'VHS', so
-# filters, exports and the lookups don't change. Templates use the
-# `format_label` filter (registered in app.py).
-FORMAT_LABELS = {'VHS': 'Cartridge'}
+# filters, exports and the lookups don't change. Record sizes are stored
+# without the inch mark, which would need quoting in URLs and CSV. Templates
+# use the `format_label` filter (registered in app.py).
+FORMAT_LABELS = {
+    'VHS': 'Cartridge',
+    '7in': '7" single', '10in': '10"', '12in': '12" single',
+}
 
 
 def format_label(fmt):
@@ -46,6 +69,7 @@ def format_label(fmt):
 STATUSES = {
     BOOK: ('read', 'want to read', 'currently reading', 'did not finish'),
     VIDEO: ('watched', 'want to watch'),
+    RECORD: ('listened', 'want to listen'),
 }
 
 # How each status is shown in menus.
@@ -53,18 +77,22 @@ STATUS_LABELS = {
     'read': 'Read', 'want to read': 'Want to Read',
     'currently reading': 'Currently Reading', 'did not finish': 'Did Not Finish',
     'watched': 'Watched', 'want to watch': 'Want to Watch',
+    'listened': 'Listened', 'want to listen': 'Want to Listen',
 }
 
 # The status that sends you to the review page, and that the feed words as
-# "finished" ("read" / "watched").
-DONE_STATUS = {BOOK: 'read', VIDEO: 'watched'}
+# "finished" ("read" / "watched" / "listened to").
+DONE_STATUS = {BOOK: 'read', VIDEO: 'watched', RECORD: 'listened'}
+
+# The status an item gets when it moves from your wishlist onto your shelf.
+WANT_STATUS = {BOOK: 'want to read', VIDEO: 'want to watch', RECORD: 'want to listen'}
 
 # Everything a template needs to word a page for one type. Keys are the same
-# for both types, so a template can use m.creator without checking the type.
+# for every type, so a template can use m.creator without checking the type.
 _LABELS = {
     BOOK: {
         'type': BOOK,
-        'noun': 'book', 'Noun': 'Book', 'plural': 'books',
+        'noun': 'book', 'Noun': 'Book', 'plural': 'books', 'a': 'a',   # a: the article ('an album')
         'creator': 'Author', 'by': 'by',
         'publisher': 'Publisher',
         'year': 'Publication Year',
@@ -80,10 +108,15 @@ _LABELS = {
         'about': 'About this Book',
         'shelf': 'library',             # "removed from the library"
         'section': 'Library',
+        'search_placeholder': 'Search by title, author, year...',
+        'title_search_placeholder': 'Title or author...',
+        'no_sessions': 'No reading sessions yet. Click "Add Session" to record when you read this book.',
+        'not_owned': 'Read but not owned',
+        'description': 'Description',
     },
     VIDEO: {
         'type': VIDEO,
-        'noun': 'movie', 'Noun': 'Movie', 'plural': 'movies',
+        'noun': 'movie', 'Noun': 'Movie', 'plural': 'movies', 'a': 'a',
         'creator': 'Director', 'by': 'directed by',
         'publisher': 'Studio',
         'year': 'Release Year',
@@ -99,8 +132,59 @@ _LABELS = {
         'about': 'About this Movie',
         'shelf': 'movie shelf',
         'section': 'Movies',
+        'search_placeholder': 'Title, director, studio, barcode...',
+        'title_search_placeholder': 'Film title...',
+        'no_sessions': 'No viewings yet. Click "Add Session" to record when you watched it.',
+        'not_owned': 'Watched but not owned',
+        'description': 'Description',
+    },
+    RECORD: {
+        'type': RECORD,
+        # The section is "Music" (Phil, 2026-11-08: vinyl, CDs and tapes);
+        # one item is an album. Code, URLs and the DB keep "record".
+        'noun': 'album', 'Noun': 'Album', 'plural': 'albums', 'a': 'an',
+        'creator': 'Artist', 'by': 'by',
+        'publisher': 'Label',
+        'year': 'Year',
+        'code': 'Barcode',
+        'length': 'Length',
+        'status_label': 'Listen Status',
+        'history': 'Listening History',
+        'session': 'Listening Session',
+        'verb_past': 'listened to',     # "First time listened to"
+        'in_progress': 'Listening',
+        'info_heading': 'Listening Info',
+        'tags_heading': 'Album Tags',
+        'about': 'About this Album',
+        'shelf': 'music shelf',
+        'section': 'Music',
+        'search_placeholder': 'Title, artist, label, cat. no...',
+        'title_search_placeholder': 'Artist and title...',
+        'no_sessions': 'No listens yet. Click "Add Session" to record when you listened to it.',
+        'not_owned': 'Listened to but not owned',
+        'description': 'Tracklist and notes',
     },
 }
+
+
+# Blueprint and endpoint suffix per type: the item pages are
+# f'{blueprint}.{action}_{item}' (books.show_book, videos.edit_video,
+# records.add_record). The tabs ('index', 'shared', 'friends') of the Movies
+# and Vinyls sections are in their own blueprints; the Library's are in base.
+BLUEPRINTS = {BOOK: 'books', VIDEO: 'videos', RECORD: 'records'}
+# The view each section's pages read (migrations 018, 023, 024)
+VIEWS = {BOOK: 'library_books', VIDEO: 'library_videos', RECORD: 'library_records'}
+ITEMS = {BOOK: 'book', VIDEO: 'video', RECORD: 'record'}
+
+# Code (barcode/ISBN) handling per type. Records have none (Phil,
+# 2026-11-07): no Barcode or Scan tab on Add Vinyl, no barcode field.
+HAS_BARCODE = {BOOK: True, VIDEO: True, RECORD: False}
+
+
+def item_endpoint(media_type, action='show'):
+    """'books.show_book', 'videos.edit_video', 'records.add_record', ..."""
+    media_type = media_type if media_type in MEDIA_TYPES else BOOK
+    return f'{BLUEPRINTS[media_type]}.{action}_{ITEMS[media_type]}'
 
 
 def media_type_of(row):
@@ -117,7 +201,11 @@ def media_labels(media_type):
     """Labels and statuses for one type (see _LABELS), plus 'statuses'."""
     media_type = media_type if media_type in MEDIA_TYPES else BOOK
     return {**_LABELS[media_type], 'statuses': STATUSES[media_type],
-            'status_labels': STATUS_LABELS, 'done_status': DONE_STATUS[media_type]}
+            'status_labels': STATUS_LABELS, 'done_status': DONE_STATUS[media_type],
+            'want_status': WANT_STATUS[media_type],
+            'bp': BLUEPRINTS[media_type], 'item': ITEMS[media_type],
+            'formats': FORMATS.get(media_type, ()),
+            'has_barcode': HAS_BARCODE[media_type]}
 
 
 def is_valid_status(media_type, status):

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{# The Movies and Vinyls grids: your items, your household's, or a friend's
+   (blueprints/media_section.py). Rows come from the section's view
+   (library_videos, library_records), so books never show here and these
+   never show in the Library. Worded by `m` (media.media_labels). #}
+
+{% block title %}{% if tab == 'friend' %}{{ owner.username }}'s {{ m.section }}{% elif tab == 'shared' %}Household {{ m.section }}{% else %}My {{ m.section }}{% endif %} - libaraxia{% endblock %}
+{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
+
+{% block content %}
+    {# Add buttons. Movies: one per format (the form opens with it picked);
+       Vinyls: one (the format is picked on the form). Then the wishlist. #}
+    {% set add_endpoint = m.bp ~ '.add_' ~ m.item %}
+    {% if m.type == 'video' %}
+    {% set fab_items=[('Cartridge', url_for(add_endpoint, format='VHS')),
+                      ('DVD', url_for(add_endpoint, format='DVD')),
+                      ('Wishlist', url_for('wishlist.add_to_wishlist', type=m.type))] %}
+    {% else %}
+    {% set fab_items=[(m.Noun, url_for(add_endpoint)),
+                      ('Wishlist', url_for('wishlist.add_to_wishlist', type=m.type))] %}
+    {% endif %}
+    {% include '_add_fab.html' %}
+
+    {% include '_media_tabs.html' %}
+
+    {# The section's icon and the page's name as the heading #}
+    {% from '_icons.html' import section_heading %}
+    {% if tab == 'friend' %}{{ section_heading(m.type, owner.username ~ "'s " ~ m.section) }}
+    {% elif tab == 'shared' %}{{ section_heading(m.type, 'Household ' ~ m.section) }}
+    {% else %}{{ section_heading(m.type, 'My ' ~ m.section) }}{% endif %}
+
+    {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
+
+
+    {% if books %}
+    {% include '_book_grid.html' %}
+    {% else %}
+    {% set filtered = request.args.keys()|reject('in', ['sort_by', 'sort_order', 'view'])|list %}
+    {% if filtered %}
+    {% with title='No ' ~ m.plural ~ ' match these filters', text='Nothing on this shelf matches the search or filters.',
+            links=[(request.path, 'Clear filters')] %}
+        {% include '_empty_state.html' %}
+    {% endwith %}
+    {% elif tab == 'mine' %}
+    {% with title='No ' ~ m.plural ~ ' yet', text=empty_text,
+            links=[(url_for(add_endpoint), 'Add ' ~ m.a ~ ' ' ~ m.noun)] %}
+        {% include '_empty_state.html' %}
+    {% endwith %}
+    {% else %}
+    {% with title='No ' ~ m.plural ~ ' here yet', text='Nothing on this shelf yet.', links=[] %}
+        {% include '_empty_state.html' %}
+    {% endwith %}
+    {% endif %}
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}

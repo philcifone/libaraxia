@@ -8,10 +8,10 @@
     <!-- Add Book Button -->
     {% with fab_items=[('Library', url_for('books.add_book')), ('Wishlist', url_for('wishlist.add_to_wishlist', type='book'))] %}{% include '_add_fab.html' %}{% endwith %}
 
-    {% include '_search_sort_filter.html' %}
+    {% with top_padding=true %}{% include '_search_sort_filter.html' %}{% endwith %}
 
     <!-- Back Navigation -->
-    <div class="container mx-auto px-4 mt-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2 mb-4">
         <a href="{{ url_for('base.index') }}" 
            class="inline-flex items-center space-x-2 text-content-secondary hover:text-content-primary transition-colors duration-200">
             <span class="text-xl">←</span>
@@ -24,7 +24,7 @@
     {% else %}
     {% with title=('No books match "' ~ search_term ~ '"') if search_term else 'Nothing to search for',
             text='This searches titles, authors and years on your shelf and your household\'s. To find a book you don\'t have yet, search Google Books from Add Book.',
-            links=[(url_for('books.add_book'), 'Search Google Books'), (url_for('base.index'), 'Back to library')] %}
+            links=[(url_for('books.add_book'), 'Go to Add Book'), (url_for('base.index'), 'Back to library')] %}
         {% include '_empty_state.html' %}
     {% endwith %}
     {% endif %}

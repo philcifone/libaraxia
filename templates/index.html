@@ -27,6 +27,9 @@
         </div>
     </div>
 
+    {% from '_icons.html' import section_heading %}
+    {{ section_heading('book', 'My Library') }}
+
     {% include '_search_sort_filter.html' %}
 
     {% if books %}

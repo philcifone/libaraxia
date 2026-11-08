@@ -5,9 +5,12 @@
 
 let currentEditingSessionId = null;   // null while adding a new session
 
-function openInlineSessionForm(title, sessionId, dateStarted, dateCompleted) {
+// mode: 'add' or 'edit'; the heading's wording per media type comes from the
+// template's data-add-title / data-edit-title.
+function openInlineSessionForm(mode, sessionId, dateStarted, dateCompleted) {
     currentEditingSessionId = sessionId;
-    document.getElementById('inline-session-form-title').textContent = title;
+    const title = document.getElementById('inline-session-form-title');
+    title.textContent = title.dataset[mode + 'Title'];
     document.getElementById('inline_date_started').value = dateStarted;
     document.getElementById('inline_date_completed').value = dateCompleted;
     const container = document.getElementById('session-form-inline');
@@ -16,7 +19,7 @@ function openInlineSessionForm(title, sessionId, dateStarted, dateCompleted) {
 }
 
 registerActions({
-    showAddSessionForm: () => openInlineSessionForm('Add New Reading Session', null, '', ''),
+    showAddSessionForm: () => openInlineSessionForm('add', null, '', ''),
 
     hideInlineSessionForm: () => {
         document.getElementById('session-form-inline').classList.add('hidden');
@@ -24,7 +27,7 @@ registerActions({
     },
 
     // data-session-id, data-date-started, data-date-completed
-    editInlineSession: el => openInlineSessionForm('Edit Reading Session', el.dataset.sessionId,
+    editInlineSession: el => openInlineSessionForm('edit', el.dataset.sessionId,
                                                    el.dataset.dateStarted, el.dataset.dateCompleted),
 
     // data-book-id. Posted as its own form so the review form isn't submitted.

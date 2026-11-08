@@ -1,5 +1,7 @@
 """Phase 3: what counts as "your library" (the library_books view), stats,
 filter options and the removed-books filter."""
+import json
+
 from conftest import add_book, add_review, login, scalar
 
 
@@ -339,11 +341,38 @@ def test_exception_text_is_not_sent_to_the_browser(client, db, people, monkeypat
 
     def boom(**kwargs):
         raise RuntimeError('SECRET /home/phil/library.db detail')
-    monkeypatch.setattr(books_bp, 'search_covers_multiple_sources', boom)
+    monkeypatch.setattr(books_bp, 'cover_search_steps', boom)
     login(client, 'alice')
     r = client.post('/books/fetch_cover', json={'isbn': '9780000000000', 'title': 'X'})
     assert b'SECRET' not in r.data
-    assert r.get_json()['success'] is False
+    last = json.loads(r.get_data(as_text=True).strip().splitlines()[-1])
+    assert last['type'] == 'done' and last['count'] == 0 and last['error']
+
+
+def test_find_a_better_cover_streams_progress_and_covers(client, db, people, monkeypatch):
+    """One line per source asked, one per download, each cover as it lands,
+    and a final 'done'. A source that fails is skipped; a duplicate URL is
+    downloaded once; a failed download just isn't sent."""
+    import blueprints.books as books_bp
+
+    def broken():
+        raise TimeoutError('slow')
+    monkeypatch.setattr(books_bp, 'cover_search_steps', lambda **kw: [
+        ('Open Library', lambda: [('https://a.test/1.jpg', 'Open Library'), ('https://a.test/2.jpg', 'Open Library')]),
+        ('Goodreads', broken),
+        ('Google Books', lambda: [('https://a.test/1.jpg', 'Google Books'), ('https://b.test/3.jpg', 'Google Books')]),
+    ])
+    monkeypatch.setattr(books_bp, 'download_and_save_cover',
+                        lambda url: None if url.endswith('2.jpg') else 'uploads/' + url.rsplit('/', 1)[1])
+    login(client, 'alice')
+    r = client.post('/books/fetch_cover', json={'title': 'Dune', 'author': 'Herbert'})
+    assert r.mimetype == 'application/x-ndjson'
+    events = [json.loads(l) for l in r.get_data(as_text=True).splitlines()]
+    assert [(e['phase'], e['label']) for e in events if e['type'] == 'step'] == [
+        ('search', 'Open Library'), ('search', 'Goodreads'), ('search', 'Google Books'),
+        ('download', 'Open Library'), ('download', 'Open Library'), ('download', 'Google Books')]
+    assert [e['url'] for e in events if e['type'] == 'cover'] == ['uploads/1.jpg', 'uploads/3.jpg']
+    assert events[-1] == {'type': 'done', 'count': 2}
 
 
 # --- Add Book: "Add it anyway" for a second copy (8.6) ------------------------
@@ -386,3 +415,18 @@ def test_add_book_refused_keeps_only_safe_cover_paths(client, db, people):
     login(client, 'alice')
     page = _post_book(client, 'Dune', existing_cover_url='../../etc/passwd').get_data(as_text=True)
     assert 'etc/passwd' not in page
+
+
+def test_find_a_better_cover_on_add_book_and_for_owners(client, db, people, monkeypatch):
+    """The button is on Add Book (books only) as well as Edit Book, and the
+    route isn't admin-only any more: an owner who isn't an admin can use it."""
+    import blueprints.books as books_bp
+    monkeypatch.setattr(books_bp, 'cover_search_steps', lambda **kw: [])
+    login(client, 'bob')                                        # not an admin
+    add = client.get('/books/add').get_data(as_text=True)
+    assert 'id="fetch-cover-btn"' in add and 'cover_finder.js' in add
+    movie = client.get('/videos/add').get_data(as_text=True)
+    assert 'id="fetch-cover-btn"' not in movie and 'cover_finder.js' not in movie
+    r = client.post('/books/fetch_cover', json={'title': 'Dune'})
+    assert r.status_code == 200
+    assert json.loads(r.get_data(as_text=True).splitlines()[-1])['type'] == 'done'

@@ -63,9 +63,9 @@
                                                     <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
                                                         {{ activity.username }}
                                                     </a>
-                                                    added a new {{ 'movie' if activity.media_type == 'video' else 'book' }}
+                                                    added a new {{ labels_for(activity).noun }}
                                                 {% else %}
-                                                    New {{ 'Movie' if activity.media_type == 'video' else 'Book' }} Added
+                                                    New {{ labels_for(activity).Noun }} Added
                                                 {% endif %}
                                             </p>
                                             <p class="text-content-secondary text-sm">{{ activity.date }}</p>
@@ -77,7 +77,7 @@
                                         <h3 class="text-xl font-semibold text-content-primary mb-1">
                                             {{ activity.title }}
                                         </h3>
-                                        <p class="text-content-secondary mb-2">{{ 'directed by' if activity.media_type == 'video' else 'by' }} {{ activity.author }}</p>
+                                        <p class="text-content-secondary mb-2">{{ labels_for(activity).by }} {{ activity.author }}</p>
                                     </a>
 
                                 {% elif activity.type == 'wishlist_added' %}
@@ -102,7 +102,7 @@
                                         <h3 class="text-xl font-semibold text-content-primary mb-1">
                                             {{ activity.title }}
                                         </h3>
-                                        <p class="text-content-secondary mb-2">{{ 'directed by' if activity.media_type == 'video' else 'by' }} {{ activity.author }}</p>
+                                        <p class="text-content-secondary mb-2">{{ labels_for(activity).by }} {{ activity.author }}</p>
                                     </a>
 
                                 {% elif activity.type == 'collection_added' %}
@@ -125,6 +125,10 @@
                                                     watched
                                                 {% elif activity.status == 'want to watch' %}
                                                     wants to watch
+                                                {% elif activity.status == 'listened' %}
+                                                    listened to
+                                                {% elif activity.status == 'want to listen' %}
+                                                    wants to listen to
                                                 {% else %}
                                                     added to library
                                                 {% endif %}
@@ -138,7 +142,7 @@
                                         <h3 class="text-xl font-semibold text-content-primary mb-1">
                                             {{ activity.title }}
                                         </h3>
-                                        <p class="text-content-secondary">{{ 'directed by' if activity.media_type == 'video' else 'by' }} {{ activity.author }}</p>
+                                        <p class="text-content-secondary">{{ labels_for(activity).by }} {{ activity.author }}</p>
                                     </a>
 
                                 {% elif activity.type == 'review_added' %}
@@ -152,7 +156,7 @@
                                                 <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
                                                     {{ activity.username }}
                                                 </a>
-                                                reviewed a {{ 'movie' if activity.media_type == 'video' else 'book' }}
+                                                reviewed {{ labels_for(activity).a }} {{ labels_for(activity).noun }}
                                             </p>
                                             <p class="text-content-secondary text-sm">{{ activity.date }}</p>
                                         </div>
@@ -163,7 +167,7 @@
                                         <h3 class="text-xl font-semibold text-content-primary mb-1">
                                             {{ activity.title }}
                                         </h3>
-                                        <p class="text-content-secondary">{{ 'directed by' if activity.media_type == 'video' else 'by' }} {{ activity.author }}</p>
+                                        <p class="text-content-secondary">{{ labels_for(activity).by }} {{ activity.author }}</p>
                                     </a>
 
                                     {% if activity.rating %}

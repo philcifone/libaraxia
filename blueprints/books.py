@@ -1,4 +1,5 @@
-from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify, abort, Response
+import json
+from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify, abort, Response, stream_with_context
 from flask_login import login_required, current_user
 from typing import Optional, Dict, Any
 from utils.database import get_db
@@ -10,7 +11,7 @@ from utils.book_utils import (
     process_image,
     download_and_save_cover,
     search_google_books,
-    search_covers_multiple_sources,
+    cover_search_steps,
     thumbnail_jpeg,
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
@@ -333,66 +334,67 @@ def select_search_result():
 
 @books_blueprint.route("/fetch_cover", methods=["POST"])
 @login_required
-@admin_required
+@limiter.limit("30 per hour")       # each search downloads a dozen or so images
 def fetch_cover():
-    """Fetch high-resolution cover images for a book by ISBN or title/author.
+    """Edit Book's "Find a better cover": search every cover source for the
+    ISBN / title / author, download what they offer, and let the user pick.
 
-    Searches multiple sources and returns all found covers for user selection.
+    That's a dozen or more HTTP calls, so the answer is streamed as it goes
+    (NDJSON, one JSON object per line) and the page shows progress and each
+    cover as it arrives (edit_book.js):
+      {"type": "step", "phase": "search" | "download", "label", "done", "total"}
+      {"type": "cover", "url", "source"}         a downloaded cover, uploads/...
+      {"type": "done", "count", "error"?}        always last
     """
-    try:
-        data = request.get_json()
-        isbn = data.get("isbn", "").strip()
-        title = data.get("title", "").strip()
-        author = data.get("author", "").strip()
+    data = request.get_json(silent=True) or {}
+    isbn = (data.get("isbn") or "").strip()
+    title = (data.get("title") or "").strip()
+    author = (data.get("author") or "").strip()
 
-        current_app.logger.debug(f"Fetching covers - ISBN: {isbn}, Title: {title}, Author: {author}")
+    def line(**event):
+        return json.dumps(event) + "\n"
 
-        # Search multiple sources for covers
-        cover_candidates = search_covers_multiple_sources(isbn=isbn, title=title, author=author)
+    def events():
+        count = 0
+        try:
+            # 1. Ask each source for cover URLs
+            steps = cover_search_steps(isbn=isbn, title=title, author=author)
+            candidates, seen = [], set()
+            for i, (label, run) in enumerate(steps):
+                yield line(type="step", phase="search", label=label, done=i, total=len(steps))
+                try:
+                    found = run()
+                except Exception as e:      # one source failing doesn't end the search
+                    current_app.logger.warning(f"Cover source {label} failed: {e.__class__.__name__}")
+                    continue
+                for url, source in found:
+                    if url and url not in seen:
+                        seen.add(url)
+                        candidates.append((url, source))
 
-        if not cover_candidates:
-            return jsonify({
-                "success": False,
-                "error": "No covers found from any source"
-            })
+            # 2. Download each (through the SSRF guard) and send it as it lands
+            for i, (url, source) in enumerate(candidates):
+                yield line(type="step", phase="download", label=source, done=i, total=len(candidates))
+                local = download_and_save_cover(url)
+                if local:
+                    count += 1
+                    yield line(type="cover", url=local, source=source)
 
-        current_app.logger.info(f"Found {len(cover_candidates)} cover candidates from various sources")
+            error = None
+            if not candidates:
+                error = "No covers found from any source."
+            elif not count:
+                error = f"None of the {len(candidates)} covers found could be downloaded."
+            yield line(type="done", count=count, **({"error": error} if error else {}))
+        except Exception as e:
+            current_app.logger.error(f"Error fetching cover: {e}")
+            yield line(type="done", count=count, error="Something went wrong. Please try again.")
 
-        # Try to download all covers and return them for user selection
-        downloaded_covers = []
-        for cover_url, source, priority in cover_candidates:
-            current_app.logger.info(f"Attempting to download from {source} (priority {priority}): {cover_url}")
+    return Response(stream_with_context(events()), mimetype="application/x-ndjson",
+                    headers={"Cache-Control": "no-cache",
+                             "X-Accel-Buffering": "no"})   # nginx: pass lines on as they come
 
-            local_cover_url = download_and_save_cover(cover_url)
 
-            if local_cover_url:
-                current_app.logger.info(f"Successfully downloaded cover from {source}")
-                downloaded_covers.append({
-                    "url": local_cover_url,
-                    "source": source,
-                    "priority": priority
-                })
-            else:
-                current_app.logger.warning(f"Failed to download from {source}, skipping...")
-
-        if not downloaded_covers:
-            return jsonify({
-                "success": False,
-                "error": f"Failed to download covers from {len(cover_candidates)} sources"
-            })
-
-        # Return all downloaded covers for user selection
-        return jsonify({
-            "success": True,
-            "covers": downloaded_covers,
-            "total_found": len(cover_candidates),
-            "total_downloaded": len(downloaded_covers)
-        })
-
-    except Exception as e:
-        current_app.logger.error(f"Error fetching cover: {str(e)}")
-        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
-        
 @books_blueprint.route("/edit/<int:id>", methods=["GET", "POST"])
 @login_required
 def edit_book(id):
@@ -403,8 +405,8 @@ def edit_book(id):
     if not book:
         flash("Book not found.", "error")
         return redirect(url_for("base.index"))
-    if media.media_type_of(book) == media.VIDEO:
-        return redirect(url_for("videos.edit_video", id=id))
+    if media.media_type_of(book) != media.BOOK:
+        return redirect(url_for(media.item_endpoint(media.media_type_of(book), "edit"), id=id))
 
     # Allow editing if user is admin or if they added the book
     if not (current_user.is_admin or book['added_by'] == current_user.id):
@@ -515,10 +517,10 @@ def show_book(id):
     # can't be probed for existence
     if not book or not can_view_book(conn, current_user, id):
         abort(404)
-    # Videos have their own page (same template, video wording). Links to
-    # /books/book/<id> (feed, collections, old bookmarks) land there.
-    if media.media_type_of(book) == media.VIDEO:
-        return redirect(url_for("videos.show_video", id=id))
+    # Movies and vinyls have their own page (same template, their wording).
+    # Links to /books/book/<id> (feed, collections, old bookmarks) land there.
+    if media.media_type_of(book) != media.BOOK:
+        return redirect(url_for(media.item_endpoint(media.media_type_of(book)), id=id))
     return render_item_page(conn, book)
 
 
@@ -733,9 +735,10 @@ def delete_book(id):
     # Only after the row is gone, so a failed delete never loses the cover.
     if book['cover_image_url']:
         delete_image_file(book['cover_image_url'])
-    if book['media_type'] == media.VIDEO:
-        flash("Movie deleted.", "success")
-        return redirect(url_for('videos.index'))
+    kind = media.media_type_of(book)
+    if kind != media.BOOK:
+        flash(f"{media.media_labels(kind)['Noun']} deleted.", "success")
+        return redirect(url_for(f"{media.BLUEPRINTS[kind]}.index"))
     flash("Book deleted successfully.", "success")
     return redirect(url_for('base.index'))
 

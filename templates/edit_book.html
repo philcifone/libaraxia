@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {# Edit a book (blueprints/books.edit_book). The fields are the shared
    _item_fields.html, so Add Book, Add Movie and both edit pages look the
-   same; "Find a better cover" is Edit Book's extra (edit_book.js). #}
+   same; "Find a better cover" (cover_finder.js) is on Add Book too. #}
 
 {% block title %}Edit Book - libaraxia{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -36,5 +36,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='cover_finder.js') }}"></script>
 <script src="{{ url_for('static', filename='edit_book.js') }}"></script>
 {% endblock %}

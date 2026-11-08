@@ -21,11 +21,11 @@
             <span class="mr-2">←</span>
             <span>Back to Wishlist</span>
         </a>
-        {% elif m.type == 'video' %}
-        <a href="{{ url_for('videos.index') }}"
+        {% elif m.type != 'book' %}
+        <a href="{{ url_for(m.bp ~ '.index') }}"
            class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
             <span class="mr-2">←</span>
-            <span>Back to Movies</span>
+            <span>Back to {{ m.section }}</span>
         </a>
         {% else %}
         <a href="{{ url_for('base.index') }}"
@@ -67,7 +67,16 @@
                     <!-- Details Grid -->
                     <div class="p-4 bg-primary rounded-lg">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {% if m.type == 'video' %}
+                            {% if m.type == 'record' %}
+                            {% set details = [
+                                ('Format', book['format']|format_label),
+                                (m.publisher, book['publisher']),
+                                (m.year, book['publish_year']),
+                                (m.length, runtime),
+                                ('Cat. No.', book['catalog_number']),
+                                ('Genre', book['genre'])
+                            ] %}
+                            {% elif m.type == 'video' %}
                             {% set details = [
                                 ('Format', book['format']|format_label),
                                 (m.publisher, book['publisher']),
@@ -101,7 +110,7 @@
                         <div class="relative">
                             {% if book['description'] and book['description'].strip() %}
                             <div data-read-more>
-                                <div class="read-more-text measure text-content-secondary prose prose-invert" id="description">
+                                <div class="read-more-text measure text-content-secondary prose prose-invert{{ ' whitespace-pre-line' if m.type == 'record' }}" id="description">
                                     {{ book['description'] }}
                                 </div>
                                 <button type="button" class="read-more-toggle" data-click="toggleReadMore"
@@ -145,7 +154,7 @@
                         </div>
 
                         <!-- Buy Links (book shops: books only) -->
-                        {% if m.type != 'video' %}
+                        {% if m.type == 'book' %}
                         <div class="mb-4">
                             <p class="text-sm text-content-secondary mb-2">Purchase this book:</p>
                             <div class="grid grid-cols-2 gap-3">
@@ -191,7 +200,7 @@
                         </div>
 
                         <!-- Buy Links (book shops: books only) -->
-                        {% if m.type != 'video' %}
+                        {% if m.type == 'book' %}
                         <div class="mb-4">
                             <p class="text-sm text-content-secondary mb-2">Buy this book:</p>
                             <div class="grid grid-cols-2 gap-3">
@@ -245,7 +254,7 @@
                     <!-- Owner / admin actions -->
                     {% if can_manage %}
                     <div class="grid grid-cols-2 gap-4">
-                        <a href="{{ url_for('videos.edit_video', id=book['id']) if m.type == 'video' else url_for('books.edit_book', id=book['id']) }}"
+                        <a href="{{ item_url(book, 'edit') }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-on-accent text-sm rounded-lg hover:bg-accent-hover btn">
                             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
@@ -257,7 +266,7 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit"
                                     class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary text-sm rounded-lg hover:bg-primary-hover btn btn-outline">
-                                Put Back {{ 'on the Shelf' if m.type == 'video' else 'in Library' }}
+                                Put Back {{ 'in Library' if m.type == 'book' else 'on the Shelf' }}
                             </button>
                         </form>
                         {% elif not in_wishlist %}
@@ -282,7 +291,7 @@
                     </form>
                     {% endif %}
 
-                    <p class="mt-4 text-xs text-content-secondary">Transfer and permanent delete are under <a href="{{ url_for('videos.edit_video', id=book['id']) if m.type == 'video' else url_for('books.edit_book', id=book['id']) }}#book-tools">Edit {{ m.Noun }} → {{ m.Noun }} tools</a>.</p>
+                    <p class="mt-4 text-xs text-content-secondary">Transfer and permanent delete are under <a href="{{ item_url(book, 'edit') }}#book-tools">Edit {{ m.Noun }} → {{ m.Noun }} tools</a>.</p>
                     {% endif %}
                 </div>
             </div>
@@ -435,7 +444,8 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="session_id" id="form_session_id" value=""/>
 
-                            <h4 class="font-medium text-content-primary mb-4" id="session-form-title">Add New {{ m.session }}</h4>
+                            <h4 class="font-medium text-content-primary mb-4" id="session-form-title"
+                                data-add-title="Add New {{ m.session }}" data-edit-title="Edit {{ m.session }}">Add New {{ m.session }}</h4>
 
                             <div class="space-y-3">
                                 <div>
@@ -520,7 +530,7 @@
                     </div>
                     {% else %}
                     <div class="bg-primary rounded-lg p-4 text-center">
-                        <p class="text-content-secondary text-sm italic">{% if m.type == 'video' %}No viewings yet. Click "Add Session" to record when you watched it.{% else %}No reading sessions yet. Click "Add Session" to record when you read this book.{% endif %}</p>
+                        <p class="text-content-secondary text-sm italic">{{ m.no_sessions }}</p>
                     </div>
                     {% endif %}
                 </div>

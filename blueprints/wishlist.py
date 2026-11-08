@@ -62,38 +62,43 @@ def _wishlist_rows(conn, user_id):
 @wishlist_blueprint.route("/view", methods=["GET", "POST"])
 @login_required
 def view_wishlist():
-    """Your wishlist: books and movies, in separate sections, with tabs on
-    top (?show=books|movies, default both). Adding happens on the shared add
-    page (add_to_wishlist), opened from the + button; a POST here is the old
-    form's address and is handled the same way."""
+    """Your wishlist: books, movies and music, in separate sections, with
+    tabs on top (?show=books|movies|music, default all). Adding happens on
+    the shared add page (add_to_wishlist), opened from the + button; a POST
+    here is the old form's address and is handled the same way."""
     if request.method == "POST":
         return add_to_wishlist()
     show = request.args.get("show")
-    show = show if show in WISHLIST_TABS else "both"
+    # Old tab names still work: "both" (before Vinyls), "vinyls" (before Music)
+    show = {"both": "all", "vinyls": "music"}.get(show, show)
+    show = show if show in WISHLIST_TABS.values() or show == "all" else "all"
     rows = _wishlist_rows(get_db(), current_user.id)
-    return render_template(
-        "wishlist.html",
-        show=show,
-        wishlist_books=[r for r in rows if media.media_type_of(r) == media.BOOK],
-        wishlist_movies=[r for r in rows if media.media_type_of(r) == media.VIDEO],
-    )
+    # One section per type, in tab order: (key, labels, rows)
+    sections = [(key, media.media_labels(kind), [r for r in rows if media.media_type_of(r) == kind])
+                for kind, key in WISHLIST_TABS.items()]
+    total = sum(len(items) for _, _, items in sections)
+    tabs = [(key, "Books" if m["type"] == media.BOOK else m["section"], len(items))
+            for key, m, items in sections] + [("all", "All", total)]
+    return render_template("wishlist.html", show=show, sections=sections, tabs=tabs, total=total)
 
 
-# The wishlist page's tabs, in order
-WISHLIST_TABS = ("books", "movies", "both")
+# The wishlist page's tabs, in order (then "All"): ?show= value by media type
+WISHLIST_TABS = {media.BOOK: "books", media.VIDEO: "movies", media.RECORD: "music"}
 
 
 @wishlist_blueprint.route("/add", methods=["GET", "POST"])
 @login_required
 def add_to_wishlist():
-    """Add a book or movie to your wishlist: the shared add page
+    """Add a book, movie or vinyl to your wishlist: the shared add page
     (templates/add_item.html) with a note field, pointed here.
 
-    GET ?type=book|video (&format=, &barcode= for movies). POST is the form;
-    for books, also the ISBN box's no-JS lookup (isbn_lookup)."""
+    GET ?type=book|video|record (&format=; &barcode= for movies). POST is
+    the form; for books, also the ISBN box's no-JS lookup (isbn_lookup)."""
+    from blueprints.media_section import section_for
     kind = request.values.get("type") or request.form.get("media_type") or media.BOOK
-    if kind == media.VIDEO:
-        return _add_movie()
+    section = section_for(kind)
+    if section:
+        return _add_media(section)
     return _add_book()
 
 
@@ -134,45 +139,40 @@ def _add_book():
     return render_add_book(destination="wishlist")
 
 
-def _add_movie():
-    from blueprints.videos import _add_page, _form_values
+def _add_media(section):
+    """The wishlist's Add Movie / Add Vinyl (blueprints/media_section.py)."""
     conn = get_db()
+    noun = section.m["noun"]
     if request.method == "GET":
-        fmt = request.args.get("format")
-        values = {"format": fmt if fmt in media.VIDEO_FORMATS else media.DEFAULT_VIDEO_FORMAT,
-                  "barcode_input": media.normalize_barcode(request.args.get("barcode")) or ""}
-        return _add_page(values, destination="wishlist")
+        barcode = media.normalize_barcode(request.args.get("barcode")) if section.has_barcode else None
+        values = {"format": section.pick_format(request.args.get("format")),
+                  "barcode_input": barcode or ""}
+        return section.add_page(values, destination="wishlist")
 
-    values, errors = _form_values(request.form)
+    values, errors = section.form_values(request.form)
     values["notes"] = request.form.get("notes", "")
     if errors:
         for error in errors:
             flash(error, "error")
-        return _add_page(values, destination="wishlist", status=400)
-    # Your own copy with this barcode: on your shelf already, or wished
+        return section.add_page(values, destination="wishlist", status=400)
+    # Your own copy with this barcode: on your shelf already, or wished.
+    # (Records have no barcode; their duplicates are a warning on the form.)
     if values["barcode"]:
         mine = conn.execute("""
             SELECT b.id, b.removed_at,
                    EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?) AS wished
-            FROM books b WHERE b.added_by = ? AND b.media_type = 'video' AND b.barcode = ?
-        """, (current_user.id, current_user.id, values["barcode"])).fetchall()
+            FROM books b WHERE b.added_by = ? AND b.media_type = ? AND b.barcode = ?
+        """, (current_user.id, current_user.id, section.media_type, values["barcode"])).fetchall()
         for row in mine:
             if row["wished"]:
-                flash("This movie is already on your wishlist!", "error")
+                flash(f"This {noun} is already on your wishlist!", "error")
                 return redirect(url_for("wishlist.view_wishlist"))
             if row["removed_at"] is None:
-                flash("That movie is already in your collection.", "error")
-                return redirect(url_for("videos.show_video", id=row["id"]))
+                flash(f"That {noun} is already in your collection.", "error")
+                return redirect(url_for(section.endpoint("show"), id=row["id"]))
     cover = process_image(request.files.get("image"), request.form.get("existing_cover_url"))
-    cursor = conn.execute("""
-        INSERT INTO books (title, subtitle, author, publisher, publish_year, runtime_minutes,
-                           format, barcode, catalog_number, genre, description, cover_image_url,
-                           page_count, added_by, media_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'video')
-    """, (values['title'], values['subtitle'], values['author'], values['publisher'],
-          values['publish_year'], values['runtime_minutes'], values['format'], values['barcode'],
-          values['catalog_number'], values['genre'], values['description'], cover, current_user.id))
-    return _add_wishlist_row(conn, cursor.lastrowid, "Movie")
+    book_id = section.insert(conn, values, cover, current_user.id)
+    return _add_wishlist_row(conn, book_id, section.m["Noun"])
 
 
 def _add_wishlist_row(conn, book_id, noun):
@@ -213,7 +213,8 @@ def check_duplicates():
 @login_required
 def move_to_library(book_id):
     """You got it: a wishlist item moves onto your shelf (the Library for a
-    book, Movies for a movie), marked want to read / want to watch."""
+    book, Movies for a movie, Vinyls for a record), marked want to read /
+    watch / listen."""
     conn = get_db()
     entry = conn.execute("""
         SELECT b.media_type FROM wishlist w JOIN books b ON b.id = w.book_id
@@ -223,7 +224,8 @@ def move_to_library(book_id):
     if not entry:
         flash("That isn't on your wishlist.", "error")
         return redirect(url_for("wishlist.view_wishlist"))
-    is_movie = entry["media_type"] == media.VIDEO
+    kind = media.media_type_of(entry)
+    m = media.media_labels(kind)
 
     try:
         existing = conn.execute("""
@@ -234,7 +236,7 @@ def move_to_library(book_id):
             conn.execute("""
                 INSERT INTO collections (user_id, book_id, status, created_at, updated_at)
                 VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            """, (current_user.id, book_id, 'want to watch' if is_movie else 'want to read'))
+            """, (current_user.id, book_id, m["want_status"]))
         conn.execute("DELETE FROM wishlist WHERE user_id = ? AND book_id = ?",
                      (current_user.id, book_id))
         conn.commit()
@@ -244,11 +246,11 @@ def move_to_library(book_id):
         flash("Couldn't move it off your wishlist.", "error")
         return redirect(url_for("wishlist.view_wishlist"))
 
-    if is_movie:
-        flash("Movie added to your collection!", "success")
-        return redirect(url_for("videos.show_video", id=book_id))
-    flash("Book added to your library!", "success")
-    return redirect(url_for("books.show_book", id=book_id))
+    if kind == media.BOOK:
+        flash("Book added to your library!", "success")
+    else:
+        flash(f"{m['Noun']} added to your collection!", "success")
+    return redirect(url_for(media.item_endpoint(kind), id=book_id))
 
 
 @wishlist_blueprint.route("/remove/<int:book_id>", methods=["POST"])
@@ -267,8 +269,8 @@ def remove_from_wishlist(book_id):
         "DELETE FROM wishlist WHERE user_id = ? AND book_id = ?",
         (current_user.id, book_id)).rowcount
     book = conn.execute("SELECT added_by, media_type FROM books WHERE id = ?", (book_id,)).fetchone()
-    is_movie = bool(book) and book['media_type'] == media.VIDEO
-    noun = "Movie" if is_movie else "Book"
+    m = media.media_labels(media.media_type_of(book) if book else media.BOOK)
+    noun = m["Noun"]
 
     shelved_as_read = False
     if removed and book and book['added_by'] == current_user.id:
@@ -280,15 +282,14 @@ def remove_from_wishlist(book_id):
             # Goodreads to-read row) has data on it. Without its wishlist row
             # it would count as owned and show up in your library, so mark
             # it removed instead; reviews keep working on removed books.
-            shelved_as_read = _keep_as_not_owned(conn, book_id, is_movie)
+            shelved_as_read = _keep_as_not_owned(conn, book_id, m["type"])
     conn.commit()
 
     if book_was_deleted:
         flash(f"{noun} removed from wishlist and deleted.", "success")
     elif shelved_as_read:
-        verb = "watched" if is_movie else "read"
-        flash(f"{noun} removed from wishlist. You've {verb} it, so it's kept on your "
-              f"\"{NOT_OWNED[is_movie]}\" collection with your review.", "success")
+        flash(f"{noun} removed from wishlist. You've {m['verb_past']} it, so it's kept on your "
+              f"\"{m['not_owned']}\" collection with your review.", "success")
     elif removed:
         flash(f"{noun} removed from wishlist.", "success")
     else:
@@ -308,22 +309,17 @@ def remove_from_wishlist(book_id):
         return redirect(url_for("wishlist.view_wishlist"))
 
 
-# Custom collection for books you've read but don't own, kept when such a book
-# leaves your wishlist (see remove_from_wishlist).
-READ_NOT_OWNED = "Read but not owned"
-WATCHED_NOT_OWNED = "Watched but not owned"
-NOT_OWNED = {False: READ_NOT_OWNED, True: WATCHED_NOT_OWNED}     # by is_movie
-
-
-def _keep_as_not_owned(conn, book_id, is_movie=False):
-    """Mark the current user's ex-wishlist book removed (not in the library).
+def _keep_as_not_owned(conn, book_id, kind=media.BOOK):
+    """Mark the current user's ex-wishlist item removed (not on the shelf).
 
     If they've read it (a rating/review or a 'read' status), also put it on
-    the READ_NOT_OWNED collection, created on first use; for a movie,
-    watched and WATCHED_NOT_OWNED. Returns True if it
-    went on that collection. Restoring the book on its page (you bought it
-    after all) brings it into the library as usual.
+    the "Read but not owned" custom collection, created on first use; for a
+    movie "watched" and "Watched but not owned", likewise for a record
+    (media_labels' done_status and not_owned). Returns True if it went on
+    that collection. Restoring it on its page (you bought it after all)
+    brings it onto the shelf as usual.
     """
+    m = media.media_labels(kind)
     conn.execute("""
         UPDATE books SET removed_at = CURRENT_TIMESTAMP, removed_note = 'Removed from wishlist; not owned'
         WHERE id = ? AND removed_at IS NULL
@@ -332,10 +328,10 @@ def _keep_as_not_owned(conn, book_id, is_movie=False):
         SELECT 1 FROM read_data WHERE user_id = ? AND book_id = ?
         UNION SELECT 1 FROM collections WHERE user_id = ? AND book_id = ? AND status = ?
     """, (current_user.id, book_id, current_user.id, book_id,
-          media.DONE_STATUS[media.VIDEO if is_movie else media.BOOK])).fetchone()
+          m["done_status"])).fetchone()
     if not has_read:
         return False
-    name = NOT_OWNED[is_movie]
+    name = m["not_owned"]
     conn.execute("INSERT OR IGNORE INTO user_collections (user_id, name) VALUES (?, ?)",
                  (current_user.id, name))
     collection_id = conn.execute("SELECT collection_id FROM user_collections WHERE user_id = ? AND name = ?",
@@ -373,7 +369,7 @@ def quick_add_to_wishlist(book_id):
         flash("Book not found.", "error")
         return redirect(request.referrer or url_for("base.index"))
     row = conn.execute("SELECT media_type FROM books WHERE id = ?", (book_id,)).fetchone()
-    noun = "Movie" if row and row["media_type"] == media.VIDEO else "Book"
+    noun = media.media_labels(media.media_type_of(row) if row else media.BOOK)["Noun"]
     try:
         conn.execute("""
             INSERT INTO wishlist (user_id, book_id)

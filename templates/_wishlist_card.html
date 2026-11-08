@@ -1,28 +1,25 @@
 {# One wishlist item on your wishlist page (wishlist.html): cover, title,
    creator, your note, and the button that moves it onto your shelf (the
-   Library for a book, Movies for a movie). Needs `book` (a wishlist row:
+   Library for a book, Movies for a movie, Vinyls for a record). Needs `book` (a wishlist row:
    books columns plus notes). The grid filter (wishlist.js) reads
    data-search. #}
-{% set is_movie = book.media_type == 'video' %}
+{% set bm = labels_for(book) %}
 <div class="wishlist-item group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link"
      data-search="{{ (book.title ~ ' ' ~ (book.author or ''))|lower }}">
-    <a href="{{ url_for('videos.show_video', id=book.id) if is_movie else url_for('books.show_book', id=book.id) }}" class="block flex-1">
+    <a href="{{ item_url(book) }}" class="block flex-1">
         <div class="relative">
-            {% if is_movie and book.format %}
-            <span class="absolute top-2 right-2 z-10 p-1 flex items-center text-xs font-mono font-bold bg-primary-bg text-content-primary border border-card rounded-pill"
-                  title="{{ book.format|format_label }}">{% with fmt=book.format %}{% include '_format_icon.html' %}{% endwith %}</span>
-            {% endif %}
+            {% include '_format_badge.html' %}
             {% if book.cover_image_url %}
             <img src="{{ url_for('static', filename=book.cover_image_url) }}" alt="{{ book.title }}"
-                 class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200">
+                 class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200">
             {% else %}
-            {% with title=book.title, author=book.author, size='md', box='w-full h-72' %}{% include '_no_cover.html' %}{% endwith %}
+            {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
             {% endif %}
         </div>
         <div class="p-4 pb-2">
             <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-content-primary">{{ book.title }}</h3>
             {% if book.author %}
-            <p class="text-content-secondary text-sm italic mb-2">{{ 'directed by' if is_movie else 'by' }} {{ book.author }}</p>
+            <p class="text-content-secondary text-sm italic mb-2">{{ bm.by }} {{ book.author }}</p>
             {% endif %}
             {% if book.notes %}
             <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">"{{ book.notes }}"</p>
@@ -34,7 +31,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit"
                     class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-md btn">
-                {{ 'Add to Movies' if is_movie else 'Add to Library' }}
+                Add to {{ bm.section }}
             </button>
         </form>
     </div>

@@ -26,6 +26,7 @@ from blueprints.wishlist import wishlist_blueprint
 from blueprints.friends import friends_blueprint
 from blueprints.covers import covers_blueprint
 from blueprints.videos import videos_blueprint
+from blueprints.records import records_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES
 from utils.rate_limiting import limiter
@@ -189,10 +190,18 @@ def create_app():
     app.register_blueprint(friends_blueprint, url_prefix='/friends')
     app.register_blueprint(covers_blueprint, url_prefix='/covers')
     app.register_blueprint(videos_blueprint, url_prefix='/videos')
+    app.register_blueprint(records_blueprint, url_prefix='/records')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
-    from utils.media import format_label
-    app.add_template_filter(format_label, 'format_label')
+    from utils import media
+    app.add_template_filter(media.format_label, 'format_label')
+
+    # Pages that list several media types (feed, wishlist, collections) word
+    # and link each row by its own type: labels_for(row).by, item_url(row).
+    def item_url(row, action='show'):
+        return url_for(media.item_endpoint(media.media_type_of(row), action), id=row['id'])
+    app.add_template_global(item_url, 'item_url')
+    app.add_template_global(lambda row: media.media_labels(media.media_type_of(row)), 'labels_for')
 
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)

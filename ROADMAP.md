@@ -20,7 +20,8 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 5 ✅ | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 ✅ | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
 | 7 ✅ | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
-| 8 | [Physical media: movies and vinyl](#phase-8-physical-media-movies-and-vinyl) | Built in the new style | Movies (VHS, DVD) and vinyl are their own sections: scanned or entered, watched/listened, reviewed and shared, never among the books; one add form and one grid layout for every type |
+| 8 ✅ | [Physical media: movies and vinyl](#phase-8-physical-media-movies-and-vinyl) | Built in the new style | Movies (VHS, DVD) and vinyl are their own sections: scanned or entered, watched/listened, reviewed and shared, never among the books; one add form and one grid layout for every type |
+| 8B | [Music lookups, formats and ownership](#phase-8b-music-lookups-formats-and-ownership) | Follow-ups from using Phase 8; after it has shipped and settled | MusicBrainz finds CDs and tapes; books have a format (Book / Audiobook); you can review something you don't own |
 | 9 | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
 | 10 | [Fork (parked)](#phase-10-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
@@ -638,12 +639,45 @@ The book and movie add forms have drifted apart (book: Search / ISBN / Scan tabs
 
 ### 8.7 Vinyls
 Sidebar link **"Vinyls"**. Laid out like Books and Movies: the same grid, view bar, magnifying-glass search, floating add button, the 8.5 add form, the detail page worded by `media_labels()`, household and friends' tabs, stats on the profile, feed activity.
-- [ ] **Migration:** `media_type` gains `'record'` (Phil understands the rebuild, 2026-11-07). The CHECK constraint is part of the `books` table, so this is a **table rebuild of `books`** (drop and recreate `library_books`/`library_videos`, keep ids and FKs, check `foreign_key_check`), a bigger migration than 023. A `library_records` view.
-- [ ] **Fields:** artist (`author`), label (`publisher`), year, catalogue number (exists), barcode, format (LP, EP, 7" single, 12" single, 10"), *(proposed)* speed as part of the format, tracklist in the description for now.
-- [ ] **Statuses:** Listened / Want to listen.
-- [ ] **Lookups: MusicBrainz** (decided 2026-11-07): open data, no key, a **title search** (artist + title) like the book and movie Search tabs; covers from the **Cover Art Archive**. Through the SSRF guard like the others.
-- [ ] **No barcode scanning for vinyl** (decided 2026-11-07): title search is enough, so Add Vinyl has no Scan tab. Records and movies both use plain UPC/EAN codes, so once Vinyls exists a non-ISBN code scanned on Add Book asks "Movie or vinyl?" instead of going straight to Movies (safest; a vinyl answer opens Add Vinyl with the code kept in the barcode field).
-- [ ] Books-only audit repeated for `'record'` (the 8.2 tests, run for each type).
+- [x] **Migration** `024_add_records.sql` (Phil, 2026-11-07: lookup tables instead of wider CHECKs). `media_types` and `statuses` lookup tables replace the CHECKs on `books.media_type` and `collections.status` (foreign keys instead), so a new type or status is an INSERT from now on, never another rebuild. One last **table rebuild of `books` and `collections`**: views dropped first, columns in the same order, ids and AUTOINCREMENT counters kept; `library_records` view added. Folded into `create_database.sql`. Tests: 023 → 024 keeps rows, ids and counters; unknown type/status refused; `utils/media.py` matches the lookup tables.
+- [x] **Fields** (`utils/media.py`): artist (`author`), label (`publisher`), year, cat. no. (`catalog_number`), **Length** (`runtime_minutes`, summed from MusicBrainz track lengths), tracklist and notes in the description. Formats stored as `LP`, `EP`, `7in`, `10in`, `12in`, shown as LP, EP, 7" single, 10", 12" single (`FORMAT_LABELS`). No speed column: it follows from the format.
+- [x] **Statuses:** Listened / Want to listen.
+- [x] **Lookups: MusicBrainz** (decided 2026-11-07): open data, no key, a **title search** (artist + title) like the book and movie Search tabs; covers from the **Cover Art Archive**. Through the SSRF guard like the others.
+- [x] **No barcodes for vinyl at all** (Phil, 2026-11-07, replacing the earlier "Movie or vinyl?" question): Add Vinyl is title search plus manual entry, with no Barcode or Scan tab and no barcode field. `classify_code()` is unchanged, so a non-ISBN code on Add Book still goes to Movies. The duplicate check is by title (and cat. no.). `books.barcode` stays empty for records, so scanning can be added later without a migration.
+- [x] **Shared section module** (Phil, 2026-11-07): the Movies blueprint's grid, filters, add/edit, duplicate check and friends' list become one module that builds a blueprint per type (`videos`, `records`; endpoint names unchanged), instead of a copy for records.
+- [x] Books-only audit repeated for `'record'` (the 8.2 tests, run for each type).
+
+**Status 2026-11-07:** done. `blueprints/media_section.py` (`Section` + `make_blueprint`, `section_for(type)`) now serves Movies and Vinyls; `videos.py` and `records.py` are a Section each plus their own lookups. Templates renamed to `media_grid.html`, `_media_tabs.html`, `media_friends.html`, `media_form.html`; `_format_badge.html` replaces three copies of the badge. `media_labels()` gained `bp`, `item`, `formats`, `has_barcode`, `want_status`, `not_owned`, `description`, `search_placeholder`, `no_sessions`, and `media.item_endpoint()` / `media.VIEWS`; the template globals `item_url(row)` and `labels_for(row)` word and link mixed lists (feed, wishlist, grid) by each row's type, so templates no longer test for `'video'`. MusicBrainz (`utils/music_lookup.py`): `/records/search` (one row per pressing: label, cat. no., year, country), `/records/lookup?mbid=` (UUID only); every word must match the artist or title, and `format` is listed per vinyl size because MusicBrainz matches it as a whole value (`format:vinyl` misses `12" Vinyl`). User-Agent with a contact (`MUSICBRAINZ_CONTACT`, default the GitHub URL), one request per 1.1 s per process, 6 h cache, a 503 says "busy, try again". Covers via `coverartarchive.org` (added to `THUMBNAIL_HOSTS`), the pressing's art then its release group's. Record duplicates: title only with the same artist (or a blank one), plus the cat. no. ignoring case/spaces/dashes. Wishlist: Books / Movies / Vinyls / All tabs (`?show=both` still works); removing a listened wishlist record keeps it on "Listened to but not owned". Profile: a Vinyls stats tab (`calculate_media_stats`, which replaced `calculate_video_stats`). Feed: "listened to" / "wants to listen to". Checked in headless Chromium with MusicBrainz stubbed: search, pick (fills 9 fields, sets the format, keeps a typed genre), duplicate notice, save, detail page, phone width. Tests: `tests/test_records.py` (40), migration tests in `test_migrations.py`.
+
+**Follow-up (Phil, 2026-11-08):** search moved out of the header. Every grid page (Library, Shared, search results, Movies, Vinyls) has one row under its tabs: the search box (3/4) and a filter button (1/4: funnel with the active-filter count, arrow) whose panel drops down over the grid; click outside or Escape closes it, and it no longer opens by itself when the URL has filters (the count and the "Active filters" pills under the row say so). The wishlist filter is an inline box under its tabs. The header magnifying glass is gone. Same day:
+- **Header:** site title on the left, hamburger on the right (the sidebar still opens from the left).
+- **Grid headings:** a card under the tabs with the section's icon and the page's name (`_icons.html`: `icon()` and `section_heading()`; Library = Lucide `library`, Vinyls = Lucide `disc-3`, Movies = the VHS cassette, which Lucide lacks). The sidebar and format badges use the same icons. Spacing: 24px around the heading card, 16px between the search row and the view bar (`_book_grid.html` lost its `pt-8`).
+- **Vinyl covers are square** in the grid (`#book-container[data-media="record"]`, styles.css) and on wishlist cards.
+- **Fixes:** date inputs overflowed the session box on iOS Safari (`appearance: none`); the session form said "Reading Session" for every type (the JS hard-coded it); the `+` menu's first item showed a focus ring after a tap (focus moves only for keyboard opens).
+- **Vinyls became Music** (Phil): the section is "Music", an item is an "album" (`media_labels`, with an `a` article key: "an album"), and CD and Cassette joined the formats. Code, URLs and the DB keep `record`; `?show=vinyls` on the wishlist still works. Manual entry covers CDs and tapes; MusicBrainz still searches vinyl only (Phase 8B).
+- **Dropped the Goodreads cover source** (the BookCover API at bookcover.longitood.com): slow, and it often timed out after 10 s, holding up every lookup and cover search.
+- **"Find a better cover"** streams its progress (NDJSON: a line per source asked and per download, covers shown as they arrive; `book_utils.cover_search_steps`) and is on Add Book too (books only; `static/cover_finder.js`). The route was admin-only although Edit Book shows the button to owners; now any signed-in user, 30/hour.
+
+---
+
+## Phase 8B: Music lookups, formats and ownership
+
+From Phil, 2026-11-08, after using Phase 8. Ship Phase 8 first and let it run for a few days. Plan the schema side with Phil before building (the ownership part especially).
+
+### 8B.1 MusicBrainz for CDs and cassettes
+- [ ] `music_lookup.build_query` asks for CD and Cassette as well as the vinyl formats (MusicBrainz matches `format` as whole values: `"CD"`, `"Cassette"`, ...), and `vinyl_format()` becomes a general `album_format()` that also returns `CD` / `Cassette`. Search results already show the format per row.
+- [ ] Maybe: a format choice on the Search tab, so a CD search doesn't list twenty vinyl pressings.
+
+### 8B.2 Book formats: Book / Audiobook
+- [ ] A format for books (the `format` column exists and is unconstrained): `Book` (default) or `Audiobook`; a select on the book form.
+- [ ] Grid badge: Lucide `book-headphones` for audiobooks (a plain book needs no badge), in `_icons.html`.
+- [ ] Goodreads import: the `audiobook` shelf (42 rows in Phil's export) imports as format Audiobook. This settles the open audiobook question in CLAUDE.md "Product direction".
+- [ ] Decide: do audiobooks count in the library's numbers (owned, pages read)? Probably in "read", not in "owned" or page counts.
+
+### 8B.3 Reviewing something you don't own
+Phil's idea: a movie watched on TV, an audiobook from a library, still worth a review. Proposed shape (to confirm): **ownership is separate from format**, not an "Unowned" format, so a not-owned DVD or audiobook still has its format, and counts and stats don't need a "this format doesn't count" rule.
+- [ ] On the add form: "I don't own this" (any type). It's saved like "Read / Watched / Listened to but not owned" today (`wishlist._keep_as_not_owned`: marked removed, so it stays off the shelf, with the review kept).
+- [ ] Decide where not-owned items show: only through reviews, the feed and the collection, or also a grid filter ("Removed" already has Include / Only).
 
 ---
 

@@ -42,20 +42,18 @@ function hideLoadingIndicator() {
         overlay.classList.add('hidden');
     }
 }
-// Filter toggle
-function toggleFilters() {
+// Filter panel (_search_sort_filter.html): drops down from the search row,
+// over the grid. open: true/false, or leave it out to toggle.
+function toggleFilters(open) {
     const panel = document.getElementById('filter-panel');
     const arrow = document.getElementById('filterArrow');
+    const button = document.getElementById('filter-toggle');
+    if (!panel) return;
+    if (typeof open !== 'boolean') open = panel.classList.contains('hidden');
 
-    // Toggle visibility
-    panel.classList.toggle('hidden');
-
-    // Rotate arrow
-    if (panel.classList.contains('hidden')) {
-        arrow.classList.remove('rotate-180');
-    } else {
-        arrow.classList.add('rotate-180');
-    }
+    panel.classList.toggle('hidden', !open);
+    arrow?.classList.toggle('rotate-180', open);
+    button?.setAttribute('aria-expanded', String(open));
 }
 
 // Clear filters
@@ -132,26 +130,24 @@ function updateActiveFilters() {
         countBadge.classList.add('hidden');
     }
 }
-// On page load, check if filters should be shown and update active filters
+// On page load: show the active filters under the search row, and close the
+// filter panel on a click outside it or Escape. The panel isn't opened for
+// filters in the URL: it would cover the grid; the count and pills say so.
 document.addEventListener('DOMContentLoaded', function () {
-    const urlParams = new URLSearchParams(window.location.search);
-    const filterPanel = document.getElementById('filter-panel');
-    const arrow = document.getElementById('filterArrow');
-
-    // Check if there are any filter parameters (excluding sort, page, csrf)
-    const filterParams = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show_removed'];
-    const hasFilters = filterParams.some(param => urlParams.has(param));
-
-    // Show filters if any filter parameters are present
-    if (hasFilters) {
-        if (filterPanel && arrow) {
-            filterPanel.classList.remove('hidden');
-            arrow.classList.add('rotate-180');
-        }
-    }
-
-    // Update active filters display on page load
     updateActiveFilters();
+
+    const panel = document.getElementById('filter-panel');
+    const button = document.getElementById('filter-toggle');
+    if (!panel || !button) return;
+    document.addEventListener('click', event => {
+        if (!panel.classList.contains('hidden')
+            && !panel.contains(event.target) && !button.contains(event.target)) {
+            toggleFilters(false);
+        }
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') toggleFilters(false);
+    });
 });
 function initRatingSystem() {
     const ratingContainer = document.getElementById('rating-container');

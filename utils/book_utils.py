@@ -316,29 +316,6 @@ def fetch_cover_by_isbn_direct(isbn: str) -> List[str]:
 
 
 # ---------------------------------------------------------------------------
-# Goodreads (via BookCover API)
-# ---------------------------------------------------------------------------
-
-def fetch_goodreads_cover(isbn: str = None, title: str = None, author: str = None) -> Optional[str]:
-    """Fetch book cover from Goodreads via BookCover API.
-
-    This uses the free BookCover API that scrapes Goodreads.
-    API: https://github.com/w3slley/bookcover-api
-    Returns JSON: {"url": "https://..."}
-    """
-    # The API requires both book_title and author_name (doesn't support ISBN alone)
-    if not (title and author):
-        return None
-
-    data = _get_json("https://bookcover.longitood.com/bookcover",
-                     {"book_title": title, "author_name": author}, retries=0)
-    cover_url = (data or {}).get("url")
-    if cover_url:
-        current_app.logger.info(f"Found Goodreads cover for '{title}' by {author}: {cover_url}")
-    return cover_url
-
-
-# ---------------------------------------------------------------------------
 # Cover candidates
 # ---------------------------------------------------------------------------
 
@@ -351,51 +328,60 @@ def _title_cover_urls(title: str, author: Optional[str] = None) -> Iterable[str]
         url = result["volumeInfo"]["imageLinks"].get("thumbnail")
         if url:
             yield url
-    goodreads_url = fetch_goodreads_cover(title=title, author=author)
-    if goodreads_url:
-        yield goodreads_url
+
+def cover_search_steps(isbn: str = None, title: str = None, author: str = None) -> list:
+    """The cover search as named steps, so a caller can report progress:
+    [(label, run)], where run() returns [(url, source), ...]. Nothing is
+    fetched until a step is run. Edit Book's "Find a better cover" streams
+    one progress line per step (books.fetch_cover)."""
+    steps = []
+    if isbn:
+        steps.append(("Open Library (ISBN)",
+                      lambda: [(u, "Open Library (ISBN)") for u in fetch_cover_by_isbn_direct(isbn)]))
+
+        def google_isbn():
+            data = fetch_google_books(isbn)
+            return [(data["cover_candidates"][0], "Google Books (ISBN)")] if data and data["cover_candidates"] else []
+        steps.append(("Google Books (ISBN)", google_isbn))
+
+        def open_library_edition():
+            data = fetch_open_library(isbn)
+            return [(data["cover_candidates"][0], "Open Library (edition)")] if data and data["cover_candidates"] else []
+        steps.append(("Open Library (edition)", open_library_edition))
+
+    if title:
+        def open_library_search():
+            results = search_open_library(title=title, author=author, max_results=3)
+            return [(r["volumeInfo"]["imageLinks"].get("thumbnail"), f"Open Library (search #{i})")
+                    for i, r in enumerate(results, 1)]
+        steps.append(("Open Library search", open_library_search))
+
+        def google_search():
+            query = f"intitle:{title} inauthor:{author}" if author else f"intitle:{title}"
+            found = []
+            for i, item in enumerate(_google_volumes(query, 3) or [], 1):
+                urls = _google_cover_urls(item.get("volumeInfo", {}))
+                if urls:
+                    found.append((urls[0], f"Google Books (search #{i})"))
+            return found
+        steps.append(("Google Books search", google_search))
+    return steps
+
 
 def search_covers_multiple_sources(isbn: str = None, title: str = None, author: str = None) -> list:
     """Search multiple sources for book covers and return all found URLs.
 
     Returns:
         List of tuples: [(url, source_name, priority), ...]
-        Priority: lower number = better quality/more reliable
+        Priority: lower number = better quality/more reliable (search order)
     """
     covers = []
     seen = set()
-
-    def add(url, source):
-        if url and url not in seen:
-            seen.add(url)
-            covers.append((url, source, len(covers) + 1))
-
-    if isbn:
-        for url in fetch_cover_by_isbn_direct(isbn):
-            add(url, "Open Library (ISBN)")
-
-        google_data = fetch_google_books(isbn)
-        if google_data and google_data["cover_candidates"]:
-            add(google_data["cover_candidates"][0], "Google Books (ISBN)")
-
-        ol_data = fetch_open_library(isbn)
-        if ol_data and ol_data["cover_candidates"]:
-            add(ol_data["cover_candidates"][0], "Open Library (edition)")
-
-    if title:
-        if author:
-            add(fetch_goodreads_cover(title=title, author=author), "Goodreads")
-
-        for idx, result in enumerate(search_open_library(title=title, author=author, max_results=3), 1):
-            add(result["volumeInfo"]["imageLinks"].get("thumbnail"), f"Open Library (search #{idx})")
-
-        query = f"intitle:{title} inauthor:{author}" if author else f"intitle:{title}"
-        google_results = _google_volumes(query, 3) or []
-        for idx, item in enumerate(google_results, 1):
-            urls = _google_cover_urls(item.get("volumeInfo", {}))
-            if urls:
-                add(urls[0], f"Google Books (search #{idx})")
-
+    for _label, run in cover_search_steps(isbn, title, author):
+        for url, source in run():
+            if url and url not in seen:
+                seen.add(url)
+                covers.append((url, source, len(covers) + 1))
     return covers
 
 
@@ -638,8 +624,10 @@ def _fetch_image(url: str) -> Optional[Image.Image]:
 # The browser gets them through /books/thumbnail (thumbnail_jpeg below), so it
 # never contacts these hosts itself and the CSP can keep img-src 'self'.
 # image.tmdb.org: film posters in the Add Movie search results (Phase 8.5)
+# coverartarchive.org: record sleeves in the Add Vinyl results (Phase 8.7);
+# it redirects to archive.org, every hop checked by _get_public
 THUMBNAIL_HOSTS = {'books.google.com', 'books.googleusercontent.com', 'covers.openlibrary.org',
-                   'image.tmdb.org'}
+                   'image.tmdb.org', 'coverartarchive.org'}
 THUMBNAIL_SIZE = (256, 384)
 
 
@@ -747,12 +735,12 @@ def get_filter_options(owner_ids, media_type='book'):
     Library, the household for the shared library and search). Genres come
     from those items only; statuses and tags are the viewer's own, because
     that's what the status and tag filters match on. `media_type` picks the
-    section ('book' reads library_books, 'video' library_videos), so the
-    Library never offers "watched" or a tag used only on movies. Movies also
-    get the formats on those shelves.
+    section (media.VIEWS: library_books, library_videos, library_records),
+    so the Library never offers "watched" or a tag used only on movies.
+    Movies and Vinyls also get the formats on those shelves.
     """
     from utils import media
-    view = 'library_videos' if media_type == media.VIDEO else 'library_books'
+    view = media.VIEWS[media_type]
     owner_ids = list(owner_ids) or [current_user.id]
     placeholders = ','.join('?' for _ in owner_ids)
     conn = get_db()
@@ -780,13 +768,13 @@ def get_filter_options(owner_ids, media_type='book'):
         'read_statuses': [r[0] for r in read_statuses],
         'tags': [r[0] for r in tags],
     }
-    if media_type == media.VIDEO:
+    if media.FORMATS.get(media_type):
         formats = conn.execute(f"""
-            SELECT DISTINCT format FROM library_videos
+            SELECT DISTINCT format FROM {view}
             WHERE added_by IN ({placeholders}) AND format IS NOT NULL AND format != ''
         """, owner_ids).fetchall()
         in_use = {r[0] for r in formats}
-        options['formats'] = [f for f in media.VIDEO_FORMATS if f in in_use]
+        options['formats'] = [f for f in media.FORMATS[media_type] if f in in_use]
     return options
 
 

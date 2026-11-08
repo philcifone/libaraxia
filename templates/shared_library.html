@@ -25,7 +25,14 @@
                 </a>
             </div>
         </div>
+    </div>
 
+    {% from '_icons.html' import section_heading %}
+    {{ section_heading('book', 'Shared Library') }}
+
+    {% include '_search_sort_filter.html' %}
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
         <!-- Shared Library Header with Member Info -->
         {% if shared_members and shared_members|length > 1 %}
         <div class="mt-4 bg-secondary rounded-lg p-4 card">
@@ -104,8 +111,6 @@
         </div>
         {% endif %}
     </div>
-
-    {% include '_search_sort_filter.html' %}
 
     {% include '_book_grid.html' %}
 

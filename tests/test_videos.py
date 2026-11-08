@@ -405,7 +405,7 @@ def test_videos_stay_out_of_the_library(client, db, people):
 
 
 def test_book_stats_ignore_videos(app, db, people):
-    from blueprints.user import calculate_user_stats, calculate_library_stats, calculate_video_stats
+    from blueprints.user import calculate_user_stats, calculate_library_stats, calculate_media_stats
     alice = people['alice']
     book = add_book(db, alice, 'Dune')
     video = add_video(db, alice)
@@ -425,9 +425,10 @@ def test_book_stats_ignore_videos(app, db, people):
         assert {r['status'] for r in stats['collection_status']} == {'read'}
         assert stats['by_month']['total'] == 1
         assert calculate_library_stats(conn, alice)['total_books'] == 1
-        videos = calculate_video_stats(conn, alice)
-        assert videos['owned'] == 1 and videos['watched'] == 1
-        assert videos['avg_rating'] == 5 and videos['hours_watched'] == 2.1
+        videos = calculate_media_stats(conn, alice, 'video')
+        assert videos['owned'] == 1 and videos['done'] == 1
+        assert videos['avg_rating'] == 5 and videos['hours_done'] == 2.1
+        assert calculate_media_stats(conn, alice, 'record') is None
 
 
 def test_profile_shows_video_tab_only_with_videos(client, db, people):
@@ -806,7 +807,8 @@ def test_wishlist_tabs_show_books_movies_or_both(client, db, people):
 
     both = page()
     assert 'Wished Book' in both and 'Wished Movie' in both
-    assert re.search(r'href="/wishlist/view\?show=both"\s+class="tab tab-active"', both)
+    assert re.search(r'href="/wishlist/view\?show=all"\s+class="tab tab-active"', both)
+    assert 'Wished Book' in page('?show=both')          # the tab's name before Vinyls
     books = page('?show=books')
     assert 'Wished Book' in books and 'Wished Movie' not in books
     movies = page('?show=movies')

@@ -1,12 +1,12 @@
-// The add page for every media type (templates/add_item.html): Add Book and
-// Add Movie. Shared helpers (escapeHtml, coverSrc, getCSRFHeaders,
+// The add page for every media type (templates/add_item.html): Add Book,
+// Add Movie and Add Vinyl. Shared helpers (escapeHtml, coverSrc, getCSRFHeaders,
 // showFlashMessage) are in common.js; the camera is scanner.js.
 //
 // Three ways to fill the form, one tab each: Search (pick a result), the
 // code box (ISBN / barcode, with its Look up button beside it) and Scan.
-// What differs by type (which endpoints, how their answers map onto the
-// form's fields) lives in the two adapters, BOOK and MOVIE, below; the rest
-// is shared.
+// Vinyls have Search only (no barcodes). What differs by type (which
+// endpoints, how their answers map onto the form's fields) lives in the
+// three adapters, BOOK, MOVIE and RECORD, below; the rest is shared.
 //
 // A lookup only pre-fills. It never overwrites what you typed: each field
 // remembers the value a lookup put in (data-filled), and only an empty field
@@ -250,7 +250,58 @@ document.addEventListener('DOMContentLoaded', () => {
         duplicateNote: 'Adding it again will ask you to confirm it\'s a second copy.',
     };
 
-    const type = root.dataset.type === 'video' ? MOVIE : BOOK;
+    const RECORD = {
+        searchUrl: q => `/records/search?q=${enc(q)}`,
+
+        // One row per pressing: label, cat. no., year and country tell them apart
+        results(data) {
+            if (!data.success) throw new Error(data.error || 'The search failed.');
+            return (data.results || []).map(r => ({
+                title: r.title,
+                line: [r.artist, r.year, r.country].filter(Boolean).join(', '),
+                line2: [r.format_label, r.label, r.catalog_number].filter(Boolean).join(' \u00b7 '),
+                thumb: r.thumb, id: r.id,
+            }));
+        },
+
+        async pick(result) {
+            const data = await getJSON(`/records/lookup?mbid=${enc(result.id)}`);
+            if (!data.success) throw new Error(data.error || 'The lookup failed.');
+            if (!data.found) return { notFound: 'MusicBrainz has nothing more on that one. Fill the form in by hand.' };
+            const d = data.details || {};
+            return {
+                fields: {
+                    title: d.title, subtitle: d.subtitle, author: d.author, publisher: d.publisher,
+                    catalog_number: d.catalog_number, year: d.year, runtime_minutes: d.runtime_minutes,
+                    format: d.format, genre: d.genre, description: d.description,
+                },
+                cover: data.cover || null,
+                sources: data.sources || [],
+            };
+        },
+
+        async duplicates() {
+            const data = await getJSON('/records/check_duplicates', {
+                method: 'POST', headers: getCSRFHeaders(),
+                body: JSON.stringify({ title: $('title').value, author: $('author').value,
+                                       catalog_number: $('catalog_number').value }),
+            });
+            return (data.duplicates || []).map(d => ({
+                title: d.title, url: d.url,
+                note: [d.author, d.format_label, `${d.owner || 'no owner'}'s`, d.removed ? 'removed' : '',
+                       `same ${d.match_reason.join(' and ')}`].filter(Boolean).join(', '),
+            }));
+        },
+        duplicateHeading: 'Already on your household\'s shelf:',
+        duplicateNote: 'Adding it again will ask you to confirm it\'s a second copy.',
+    };
+
+    const type = { book: BOOK, video: MOVIE, record: RECORD }[root.dataset.type] || BOOK;
+
+    // The format picker starts on a default, not on something you chose, so
+    // a picked release may set it (setField keeps what you changed yourself)
+    const formatSelect = $('format');
+    if (formatSelect && type === RECORD) formatSelect.dataset.filled = formatSelect.value;
 
     // --- Duplicates: a notice above the form, never a blocking dialog --------
 
@@ -325,6 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="flex-1 min-w-0 flex flex-col">
                     <p class="font-medium text-content-primary line-clamp-2">${escapeHtml(r.title)}</p>
                     <p class="text-sm text-content-secondary truncate">${escapeHtml(r.line)}</p>
+                    ${r.line2 ? `<p class="text-sm text-content-secondary line-clamp-2">${escapeHtml(r.line2)}</p>` : ''}
                     <button type="button" data-pick="${i}"
                             class="mt-auto self-start px-3 py-1.5 text-sm bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Use this</button>
                 </div>

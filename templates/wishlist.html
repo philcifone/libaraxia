@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
-{# Your wishlist (wishlist.view_wishlist): books and movies you want, in two
-   sections, behind Books | Movies | Both tabs (`show`). Adding is the shared add page (add_item.html via
-   wishlist.add_to_wishlist), from the + button. The magnifying glass opens
-   a filter over the cards (wishlist.js). #}
+{# Your wishlist (wishlist.view_wishlist): books, movies and music you want,
+   one section per type (`sections`: key, labels, rows), behind
+   Books | Movies | Music | All tabs (`show`). Adding is the shared add page (add_item.html via
+   wishlist.add_to_wishlist), from the + button. The box under the tabs
+   filters the cards (wishlist.js). #}
 
 {% block title %}Wishlist - libaraxia{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -10,24 +11,23 @@
 {% block content %}
     {% with fab_items=[('Book', url_for('wishlist.add_to_wishlist', type='book')),
                        ('Cartridge', url_for('wishlist.add_to_wishlist', type='video', format='VHS')),
-                       ('DVD', url_for('wishlist.add_to_wishlist', type='video', format='DVD'))] %}
+                       ('DVD', url_for('wishlist.add_to_wishlist', type='video', format='DVD')),
+                       ('Album', url_for('wishlist.add_to_wishlist', type='record'))] %}
         {% include '_add_fab.html' %}
     {% endwith %}
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
         <div class="mb-8 text-center">
             <h1 class="text-4xl font-display font-bold text-content-primary mb-2">Wishlist</h1>
-            <p class="text-content-secondary">Books and movies you'd like to own</p>
+            <p class="text-content-secondary">Books, movies and music you'd like to own</p>
         </div>
 
-        {# Tabs: books, movies or both (?show=, read by view_wishlist). Plain
+        {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
            links, so they work without JS and the filter below still applies #}
-        {% if wishlist_books or wishlist_movies %}
+        {% if total %}
         <div class="bg-secondary rounded-xl overflow-hidden card mb-8">
             <nav class="flex items-stretch" aria-label="Wishlist sections">
-                {% for key, label, count in [('books', 'Books', wishlist_books|length),
-                                             ('movies', 'Movies', wishlist_movies|length),
-                                             ('both', 'Both', wishlist_books|length + wishlist_movies|length)] %}
+                {% for key, label, count in tabs %}
                 <a href="{{ url_for('wishlist.view_wishlist', show=key) }}"
                    class="tab {% if show == key %}tab-active{% endif %}" {% if show == key %}aria-current="page"{% endif %}>
                     <span class="text-center">{{ label }} <span class="text-sm opacity-75">({{ count }})</span></span>
@@ -37,25 +37,23 @@
         </div>
         {% endif %}
 
-        <!-- Filter (toggled by the magnifying glass in the top bar) -->
-        <div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl bg-primary
-                    transform -translate-y-full transition-all duration-300 ease-in-out opacity-0 invisible
-                    wishlist-search-container z-30">
-            <div class="bg-secondary-bg rounded-lg p-4 card">
-                <input type="search" id="wishlist-search" aria-label="Filter your wishlist"
-                       placeholder="Filter by title, author or director..."
-                       class="w-full px-4 py-3 bg-primary-bg border border-rule-strong rounded-lg
-                              focus:ring-2 focus:ring-accent focus:border-transparent
-                              placeholder-gray-400 text-content-primary transition-all">
-                <div id="wishlist-search-count" class="text-center text-content-secondary text-sm mt-2 hidden"></div>
-            </div>
+        <!-- Filter over the cards (wishlist.js) -->
+        {% if total %}
+        <div class="-mt-4 mb-8">
+            <input type="search" id="wishlist-search" aria-label="Filter your wishlist"
+                   placeholder="Filter by title, author, director or artist..."
+                   class="w-full px-4 py-2.5 bg-secondary-bg border border-rule-strong rounded-lg
+                          focus:ring-2 focus:ring-accent focus:border-transparent
+                          placeholder-gray-400 text-content-primary transition-all">
+            <div id="wishlist-search-count" class="text-center text-content-secondary text-sm mt-2 hidden"></div>
         </div>
+        {% endif %}
 
-        {% for label, noun, items in [('Books', 'book', wishlist_books), ('Movies', 'movie', wishlist_movies)] %}
-        {% if show in (noun ~ 's', 'both') and items %}
-        <section class="wishlist-section mb-12" aria-labelledby="wishlist-{{ noun }}s">
-            <h2 id="wishlist-{{ noun }}s" class="scroll-mt-20 text-3xl font-display text-content-primary mb-6">
-                {{ label }} <span class="text-content-secondary text-xl">({{ items|length }})</span>
+        {% for key, m, items in sections %}
+        {% if show in (key, 'all') and items %}
+        <section class="wishlist-section mb-12" aria-labelledby="wishlist-{{ key }}">
+            <h2 id="wishlist-{{ key }}" class="scroll-mt-20 text-3xl font-display text-content-primary mb-6">
+                {{ m.plural|capitalize }} <span class="text-content-secondary text-xl">({{ items|length }})</span>
             </h2>
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {% for book in items %}
@@ -67,23 +65,24 @@
         {% endfor %}
 
         {# One tab empty: say so, with a way to add one #}
-        {% if wishlist_books or wishlist_movies %}
-        {% for key, noun, items, type in [('books', 'book', wishlist_books, 'book'), ('movies', 'movie', wishlist_movies, 'video')] %}
+        {% if total %}
+        {% for key, m, items in sections %}
         {% if show == key and not items %}
-        {% with title='No ' ~ key ~ ' on your wishlist',
-                text="Use the + button to add a " ~ noun ~ " you'd like to own.",
-                links=[(url_for('wishlist.add_to_wishlist', type=type), 'Add a ' ~ noun)] %}
+        {% with title='No ' ~ m.plural ~ ' on your wishlist',
+                text="Use the + button to add " ~ m.a ~ " " ~ m.noun ~ " you'd like to own.",
+                links=[(url_for('wishlist.add_to_wishlist', type=m.type), 'Add ' ~ m.a ~ ' ' ~ m.noun)] %}
             {% include '_empty_state.html' %}
         {% endwith %}
         {% endif %}
         {% endfor %}
         {% endif %}
 
-        {% if not wishlist_books and not wishlist_movies %}
+        {% if not total %}
         {% with title='Your wishlist is empty',
-                text="Use the + button to add a book or a movie you'd like to own: search for it, type its ISBN or barcode, or scan it.",
+                text="Use the + button to add a book, a movie or an album you'd like to own: search for it, type its ISBN or barcode, or scan it.",
                 links=[(url_for('wishlist.add_to_wishlist', type='book'), 'Add a book'),
-                       (url_for('wishlist.add_to_wishlist', type='video'), 'Add a movie')] %}
+                       (url_for('wishlist.add_to_wishlist', type='video'), 'Add a movie'),
+                       (url_for('wishlist.add_to_wishlist', type='record'), 'Add an album')] %}
             {% include '_empty_state.html' %}
         {% endwith %}
         {% endif %}

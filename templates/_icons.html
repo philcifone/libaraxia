@@ -1,0 +1,49 @@
+{# Section and format icons, drawn in one place so the sidebar, the grid
+   headings and the format badges stay in step:
+
+     {% from '_icons.html' import icon %}
+     {{ icon('vhs', 'w-5 h-5') }}
+
+   Names: library (Lucide "library"), disc (Lucide "disc-3", the vinyl
+   icon), vhs (a VHS cassette: shell, two reels, the tape between; Lucide
+   has no VHS icon), dvd (a disc with a hole). Stroke icons in currentColor,
+   24x24, hidden from screen readers: the caller supplies the words. #}
+{% macro icon(name, class='w-5 h-5') -%}
+<svg class="{{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'library' %}
+    <path d="m16 6 4 14"/>
+    <path d="M12 6v14"/>
+    <path d="M8 8v12"/>
+    <path d="M4 4v16"/>
+{%- elif name == 'disc' %}
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M6 12c0-1.7.7-3.2 1.8-4.2"/>
+    <circle cx="12" cy="12" r="2"/>
+    <path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/>
+{%- elif name == 'vhs' %}
+    <rect x="2" y="5" width="20" height="14"/>
+    <circle cx="8" cy="12" r="2"/>
+    <circle cx="16" cy="12" r="2"/>
+    <path d="M10 12h4"/>
+{%- elif name == 'dvd' %}
+    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="12" r="2.5"/>
+{%- endif %}
+</svg>
+{%- endmacro %}
+
+{# A grid page's heading: a card the width of the tabs and search row, with
+   the section's icon and the page's name ("My Vinyls", "alice's Movies")
+   side by side in the middle. It sits between the tabs and the search row,
+   24px from each (the tabs' pb-4 plus pt-2 above, pb-6 below). #}
+{% macro section_heading(media_type, name) -%}
+{% set names = {'book': 'library', 'video': 'vhs', 'record': 'disc'} %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
+    <div class="bg-secondary rounded-xl card px-4 py-3">
+        <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center">
+            <span class="text-accent shrink-0">{{ icon(names[media_type], 'w-8 h-8') }}</span>
+            <span class="min-w-0">{{ name }}</span>
+        </h1>
+    </div>
+</div>
+{%- endmacro %}

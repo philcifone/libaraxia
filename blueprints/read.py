@@ -98,8 +98,8 @@ def rate_review(book_id):
         flash("Your rating and review have been saved!", 'success')
         kind = media.media_type_of(conn.execute('SELECT media_type FROM books WHERE id = ?',
                                                 (book_id,)).fetchone())
-        if kind == media.VIDEO:
-            return redirect(url_for('videos.show_video', id=book_id))
+        if kind != media.BOOK:
+            return redirect(url_for(media.item_endpoint(kind), id=book_id))
         return redirect(url_for('base.index', collection_type='read'))
 
     # Fetch book details and existing read data

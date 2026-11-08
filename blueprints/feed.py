@@ -87,8 +87,10 @@ def activity_feed():
         FROM collections c
         JOIN books b ON c.book_id = b.id
         JOIN users u ON c.user_id = u.id
-        -- videos: 'watched' is the "finished" activity (books use reviews for that)
-        WHERE c.status IN ('currently reading', 'want to read', 'watched', 'want to watch')
+        -- videos and records: 'watched' / 'listened' is the "finished"
+        -- activity (books use reviews for that)
+        WHERE c.status IN ('currently reading', 'want to read', 'watched', 'want to watch',
+                           'listened', 'want to listen')
         AND NOT EXISTS (
             SELECT 1 FROM dismissed_activities da
             WHERE da.activity_type = 'collection_added'

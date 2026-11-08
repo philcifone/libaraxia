@@ -6,7 +6,8 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
-from utils.media import BOOK, VIDEO, only
+from utils import media
+from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
 from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES
 from werkzeug.utils import secure_filename
@@ -234,7 +235,13 @@ def profile(username):
 
     # Library stats (only if friends or own profile)
     library_stats = calculate_library_stats(conn, user['id']) if are_friends else None
-    video_stats = calculate_video_stats(conn, user['id']) if are_friends else None
+    # Movies and Vinyls tabs: (labels, stats) for each type the user has
+    media_stats = []
+    if are_friends:
+        for kind in (VIDEO, RECORD):
+            kind_stats = calculate_media_stats(conn, user['id'], kind)
+            if kind_stats:
+                media_stats.append((media.media_labels(kind), kind_stats))
 
     # Get pending friend request ID if applicable
     friend_request_id = None
@@ -354,7 +361,7 @@ def profile(username):
         user=user,
         stats=stats,
         library_stats=library_stats,
-        video_stats=video_stats,
+        media_stats=media_stats,
         current_year=current_year,
         friendship_status=friendship_status,
         is_own_profile=is_own_profile,
@@ -707,40 +714,45 @@ def upload_avatar():
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
 
-def calculate_video_stats(conn, user_id):
-    """Video numbers for the profile's Videos tab, kept apart from the book
-    stats (which are books only). None when the user has no videos and
-    hasn't watched or reviewed any, so the tab stays hidden."""
+def calculate_media_stats(conn, user_id, kind):
+    """Movie or vinyl numbers for the profile's Movies / Vinyls tab, kept
+    apart from the book stats (which are books only). `done` and `want`
+    count the type's statuses (watched / want to watch, listened / want to
+    listen); hours come from runtime_minutes (a record's Length). None when
+    the user has none of this type and hasn't marked or reviewed any, so the
+    tab stays hidden."""
+    view = media.VIEWS[kind]          # our own constants, never user input
+    params = {'u': user_id, 'kind': kind,
+              'done': media.DONE_STATUS[kind], 'want': media.WANT_STATUS[kind]}
     stats = dict(conn.execute(f'''
         WITH shelf AS (
-            SELECT * FROM library_videos WHERE added_by = :u AND removed_at IS NULL
+            SELECT * FROM {view} WHERE added_by = :u AND removed_at IS NULL
         ),
-        watched AS (
+        done AS (
             SELECT b.* FROM collections c JOIN books b ON b.id = c.book_id
-            WHERE c.user_id = :u AND c.status = 'watched' AND b.media_type = 'video'
+            WHERE c.user_id = :u AND c.status = :done AND b.media_type = :kind
         )
         SELECT
             (SELECT COUNT(*) FROM shelf) AS owned,
-            (SELECT COUNT(*) FROM watched) AS watched,
+            (SELECT COUNT(*) FROM done) AS done,
             (SELECT COUNT(*) FROM collections c
-             WHERE c.user_id = :u AND c.status = 'want to watch'
-               AND {only(VIDEO, 'c.book_id')}) AS want_to_watch,
-            (SELECT SUM(runtime_minutes) FROM watched) AS minutes_watched,
+             WHERE c.user_id = :u AND c.status = :want AND {only(kind, 'c.book_id')}) AS want,
+            (SELECT SUM(runtime_minutes) FROM done) AS minutes_done,
             (SELECT SUM(runtime_minutes) FROM shelf) AS minutes_owned,
             (SELECT ROUND(AVG(r.rating), 1) FROM read_data r
-             WHERE r.user_id = :u AND r.rating IS NOT NULL AND {only(VIDEO, 'r.book_id')}) AS avg_rating,
+             WHERE r.user_id = :u AND r.rating IS NOT NULL AND {only(kind, 'r.book_id')}) AS avg_rating,
             (SELECT COUNT(*) FROM read_data r
              WHERE r.user_id = :u AND (r.rating IS NOT NULL OR r.comment IS NOT NULL)
-               AND {only(VIDEO, 'r.book_id')}) AS reviews
-    ''', {'u': user_id}).fetchone())
-    if not (stats['owned'] or stats['watched'] or stats['reviews'] or stats['want_to_watch']):
+               AND {only(kind, 'r.book_id')}) AS reviews
+    ''', params).fetchone())
+    if not (stats['owned'] or stats['done'] or stats['reviews'] or stats['want']):
         return None
-    stats['by_format'] = [dict(r) for r in conn.execute('''
+    stats['by_format'] = [dict(r) for r in conn.execute(f'''
         SELECT COALESCE(NULLIF(format, ''), 'Unknown') AS format, COUNT(*) AS count
-        FROM library_videos WHERE added_by = ? AND removed_at IS NULL
+        FROM {view} WHERE added_by = ? AND removed_at IS NULL
         GROUP BY 1 ORDER BY count DESC, format
     ''', (user_id,)).fetchall()]
-    stats['hours_watched'] = round((stats['minutes_watched'] or 0) / 60, 1)
+    stats['hours_done'] = round((stats['minutes_done'] or 0) / 60, 1)
     stats['hours_owned'] = round((stats['minutes_owned'] or 0) / 60, 1)
     return stats
 

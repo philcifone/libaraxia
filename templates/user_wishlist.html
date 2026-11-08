@@ -34,16 +34,13 @@
                         <a href="{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ target_username }}"
                            class="block flex-1">
                             <div class="aspect-w-3 aspect-h-4 relative">
-                                {% if book.media_type == 'video' and book.format %}
-                                <span class="absolute top-2 right-2 z-10 p-1 flex items-center text-xs font-mono font-bold bg-primary-bg text-content-primary border border-card rounded-pill"
-                                      title="{{ book.format|format_label }}">{% with fmt=book.format %}{% include '_format_icon.html' %}{% endwith %}</span>
-                                {% endif %}
+                                {% include '_format_badge.html' %}
                                 {% if book.cover_image_url %}
                                 <img src="{{ url_for('static', filename=book.cover_image_url) }}"
                                      alt="{{ book.title }}"
-                                     class="object-cover w-full h-72 group-hover:opacity-90 transition-opacity duration-200" />
+                                     class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200" />
                                 {% else %}
-                                {% with title=book.title, author=book.author, size='md', box='w-full h-72' %}{% include '_no_cover.html' %}{% endwith %}
+                                {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
                                 {% endif %}
                             </div>
 
@@ -52,7 +49,7 @@
                                     {{ book.title }}
                                 </h3>
                                 <p class="text-content-secondary text-sm italic mb-2">
-                                    {{ 'directed by' if book.media_type == 'video' else 'by' }} {{ book.author }}
+                                    {{ labels_for(book).by }} {{ book.author }}
                                 </p>
                                 {% if book.notes %}
                                 <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">
@@ -63,7 +60,7 @@
                         </a>
 
                         <!-- Purchase Links (book shops: books only) -->
-                        {% if book.media_type != 'video' %}
+                        {% if book.media_type == 'book' %}
                         <div class="px-4 pb-4 space-y-2">
                             <div class="grid grid-cols-2 gap-2">
                                 <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"

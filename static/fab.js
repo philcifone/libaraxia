@@ -28,9 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
         links().forEach(a => { a.tabIndex = open ? 0 : -1; });
     }
 
-    toggle.addEventListener('click', () => {
+    toggle.addEventListener('click', event => {
         setOpen(!open);
-        if (open) links()[0]?.focus();
+        // Focus the first item only when opened from the keyboard (Enter or
+        // Space give event.detail 0; a tap or click gives 1+). Focusing it
+        // after a tap made Safari draw a focus ring around it, as if picked.
+        if (open && event.detail === 0) links()[0]?.focus();
     });
     backdrop?.addEventListener('click', () => setOpen(false));
     document.addEventListener('keydown', event => {

@@ -317,7 +317,8 @@
     :root:not([data-style="classic"]) :is(
         input[type="text"], input[type="email"], input[type="password"], input[type="search"],
         input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
-        select, textarea) {
+        select, textarea,
+        #filter-toggle) {             /* the filter button beside the search box */
         border-width: 2px;
         border-color: rgb(var(--ink));
     }
@@ -328,6 +329,21 @@
        out of the card on phones. */
     input, select, textarea {
         min-width: 0;
+    }
+
+    /* iOS Safari draws date inputs natively and ignores their CSS width, so
+       on a phone they stuck out of the session box. Without the native
+       appearance they size like any other input; the picker still opens on
+       tap. An empty one would also collapse to no height, hence min-height,
+       and its value is centred unless told otherwise. */
+    input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        display: block;
+        min-height: 2.5rem;
+    }
+    input[type="date"]::-webkit-date-and-time-value {
+        text-align: left;
     }
 
     /* Long text (a synopsis from a lookup) scrolls inside the box: a visible
@@ -735,18 +751,28 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 .rating-star:hover { transform: scale(1.1); }
 .rating-group:hover .rating-star:hover ~ .rating-star { color: #9ca3af; /* gray-400 */ }
 
-/* Header search dropdown (_search_sort_filter.html, toggled by sidebar.js).
-   It slides up out of view when closed. Safari (seen on an iPhone, zoomed
+/* The add button's menu (#fab-menu) slides up out of view when closed
+   (the header search dropdowns used to as well). Safari (seen on an iPhone, zoomed
    in) didn't repaint everywhere the cards' hard box-shadows had passed, and
    left a cream-and-green corner on the page. On its own compositing layer the
    slide is done by moving the layer, so the page underneath is never
-   repainted and nothing is left behind. The add button's menu (#fab-menu)
-   slides and fades shadowed buttons the same way. */
-.search-form-container,
-.wishlist-search-container,
+   repainted and nothing is left behind. */
 #fab-menu {
     will-change: transform, opacity;
     backface-visibility: hidden;
+}
+
+/* Vinyl covers are square. The cover box has the book shape in both views
+   (grid: w-full h-64; list: w-24 h-32; script.js sets these when switching
+   views), so for records the height follows the width instead and the art
+   fills the square, rather than a square in a tall box with bars. */
+#book-container[data-media="record"] .book-cover {
+    height: auto;
+    aspect-ratio: 1 / 1;
+    align-self: flex-start;     /* list rows are flex: don't stretch it to the row */
+}
+#book-container[data-media="record"] .book-cover .book-cover-img {
+    object-fit: cover;
 }
 
 /* Barcode scanner (static/scanner.js). The video fills the viewport with

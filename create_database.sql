@@ -40,6 +40,27 @@ CREATE TABLE email_verification_tokens (
 CREATE INDEX idx_verification_tokens_token ON email_verification_tokens(token);
 CREATE INDEX idx_verification_tokens_user_id ON email_verification_tokens(user_id);
 
+-- ---------------------------------------------------------------- media types
+
+-- What a books row can be, and the per-user statuses each type has
+-- (migration 024). Lookup tables instead of CHECK constraints, so a new type
+-- or status is an INSERT, not a table rebuild. utils/media.py keeps the same
+-- lists for the app; a test checks they agree.
+CREATE TABLE media_types (
+    name TEXT PRIMARY KEY
+);
+INSERT INTO media_types (name) VALUES ('book'), ('video'), ('record');
+
+CREATE TABLE statuses (
+    status TEXT PRIMARY KEY,
+    media_type TEXT NOT NULL REFERENCES media_types(name)
+);
+INSERT INTO statuses (status, media_type) VALUES
+    ('read', 'book'), ('want to read', 'book'),
+    ('currently reading', 'book'), ('did not finish', 'book'),
+    ('watched', 'video'), ('want to watch', 'video'),
+    ('listened', 'record'), ('want to listen', 'record');
+
 -- ---------------------------------------------------------------- books
 
 -- Shared catalogue. added_by is the owner (NULL = unowned; deleting a user
@@ -62,9 +83,9 @@ CREATE TABLE books (
     added_by INTEGER,
     removed_at TIMESTAMP,   -- set when the book leaves the library (deaccession); NULL = on the shelf
     removed_note TEXT,
-    -- Videos (migration 023, utils/media.py): a video is a row with media_type 'video'
-    media_type TEXT NOT NULL DEFAULT 'book' CHECK (media_type IN ('book', 'video')),
-    format TEXT,            -- video format: 'VHS', ...
+    -- Videos and records (migrations 023, 024, utils/media.py): media_type 'video' / 'record'
+    media_type TEXT NOT NULL DEFAULT 'book' REFERENCES media_types(name),
+    format TEXT,            -- physical format: 'VHS', 'DVD', 'LP', '7in', ...
     barcode TEXT,           -- normalised EAN-13 (UPC-A with a leading 0)
     catalog_number TEXT,    -- studio catalogue number
     runtime_minutes INTEGER,
@@ -74,13 +95,12 @@ CREATE INDEX idx_books_added_by ON books(added_by);
 CREATE INDEX idx_books_media_type ON books(media_type);
 CREATE INDEX idx_books_barcode ON books(barcode);
 
--- Per-user reading (or, for videos, watching) status.
+-- Per-user status: reading, watching or listening (statuses table).
 CREATE TABLE collections (
     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
-    status TEXT CHECK(status IN ('read', 'want to read', 'currently reading', 'did not finish',
-                                 'watched', 'want to watch')) NOT NULL,
+    status TEXT NOT NULL REFERENCES statuses(status),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -283,7 +303,7 @@ CREATE INDEX idx_cover_jobs_status ON cover_jobs(status);
 
 -- Books on their owner's shelf: owned, and not the owner's own wishlist entry.
 -- Includes removed books (filter on removed_at). See migrations 018 and 023.
--- Books only: videos are in library_videos.
+-- Books only: videos are in library_videos, records in library_records.
 -- A table rebuild of books or wishlist must drop and recreate these views.
 CREATE VIEW library_books AS
 SELECT b.*
@@ -300,6 +320,17 @@ CREATE VIEW library_videos AS
 SELECT b.*
 FROM books b
 WHERE b.media_type = 'video'
+  AND b.added_by IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM wishlist w
+      WHERE w.book_id = b.id AND w.user_id = b.added_by
+  );
+
+-- Records on their owner's shelf (the Vinyls section). Same rule as above.
+CREATE VIEW library_records AS
+SELECT b.*
+FROM books b
+WHERE b.media_type = 'record'
   AND b.added_by IS NOT NULL
   AND NOT EXISTS (
       SELECT 1 FROM wishlist w
@@ -337,4 +368,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('020_drop_privacy_columns.sql'),
     ('021_household_invites.sql'),
     ('022_cover_jobs.sql'),
-    ('023_add_videos.sql');
+    ('023_add_videos.sql'),
+    ('024_add_records.sql');

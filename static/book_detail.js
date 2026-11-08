@@ -13,9 +13,11 @@ function sessionForm() {
     };
 }
 
-function openSessionForm(title, sessionId, dateStarted, dateCompleted) {
+// mode: 'add' or 'edit'. The heading's wording ("Reading Session",
+// "Listening Session") comes from the template's data-add-title / data-edit-title.
+function openSessionForm(mode, sessionId, dateStarted, dateCompleted) {
     const f = sessionForm();
-    f.title.textContent = title;
+    f.title.textContent = f.title.dataset[mode + 'Title'];
     f.sessionId.value = sessionId;
     f.dateStarted.value = dateStarted;
     f.dateCompleted.value = dateCompleted;
@@ -24,12 +26,12 @@ function openSessionForm(title, sessionId, dateStarted, dateCompleted) {
 }
 
 registerActions({
-    showAddSessionForm: () => openSessionForm('Add New Reading Session', '', '', ''),
+    showAddSessionForm: () => openSessionForm('add', '', '', ''),
 
     hideSessionForm: () => sessionForm().container.classList.add('hidden'),
 
     // data-session-id, data-date-started, data-date-completed
-    editSession: el => openSessionForm('Edit Reading Session', el.dataset.sessionId,
+    editSession: el => openSessionForm('edit', el.dataset.sessionId,
                                        el.dataset.dateStarted, el.dataset.dateCompleted),
 
     // data-session-id, data-book-id; comes back to this page afterwards

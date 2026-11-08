@@ -971,7 +971,9 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 :root:not([data-style="classic"]) :is(
         input[type="text"], input[type="email"], input[type="password"], input[type="search"],
         input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
-        select, textarea) {
+        select, textarea,
+        #filter-toggle) {
+  /* the filter button beside the search box */
   border-width: 2px;
   border-color: rgb(var(--ink));
 }
@@ -983,6 +985,24 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 input, select, textarea {
   min-width: 0;
+}
+
+/* iOS Safari draws date inputs natively and ignores their CSS width, so
+       on a phone they stuck out of the session box. Without the native
+       appearance they size like any other input; the picker still opens on
+       tap. An empty one would also collapse to no height, hence min-height,
+       and its value is centred unless told otherwise. */
+
+input[type="date"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+       appearance: none;
+  display: block;
+  min-height: 2.5rem;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
 }
 
 /* Long text (a synopsis from a lookup) scrolls inside the box: a visible
@@ -1663,6 +1683,14 @@ img.book-cover-img:not([data-loaded]) {
   right: 1rem;
 }
 
+.-right-3 {
+  right: -0.75rem;
+}
+
+.-top-2 {
+  top: -0.5rem;
+}
+
 .bottom-4 {
   bottom: 1rem;
 }
@@ -1707,16 +1735,16 @@ img.book-cover-img:not([data-loaded]) {
   top: 50%;
 }
 
-.top-16 {
-  top: 4rem;
-}
-
 .top-2 {
   top: 0.5rem;
 }
 
 .top-4 {
   top: 1rem;
+}
+
+.top-full {
+  top: 100%;
 }
 
 .z-10 {
@@ -1743,6 +1771,14 @@ img.book-cover-img:not([data-loaded]) {
   order: 9999;
 }
 
+.col-span-1 {
+  grid-column: span 1 / span 1;
+}
+
+.col-span-3 {
+  grid-column: span 3 / span 3;
+}
+
 .col-span-full {
   grid-column: 1 / -1;
 }
@@ -1764,6 +1800,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .-ml-px {
   margin-left: -1px;
+}
+
+.-mt-4 {
+  margin-top: -1rem;
 }
 
 .mb-1 {
@@ -1920,6 +1960,10 @@ img.book-cover-img:not([data-loaded]) {
   aspect-ratio: 2/3;
 }
 
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
 .aspect-video {
   aspect-ratio: 16 / 9;
 }
@@ -1938,6 +1982,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .h-16 {
   height: 4rem;
+}
+
+.h-2 {
+  height: 0.5rem;
 }
 
 .h-24 {
@@ -2024,6 +2072,10 @@ img.book-cover-img:not([data-loaded]) {
   max-height: 600px;
 }
 
+.max-h-\[70vh\] {
+  max-height: 70vh;
+}
+
 .min-h-\[2\.75em\] {
   min-height: 2.75em;
 }
@@ -2108,6 +2160,10 @@ img.book-cover-img:not([data-loaded]) {
   min-width: 0px;
 }
 
+.min-w-\[1\.1rem\] {
+  min-width: 1.1rem;
+}
+
 .min-w-\[12rem\] {
   min-width: 12rem;
 }
@@ -2187,11 +2243,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .-translate-y-1\/2 {
   --tw-translate-y: -50%;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.-translate-y-full {
-  --tw-translate-y: -100%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
@@ -2277,6 +2328,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .grid-cols-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .flex-col {
@@ -2688,10 +2743,6 @@ img.book-cover-img:not([data-loaded]) {
   fill: rgb(var(--rule) / 1);
 }
 
-.stroke-content-primary {
-  stroke: rgb(var(--ink) / 1);
-}
-
 .object-contain {
   -o-object-fit: contain;
      object-fit: contain;
@@ -2862,6 +2913,10 @@ img.book-cover-img:not([data-loaded]) {
   padding-bottom: 1rem;
 }
 
+.pb-6 {
+  padding-bottom: 1.5rem;
+}
+
 .pb-8 {
   padding-bottom: 2rem;
 }
@@ -2937,6 +2992,10 @@ img.book-cover-img:not([data-loaded]) {
   line-height: 2.5rem;
 }
 
+.text-\[10px\] {
+  font-size: 10px;
+}
+
 .text-base {
   font-size: 1rem;
   line-height: 1.5rem;
@@ -2988,6 +3047,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .italic {
   font-style: italic;
+}
+
+.leading-4 {
+  line-height: 1rem;
 }
 
 .leading-relaxed {
@@ -3176,6 +3239,12 @@ img.book-cover-img:not([data-loaded]) {
 .outline-none {
   outline: 2px solid transparent;
   outline-offset: 2px;
+}
+
+.ring {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 
 .ring-2 {
@@ -3468,19 +3537,33 @@ dialog::backdrop {
   /* gray-400 */
 }
 
-/* Header search dropdown (_search_sort_filter.html, toggled by sidebar.js).
-   It slides up out of view when closed. Safari (seen on an iPhone, zoomed
+/* The add button's menu (#fab-menu) slides up out of view when closed
+   (the header search dropdowns used to as well). Safari (seen on an iPhone, zoomed
    in) didn't repaint everywhere the cards' hard box-shadows had passed, and
    left a cream-and-green corner on the page. On its own compositing layer the
    slide is done by moving the layer, so the page underneath is never
-   repainted and nothing is left behind. The add button's menu (#fab-menu)
-   slides and fades shadowed buttons the same way. */
+   repainted and nothing is left behind. */
 
-.search-form-container,
-.wishlist-search-container,
 #fab-menu {
   will-change: transform, opacity;
   backface-visibility: hidden;
+}
+
+/* Vinyl covers are square. The cover box has the book shape in both views
+   (grid: w-full h-64; list: w-24 h-32; script.js sets these when switching
+   views), so for records the height follows the width instead and the art
+   fills the square, rather than a square in a tall box with bars. */
+
+#book-container[data-media="record"] .book-cover {
+  height: auto;
+  aspect-ratio: 1 / 1;
+  align-self: flex-start;
+  /* list rows are flex: don't stretch it to the row */
+}
+
+#book-container[data-media="record"] .book-cover .book-cover-img {
+  -o-object-fit: cover;
+     object-fit: cover;
 }
 
 /* Barcode scanner (static/scanner.js). The video fills the viewport with
