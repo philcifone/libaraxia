@@ -52,7 +52,7 @@ The restyle goes before VHS so the VHS screens are only built once, in the new s
 
 ## 3. Phase 0: upstream foundations
 
-These are worth doing for Libaraxia alone. In [ROADMAP.md](ROADMAP.md), the schema/runner/tests/`base.html` items are core work (Phases 1, 2 and 6), and feature flags + plugin hook are parked as fork prep (Phase 10). They matter more now because two codebases will depend on them.
+These are worth doing for Libaraxia alone. In [ROADMAP.md](ROADMAP.md), the schema/runner/tests/`base.html` items are core work (Phases 1, 2 and 6), and feature flags + plugin hook are parked as fork prep (Phase 11). They matter more now because two codebases will depend on them.
 
 **First:** the working tree has a large set of uncommitted changes from the 2026-10-28 security pass (renames into `docs/`, untracking `node_modules/`, blueprint fixes). Commit those before anything else so the fork starts from a clean, known point.
 

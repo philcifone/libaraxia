@@ -82,6 +82,13 @@
             Music
         </a>
 
+            <a href="{{ url_for('have.check') }}"
+               class="nav-link {% if request.path.startswith('/have') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      hover:bg-accent/10 transition-colors">
+                {{ icon('scan') }}
+                Do I Have This?
+            </a>
+
             <a href="/wishlist/view"
                class="nav-link {% if request.path.startswith('/wishlist') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
                       hover:bg-accent/10 transition-colors">

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import page_heading, icon %}
+{# Do I have this? (have.check, ROADMAP 8E). `result` from utils/have.find:
+   kind (isbn / barcode / bad_code / text), matches (each with a verdict),
+   best. The scanner (have.js) reloads this page with ?q=<code>. #}
+
+{% block title %}Do I Have This? - libaraxia{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% block head %}
+    <script src="{{ url_for('static', filename='vendor/quagga2-1.12.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='scanner.js') }}"></script>
+{% endblock %}
+
+{% set headline = {
+    'yours': ('You own this', 'It is on your shelf.'),
+    'household': ('Your household owns this', 'It is on the shared shelf.'),
+    'wishlist': ('On your wishlist', "You don't own it yet."),
+    'not_owned': ("You don't own this", 'But it is in your records.'),
+    'removed': ("You don't own this any more", 'You had it; it left your shelf.'),
+    'their_wishlist': ("Nobody here owns this", "It is on a household member's wishlist."),
+    'data_only': ("You don't own this", 'But it is in your records.'),
+} %}
+
+{% block content %}
+<main class="max-w-3xl mx-auto px-4 sm:px-6 pt-20 pb-16">
+    {{ page_heading('scan', 'Do I Have This?', 'Scan a barcode, or type an ISBN, barcode or title', class='mb-6') }}
+
+    <!-- Look up: typed (works without JS) or scanned -->
+    <section class="bg-secondary rounded-xl card p-4 sm:p-6 mb-6" id="have"
+             data-check-url="{{ url_for('have.check') }}">
+        <form method="GET" action="{{ url_for('have.check') }}" class="flex gap-2" role="search">
+            <input type="search" name="q" value="{{ q }}" aria-label="Barcode, ISBN or title"
+                   placeholder="Barcode, ISBN or title" autocomplete="off" {% if not q %}autofocus{% endif %}
+                   class="flex-1 min-w-0 bg-primary text-content-primary rounded-lg px-4 py-3 border border-rule-strong focus:outline-none focus:ring-2 focus:ring-accent">
+            <button type="submit" class="shrink-0 px-4 sm:px-6 py-3 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Check</button>
+        </form>
+
+        <div class="mt-4 flex flex-col items-center gap-3">
+            <div id="interactive" class="viewport w-full aspect-video bg-black rounded-lg overflow-hidden hidden items-center justify-center"></div>
+            <label data-camera-picker hidden class="flex items-center gap-2 text-sm text-content-secondary">
+                Camera
+                <select id="camera-select"
+                        class="max-w-[16rem] bg-primary border border-rule-strong rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"></select>
+            </label>
+            <button type="button" id="toggle-scanner"
+                    class="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-content-primary border border-rule-strong rounded-lg btn">
+                {{ icon('scan') }} Start Scanner
+            </button>
+            <p id="scan-status" class="text-sm text-content-secondary text-center empty:hidden" aria-live="polite"></p>
+        </div>
+    </section>
+
+    {% if result %}
+    <section aria-live="polite">
+        {% if result.kind == 'bad_code' %}
+        <div class="bg-secondary rounded-xl card p-6 text-center">
+            <p class="text-xl font-display text-content-primary">{{ result.query }} isn't a valid barcode or ISBN</p>
+            <p class="mt-2 text-content-secondary">Check the digits, or type the title instead.</p>
+        </div>
+
+        {% elif not result.matches %}
+        <div class="bg-secondary rounded-xl card p-6 text-center">
+            <p class="text-2xl font-display text-content-primary">Not here</p>
+            <p class="mt-2 text-content-secondary">
+                {% if result.kind == 'text' %}Nothing called "{{ result.query }}" on your shelf, your household's or your wishlist, and you haven't read it here.
+                {% else %}{{ result.query }} isn't on your shelf, your household's or your wishlist.{% endif %}
+            </p>
+            {% if add_links %}
+            <div class="mt-5 flex flex-wrap justify-center gap-3">
+                {% for label, url in add_links %}
+                <a href="{{ url }}" class="px-4 py-2 rounded-lg btn {{ 'bg-accent hover:bg-accent-hover text-on-accent' if loop.first else 'bg-primary hover:bg-primary-hover text-content-primary border border-rule-strong' }}">{{ label }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% else %}
+        {% set top = headline[result.best] %}
+        {% set owned = result.best in ('yours', 'household') %}
+        <div class="rounded-xl card p-5 mb-4 text-center {{ 'bg-accent text-on-accent' if owned else 'bg-secondary text-content-primary' }}">
+            <p class="text-2xl font-display">{{ top[0] }}</p>
+            <p class="mt-1 text-sm {{ '' if owned else 'text-content-secondary' }}">{{ top[1] }}{% if result.matches|length > 1 %} {{ result.matches|length }} matches below.{% endif %}</p>
+        </div>
+
+        <ul class="space-y-3">
+            {% for row in result.matches %}
+            {% set lm = labels_for(row) %}
+            <li>
+                <a href="{{ item_url(row) }}" class="flex gap-4 bg-secondary rounded-xl card card-link p-3 sm:p-4">
+                    {% if row.cover_image_url %}
+                    <img src="{{ url_for('static', filename=row.cover_image_url) }}" alt="" loading="lazy"
+                         class="h-24 w-auto max-w-[5rem] self-start rounded shadow-sm">
+                    {% else %}
+                    {% with title=none, size='sm', box='w-16 h-24 shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% endif %}
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-content-primary">{{ row.title }}</p>
+                        {% if row.author %}<p class="text-sm text-content-secondary truncate">{{ lm.by }} {{ row.author }}</p>{% endif %}
+                        <p class="mt-2 text-sm font-semibold {{ 'text-accent' if row.verdict in ('yours', 'household') else 'text-content-primary' }}">
+                            {%- if row.verdict == 'yours' %}On your shelf
+                            {%- elif row.verdict == 'household' %}On the shelf: {{ row.owner }}'s
+                            {%- elif row.verdict == 'wishlist' %}On your wishlist
+                            {%- elif row.verdict == 'not_owned' %}Not owned
+                            {%- elif row.verdict == 'removed' %}Removed from your shelf
+                            {%- elif row.verdict == 'their_wishlist' %}On {{ row.owner }}'s wishlist
+                            {%- else %}{{ row.owner ~ "'s copy" if row.owner else 'No owner' }}, not on a shelf here{% endif -%}
+                            <span class="font-normal text-content-secondary"> &middot; {{ lm.Noun }}{% if row.format %}, {{ row.format|format_label }}{% endif %}</span>
+                        </p>
+                        {% set mine = [] %}
+                        {% if row.status %}{% set _ = mine.append(lm.status_labels[row.status]) %}{% endif %}
+                        {% if row.times_done and row.times_done > 1 %}{% set _ = mine.append(row.times_done ~ ' times') %}{% endif %}
+                        {% if row.rating %}{% set _ = mine.append('rated ' ~ row.rating ~ '/5') %}{% endif %}
+                        {% if mine %}<p class="text-sm text-content-secondary">You: {{ mine|join(', ') }}</p>{% endif %}
+                    </div>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </section>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='have.js') }}"></script>
+{% endblock %}

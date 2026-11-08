@@ -22,6 +22,7 @@ from blueprints.read import read_blueprint
 from blueprints.tags import tags_blueprint
 from blueprints.admin import admin_blueprint
 from blueprints.feed import feed_blueprint
+from blueprints.have import have_blueprint
 from blueprints.wishlist import wishlist_blueprint
 from blueprints.friends import friends_blueprint
 from blueprints.covers import covers_blueprint
@@ -187,6 +188,7 @@ def create_app():
     app.register_blueprint(tags_blueprint, url_prefix='/tags')
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
     app.register_blueprint(feed_blueprint, url_prefix='/feed')
+    app.register_blueprint(have_blueprint, url_prefix='/have')
     app.register_blueprint(wishlist_blueprint, url_prefix='/wishlist')
     app.register_blueprint(friends_blueprint, url_prefix='/friends')
     app.register_blueprint(covers_blueprint, url_prefix='/covers')

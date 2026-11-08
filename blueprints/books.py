@@ -137,7 +137,8 @@ def render_add_book(destination="shelf", values=None, duplicates=(), status=200)
                               cover_url=url_for("static", filename=cover) if cover else None,
                               isbn="", duplicates=duplicates), status
     book_details = None
-    isbn = ""
+    # ?isbn= (from Do I have this?): the ISBN tab, filled in; the page looks it up
+    isbn = request.args.get("isbn", "").strip() if request.method == "GET" else ""
     if request.method == "POST" and "isbn_lookup" in request.form:
         isbn = request.form.get("isbn", "").strip()
         if media.classify_code(isbn) == media.VIDEO:

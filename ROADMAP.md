@@ -3,7 +3,7 @@
 The phased plan for Libaraxia: every open action item, security follow-up and bug found so far, in the order to work through them. This is the **single list of open work**. Tick items (`[x]`) as they land, and move a finished phase to [Done](#done) with a date.
 
 - Assembled **2026-11-02** from the old `ACTION_ITEMS.md` (security audit of 2026-10-28), [FORK-SPEC.md](FORK-SPEC.md) (2026-11-01), and a screenshot/data pass on 2026-11-02 against an anonymised copy of `library.db`.
-- **Phases 0–9 are all core Libaraxia work** and don't depend on the fork. The archive fork is parked as Phase 10, a future idea. [FORK-SPEC.md](FORK-SPEC.md) holds the fork plan, and also the original VHS design notes (Phase 8).
+- **Phases 0–10 are all core Libaraxia work** and don't depend on the fork. The archive fork is parked as Phase 11, a future idea. [FORK-SPEC.md](FORK-SPEC.md) holds the fork plan, and also the original VHS design notes (Phase 8).
 - Items marked 🆕 are new findings from 2026-11-02.
 
 Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
@@ -21,13 +21,16 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 6 ✅ | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
 | 7 ✅ | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
 | 8 ✅ | [Physical media: movies and vinyl](#phase-8-physical-media-movies-and-vinyl) | Built in the new style | Movies (VHS, DVD) and vinyl are their own sections: scanned or entered, watched/listened, reviewed and shared, never among the books; one add form and one grid layout for every type |
-| 8B | [Music lookups, formats and ownership](#phase-8b-music-lookups-formats-and-ownership) | Follow-ups from using Phase 8; after it has shipped and settled | MusicBrainz finds CDs and tapes; books have a format (Book / Audiobook); you can review something you don't own |
-| 8C | [Collections refresh](#phase-8c-collections-refresh) | Collections are still books-only | Status shelves and custom shelves per section (Books / Movies / Music), page heading, side-scrolling rows reused on the profile |
-| 8D | [Profile wishlist](#phase-8d-profile-wishlist) | Follows 8C's rows | The profile's wishlist is a side-scrolling row per section instead of one grid |
-| 9 (parked) | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
-| 10 | [Fork (parked)](#phase-10-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
+| 8B ✅ | [Music lookups, formats and ownership](#phase-8b-music-lookups-formats-and-ownership) | Follow-ups from using Phase 8; after it has shipped and settled | MusicBrainz finds CDs and tapes; books have a format (Book / Audiobook); you can review something you don't own |
+| 8C ✅ | [Collections refresh](#phase-8c-collections-refresh) | Collections are still books-only | Status shelves and custom shelves per section (Books / Movies / Music), page heading, side-scrolling rows reused on the profile |
+| 8D ✅ | [Profile wishlist](#phase-8d-profile-wishlist) | Follows 8C's rows | The profile's wishlist is a side-scrolling row per section instead of one grid |
+| 8E ✅ | [Do I have this?](#phase-8e-do-i-have-this) | The bookstore case, once every type had barcodes and ownership was a real flag | Scan or type in a shop: own it / household's / wishlist / read but not owned / not here, with your status and rating |
+| 8F | [Cover quality](#phase-8f-cover-quality) | Popular books still get poor covers from Google | The right, large cover for popular books without a manual search |
+| 9 | [Bulk edit and granular import](#phase-9-bulk-edit-and-granular-import) | A full GUI feature of its own; after 8F | Select many items and change them at once; pick Goodreads rows to import and where they go |
+| 10 (parked) | [More styles](#phase-10-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
+| 11 | [Fork (parked)](#phase-11-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
-Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 8B → 8C → 8D is the part that matters. Phase 9 is parked (Phil, 2026-11-08: an accent colour picker, 8B.5, instead of new styles for now).
+Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 8B → 8C → 8D → 8E → 8F → 9 is the part that matters. More styles (now Phase 10) and the fork (now Phase 11) are parked (Phil, 2026-11-08); they were 9 and 10 until bulk edit took Phase 9.
 
 **Why the refresh can go first without the `base.html` refactor:** the templates already use *semantic* Tailwind names: `text-content-secondary` ×319, `text-content-primary` ×222, `bg-primary` ×118, `bg-accent`/`text-accent` ×212, `font-display` ×40, plus Tailwind's default `white`, `gray-600/700`, `red`, `yellow`, `green`, `blue` and `shadow-*`. Re-pointing those names in `tailwind.config.js` recolours, re-fonts and squares off nearly every page **without editing templates**. Hand edits are limited to the shared partials, a find-and-replace adding borders to cards, and the text colour on coloured buttons. Per-page cleanup waits for Phase 7, when there's one layout to edit.
 
@@ -40,7 +43,7 @@ Housekeeping that doesn't belong to a phase and shouldn't hold one open: mostly 
   - in `/home/phil/library-catalog`, delete `library-prod.db`, `libaraxia.db` and `library.db.backup-20251104` (pre-Phase-2 leftovers nothing opens), and the `library.db.backup-20261102-*` files `manage.py` made during the Phase 2 deploy;
   - ~~delete the manual ZFS snapshot taken before the Phase 2 deploy~~ (done 2026-11-02).
 - [x] **Prod: install auto-deploy** (done 2026-11-04; see `deploy/README.md`): one last `git pull`, https remote, sudoers line for the restart, enable `libaraxia-deploy.timer`. Then, once by hand (the pull leaves the timer nothing to do): `manage.py migrate` (018, 019) and restart gunicorn.
-- [ ] **Dev machine:** delete the stray DB files in the repo root (all git-ignored, none opened by anything; checked 2026-11-02, see 2.6): `libaraxia.db`, `instance/library.db`, `library.db.backup_20251018_191333`, `library.db.backup_20261102_pre013`.
+- [x] **Dev machine:** the stray DB files and old backups moved to `archive/db/` (git-ignored, see `archive/README.md`) on 2026-11-08 for Phil to sort and delete by hand. The dev `library.db` was migrated to 027 the same day.
 
 ---
 
@@ -446,7 +449,7 @@ A wishlist entry is a full `books` row plus a `wishlist` row. Today that's **260
   - **Buttons:** a `2–3px` shadow that drops to `1px` as the button moves `1px`.
   - **Dark mode:** the border turns light; the shadow stays accent.
   - **Libaraxia's rules on top:** only clickable things press (a static panel that moves on hover looks clickable when it isn't), inputs get the 2px border but no shadow, and there's no movement under `prefers-reduced-motion`. Classic keeps its soft shadows.
-- **New styles go in their own phase** ([Phase 9](#phase-9-more-styles)), after VHS: Shelf (iBooks-style), Outrun, and a video-store rack for VHS **inside Shelf**. Phase 7 lays the groundwork they need: component classes (7.1) instead of utility strings repeated in every template.
+- **New styles go in their own phase** ([Phase 10](#phase-10-more-styles)), after VHS: Shelf (iBooks-style), Outrun, and a video-store rack for VHS **inside Shelf**. Phase 7 lays the groundwork they need: component classes (7.1) instead of utility strings repeated in every template.
 - **7.2b changes how Phil uses the app: ask him before starting it.**
 - **Order:** 7.0 → 7.1 → 7.2 → 7.3 → 7.2b.
 
@@ -486,7 +489,7 @@ Found by a headless sweep: every GET page × House/Classic × light/dark × 390/
   - Now the FAB is `z-30` and click-through except the button itself, and its menu backdrop is `z-20`.
 - [x] ~~Delete the now-inert `rounded-*` / `shadow-*` classes from templates.~~ **Won't do (2026-11-02):** they drive the Classic style, so they stay. (The `shadow-*` utilities on cards and buttons did go, replaced by the component classes.)
 - [x] **Film-frame covers** on the book page (House): the cover sits in a strip of film stock with sprocket holes, and the ISBN is printed along the edge in amber (`▸ 9780143129554`). Classic shows the plain cover. `--film`, `--film-edge` and `--film-hole` are fixed in both modes (film is dark either way).
-  - **Removed 2026-11-05:** Phil didn't like it on books. The CSS, tokens and markup are parked in `docs/parked/film-frame.css` (not loaded) for VHS/DVD covers (9.1 rack, or the fork).
+  - **Removed 2026-11-05:** Phil didn't like it on books. The CSS, tokens and markup are parked in `docs/parked/film-frame.css` (not loaded) for VHS/DVD covers (10.1 rack, or the fork).
 - [x] Remaining details from the sites (House only):
   - [x] zero-padded numbered markers (`01 — Step`) on `ol.numbered` (the Goodreads export steps)
   - [x] `↗` after links that open another site (`target="_blank"`); internal "more" links already end in `→`
@@ -512,11 +515,11 @@ Found by a headless sweep: every GET page × House/Classic × light/dark × 390/
 
 Go over the whole search/sort/filter bar (`_search_sort_filter.html`, `script.js`) and the grid/list toggle, and make them friendlier. What they do today, found while answering "which search do I use in a bookstore?":
 
-- [ ] **Two searches that look alike but aren't.**
+- [ ] **Two searches that look alike but aren't.** (Partly settled 2026-11-08: there's no header search any more, the shelf search hints at off-shelf matches (8B.3), and Do I have this? (8E) covers wishlist, household and ISBN/barcode. What's left: wishlist entries in the grid search, and making Add's Google search look different from the library search.)
   - The header magnifier (`/books/search`) searches your and your household's shelf by title, author or year (substring). It **hides removed books** unless the Removed filter says otherwise, so "Read but not owned" and given-away books don't show. It doesn't search your **wishlist** or by **ISBN**.
   - Add Book's search queries **Google Books**, not your library.
   - Make the difference obvious, or merge them into one "find" that also covers wishlist and removed books, with results labelled *On your shelf* / *Household's* / *Removed* / *On wishlist*.
-- [ ] **A "Do I have this?" scan for bookstores.**
+- [x] **A "Do I have this?" scan for bookstores.** Built as [Phase 8E](#phase-8e-do-i-have-this) (2026-11-08).
   - Today the best in-store check is Add Book → barcode (or type the ISBN): the duplicate warning says *In library* / *Removed from library* / *In wishlist*, and you just don't add it. That's a detour through an add form, and it doesn't show whether you've **read** it or how you rated it.
   - A dedicated lookup (scan or type → owned? read? your rating? on wishlist? household's?) with one-tap *Add to wishlist* or *Add to library* would fit the use better.
   - Needs HTTPS for the camera, and builds on the Phase 8 scanner fixes.
@@ -696,13 +699,13 @@ Phil's idea: a movie watched on TV, an audiobook from a library, still worth a r
 ### 8B.4 Export: movies and music (Phil, 2026-11-08)
 - [x] "Export my data" covers every type (done 2026-11-08, `test_data_export_has_type_and_format`). `library.csv` already has every type (with Type, Format, Catalogue Number, Runtime), but `reading_sessions.csv`, `reviews.csv`, `shelves.csv` and `wishlist.csv` have no Type or Format column, so a movie review can't be told from a book's. Append Type and Format (appended, so older readers keep working). Profile wording: "library" means books, movies and music.
 
-### 8B.5 Accent colour picker (Phil, 2026-11-08; instead of Phase 9 for now)
+### 8B.5 Accent colour picker (Phil, 2026-11-08; instead of more styles, now Phase 10, for now)
 - [x] Profile → Appearance: an accent choice next to Style and Mode, as swatches: green (default), aqua, blue, purple, orange, red, yellow, each with a light and a dark Gruvbox value (`styles.css`: `--acc-l` / `--acc-d` per `:root[data-accent=…]`, read by the House palette). Stored in `users.accent` (migration `026_accent.sql`, default `green`, checked against `models.ACCENTS`), on `<html data-accent=…>` like `data-style`. **House style only:** Classic keeps its own green and hides the picker.
 - [x] Hard shadows, focus rings, tabs and chart bars follow `--accent`, so nothing else needed touching. Light values are Gruvbox's dark shades and dark values its bright ones, the pairs the palette already uses for text on paper, so `--on-accent` stays the paper/ink colour. Contrast checked: every accent is at least 4.5:1 against its on-accent text in both modes (lowest: light green 4.6, dark red 4.8).
 
 - [x] Classic gets the accents too (Phil, 2026-11-08). Gruvbox's standard colours can't carry Classic's white button text (yellow 2.5:1, green 3.1:1), so Classic uses each accent's light shade (Gruvbox faded, 4.9 to 8.6:1 with white) in both modes; green stays Classic's own #4f7d19. Its dark-mode chart bars use the bright shade.
 - [x] Style names: House shows as **Negative Earth**, Classic as **OG** (`models.THEME_STYLES`; the stored keys `house` / `classic` and the CSS are unchanged, the same way Movies is still `video` underneath).
-- [ ] Known, older than the picker: in OG dark mode, accent-coloured *text* (links like "View all", `text-accent`) is under 3:1 on the greys, for the original green too (2.8). Fix with a separate text token (the accent's bright shade) for OG dark.
+- [x] OG dark mode, accent-coloured *text* (links like "View all", `text-accent`) was under 3:1 on the greys, the original green too (2.8). Fixed 2026-11-08: a `--accent-text` token (Tailwind `textColor.accent`, and the CSS rules that colour text with the accent) that is the accent everywhere except OG dark, where it is each accent's pale Gruvbox shade (`--acc-t`, 4.7:1 or better on both #2c2c2c and #424242). Button fills are unchanged. Test: `test_og_dark_accent_text_is_readable`.
 
 **Status 2026-11-08:** done. Tests: `test_accent_colour_is_saved_and_on_every_page`, `test_every_accent_has_css`, `test_style_names_and_classic_accents`. Checked in headless Chromium with blue in dark mode.
 
@@ -716,8 +719,8 @@ Phil's idea: a movie watched on TV, an audiobook from a library, still worth a r
 - [x] Replaced by breadcrumbs: `crumbs(trail, here)` in `_icons.html`, a quiet uppercase trail (LIBRARY / CAT'S CRADLE / REVIEW; links muted, accent and underlined on hover, the current page cut with an ellipsis). It says where you are as well as the way back, so there's no arrow button to style. On item pages (Library, Movies or Music, or Wishlist / a friend's wishlist when you came from there), review, edit, add, search, friend's library and wishlist, shelves, Goodreads import and the admin sub-pages.
 - [x] Pages in the sidebar (profile, notifications, collections, admin settings) lost their back link. Tests: `test_no_back_to_catalog_links`, `test_item_page_crumbs_follow_the_section`.
 
-### 8B.9 Phase 9 parked
-- [x] Phase 9 (Shelf, Outrun) parked in favour of 8B.5.
+### 8B.9 More styles parked
+- [x] More styles (Shelf, Outrun; Phase 9 then, Phase 10 since 2026-11-08) parked in favour of 8B.5.
 
 ### 8B.10 Discogs for Add Album (Phil, 2026-11-08)
 MusicBrainz kept answering 503 (busy on their side, not our rate: a handful of searches seconds apart).
@@ -755,13 +758,46 @@ From Phil, 2026-11-08. After 8C, since it reuses its rows.
 
 ---
 
-## Phase 9: More styles
+## Phase 8E: Do I have this?
+
+From Phil, 2026-11-08 (was a 7.2b item). The bookstore and record-store check.
+- [x] `/have/` (sidebar: **Do I Have This?**, Lucide scan-barcode icon): scan a barcode or type an ISBN, barcode or title. The answer is a headline (You own this / Your household owns this / On your wishlist / You don't own this / You don't own this any more / Nobody here owns this) over a card per match: whose shelf, type and format, and **your** status, rating and times finished. Matching and scope are `utils/have.py`: your items, your household's, your wishlist, and anything you have your own data on (a friend's book you reviewed); never strangers' copies. A household member's wishlist entry isn't counted as a copy.
+- [x] ISBN-10 and ISBN-13 find each other (stored ISBNs with hyphens too); a 12-digit UPC finds the stored EAN-13; a bad check digit says so.
+- [x] Not found: Add to wishlist / Add to library, carrying the code (an ISBN as a book; another barcode as a movie or an album, your pick). Add Book now takes `?isbn=`, and every add page looks up a code that arrives in the URL (`data-auto-lookup`).
+- [x] The scanner (`static/have.js`, the shared `scanner.js`) reloads the page with `?q=<code>`, so the answer is rendered on the server and the page works without the camera or JavaScript. Camera needs HTTPS, as on Add.
+- [x] Fixed on the way: the camera picker showed an empty "Camera" select with one camera (its `flex` class beat the `hidden` attribute).
+
+**Status 2026-11-08:** done. Tests: `tests/test_have.py`. Checked at phone width in headless Chromium (owned, not owned, not found); the camera itself needs a real phone.
+
+## Phase 8F: Cover quality
+
+From Phil, 2026-11-08: popular, legitimate books (with the Google Books API key) still sometimes get a poor cover.
+- [ ] Reproduce with a few real cases from Phil (title + ISBN + what came back), logging each candidate's size (`save_best_cover` already logs at debug).
+- [ ] First lead, not yet verified: Google's **search** results usually carry only `thumbnail` / `smallThumbnail`; the large sizes come from the volume endpoint (`/volumes/<id>`). `_google_cover_urls` also strips `&zoom=`, which leaves Google's default, about 128 px wide. Try the volume endpoint and a larger `zoom` (or `fife=w800`), with the placeholder check (3.2) since Google answers some of those with "image not available".
+- [ ] Then the order of sources per case: Open Library `-L` by ISBN is often better for older books, Google for newer ones. Keep the "Find a better cover" stream as the manual fallback.
+
+## Phase 9: Bulk edit and granular import
+
+From Phil, 2026-11-08. Its own phase: a whole selection-and-actions UI, not a tweak.
+- [ ] **Select mode on the grids** (Library, Shared, Movies, Music, search results, a shelf): an Edit / Select toggle; tap covers to select, shift-click for a range, select all (on this filtered view), with a count and a sticky action bar. Works with the keyboard and at phone width.
+- [ ] **Bulk actions** on the selection, each one POST with CSRF, ownership checked per item in SQL (owner or admin, as Edit), and a summary ("47 changed, 3 skipped: not yours"):
+  - add to / remove from a custom shelf (8C: the selection's section);
+  - set a status (only statuses valid for each item's type);
+  - set genre (the cookbooks case), format, owned / not owned;
+  - add or remove a tag;
+  - remove from library (deaccession) with one note.
+- [ ] Undo, or at least a clear confirmation before anything that isn't easy to reverse.
+- [ ] **Granular Goodreads import** (from CLAUDE.md's product direction): after parsing, a sortable, filterable grid of the rows with checkboxes and a destination per row (library / wishlist / not owned / skip) and shelf mapping, then import only the chosen ones. Reuses the select-mode pieces above. Covers can't come from the export (no URLs); the background cover job (`cover_jobs`) fills them after.
+
+---
+
+## Phase 10: More styles
 
 **Parked** (Phil, 2026-11-08): the accent colour picker (8B.5) comes first; pick this up later.
 
 From Phil, 2026-11-05. New choices next to House and Classic under Profile → Appearance. They come after Phase 8 because the Shelf style's video-store rack needs VHS records. Each style is a shape block and palettes in `styles.css` (as today), plus a scoped `[data-style=…]` stylesheet for structure, built on the 7.1 component classes. Do one style at a time, with the same headless sweep as 7.0.
 
-### 9.1 Shelf (iBooks-style skeuomorphic) 🟢
+### 10.1 Shelf (iBooks-style skeuomorphic) 🟢
 Reference: `docs/skeuomorphic-inspo.jpg` (local only, git-ignored): the 2010 iPad iBooks shelf.
 - [ ] Wood-grain page and shelves. Light mode = maple, dark = walnut. Texture as a small tiling image (self-made or CC0, in `static/`), or a CSS gradient approximation if that looks good enough.
 - [ ] **Library grid as shelves:** covers only (title/author on hover/focus and in list view), fixed row height so a shelf ledge runs under each row (a per-card ledge that bridges the gaps), soft drop shadow on covers.
@@ -769,7 +805,7 @@ Reference: `docs/skeuomorphic-inspo.jpg` (local only, git-ignored): the 2010 iPa
 - [ ] **Video-store rack for VHS** (Shelf only; in House and Classic the Videos grid looks like the book grid): tapes spine-out in a rack, navy and marquee yellow, ticket-stub labels. Generic, no Blockbuster or other branding. Needs Phase 8. Candidate for the tape/sleeve cover: the parked film frame, `docs/parked/film-frame.css`.
 - [ ] Forms, profile and admin pages stay plain-but-themed (wood frame, paper panels); only the library views go full skeuomorphic.
 
-### 9.2 Outrun (80s neon) 🟢
+### 10.2 Outrun (80s neon) 🟢
 - [ ] **Dark only:** the Mode setting is ignored (documented on the Appearance picker).
 - [ ] Perspective neon grid behind the page (fixed pseudo-element, CSS gradients + `perspective`; no images, no literal scenery).
 - [ ] Purple → orange gradient on the top bar and headings; glow (`text-shadow` / `box-shadow`) on headings, accents and focus only, never on body text.
@@ -781,9 +817,9 @@ Reference: `docs/skeuomorphic-inspo.jpg` (local only, git-ignored): the 2010 iPa
 
 ---
 
-## Phase 10: The archive fork (parked)
+## Phase 11: The archive fork (parked)
 
-**Not planned yet.** It's listed so the idea isn't lost; nothing in Phases 0–9 depends on it. The plan is in [FORK-SPEC.md](FORK-SPEC.md). In short:
+**Not planned yet.** It's listed so the idea isn't lost; nothing in Phases 0–10 depends on it. The plan is in [FORK-SPEC.md](FORK-SPEC.md). In short:
 1. Tag `v2.0.0` and create the fork repo with an `upstream` remote.
 2. Turn off the social layer by config and rebrand.
 3. Archival data model: accessioning, condition, provenance, locations, audit log.

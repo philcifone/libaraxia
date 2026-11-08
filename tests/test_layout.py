@@ -517,3 +517,17 @@ def test_tmdb_logo_with_the_notice(client, db, people, monkeypatch):
     assert 'src="/static/logos/tmdb.svg"' in page and 'not endorsed or certified by TMDB' in page
     svg = pathlib.Path('static/logos/tmdb.svg').read_text()
     assert '<script' not in svg.lower()
+
+
+def test_og_dark_accent_text_is_readable():
+    """OG dark: accent text uses the pale --acc-t shades (>= 4.5:1 on its
+    greys), through --accent-text, which text-accent and the CSS text rules use."""
+    css = pathlib.Path('static/styles.css').read_text()
+    classic = css[css.index('/* ---- Classic palette.'):]
+    assert classic.count('--accent-text: var(--acc-t, 142 192 72)') == 2
+    for name in ('aqua', 'blue', 'purple', 'orange', 'red', 'yellow'):
+        rule = re.search(r'\[data-swatch="' + name + r'"\]\s*\{([^}]*)\}', css).group(1)
+        assert '--acc-t:' in rule and '--acc-t-hover:' in rule, name
+    built = pathlib.Path('static/css/output.css').read_text()
+    assert 'color: rgb(var(--accent-text) / var(--tw-text-opacity, 1))' in built
+    assert not re.search(r'(?<![-\w])color: rgb\(var\(--accent\)\);', css)   # borders may keep it

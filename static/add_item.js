@@ -509,8 +509,9 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(file);
     });
 
-    // Arrived with a code (a tape scanned on Add Book) and nothing typed yet
-    if (codeInput && codeInput.value.trim() && !$('title').value.trim() && root.dataset.type === 'video') {
+    // Arrived with a code in the URL (a tape scanned on Add Book, a miss on
+    // Do I have this?) and nothing typed yet: look it up
+    if (codeInput && codeInput.value.trim() && !$('title').value.trim() && root.dataset.autoLookup) {
         lookUpCode(codeInput.value);
     }
 });

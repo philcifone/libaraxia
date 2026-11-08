@@ -63,6 +63,11 @@ module.exports = {
         orange: { 600: v('orange'), 700: v('orange') },
         purple: { 400: v('purple'), 500: v('purple') },
       },
+      // Accent text has its own token: the same as the accent except in OG
+      // dark mode, where the accent is too dark to read on the greys.
+      textColor: {
+        accent: { DEFAULT: v('accent-text'), hover: v('accent-text-hover') },
+      },
       fontFamily: {
         primary: 'var(--font-body)',
         display: ['"Young Serif"', 'serif'],

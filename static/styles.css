@@ -112,16 +112,22 @@
        Each sets a light shade (Gruvbox faded, darkened for yellow) and a dark
        one (Gruvbox bright), with hovers; the House palette below reads them
        through var(..., green). The same values colour the picker's swatches
-       ([data-swatch]). Contrast (WCAG): every shade is >= 4.5:1 behind its
+       ([data-swatch]). --acc-t / --acc-t-hover are the text shades for OG dark only.
+       Contrast (WCAG): every shade is >= 4.5:1 behind its
        --on-accent text; as text on --surface, all >= 4.5 except light green
        (4.16, the original) and dark red (4.29). ---- */
-    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; }
-    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; }
-    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; }
-    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; }
-    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; }
-    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; }
+    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; --acc-t: 142 192 124; --acc-t-hover: 176 211 163; }
+    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; --acc-t: 162 188 178; --acc-t-hover: 190 208 201; }
+    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; --acc-t: 222 164 180; --acc-t-hover: 232 191 202; }
+    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; --acc-t: 254 160 82; --acc-t-hover: 254 188 134; }
+    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; --acc-t: 253 148 136; --acc-t-hover: 254 180 172; }
+    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; --acc-t: 250 189 47; --acc-t-hover: 252 209 109; }
     [data-swatch="green"] { --acc-l: 121 116 14; --acc-d: 152 151 26; }
+
+    /* Accent as text (text-accent, tailwind.config.js textColor). The same
+       colour as the accent everywhere except OG dark, whose greys need the
+       paler --acc-t shades above (>= 4.7:1 on both #2c2c2c and #424242). */
+    :root { --accent-text: var(--accent); --accent-text-hover: var(--accent-hover); }
 
     .accent-swatch { background: rgb(var(--acc-l, 121 116 14)); }
     .accent-opt[aria-pressed="true"] { outline: 2px solid rgb(var(--ink)); outline-offset: 1px; }
@@ -257,6 +263,8 @@
             --rule-strong: 75 85 99;    /* #4b5563 */
             --accent: var(--acc-l, 79 125 25);  /* #4f7d19, or the chosen accent */
             --accent-hover: var(--acc-l-hover, 106 152 57); /* #6a9839 */
+            --accent-text: var(--acc-t, 142 192 72);           /* #8ec048, lifted green: 4.7:1 on #424242 */
+            --accent-text-hover: var(--acc-t-hover, 176 211 127);
             --on-accent: 255 255 255;   /* #ffffff */
             --ink: 255 255 255;         /* #ffffff */
             --ink-2: 238 238 238;       /* #eeeeee */
@@ -284,6 +292,8 @@
         --rule-strong: 75 85 99;    /* #4b5563 */
         --accent: var(--acc-l, 79 125 25);  /* #4f7d19, or the chosen accent */
         --accent-hover: var(--acc-l-hover, 106 152 57); /* #6a9839 */
+        --accent-text: var(--acc-t, 142 192 72);           /* #8ec048, lifted green: 4.7:1 on #424242 */
+        --accent-text-hover: var(--acc-t-hover, 176 211 127);
         --on-accent: 255 255 255;   /* #ffffff */
         --ink: 255 255 255;         /* #ffffff */
         --ink-2: 238 238 238;       /* #eeeeee */
@@ -311,7 +321,7 @@
     /* Links in running text: accent, underlined (philcifone.com style).
        Only bare links (no class) so nav, buttons and cards keep their look. */
     a:not([class]) {
-        color: rgb(var(--accent));
+        color: rgb(var(--accent-text));
         text-decoration: underline;
         text-decoration-thickness: 1px;
         text-underline-offset: .2em;
@@ -463,7 +473,7 @@
     }
     :root:not([data-style="classic"]) ol.numbered > li::before {
         content: counter(step, decimal-leading-zero) " \2014  ";
-        color: rgb(var(--accent));
+        color: rgb(var(--accent-text));
         font-weight: 700;
     }
 
@@ -505,6 +515,10 @@
         max-height: 10rem;
     }
 
+    /* The camera picker (scanner.js sets .hidden when there's one camera):
+       its `flex` class would otherwise beat the hidden attribute. */
+    [data-camera-picker][hidden] { display: none; }
+
     /* Breadcrumbs (_icons.html crumbs, 8B.8): a quiet uppercase trail above
        the page, LIBRARY / DUNE / REVIEW. Links are muted until hovered; the
        current page is plain text, cut with an ellipsis when it's long. */
@@ -523,7 +537,7 @@
     }
     .crumb-link:hover,
     .crumb-link:focus-visible {
-        color: rgb(var(--accent));
+        color: rgb(var(--accent-text));
         text-decoration-line: underline;
     }
     .crumb-sep {
@@ -638,7 +652,7 @@
 
     /* Grid/list switch in the view bar: the pressed one is filled. */
     .view-toggle-btn { color: rgb(var(--ink-2)); background: rgb(var(--paper)); }
-    .view-toggle-btn:hover { color: rgb(var(--accent)); }
+    .view-toggle-btn:hover { color: rgb(var(--accent-text)); }
     .view-toggle-btn[aria-pressed="true"] { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
 
     /* ---- Reading chart (profile → Overview) ----
@@ -719,7 +733,7 @@
     }
     .tab-active,
     .tab-button.active {
-        color: rgb(var(--accent));
+        color: rgb(var(--accent-text));
         border-bottom-color: rgb(var(--accent));
         font-weight: 700;
     }
@@ -729,7 +743,7 @@
         border-bottom: 2px solid transparent;
     }
     .nav-link.nav-active {
-        color: rgb(var(--accent));
+        color: rgb(var(--accent-text));
         border-bottom-color: rgb(var(--accent));
         font-weight: 700;
     }

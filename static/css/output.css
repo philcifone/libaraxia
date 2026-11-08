@@ -630,7 +630,8 @@ video {
        Each sets a light shade (Gruvbox faded, darkened for yellow) and a dark
        one (Gruvbox bright), with hovers; the House palette below reads them
        through var(..., green). The same values colour the picker's swatches
-       ([data-swatch]). Contrast (WCAG): every shade is >= 4.5:1 behind its
+       ([data-swatch]). --acc-t / --acc-t-hover are the text shades for OG dark only.
+       Contrast (WCAG): every shade is >= 4.5:1 behind its
        --on-accent text; as text on --surface, all >= 4.5 except light green
        (4.16, the original) and dark red (4.29). ---- */
 
@@ -639,6 +640,8 @@ video {
   --acc-l-hover: 53 98 70;
   --acc-d: 104 157 106;
   --acc-d-hover: 142 192 124;
+  --acc-t: 142 192 124;
+  --acc-t-hover: 176 211 163;
 }
 
 :root[data-accent="blue"],   [data-swatch="blue"]   {
@@ -646,6 +649,8 @@ video {
   --acc-l-hover: 6 82 96;
   --acc-d: 131 165 152;
   --acc-d-hover: 162 188 178;
+  --acc-t: 162 188 178;
+  --acc-t-hover: 190 208 201;
 }
 
 :root[data-accent="purple"], [data-swatch="purple"] {
@@ -653,6 +658,8 @@ video {
   --acc-l-hover: 114 50 90;
   --acc-d: 211 134 155;
   --acc-d-hover: 222 164 180;
+  --acc-t: 222 164 180;
+  --acc-t-hover: 232 191 202;
 }
 
 :root[data-accent="orange"], [data-swatch="orange"] {
@@ -660,6 +667,8 @@ video {
   --acc-l-hover: 140 46 2;
   --acc-d: 254 128 25;
   --acc-d-hover: 254 160 82;
+  --acc-t: 254 160 82;
+  --acc-t-hover: 254 188 134;
 }
 
 :root[data-accent="red"],    [data-swatch="red"]    {
@@ -667,6 +676,8 @@ video {
   --acc-l-hover: 126 0 5;
   --acc-d: 251 73 52;
   --acc-d-hover: 252 118 103;
+  --acc-t: 253 148 136;
+  --acc-t-hover: 254 180 172;
 }
 
 :root[data-accent="yellow"], [data-swatch="yellow"] {
@@ -674,11 +685,22 @@ video {
   --acc-l-hover: 114 73 11;
   --acc-d: 215 153 33;
   --acc-d-hover: 250 189 47;
+  --acc-t: 250 189 47;
+  --acc-t-hover: 252 209 109;
 }
 
 [data-swatch="green"] {
   --acc-l: 121 116 14;
   --acc-d: 152 151 26;
+}
+
+/* Accent as text (text-accent, tailwind.config.js textColor). The same
+       colour as the accent everywhere except OG dark, whose greys need the
+       paler --acc-t shades above (>= 4.7:1 on both #2c2c2c and #424242). */
+
+:root {
+  --accent-text: var(--accent);
+  --accent-text-hover: var(--accent-hover);
 }
 
 .accent-swatch {
@@ -925,6 +947,9 @@ video {
     /* #4f7d19, or the chosen accent */
     --accent-hover: var(--acc-l-hover, 106 152 57);
     /* #6a9839 */
+    --accent-text: var(--acc-t, 142 192 72);
+    /* #8ec048, lifted green: 4.7:1 on #424242 */
+    --accent-text-hover: var(--acc-t-hover, 176 211 127);
     --on-accent: 255 255 255;
     /* #ffffff */
     --ink: 255 255 255;
@@ -974,6 +999,9 @@ video {
   /* #4f7d19, or the chosen accent */
   --accent-hover: var(--acc-l-hover, 106 152 57);
   /* #6a9839 */
+  --accent-text: var(--acc-t, 142 192 72);
+  /* #8ec048, lifted green: 4.7:1 on #424242 */
+  --accent-text-hover: var(--acc-t-hover, 176 211 127);
   --on-accent: 255 255 255;
   /* #ffffff */
   --ink: 255 255 255;
@@ -1020,7 +1048,7 @@ body {
        Only bare links (no class) so nav, buttons and cards keep their look. */
 
 a:not([class]) {
-  color: rgb(var(--accent));
+  color: rgb(var(--accent-text));
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: .2em;
@@ -1314,7 +1342,7 @@ textarea {
 
 :root:not([data-style="classic"]) ol.numbered > li::before {
   content: counter(step, decimal-leading-zero) " \2014  ";
-  color: rgb(var(--accent));
+  color: rgb(var(--accent-text));
   font-weight: 700;
 }
 
@@ -1360,6 +1388,13 @@ textarea {
   max-height: 10rem;
 }
 
+/* The camera picker (scanner.js sets .hidden when there's one camera):
+       its `flex` class would otherwise beat the hidden attribute. */
+
+[data-camera-picker][hidden] {
+  display: none;
+}
+
 /* Breadcrumbs (_icons.html crumbs, 8B.8): a quiet uppercase trail above
        the page, LIBRARY / DUNE / REVIEW. Links are muted until hovered; the
        current page is plain text, cut with an ellipsis when it's long. */
@@ -1381,7 +1416,7 @@ textarea {
 
 .crumb-link:hover,
     .crumb-link:focus-visible {
-  color: rgb(var(--accent));
+  color: rgb(var(--accent-text));
   text-decoration-line: underline;
 }
 
@@ -1438,7 +1473,7 @@ textarea {
   line-height: 1.25rem;
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(var(--accent) / var(--tw-text-opacity, 1));
+  color: rgb(var(--accent-text) / var(--tw-text-opacity, 1));
 }
 
 .read-more-toggle:hover {
@@ -1547,7 +1582,7 @@ img.book-cover-img:not([data-loaded]) {
 }
 
 .view-toggle-btn:hover {
-  color: rgb(var(--accent));
+  color: rgb(var(--accent-text));
 }
 
 .view-toggle-btn[aria-pressed="true"] {
@@ -1694,7 +1729,7 @@ img.book-cover-img:not([data-loaded]) {
 
 .tab-active,
     .tab-button.active {
-  color: rgb(var(--accent));
+  color: rgb(var(--accent-text));
   border-bottom-color: rgb(var(--accent));
   font-weight: 700;
 }
@@ -1706,7 +1741,7 @@ img.book-cover-img:not([data-loaded]) {
 }
 
 .nav-link.nav-active {
-  color: rgb(var(--accent));
+  color: rgb(var(--accent-text));
   border-bottom-color: rgb(var(--accent));
   font-weight: 700;
 }
@@ -2033,6 +2068,10 @@ img.book-cover-img:not([data-loaded]) {
   margin-top: 1rem;
 }
 
+.mt-5 {
+  margin-top: 1.25rem;
+}
+
 .mt-6 {
   margin-top: 1.5rem;
 }
@@ -2311,6 +2350,10 @@ img.book-cover-img:not([data-loaded]) {
   max-width: 42rem;
 }
 
+.max-w-3xl {
+  max-width: 48rem;
+}
+
 .max-w-4xl {
   max-width: 56rem;
 }
@@ -2341,6 +2384,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .max-w-\[300px\] {
   max-width: 300px;
+}
+
+.max-w-\[5rem\] {
+  max-width: 5rem;
 }
 
 .max-w-\[8rem\] {
@@ -3226,7 +3273,7 @@ img.book-cover-img:not([data-loaded]) {
 
 .text-accent {
   --tw-text-opacity: 1;
-  color: rgb(var(--accent) / var(--tw-text-opacity, 1));
+  color: rgb(var(--accent-text) / var(--tw-text-opacity, 1));
 }
 
 .text-blue-400 {
@@ -3922,12 +3969,12 @@ dialog::backdrop {
 
 .hover\:text-accent:hover {
   --tw-text-opacity: 1;
-  color: rgb(var(--accent) / var(--tw-text-opacity, 1));
+  color: rgb(var(--accent-text) / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-accent-hover:hover {
   --tw-text-opacity: 1;
-  color: rgb(var(--accent-hover) / var(--tw-text-opacity, 1));
+  color: rgb(var(--accent-text-hover) / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-blue-300:hover {
@@ -4029,7 +4076,7 @@ dialog::backdrop {
 
 .group:hover .group-hover\:text-accent {
   --tw-text-opacity: 1;
-  color: rgb(var(--accent) / var(--tw-text-opacity, 1));
+  color: rgb(var(--accent-text) / var(--tw-text-opacity, 1));
 }
 
 .group:hover .group-hover\:opacity-90 {

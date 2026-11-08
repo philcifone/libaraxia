@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Open work, known bugs and security follow-ups live in [ROADMAP.md](ROADMAP.md)**, as numbered phases worked through in order. Check it before starting a task and tick items off when they're done. Phases 0–9 are core Libaraxia work (Phase 0, the Gruvbox/house-style design refresh, comes first). The archive fork is parked; its plan and the original VHS design notes are in [FORK-SPEC.md](FORK-SPEC.md).
+**Open work, known bugs and security follow-ups live in [ROADMAP.md](ROADMAP.md)**, as numbered phases worked through in order. Check it before starting a task and tick items off when they're done. Phases 0–10 are core Libaraxia work (Phase 0, the Gruvbox/house-style design refresh, comes first). The archive fork is parked; its plan and the original VHS design notes are in [FORK-SPEC.md](FORK-SPEC.md).
 
 ## Project Overview
 
@@ -64,6 +64,7 @@ npm run watch:css    # rebuild on change
 - **wishlist** (`/wishlist`): your wishlist (`/view`: books and movies, with Books / Movies / Both tabs, `?show=`), adding (`/add?type=book|video`: the shared `add_item.html` with a note field), moving items onto the shelf (Library or Movies), friends' wishlists.
 - **friends** (`/friends`): friend requests, friend list, notifications page, user search API.
 - **videos** (`/videos`) and **records** (`/records`): the Movies and Music sections (Phase 8; Music was "Vinyls" until 2026-11-08: vinyl, CDs and cassettes, one item is an "album", while code, URLs and the DB say "record"), both built by `blueprints/media_section.py` (a `Section` per type, `make_blueprint`; endpoints `videos.show_video`, `records.add_record`, ... via `media.item_endpoint`). Own / household (`/shared`) / friends' grids (`media_grid.html`; search and filters in the row under the tabs, `_search_sort_filter.html`), add (`add_item.html`, shared with Add Book), edit (`media_form.html`), detail (`book_detail.html` worded by `m`). Movies: TMDb title search `/videos/search`, barcode lookup `/videos/lookup`, scanner. Music: title search over vinyl, CD and cassette releases (`?format=` narrows to one), Discogs first when `DISCOGS_TOKEN` is set (`utils/discogs_lookup.py`), else or when busy MusicBrainz (`utils/music_lookup.py`): `/records/search`, `/records/lookup?discogs=`, `?mbid=` or `?barcode=` (barcodes and the scanner since 8B.12); reads `library_records`. For Movies: detail (`book_detail.html` with video wording; `/books/book/<id>` redirects videos here), barcode duplicate check. Reads the `library_videos` view. **The UI calls the section "Movies"** (sidebar, headings, flashes, feed) and shows the VHS format as **"Cartridge"** (`media.format_label`, the `format_label` template filter; a novel reference, Phil's choice). Code, URLs and the DB keep "video" and `format = 'VHS'`; a DVD is a video row with `format = 'DVD'`. Wording per type comes from `media.media_labels()`.
+- **have** (`/have`): Do I have this? (ROADMAP 8E): scan or type a barcode, ISBN or title; answers own / household / wishlist / not owned / removed / not here with your status and rating. Matching and scope in `utils/have.py`; `static/have.js` reloads the page with `?q=<code>`.
 - **covers** (`/covers`): background "fetch missing covers" jobs: start (scope `own`, or `all` for admins), status, stop, dismiss. Started from the Goodreads import result, the profile page and admin → placeholder covers.
 
 ### Utilities (`/utils/`)
@@ -145,8 +146,8 @@ Not scheduled and not to be worked on until Phil picks them up; they belong in a
 
 - **The catalog is for physical books Phil owns.** Audiobooks don't really belong in it: either leave them out of imports, or later integrate with Phil's Audiobookshelf server, which tracks audiobooks better than this project should.
   - **Settled 2026-11-08 (ROADMAP 8B.2/8B.3):** audiobooks are books with format Audiobook, usually not owned (`books.owned = 0`): in reading stats and reviewable, never on the shelf unless owned, never in page totals. The Goodreads `audiobook` shelf imports that way. Audiobookshelf integration stays a later idea.
-- **Revisit book info and cover fetching.** Today it's clunky (many sources), slow, and covers still aren't always right.
-- **Granular Goodreads import:** a selection grid with sorting, so the user picks which rows to import and where they go. Ideally covers would come with the import, if that's possible at all (the export has no cover URLs).
+- **Revisit book info and cover fetching.** Today it's clunky (many sources), slow, and covers still aren't always right. Now ROADMAP Phase 8F (cover quality).
+- **Granular Goodreads import:** a selection grid with sorting, so the user picks which rows to import and where they go. Now ROADMAP Phase 9, with bulk edit. Ideally covers would come with the import, if that's possible at all (the export has no cover URLs).
 - Goodreads `to-read` rows go to the wishlist on purpose, not the library with *Want to Read*: that would add books Phil doesn't own. (Rows for books he or his household already own do get *Want to Read*.)
 
 ## Important Development Notes

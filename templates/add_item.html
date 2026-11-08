@@ -46,7 +46,7 @@
 {% endblock %}
 
 {% block content %}
-<div id="add-item" data-type="{{ m.type }}" data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
+<div id="add-item" data-type="{{ m.type }}"{% if request.method == 'GET' and code_value %} data-auto-lookup="1"{% endif %} data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
      class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
     {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun) }}
 
