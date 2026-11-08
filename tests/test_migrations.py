@@ -104,6 +104,15 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
         DROP VIEW library_books;       -- added by 018
         DROP TABLE household_invites;  -- added by 021
         DROP TABLE cover_jobs;         -- added by 022
+        -- videos, added by 023
+        DROP VIEW library_videos;
+        DROP INDEX idx_books_media_type;
+        DROP INDEX idx_books_barcode;
+        ALTER TABLE books DROP COLUMN runtime_minutes;
+        ALTER TABLE books DROP COLUMN catalog_number;
+        ALTER TABLE books DROP COLUMN barcode;
+        ALTER TABLE books DROP COLUMN format;
+        ALTER TABLE books DROP COLUMN media_type;
         -- privacy columns from 012, dropped again by 020
         ALTER TABLE wishlist ADD COLUMN privacy TEXT DEFAULT 'friends';
         ALTER TABLE reading_sessions ADD COLUMN privacy TEXT DEFAULT 'friends';

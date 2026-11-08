@@ -1,0 +1,35 @@
+{# Floating add button: a square [+] in the bottom-right corner that opens a
+   short text-only menu. Shared by every section; the page says what's in the
+   menu with `fab_items`, a list of (label, url):
+
+     {% with fab_items=[('Library', url_for('books.add_book')), ...] %}
+         {% include '_add_fab.html' %}
+     {% endwith %}
+
+   z-30: above the page, below the sidebar (z-40) and top bar (z-50). The
+   container is click-through: the hidden menu above the button still takes up
+   space, and without this it swallowed clicks on whatever was underneath.
+   Behaviour (open/close, Escape, the backdrop) is in static/fab.js. #}
+<div class="fixed bottom-4 right-[30px] sm:bottom-6 sm:right-[38px] z-30 pointer-events-none flex flex-col items-end" id="fab-container">
+    <div id="fab-menu" class="flex flex-col items-end gap-2 mb-3 opacity-0 pointer-events-none translate-y-4 transition-all duration-200">
+        {% for label, url in fab_items %}
+        <a href="{{ url }}" tabindex="-1"
+           class="font-display font-bold px-5 py-2.5 bg-accent hover:bg-accent-hover text-on-accent rounded-pill fab">{{ label }}</a>
+        {% endfor %}
+    </div>
+
+    <button id="fab-toggle"
+            class="pointer-events-auto w-14 h-14 flex items-center justify-center bg-accent hover:bg-accent-hover
+                   text-on-accent rounded-pill fab"
+            type="button" aria-label="Add" aria-haspopup="true" aria-expanded="false" aria-controls="fab-menu">
+        <svg id="fab-icon" class="w-7 h-7 transition-transform duration-200" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true">
+            <path d="M12 4v16M4 12h16"/>
+        </svg>
+    </button>
+</div>
+
+<!-- Backdrop: a click outside the open menu closes it -->
+<div id="fab-backdrop" class="fixed inset-0 z-20 hidden"></div>
+
+<script src="{{ url_for('static', filename='fab.js') }}" defer></script>

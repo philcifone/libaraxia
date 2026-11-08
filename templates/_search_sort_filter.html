@@ -1,6 +1,12 @@
-{# Header search dropdown: search and filters. Sort and the grid/list switch
-   live in the view bar above the grid (_view_bar.html). Both forms are GET,
-   so no CSRF token: it would only end up in URLs and logs. #}
+{# Header search dropdown: search and filters, opened by the magnifying glass
+   in the top bar (sidebar.js). Sort and the grid/list switch live in the view
+   bar above the grid (_view_bar.html). Both forms are GET, so no CSRF token:
+   it would only end up in URLs and logs.
+
+   Shared by every section. The Library leaves the options out: search goes
+   to books.search. Movies pass `m` (media_labels) and `search_action` (the
+   grid page itself), so search and filters stay on that page; their
+   filter_options add `formats`. #}
 <!-- Main container with transitions for smooth show/hide -->
 <div class="fixed left-0 right-0 top-16 px-4 py-6 mx-auto max-w-7xl space-y-4 bg-primary
             transform -translate-y-full transition-all duration-300 ease-in-out opacity-0 invisible
@@ -9,13 +15,19 @@
     <!-- Search -->
     <div class="bg-secondary-bg rounded-lg p-4 card">
         <!-- Search Form -->
-        <form method="GET" action="{{ url_for('books.search') }}" data-submit="showLoading" data-loading="Searching...">
+        <form method="GET" action="{{ search_action or url_for('books.search') }}" data-submit="showLoading" data-loading="Searching...">
+            {% if search_action %}
+            {# Searching a section page keeps its sort and view #}
+            {% for key in ('sort_by', 'sort_order', 'view') %}{% if request.args.get(key) %}
+            <input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">
+            {% endif %}{% endfor %}
+            {% endif %}
             <div class="relative">
                 <input type="text"
                        id="search_term"
-                       aria-label="Search your library"
+                       aria-label="Search {{ 'these ' ~ m.plural if m else 'your library' }}"
                        name="search_term"
-                       placeholder="Search by title, author, year..."
+                       placeholder="{{ 'Title, director, studio, barcode...' if m and m.type == 'video' else 'Search by title, author, year...' }}"
                        value="{{ request.args.get('search_term', '') }}"
                        class="w-full pl-4 pr-10 py-2.5 bg-primary-bg border border-rule-strong rounded-lg
                               focus:ring-2 focus:ring-accent focus:border-transparent
@@ -97,9 +109,25 @@
                         </select>
                     </div>
 
+                    {% if filter_options.formats %}
+                    <!-- Format Filter (Movies) -->
+                    <div class="space-y-2">
+                        <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>
+                        <select name="format" id="format"
+                                data-change="updateActiveFilters"
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
+                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
+                            <option value="">All Formats</option>
+                            {% for f in filter_options.formats %}
+                            <option value="{{ f }}" {% if request.args.get('format') == f %}selected{% endif %}>{{ f|format_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
                     <!-- Status Filter -->
                     <div class="space-y-2">
-                        <label for="read_status" class="block text-sm font-medium text-content-secondary">Read Status</label>
+                        <label for="read_status" class="block text-sm font-medium text-content-secondary">{{ m.status_label if m else 'Read Status' }}</label>
                         <select name="read_status" id="read_status"
                                 data-change="updateActiveFilters"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
@@ -107,7 +135,7 @@
                             <option value="">All Statuses</option>
                             {% for status in filter_options.read_statuses %}
                             <option value="{{ status }}" {% if request.args.get('read_status')==status %}selected{% endif %}>
-                                {{ status }}
+                                {{ m.status_labels[status] if m else status }}
                             </option>
                             {% endfor %}
                         </select>
@@ -133,7 +161,7 @@
                 <!-- Deaccessioned books (given away, sold, lost) -->
                 {% set show_removed = request.args.get('show_removed', '') %}
                 <div class="space-y-2 md:w-1/2 lg:w-1/4">
-                    <label for="show_removed" class="block text-sm font-medium text-content-secondary">Removed books</label>
+                    <label for="show_removed" class="block text-sm font-medium text-content-secondary">Removed {{ m.plural if m else 'books' }}</label>
                     <select name="show_removed" id="show_removed"
                             data-change="updateActiveFilters"
                             class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2

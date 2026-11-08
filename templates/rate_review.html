@@ -17,7 +17,7 @@
         <!-- Book Header -->
         <div class="text-center mb-12">
             <h1 class="font-display text-3xl md:text-4xl mb-2">{{ book.title }}</h1>
-            <p class="text-content-secondary italic text-lg">by {{ book.author }}</p>
+            <p class="text-content-secondary italic text-lg">{{ m.by }} {{ book.author }}</p>
         </div>
 
         <!-- Content Grid -->
@@ -26,7 +26,7 @@
             <div class="w-full max-w-[300px] mx-auto">
                 {% if book.cover_image_url %}
                     <img src="{{ url_for('static', filename=book['cover_image_url']) }}" 
-                         alt="Book Cover"
+                         alt="{{ m.Noun }} cover"
                          class="w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]">
                 {% else %}
                     {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
@@ -44,7 +44,7 @@
                     <!-- Reading Sessions Section -->
                     <div class="bg-primary-bg rounded-lg p-4 mb-6">
                         <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-medium text-content-secondary">Reading History</h3>
+                            <h3 class="font-medium text-content-secondary">{{ m.history }}</h3>
                             <button type="button"
                                     data-click="showAddSessionForm"
                                     class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded btn">
@@ -54,7 +54,7 @@
 
                         <!-- Add/Edit Session Inline Form (Hidden by default) -->
                         <div id="session-form-inline" class="hidden bg-primary-bg rounded-lg p-4 mb-4 border-2 border-accent mx-auto max-w-md">
-                            <h4 class="font-medium text-content-primary mb-4 text-center" id="inline-session-form-title">Add New Reading Session</h4>
+                            <h4 class="font-medium text-content-primary mb-4 text-center" id="inline-session-form-title">Add New {{ m.session }}</h4>
 
                             <div class="space-y-3">
                                 <div>
@@ -97,10 +97,10 @@
                             <div class="flex items-center justify-between text-sm py-2 border-b border-gray-700 last:border-b-0" id="session-{{ session.session_id }}">
                                 <div class="flex items-center gap-3">
                                     <span class="text-accent font-medium">
-                                        {% if loop.index == 1 %}First time read
-                                        {% elif loop.index == 2 %}Second time read
-                                        {% elif loop.index == 3 %}Third time read
-                                        {% else %}{{ loop.index }}th time read
+                                        {% if loop.index == 1 %}First time {{ m.verb_past }}
+                                        {% elif loop.index == 2 %}Second time {{ m.verb_past }}
+                                        {% elif loop.index == 3 %}Third time {{ m.verb_past }}
+                                        {% else %}{{ loop.index }}th time {{ m.verb_past }}
                                         {% endif %}
                                     </span>
                                 </div>
@@ -115,7 +115,7 @@
                                             <span class="text-content-secondary text-xs">Completed:</span>
                                             <span class="text-content-primary">{{ session.date_completed }}</span>
                                         {% elif session.date_started %}
-                                            <span class="text-yellow-500 italic">Currently Reading</span>
+                                            <span class="text-yellow-500 italic">{{ m.in_progress }}</span>
                                         {% else %}{# undated past read, e.g. from a Goodreads Read Count #}
                                             <span class="text-content-secondary italic">Date unknown</span>
                                         {% endif %}
@@ -139,7 +139,7 @@
                         </div>
                         {% else %}
                         <div class="text-center py-2">
-                            <p class="text-content-secondary text-sm italic">No reading sessions yet. Click "Add Session" to record when you read this book.</p>
+                            <p class="text-content-secondary text-sm italic">{% if m.type == 'video' %}No viewings yet. Click "Add Session" to record when you watched it.{% else %}No reading sessions yet. Click "Add Session" to record when you read this book.{% endif %}</p>
                         </div>
                         {% endif %}
                     </div>

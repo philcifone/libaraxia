@@ -1,180 +1,40 @@
 {% extends 'base.html' %}
+{# Edit a book (blueprints/books.edit_book). The fields are the shared
+   _item_fields.html, so Add Book, Add Movie and both edit pages look the
+   same; "Find a better cover" is Edit Book's extra (edit_book.js). #}
 
-{% block title %}Edit Book{% endblock %}
-{% block html_class %}h-full bg-primary-bg{% endblock %}
-{% block body_class %}h-full{% endblock %}
+{% block title %}Edit Book - libaraxia{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
-        <div class="flex items-center mb-8">
-            <a href="{{ url_for('books.show_book', id=book['id']) }}"
-               class="flex items-center text-content-secondary hover:text-accent transition-colors duration-200">
-                <span class="mr-2">←</span>
-                <span>Back to Book</span>
-            </a>
-        </div>
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+    <a href="{{ url_for('books.show_book', id=book['id']) }}"
+       class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
+        <span class="mr-2">←</span><span>Back to the book</span>
+    </a>
 
-        <div class="bg-secondary-bg rounded-xl p-4 sm:p-8 card">
-            <h1 class="text-3xl font-display text-content-primary mb-8 text-center">Edit Book Information</h1>
+    <div class="bg-secondary-bg rounded-xl p-4 sm:p-8 card">
+        <h1 class="text-3xl font-display text-content-primary mb-8 text-center">Edit Book</h1>
 
-            <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-8">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <!-- Left Column -->
-                <div class="space-y-6">
-                    <div class="space-y-4">
-                        <label for="title" class="block text-sm font-medium text-content-secondary">Title</label>
-                        <input type="text" 
-                               id="title" 
-                               name="title"
-                               value="{{ book_details.title if book_details else book['title'] }}"
-                               required
-                               class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                    </div>
+        <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-6" id="item-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% with cover_url=url_for('static', filename=book['cover_image_url']) if book['cover_image_url'] else none,
+                    cover_fetch=true %}
+            {% include '_item_fields.html' %}
+            {% endwith %}
 
-                    <div class="space-y-4">
-                        <label for="subtitle" class="block text-sm font-medium text-content-secondary">Subtitle</label>
-                        <input type="text" 
-                               id="subtitle" 
-                               name="subtitle"
-                               value="{{ book_details.subtitle if book_details else (book['subtitle'] or '') }}"
-                               class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                    </div>
+            <div class="md:col-span-2 flex justify-center">
+                <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-lg font-medium btn">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
 
-                    <div class="space-y-4">
-                        <label for="author" class="block text-sm font-medium text-content-secondary">Author</label>
-                        <input type="text" 
-                               id="author" 
-                               name="author"
-                               value="{{ book_details.author if book_details else book['author'] }}"
-                               required
-                               class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                    </div>
+    {% include '_book_tools.html' %}
+</div>
+{% endblock %}
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-4">
-                            <label for="year" class="block text-sm font-medium text-content-secondary">Year</label>
-                            <input type="text" 
-                                   id="year" 
-                                   name="year"
-                                   value="{{ book_details.year if book_details else book['publish_year'] }}"
-                                   class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                        </div>
-
-                        <div class="space-y-4">
-                            <label for="page_count" class="block text-sm font-medium text-content-secondary">Pages</label>
-                            <input type="number"
-                                   id="page_count"
-                                   name="page_count"
-                                   min="0"
-                                   step="1"
-                                   value="{{ book_details.page_count if book_details else book['page_count'] }}"
-                                   class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Column -->
-                <div class="space-y-6">
-                    <div class="space-y-4">
-                        <label for="isbn" class="block text-sm font-medium text-content-secondary">ISBN</label>
-                        <input type="text" 
-                               id="isbn" 
-                               name="isbn"
-                               value="{{ book_details.isbn if book_details else book['isbn'] }}"
-                               class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                    </div>
-
-                    <div class="space-y-4">
-                        <label for="publisher" class="block text-sm font-medium text-content-secondary">Publisher</label>
-                        <input type="text" 
-                               id="publisher" 
-                               name="publisher"
-                               value="{{ book_details.publisher if book_details else book['publisher'] }}"
-                               class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                    </div>
-
-                    <div class="space-y-4">
-                        <label for="genre" class="block text-sm font-medium text-content-secondary">Genre</label>
-                        <input type="text" 
-                               id="genre" 
-                               name="genre"
-                               value="{{ book_details.genre if book_details else book['genre'] }}"
-                               required
-                               class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
-                    </div>
-
-                    <div class="space-y-4">
-                        <label class="block text-sm font-medium text-content-secondary">Book Cover</label>
-
-                        <!-- Current Cover Preview -->
-                        {% if book['cover_image_url'] %}
-                        <div id="currentCoverPreview" class="mb-4">
-                            <p class="text-xs text-content-secondary mb-2">Current Cover:</p>
-                            <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
-                                 alt="Current cover"
-                                 class="max-w-[200px] rounded-lg shadow-md">
-                        </div>
-                        {% endif %}
-
-                        <!-- New Cover Preview (will show after fetching) -->
-                        <div id="newCoverPreview" class="mb-4 hidden">
-                            <p class="text-xs text-content-secondary mb-2">New Cover (selected):</p>
-                            <img id="newCoverImage"
-                                 src=""
-                                 alt="New cover"
-                                 class="max-w-[200px] rounded-lg shadow-md">
-                            <input type="hidden" id="fetched_cover_url" name="fetched_cover_url" value="">
-                        </div>
-
-                        <!-- Fetch Cover Button -->
-                        <button type="button"
-                                id="fetchCoverBtn"
-                                class="bg-blue-600 hover:bg-blue-700 text-on-accent px-4 py-2 rounded-lg text-sm font-medium mb-3 w-full btn">
-                            <span id="fetchCoverText">Fetch High-Res Cover</span>
-                            <span id="fetchCoverSpinner" class="hidden">Fetching...</span>
-                        </button>
-
-                        <!-- Cover Options Container (shown after fetching) -->
-                        <div id="coverOptionsContainer" class="hidden mb-4">
-                            <p class="text-sm font-medium text-content-secondary p-2 mb-4">Select a cover:</p>
-                            <div id="coverOptionsGrid" class="grid grid-cols-2 gap-3">
-                                <!-- Cover options will be populated here by JavaScript -->
-                            </div>
-                        </div>
-
-                        <input type="file"
-                               id="image"
-                               aria-label="Upload a cover image"
-                               name="image"
-                               accept="image/*"
-                               class="w-full text-content-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-accent file:text-on-accent hover:file:bg-accent-hover">
-                        <p class="text-xs text-content-secondary mt-2">Upload your own cover, or use "Fetch High-Res Cover" to search for one</p>
-                    </div>
-                </div>
-
-                <!-- Full Width Description -->
-                <div class="md:col-span-2 space-y-4">
-                    <label for="description" class="block text-sm font-medium text-content-secondary">Description</label>
-                    <textarea id="description" 
-                              name="description"
-                              rows="6"
-                              class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-none">{{ book_details.description if book_details else book['description'] }}</textarea>
-                </div>
-
-                <!-- Submit Button -->
-                <div class="md:col-span-2 flex justify-center mt-6">
-                    <button type="submit"
-                            class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-lg font-medium btn">
-                        Save Changes
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        {% include '_book_tools.html' %}
-    </main>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <script src="{{ url_for('static', filename='edit_book.js') }}"></script>
+{% block scripts %}
+<script src="{{ url_for('static', filename='edit_book.js') }}"></script>
 {% endblock %}

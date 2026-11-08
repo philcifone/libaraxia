@@ -2,6 +2,7 @@ from flask import current_app, Blueprint, request, redirect, url_for, flash, ren
 from utils.database import get_db
 from flask_login import login_required, current_user
 from models import can_view_book
+from utils import media
 
 collections_blueprint = Blueprint('collections', __name__, template_folder='templates')
 
@@ -14,7 +15,7 @@ def view_collections():
         SELECT c.status, COUNT(b.id) as book_count
         FROM collections c
         JOIN books b ON c.book_id = b.id
-        WHERE c.user_id = ?
+        WHERE c.user_id = ? AND b.media_type = 'book'   -- videos: Videos section
         GROUP BY c.status
     ''', (current_user.id,))
     reading_lists = cursor.fetchall()
@@ -197,6 +198,19 @@ def add_to_status_collection():
             flash('Book not found.', 'danger')
             return redirect(request.referrer or url_for('base.index'))
 
+        # Books and videos have their own statuses (utils/media.py)
+        media_type = media.media_type_of(conn.execute(
+            'SELECT media_type FROM books WHERE id = ?', (book_id,)).fetchone())
+        if status == 'untracked':
+            conn.execute('DELETE FROM collections WHERE user_id = ? AND book_id = ?',
+                         (current_user.id, book_id))
+            conn.commit()
+            flash('Status cleared.', 'success')
+            return redirect(request.referrer or url_for('base.index'))
+        if not media.is_valid_status(media_type, status):
+            flash('That status is not available here.', 'danger')
+            return redirect(request.referrer or url_for('base.index'))
+
         cursor = conn.execute('''
             SELECT 1 FROM collections
             WHERE user_id = ? AND book_id = ?
@@ -218,7 +232,7 @@ def add_to_status_collection():
         conn.commit()
         flash('Collection updated successfully!', 'success')
         
-        if status == 'read':
+        if status == media.DONE_STATUS[media_type]:   # 'read' / 'watched'
             return redirect(url_for('read.rate_review', book_id=book_id))
             
     except Exception as e:

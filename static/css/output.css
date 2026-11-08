@@ -985,6 +985,17 @@ input, select, textarea {
   min-width: 0;
 }
 
+/* Long text (a synopsis from a lookup) scrolls inside the box: a visible
+       thin scrollbar, and a swipe that reaches the end doesn't carry on and
+       scroll the page underneath (overscroll-behavior: contain). */
+
+textarea {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--rule-strong)) transparent;
+}
+
 .\!container {
   width: 100% !important;
 }
@@ -1652,6 +1663,10 @@ img.book-cover-img:not([data-loaded]) {
   right: 1rem;
 }
 
+.bottom-4 {
+  bottom: 1rem;
+}
+
 .bottom-6 {
   bottom: 1.5rem;
 }
@@ -1678,6 +1693,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .right-6 {
   right: 1.5rem;
+}
+
+.right-\[30px\] {
+  right: 30px;
 }
 
 .top-0 {
@@ -1741,11 +1760,6 @@ img.book-cover-img:not([data-loaded]) {
 .my-2 {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
-}
-
-.my-8 {
-  margin-top: 2rem;
-  margin-bottom: 2rem;
 }
 
 .-ml-px {
@@ -1826,10 +1840,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .mt-10 {
   margin-top: 2.5rem;
-}
-
-.mt-12 {
-  margin-top: 3rem;
 }
 
 .mt-2 {
@@ -1922,6 +1932,10 @@ img.book-cover-img:not([data-loaded]) {
   height: 3rem;
 }
 
+.h-14 {
+  height: 3.5rem;
+}
+
 .h-16 {
   height: 4rem;
 }
@@ -1954,6 +1968,10 @@ img.book-cover-img:not([data-loaded]) {
   height: 1rem;
 }
 
+.h-48 {
+  height: 12rem;
+}
+
 .h-5 {
   height: 1.25rem;
 }
@@ -1968,6 +1986,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .h-64 {
   height: 16rem;
+}
+
+.h-7 {
+  height: 1.75rem;
 }
 
 .h-72 {
@@ -2022,6 +2044,10 @@ img.book-cover-img:not([data-loaded]) {
   width: 3rem;
 }
 
+.w-14 {
+  width: 3.5rem;
+}
+
 .w-16 {
   width: 4rem;
 }
@@ -2056,6 +2082,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .w-64 {
   width: 16rem;
+}
+
+.w-7 {
+  width: 1.75rem;
 }
 
 .w-72 {
@@ -2106,12 +2136,12 @@ img.book-cover-img:not([data-loaded]) {
   max-width: 120px;
 }
 
-.max-w-\[16rem\] {
-  max-width: 16rem;
+.max-w-\[12rem\] {
+  max-width: 12rem;
 }
 
-.max-w-\[200px\] {
-  max-width: 200px;
+.max-w-\[16rem\] {
+  max-width: 16rem;
 }
 
 .max-w-\[300px\] {
@@ -2180,6 +2210,11 @@ img.book-cover-img:not([data-loaded]) {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
+.rotate-45 {
+  --tw-rotate: 45deg;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
 .transform {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
@@ -2202,16 +2237,16 @@ img.book-cover-img:not([data-loaded]) {
   cursor: pointer;
 }
 
-.resize-none {
-  resize: none;
-}
-
 .resize-y {
   resize: vertical;
 }
 
 .resize {
   resize: both;
+}
+
+.scroll-mt-20 {
+  scroll-margin-top: 5rem;
 }
 
 .list-inside {
@@ -2341,12 +2376,6 @@ img.book-cover-img:not([data-loaded]) {
   margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
 }
 
-.space-x-4 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 0;
-  margin-right: calc(1rem * var(--tw-space-x-reverse));
-  margin-left: calc(1rem * calc(1 - var(--tw-space-x-reverse)));
-}
-
 .space-y-1 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
   margin-top: calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));
@@ -2398,6 +2427,10 @@ img.book-cover-img:not([data-loaded]) {
 .divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
   --tw-divide-opacity: 1;
   border-color: rgb(var(--fill) / var(--tw-divide-opacity, 1));
+}
+
+.self-start {
+  align-self: flex-start;
 }
 
 .overflow-hidden {
@@ -2726,6 +2759,11 @@ img.book-cover-img:not([data-loaded]) {
   padding-right: 1rem;
 }
 
+.px-5 {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
 .px-6 {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
@@ -2832,6 +2870,10 @@ img.book-cover-img:not([data-loaded]) {
   padding-left: 1rem;
 }
 
+.pl-5 {
+  padding-left: 1.25rem;
+}
+
 .pl-6 {
   padding-left: 1.5rem;
 }
@@ -2846,10 +2888,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .pt-20 {
   padding-top: 5rem;
-}
-
-.pt-24 {
-  padding-top: 6rem;
 }
 
 .pt-4 {
@@ -3067,6 +3105,10 @@ img.book-cover-img:not([data-loaded]) {
   color: rgb(var(--yellow) / var(--tw-text-opacity, 1));
 }
 
+.underline {
+  text-decoration-line: underline;
+}
+
 .placeholder-gray-400::-moz-placeholder {
   --tw-placeholder-opacity: 1;
   color: rgb(var(--muted) / var(--tw-placeholder-opacity, 1));
@@ -3099,6 +3141,12 @@ img.book-cover-img:not([data-loaded]) {
 
 .opacity-80 {
   opacity: 0.8;
+}
+
+.shadow {
+  --tw-shadow: var(--sh);
+  --tw-shadow-colored: var(--sh);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
 .shadow-hard {
@@ -3420,6 +3468,21 @@ dialog::backdrop {
   /* gray-400 */
 }
 
+/* Header search dropdown (_search_sort_filter.html, toggled by sidebar.js).
+   It slides up out of view when closed. Safari (seen on an iPhone, zoomed
+   in) didn't repaint everywhere the cards' hard box-shadows had passed, and
+   left a cream-and-green corner on the page. On its own compositing layer the
+   slide is done by moving the layer, so the page underneath is never
+   repainted and nothing is left behind. The add button's menu (#fab-menu)
+   slides and fades shadowed buttons the same way. */
+
+.search-form-container,
+.wishlist-search-container,
+#fab-menu {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
 /* Barcode scanner (static/scanner.js). The video fills the viewport with
    object-fit: cover, so there are no bars and no half-filled box. Only the
    area inside .scanner-box is decoded; the rest is dimmed so it's obvious
@@ -3505,6 +3568,10 @@ dialog::backdrop {
 
 .last\:border-b-0:last-child {
   border-bottom-width: 0px;
+}
+
+.empty\:hidden:empty {
+  display: none;
 }
 
 .hover\:scale-110:hover {
@@ -3731,24 +3798,26 @@ dialog::backdrop {
   opacity: 0.9;
 }
 
-.group:hover .group-hover\:shadow-lg {
-  --tw-shadow: var(--sh-lg);
-  --tw-shadow-colored: var(--sh-lg);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
-
 .data-\[active\=true\]\:border-accent[data-active="true"] {
   --tw-border-opacity: 1;
   border-color: rgb(var(--accent) / var(--tw-border-opacity, 1));
 }
 
 @media (min-width: 640px) {
+  .sm\:bottom-6 {
+    bottom: 1.5rem;
+  }
+
   .sm\:left-auto {
     left: auto;
   }
 
   .sm\:right-4 {
     right: 1rem;
+  }
+
+  .sm\:right-\[38px\] {
+    right: 38px;
   }
 
   .sm\:order-none {
@@ -3814,6 +3883,10 @@ dialog::backdrop {
 
   .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sm\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .sm\:flex-row {
@@ -3883,10 +3956,6 @@ dialog::backdrop {
 @media (min-width: 768px) {
   .md\:col-span-2 {
     grid-column: span 2 / span 2;
-  }
-
-  .md\:m-8 {
-    margin: 2rem;
   }
 
   .md\:h-6 {

@@ -1,128 +1,78 @@
-// Shared helpers (getCSRFToken, escapeHtml, ...) are in common.js.
-// Edit Book - Fetch Cover Functionality
+// Edit Book (templates/edit_book.html, fields from _item_fields.html).
+// Shared helpers (getCSRFHeaders, escapeHtml, showFlashMessage) are in common.js.
+//
+// "Find a better cover": /books/fetch_cover downloads candidate covers for
+// the ISBN/title into static/uploads and lists them; picking one shows it
+// as the cover and puts its path in existing_cover_url, which edit_book
+// checks (is_safe_upload_path) and saves. An uploaded file still wins.
 
-document.addEventListener('DOMContentLoaded', function() {
-    const fetchCoverBtn = document.getElementById('fetchCoverBtn');
-    const fetchCoverText = document.getElementById('fetchCoverText');
-    const fetchCoverSpinner = document.getElementById('fetchCoverSpinner');
-    const newCoverPreview = document.getElementById('newCoverPreview');
-    const newCoverImage = document.getElementById('newCoverImage');
-    const fetchedCoverUrlInput = document.getElementById('fetched_cover_url');
-    const coverOptionsContainer = document.getElementById('coverOptionsContainer');
-    const coverOptionsGrid = document.getElementById('coverOptionsGrid');
+'use strict';
 
-    let availableCovers = [];
+document.addEventListener('DOMContentLoaded', () => {
+    const $ = id => document.getElementById(id);
+    const button = $('fetch-cover-btn');
+    const status = $('cover-status');
+    const options = $('cover-options');
+    const hidden = $('existing_cover_url');
+    const preview = $('cover-preview');
 
-    if (fetchCoverBtn) {
-        fetchCoverBtn.addEventListener('click', async function() {
-            // Get current form values
-            const isbn = document.getElementById('isbn').value.trim();
-            const title = document.getElementById('title').value.trim();
-            const author = document.getElementById('author').value.trim();
+    function showCover(src) {
+        preview.innerHTML = `<img src="${escapeHtml(src)}" alt="Cover" data-fallback-src="/static/no-cover.svg" class="max-w-[12rem] rounded-lg">`;
+    }
 
-            // Validate that we have at least ISBN or title
-            if (!isbn && !title) {
-                showFlashMessage('error', 'Please provide at least an ISBN or title to fetch a cover');
+    button?.addEventListener('click', async () => {
+        const isbn = $('isbn').value.trim();
+        const title = $('title').value.trim();
+        if (!isbn && !title) {
+            status.textContent = 'Give an ISBN or a title first.';
+            return;
+        }
+        button.disabled = true;
+        status.textContent = 'Looking for covers...';
+        options.classList.add('hidden');
+        try {
+            const response = await fetch('/books/fetch_cover', {
+                method: 'POST',
+                headers: getCSRFHeaders(),
+                body: JSON.stringify({ isbn, title, author: $('author').value.trim() }),
+            });
+            const data = await response.json();
+            if (!data.success || !(data.covers || []).length) {
+                status.textContent = data.error || 'No covers found.';
                 return;
             }
+            status.textContent = `Found ${data.covers.length} cover${data.covers.length === 1 ? '' : 's'}: pick one.`;
+            options.innerHTML = data.covers.map((cover, i) => `
+                <button type="button" data-cover="${i}"
+                        class="p-2 bg-primary-bg border-2 border-card hover:border-accent rounded-lg text-left">
+                    <img src="/static/${escapeHtml(encodeURI(cover.url))}" alt="Cover from ${escapeHtml(cover.source)}"
+                         class="w-full h-48 object-contain" loading="lazy">
+                    <span class="block mt-1 text-xs text-content-secondary text-center">${escapeHtml(cover.source)}</span>
+                </button>`).join('');
+            options.classList.remove('hidden');
+            options.onclick = event => {
+                const pick = event.target.closest('[data-cover]');
+                if (!pick) return;
+                const cover = data.covers[Number(pick.dataset.cover)];
+                hidden.value = cover.url;
+                showCover(`/static/${encodeURI(cover.url)}`);
+                options.classList.add('hidden');
+                status.textContent = `Cover from ${cover.source} picked. Save to keep it.`;
+            };
+        } catch (err) {
+            console.error('Cover fetch failed', err);
+            status.textContent = 'The cover search failed. Try again, or upload one.';
+        } finally {
+            button.disabled = false;
+        }
+    });
 
-            // Show loading state
-            fetchCoverBtn.disabled = true;
-            fetchCoverText.classList.add('hidden');
-            fetchCoverSpinner.classList.remove('hidden');
-
-            try {
-                const response = await fetch('/books/fetch_cover', {
-                    method: 'POST',
-                    headers: getCSRFHeaders(),
-                    body: JSON.stringify({
-                        isbn: isbn,
-                        title: title,
-                        author: author
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success && data.covers && data.covers.length > 0) {
-                    availableCovers = data.covers;
-
-                    // Display cover options inline
-                    displayCoverOptions(data.covers);
-                    coverOptionsContainer.classList.remove('hidden');
-
-                    showMessage(`Found ${data.total_downloaded} covers from ${data.total_found} sources!`, 'success');
-                } else {
-                    showMessage(data.error || 'Failed to fetch cover', 'error');
-                }
-            } catch (error) {
-                console.error('Error fetching cover:', error);
-                showMessage('An error occurred while fetching the cover', 'error');
-            } finally {
-                // Reset button state
-                fetchCoverBtn.disabled = false;
-                fetchCoverText.classList.remove('hidden');
-                fetchCoverSpinner.classList.add('hidden');
-            }
-        });
-    }
-
-    // Display cover options inline
-    function displayCoverOptions(covers) {
-        coverOptionsGrid.innerHTML = '';
-
-        covers.forEach((cover, index) => {
-            const coverOption = document.createElement('div');
-            coverOption.className = 'cover-option cursor-pointer border-2 border-gray-600 hover:border-accent rounded-lg p-2 transition-all duration-200 bg-primary-bg';
-            coverOption.innerHTML = `
-                <img src="/static/${cover.url}"
-                     alt="Cover from ${cover.source}"
-                     class="w-full h-72 rounded-lg shadow-md mb-2"
-                     loading="lazy">
-                <p class="text-xs text-content-secondary text-center mb-2">${cover.source}</p>
-                <button type="button" class="w-full bg-accent hover:bg-accent-hover text-on-accent text-xs py-1 px-2 rounded btn">
-                    Select
-                </button>
-            `;
-
-            coverOption.querySelector('button').addEventListener('click', function() {
-                selectCover(cover);
-            });
-
-            coverOptionsGrid.appendChild(coverOption);
-        });
-    }
-
-    // Handle cover selection
-    function selectCover(cover) {
-        // Update the preview
-        newCoverImage.src = `/static/${cover.url}`;
-        fetchedCoverUrlInput.value = cover.url;
-        newCoverPreview.classList.remove('hidden');
-
-        // Hide the cover options
-        coverOptionsContainer.classList.add('hidden');
-
-        // Show success message
-        showMessage(`Selected cover from ${cover.source}`, 'success');
-    }
-
-    // Helper function to show messages
-    function showMessage(message, type) {
-        // Create a temporary message element
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
-            type === 'success'
-                ? 'bg-green-600 text-on-accent'
-                : 'bg-red-600 text-on-accent'
-        }`;
-        messageDiv.textContent = message;
-
-        document.body.appendChild(messageDiv);
-
-        // Remove after 3 seconds
-        setTimeout(() => {
-            messageDiv.remove();
-        }, 3000);
-    }
+    // Preview an uploaded file (it replaces any picked cover on save)
+    $('image')?.addEventListener('change', event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => showCover(e.target.result);
+        reader.readAsDataURL(file);
+    });
 });

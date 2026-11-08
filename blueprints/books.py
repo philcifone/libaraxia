@@ -19,6 +19,7 @@ from utils.image_utils import delete_image_file, is_safe_upload_path
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
+from utils import media
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -29,7 +30,7 @@ books_blueprint = Blueprint('books', __name__, template_folder='templates')
 def thumbnail():
     """Search-result cover, fetched server-side (see book_utils.thumbnail_jpeg).
 
-    ?url= must point at Google Books or Open Library; anything else, or no
+    ?url= must point at Google Books, Open Library or TMDb; anything else, or no
     usable image, is a 404 and the page shows its no-cover image instead.
     """
     data = thumbnail_jpeg(request.args.get("url", ""))
@@ -43,82 +44,131 @@ def thumbnail():
 @books_blueprint.route("/add", methods=["GET", "POST"])
 @login_required
 def add_book():
+    """Add a book (templates/add_item.html, shared with Add Movie and the
+    wishlist's add page).
+
+    The page's lookups run in add_item.js. Two POSTs land here: the form
+    itself (submit_book), and the ISBN box's plain-form fallback
+    (isbn_lookup), which re-renders the page filled in, on the ISBN tab.
+    """
+    if request.method == "POST" and "submit_book" in request.form:
+        conn = get_db()
+        # A copy already on the household's shelf needs "Add it anyway"
+        # ticked, like Add Movie. Wishlist-only matches stay a warning: adding
+        # a book you wished for is the normal "I bought it" case.
+        on_shelf = [d for d in find_duplicates(conn, current_user.id,
+                                               request.form.get("title", ""),
+                                               request.form.get("author", ""),
+                                               request.form.get("isbn", ""))
+                    if d["in_library"]]
+        if on_shelf and not request.form.get("confirm_duplicate"):
+            flash("This looks like a book already on your household's shelf. "
+                  "Tick \"Add it anyway\" if it's a second copy.", "error")
+            values = request.form.to_dict()
+            # Keep a looked-up cover only if it's one of ours (an upload is
+            # lost on the re-render, as on any refused form)
+            if not is_safe_upload_path(values.get("existing_cover_url")):
+                values["existing_cover_url"] = ""
+            return render_add_book(values=values, duplicates=on_shelf, status=400)
+
+        # Process uploaded image or use downloaded cover
+        cover_image_url = process_image(
+            request.files.get("image"),
+            request.form.get("existing_cover_url")
+        )
+
+        # Sanitize page_count: convert to integer or default to 0 if invalid
+        page_count_raw = request.form.get("page_count", "").strip()
+        try:
+            page_count = int(page_count_raw) if page_count_raw else 0
+            # Ensure non-negative
+            page_count = max(0, page_count)
+        except (ValueError, TypeError):
+            current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
+            page_count = 0
+
+        conn.execute("""
+            INSERT INTO books (title, author, publisher, publish_year, isbn,
+                             page_count, cover_image_url, description, subtitle, genre, added_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            request.form["title"],
+            request.form["author"],
+            request.form.get("publisher", ""),
+            request.form.get("year", ""),
+            request.form.get("isbn", ""),
+            page_count,
+            cover_image_url,
+            request.form.get("description"),
+            request.form.get("subtitle", ""),
+            request.form.get("genre", ""),
+            current_user.id
+        ))
+        conn.commit()
+
+        flash("Book added successfully!", "success")
+        return redirect(url_for("base.index"))
+
+    return render_add_book()
+
+
+def render_add_book(destination="shelf", values=None, duplicates=(), status=200):
+    """The Add Book page, for the Library or (destination="wishlist") the
+    wishlist. Also answers the ISBN box's no-JS lookup (POST isbn_lookup):
+    the page again, filled in, on the ISBN tab. `values` and `duplicates`
+    re-render a refused submit (add_book)."""
+    to_wishlist = destination == "wishlist"
+    if values is not None:
+        cover = values.get("existing_cover_url")
+        return _add_book_page(values, destination,
+                              cover_url=url_for("static", filename=cover) if cover else None,
+                              isbn="", duplicates=duplicates), status
     book_details = None
-    search_results = None
-    
-    if request.method == "POST":
-        if "isbn_lookup" in request.form:
-            # ISBN search
-            isbn = request.form["isbn"]
-            book_details = fetch_book_details_from_isbn(isbn)
-            if book_details:
-                flash(f"Book details fetched from {book_details['source']}", "success")
-            else:
-                book_details = {"error": "Book not found. Please enter details manually."}
-                flash("Book not found. Please enter details manually.", "error")
-                
-        elif "title_search" in request.form:
-            # Title/Author search - use consolidated function
-            query = request.form["search_query"]
-            search_results = search_google_books(query, max_results=15)
-            if not search_results:
-                flash("No results found", "error")
-                
-        elif "barcode_scan" in request.form:
-            # Handle barcode scan result
-            isbn = request.form["barcode_result"]
-            if isbn:
-                book_details = fetch_book_details_from_isbn(isbn)
-                if book_details:
-                    flash(f"Book details fetched from {book_details['source']}", "success")
-                else:
-                    book_details = {"error": "Book not found. Please enter details manually."}
-                    flash("Book not found. Please enter details manually.", "error")
-                    
-        elif "submit_book" in request.form:
-            # Process uploaded image or use downloaded cover
-            cover_image_url = process_image(
-                request.files.get("image"),
-                request.form.get("existing_cover_url")
-            )
+    isbn = ""
+    if request.method == "POST" and "isbn_lookup" in request.form:
+        isbn = request.form.get("isbn", "").strip()
+        if media.classify_code(isbn) == media.VIDEO:
+            flash("That's a movie barcode, not an ISBN: add it here instead.", "info")
+            barcode = media.normalize_barcode(isbn)
+            return redirect(url_for("wishlist.add_to_wishlist", type=media.VIDEO, barcode=barcode)
+                            if to_wishlist else url_for("videos.add_video", barcode=barcode))
+        book_details = fetch_book_details_from_isbn(isbn)
+        if book_details:
+            flash(f"Book details fetched from {book_details['source']}", "success")
+        else:
+            flash("Book not found. Please enter details manually.", "error")
 
-            # Sanitize page_count: convert to integer or default to 0 if invalid
-            page_count_raw = request.form.get("page_count", "").strip()
-            try:
-                page_count = int(page_count_raw) if page_count_raw else 0
-                # Ensure non-negative
-                page_count = max(0, page_count)
-            except (ValueError, TypeError):
-                current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
-                page_count = 0
+    values = book_details or {}
+    # Preview: the cover the lookup saved, else its remote thumbnail (proxied)
+    cover_url = None
+    if values.get("local_cover_url"):
+        cover_url = url_for("static", filename=values["local_cover_url"])
+    elif values.get("thumbnail_url"):
+        cover_url = url_for("books.thumbnail", url=values["thumbnail_url"])
+    return _add_book_page(values, destination, cover_url=cover_url, isbn=isbn)
 
-            conn = get_db()
-            conn.execute("""
-                INSERT INTO books (title, author, publisher, publish_year, isbn,
-                                 page_count, cover_image_url, description, subtitle, genre, added_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                request.form["title"],
-                request.form["author"],
-                request.form["publisher"],
-                request.form["year"],
-                request.form["isbn"],
-                page_count,
-                cover_image_url,
-                request.form.get("description"),
-                request.form["subtitle"],
-                request.form["genre"],
-                current_user.id
-            ))
-            conn.commit()
 
-            flash("Book added successfully!", "success")
-            return redirect(url_for("base.index"))
-
+def _add_book_page(values, destination, cover_url, isbn, duplicates=()):
+    """Render add_item.html for a book (see render_add_book)."""
+    to_wishlist = destination == "wishlist"
+    target = url_for("wishlist.add_to_wishlist") if to_wishlist else url_for("books.add_book")
     return render_template(
-        "add_book.html",
-        book_details=book_details,
-        search_results=search_results
+        "add_item.html",
+        m=media.media_labels(media.BOOK),
+        values=values,
+        duplicates=duplicates,
+        active_method="code" if isbn else "search",
+        search_enabled=True,
+        code_value=isbn,
+        cover_url=cover_url,
+        destination=destination,
+        form_action=target,
+        code_action=target,
+        back_url=url_for("wishlist.view_wishlist") if to_wishlist else url_for("base.index"),
+        back_label="Wishlist" if to_wishlist else "Library",
+        other_add_url=(url_for("wishlist.add_to_wishlist", type=media.VIDEO) if to_wishlist
+                       else url_for("videos.add_video")),
+        notes="" if to_wishlist else None,
     )
 
 @books_blueprint.route("/search_books")
@@ -145,13 +195,37 @@ def search_books():
         current_app.logger.error(f"Unexpected error in search_books: {str(e)}", exc_info=True)
         return jsonify({"error": "Search failed. Please try again."}), 500
 
-@books_blueprint.route("/fetch_isbn_details")
+def video_code_response(code):
+    """JSON for a scanned/typed code that turned out to be a video barcode
+    (not an ISBN): where to add it instead. Shared with the wishlist page."""
+    barcode = media.normalize_barcode(code)
+    return jsonify({
+        "success": False,
+        "media_type": media.VIDEO,
+        "barcode": barcode,
+        "add_url": url_for("videos.add_video", barcode=barcode),
+        "error": "That's a movie barcode, not an ISBN.",
+    })
+
+
+@books_blueprint.route("/fetch_barcode_details")
 @login_required
-def fetch_isbn_details():
-    """AJAX endpoint for barcode scanner - fetches book by ISBN"""
-    isbn = request.args.get("isbn", "")
-    if not isbn:
+def fetch_barcode_details():
+    """AJAX endpoint for the scanner and ISBN box: what a code is.
+
+    An ISBN (EAN-13 starting 978/979, or ISBN-10) is looked up as a book:
+    {"success", "media_type": "book", "book_details"}. Any other EAN-13 or
+    UPC-A is a video: {"success": false, "media_type": "video", "barcode",
+    "add_url"} and the page sends the user to the Videos add form. Codes
+    that are neither (bad check digit, wrong length) are tried as an ISBN
+    anyway, as before, since people type ISBNs with typos the APIs forgive.
+    """
+    code = request.args.get("code") or request.args.get("isbn") or ""
+    if not code:
         return jsonify({"success": False, "error": "No ISBN provided"})
+    if media.classify_code(code) == media.VIDEO:
+        return video_code_response(code)
+    isbn = code
 
     try:
         current_app.logger.debug(f"Fetching book details for ISBN: {isbn}")
@@ -161,14 +235,21 @@ def fetch_isbn_details():
 
         if book_details:
             current_app.logger.info(f"Successfully fetched book: {book_details.get('title')}")
-            return jsonify({"success": True, "book_details": book_details})
+            return jsonify({"success": True, "media_type": media.BOOK, "book_details": book_details})
         else:
             current_app.logger.warning(f"No book found for ISBN: {isbn}")
-            return jsonify({"success": False, "error": "Book not found"})
+            return jsonify({"success": False, "media_type": media.BOOK, "error": "Book not found"})
 
     except Exception as e:
         current_app.logger.error(f"Error fetching ISBN details: {str(e)}")
         return jsonify({"success": False, "error": "Something went wrong. Please try again."})
+
+
+@books_blueprint.route("/fetch_isbn_details")
+@login_required
+def fetch_isbn_details():
+    """Old name of fetch_barcode_details (?isbn=), kept so nothing breaks."""
+    return fetch_barcode_details()
 
 @books_blueprint.route("/check_duplicates", methods=["POST"])
 @login_required
@@ -322,75 +403,77 @@ def edit_book(id):
     if not book:
         flash("Book not found.", "error")
         return redirect(url_for("base.index"))
+    if media.media_type_of(book) == media.VIDEO:
+        return redirect(url_for("videos.edit_video", id=id))
 
     # Allow editing if user is admin or if they added the book
     if not (current_user.is_admin or book['added_by'] == current_user.id):
         flash("You don't have permission to edit this book.", "error")
         return redirect(url_for("base.index"))
 
-    book_details = None
-
     if request.method == "POST":
-        if "isbn_lookup" in request.form:
-            isbn = request.form["isbn"]
-            book_details = fetch_book_details_from_isbn(isbn)
-            if not book_details:
-                flash("Book not found. Please enter details manually.", "error")
+        # Get current cover
+        current_cover = book['cover_image_url']
+
+        # A cover picked with "Find a better cover" (edit_book.js puts its
+        # uploads/... path in existing_cover_url; fetched_cover_url is the
+        # old field name)
+        fetched_cover = request.form.get("existing_cover_url") or request.form.get("fetched_cover_url")
+
+        # Priority: uploaded image > fetched cover > existing cover
+        if request.files.get("image") and request.files.get("image").filename != '':
+            # User uploaded a new image - delete old cover first
+            if current_cover:
+                delete_image_file(current_cover)
+            cover_image_url = process_image(request.files.get("image"), current_cover)
+        elif fetched_cover and is_safe_upload_path(fetched_cover):
+            # User fetched a new cover - delete old cover first
+            if current_cover and current_cover != fetched_cover:
+                delete_image_file(current_cover)
+            cover_image_url = fetched_cover
         else:
-            # Get current cover
-            current_cover = book['cover_image_url']
+            # Keep existing cover
+            cover_image_url = current_cover
 
-            # Check if a cover was fetched via the fetch cover button
-            fetched_cover = request.form.get("fetched_cover_url")
+        # Sanitize page_count: convert to integer or default to 0 if invalid
+        page_count_raw = request.form.get("page_count", "").strip()
+        try:
+            page_count = int(page_count_raw) if page_count_raw else 0
+            # Ensure non-negative
+            page_count = max(0, page_count)
+        except (ValueError, TypeError):
+            current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
+            page_count = 0
 
-            # Priority: uploaded image > fetched cover > existing cover
-            if request.files.get("image") and request.files.get("image").filename != '':
-                # User uploaded a new image - delete old cover first
-                if current_cover:
-                    delete_image_file(current_cover)
-                cover_image_url = process_image(request.files.get("image"), current_cover)
-            elif is_safe_upload_path(fetched_cover):
-                # User fetched a new cover - delete old cover first
-                if current_cover and current_cover != fetched_cover:
-                    delete_image_file(current_cover)
-                cover_image_url = fetched_cover
-            else:
-                # Keep existing cover
-                cover_image_url = current_cover
+        # The ISBN is saved too: until Phase 8.5 the form showed it but the
+        # UPDATE left it out, so corrections were silently dropped.
+        conn.execute("""
+            UPDATE books
+            SET title = ?, author = ?, publisher = ?, publish_year = ?, isbn = ?,
+                page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?
+            WHERE id = ?
+        """, (
+            request.form["title"],
+            request.form["author"],
+            request.form.get("publisher"),
+            request.form.get("year"),
+            request.form.get("isbn", book['isbn']),
+            page_count,
+            cover_image_url,
+            request.form.get("description", ""),
+            request.form.get("subtitle", ""),
+            request.form.get("genre", ""),
+            id
+        ))
+        conn.commit()
 
-            # Sanitize page_count: convert to integer or default to 0 if invalid
-            page_count_raw = request.form.get("page_count", "").strip()
-            try:
-                page_count = int(page_count_raw) if page_count_raw else 0
-                # Ensure non-negative
-                page_count = max(0, page_count)
-            except (ValueError, TypeError):
-                current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
-                page_count = 0
+        flash("Book updated successfully!", "success")
+        return redirect(url_for("books.show_book", id=id))
 
-            conn.execute("""
-                UPDATE books
-                SET title = ?, author = ?, publisher = ?, publish_year = ?,
-                    page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?
-                WHERE id = ?
-            """, (
-                request.form["title"],
-                request.form["author"],
-                request.form.get("publisher"),
-                request.form.get("year"),
-                page_count,
-                cover_image_url,
-                request.form.get("description", ""),
-                request.form["subtitle"],
-                request.form["genre"],
-                id
-            ))
-            conn.commit()
-
-            flash("Book updated successfully!", "success")
-            return redirect(url_for("base.index"))
-
-    return render_template("edit_book.html", book=book, book_details=book_details,
+    values = dict(book)
+    values['existing_cover_url'] = ''     # set only by "Find a better cover"
+    return render_template("edit_book.html", book=book, values=values,
+                           m=media.media_labels(media.BOOK),
                            **_book_tools_context(conn, book))
 
 
@@ -432,6 +515,17 @@ def show_book(id):
     # can't be probed for existence
     if not book or not can_view_book(conn, current_user, id):
         abort(404)
+    # Videos have their own page (same template, video wording). Links to
+    # /books/book/<id> (feed, collections, old bookmarks) land there.
+    if media.media_type_of(book) == media.VIDEO:
+        return redirect(url_for("videos.show_video", id=id))
+    return render_item_page(conn, book)
+
+
+def render_item_page(conn, book):
+    """The detail page of a book or video the user may see (the caller has
+    checked can_view_book). Labels and statuses come from utils/media.py."""
+    id = book['id']
 
     # Someone else's wishlist entry (notes included) for this book, shown
     # only for people in the viewer's circle. ?wishlist_owner=<username>
@@ -568,6 +662,8 @@ def show_book(id):
         wishlist_owner_entry=wishlist_owner_entry,
         household_reviews=household_reviews,
         can_manage=can_manage,
+        m=media.media_labels(media.media_type_of(book)),
+        runtime=media.format_runtime(book['runtime_minutes']),
     )
 
 @books_blueprint.route("/remove/<int:id>", methods=["POST"])
@@ -586,7 +682,7 @@ def remove_book(id):
     note = (request.form.get('removed_note') or '').strip()[:200] or None
     conn.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP, removed_note = ? WHERE id = ?", (note, id))
     conn.commit()
-    flash(f"'{book['title']}' removed from the library. Reviews and reading history are kept.", "success")
+    flash(f"'{book['title']}' removed. Reviews and history are kept.", "success")
     return redirect(url_for('books.show_book', id=id))
 
 
@@ -601,7 +697,7 @@ def restore_book(id):
         return redirect(url_for('base.index'))
     conn.execute("UPDATE books SET removed_at = NULL, removed_note = NULL WHERE id = ?", (id,))
     conn.commit()
-    flash(f"'{book['title']}' is back in the library.", "success")
+    flash(f"'{book['title']}' is back on the shelf.", "success")
     return redirect(url_for('books.show_book', id=id))
 
 
@@ -614,7 +710,8 @@ def delete_book(id):
     delete cascades into reviews, statuses and reading history.
     """
     conn = get_db()
-    book = conn.execute("SELECT added_by, cover_image_url FROM books WHERE id = ?", (id,)).fetchone()
+    book = conn.execute("SELECT added_by, cover_image_url, media_type FROM books WHERE id = ?",
+                        (id,)).fetchone()
 
     if not book:
         flash("Book not found.", "error")
@@ -636,6 +733,9 @@ def delete_book(id):
     # Only after the row is gone, so a failed delete never loses the cover.
     if book['cover_image_url']:
         delete_image_file(book['cover_image_url'])
+    if book['media_type'] == media.VIDEO:
+        flash("Movie deleted.", "success")
+        return redirect(url_for('videos.index'))
     flash("Book deleted successfully.", "success")
     return redirect(url_for('base.index'))
 

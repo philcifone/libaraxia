@@ -1,0 +1,97 @@
+{# The catalogue fields of an add/edit form, laid out the same way for every
+   media type: what's about the work on the left (title, subtitle, creator,
+   year and length), what's about this copy on the right (code, publisher,
+   format, genre), then description and cover. The labels come from `m`
+   (utils/media.py); the field names are the ones each route reads.
+
+   Needs: m, values (a dict or row: the posted form, a lookup result or the
+   row being edited), formats (movies), cover_url (current cover to preview,
+   or None); optional cover_fetch (Edit Book's "Find a better cover") and
+   notes (the wishlist's note field). The add page's lookups fill these
+   fields by id (add_item.js). #}
+
+{% macro field(name, label, value, type='text', required=false, hint='', attrs='') %}
+<div class="space-y-2">
+    <label for="{{ name }}" class="block text-sm font-medium text-content-secondary">{{ label }}{% if hint %} <span class="text-xs italic">({{ hint }})</span>{% endif %}</label>
+    <input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value if value is not none else '' }}" {% if required %}required{% endif %} {{ attrs|safe }}
+           class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
+</div>
+{% endmacro %}
+
+{% set is_movie = m.type == 'video' %}
+{% set year = values.publish_year if values.publish_year is defined and values.publish_year else values.year %}
+
+<div class="space-y-4">
+    {{ field('title', 'Title', values.title, required=true) }}
+    {{ field('subtitle', 'Subtitle or edition' if is_movie else 'Subtitle', values.subtitle, hint='optional') }}
+    {{ field('author', m.creator, values.author, required=not is_movie) }}
+    <div class="grid grid-cols-2 gap-4">
+        {% if is_movie %}
+        {{ field('year', m.year, year, type='number', attrs='min="1880" max="2100"') }}
+        {{ field('runtime_minutes', m.length ~ ' (min)', values.runtime_minutes, type='number', attrs='min="1" max="2000"') }}
+        {% else %}
+        {# Text, not number: lookups and old records have years like "c. 1850" #}
+        {{ field('year', 'Year', year) }}
+        {{ field('page_count', 'Pages', values.page_count or '', type='number', attrs='min="0" step="1"') }}
+        {% endif %}
+    </div>
+</div>
+
+<div class="space-y-4">
+    {% if is_movie %}
+    {{ field('barcode', m.code, values.barcode_input, hint='UPC or EAN', attrs='inputmode="numeric" autocomplete="off"') }}
+    {% else %}
+    {{ field('isbn', 'ISBN', values.isbn, attrs='inputmode="numeric" autocomplete="off"') }}
+    {% endif %}
+    {{ field('publisher', m.publisher, values.publisher, hint='distributor on the box' if is_movie else '') }}
+    {% if is_movie %}
+    <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-2">
+            <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>
+            <select id="format" name="format"
+                    class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent">
+                {% for f in formats %}
+                <option value="{{ f }}" {% if (values.format or 'VHS') == f %}selected{% endif %}>{{ f|format_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {{ field('catalog_number', 'Catalogue no.', values.catalog_number) }}
+    </div>
+    {% endif %}
+    {{ field('genre', 'Genre', values.genre) }}
+</div>
+
+<div class="md:col-span-2 space-y-2">
+    <label for="description" class="block text-sm font-medium text-content-secondary">Description</label>
+    <textarea id="description" name="description" rows="6"
+              class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-y">{{ values.description or '' }}</textarea>
+</div>
+
+{% if notes is defined and notes is not none %}
+<div class="md:col-span-2 space-y-2">
+    <label for="notes" class="block text-sm font-medium text-content-secondary">Wishlist note <span class="text-xs italic">(optional: why, which edition, where you saw it)</span></label>
+    <textarea id="notes" name="notes" rows="2"
+              class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none resize-y">{{ notes }}</textarea>
+</div>
+{% endif %}
+
+<div class="md:col-span-2 flex flex-col items-center gap-4">
+    <label for="image" class="block font-medium text-content-secondary">Cover</label>
+    <div id="cover-preview" class="flex justify-center">
+        {% if cover_url %}
+        <img src="{{ cover_url }}" alt="Cover" data-fallback-src="{{ url_for('static', filename='no-cover.svg') }}" class="max-w-[12rem] rounded-lg">
+        {% endif %}
+    </div>
+    {# A cover a lookup (or "Find a better cover") saved, uploads/...; the
+       route re-checks it with is_safe_upload_path / process_image #}
+    <input type="hidden" name="existing_cover_url" id="existing_cover_url" value="{{ values.existing_cover_url or values.local_cover_url or '' }}">
+    {% if cover_fetch %}
+    {# Edit Book: search the cover sources for this ISBN/title (edit_book.js) #}
+    <button type="button" id="fetch-cover-btn"
+            class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Find a better cover</button>
+    <p id="cover-status" class="text-sm text-content-secondary empty:hidden" aria-live="polite"></p>
+    <div id="cover-options" class="hidden w-full grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+    {% endif %}
+    <input type="file" id="image" name="image" accept="image/*"
+           class="w-full max-w-md text-content-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-accent file:text-on-accent hover:file:bg-accent-hover">
+</div>

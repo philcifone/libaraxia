@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{# Edit a movie (blueprints/videos.edit_video). Adding is add_item.html; the
+   fields are the shared _item_fields.html, so both look the same.
+   `values` holds the fields (the books row, or the posted form after an
+   error); `video` is the row being edited. #}
+
+{% block title %}Edit {{ m.Noun }} - libaraxia{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+    <a href="{{ url_for('videos.show_video', id=video['id']) }}"
+       class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
+        <span class="mr-2">←</span><span>Back to the {{ m.noun }}</span>
+    </a>
+
+    <div class="bg-secondary-bg rounded-xl p-4 sm:p-8 card">
+        <h1 class="text-3xl font-display text-content-primary mb-8 text-center">Edit {{ m.Noun }}</h1>
+
+        <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-6" id="item-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% with cover_url=url_for('static', filename=video['cover_image_url']) if video['cover_image_url'] else none %}
+            {% include '_item_fields.html' %}
+            {% endwith %}
+
+            <div class="md:col-span-2 flex justify-center">
+                <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-lg font-medium btn">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% with book=video %}{% include '_book_tools.html' %}{% endwith %}
+</div>
+{% endblock %}

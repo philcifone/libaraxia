@@ -1,14 +1,9 @@
 from flask import render_template, redirect, url_for, request, flash, Blueprint, current_app, jsonify
+from utils import media
 from flask_login import login_required, current_user
 from utils.database import get_db
 from models import other_users_with_book_data, can_view_book
-from utils.book_utils import (
-    fetch_book_details_from_isbn,
-    process_image,
-    download_and_save_cover,
-    search_google_books,
-    find_duplicates,
-)
+from utils.book_utils import process_image, find_duplicates
 from utils.book_matching import own_book_for_wishlist
 
 wishlist_blueprint = Blueprint('wishlist', __name__, template_folder='templates')
@@ -43,13 +38,7 @@ def view_user_wishlist(username):
         return redirect(url_for('user.profile', username=username))
 
     # Get wishlist books for the target user
-    wishlist_books = conn.execute("""
-        SELECT b.*, w.wishlist_id, w.notes, w.added_at as wishlist_added_at
-        FROM wishlist w
-        JOIN books b ON w.book_id = b.id
-        WHERE w.user_id = ?
-        ORDER BY w.added_at DESC
-    """, (target_user_id,)).fetchall()
+    wishlist_books = _wishlist_rows(conn, target_user_id)
 
     return render_template(
         "user_wishlist.html",
@@ -59,82 +48,147 @@ def view_user_wishlist(username):
     )
 
 
-@wishlist_blueprint.route("/view", methods=["GET", "POST"])
-@login_required
-def view_wishlist():
-    """Main wishlist page - shows search interface and current wishlist books"""
-    if request.method == "POST":
-        # Only handle manual book form submission
-        if "submit_book" in request.form:
-            # Add book to wishlist
-            # First, add to books table if it doesn't exist
-            conn = get_db()
-            # Check if book already exists by ISBN
-            isbn = request.form.get("isbn")
-            # Only your own books are reused (utils/book_matching.py)
-            book_id, kind = own_book_for_wishlist(conn, current_user.id, isbn)
-            if kind == 'library':
-                flash("That book is already in your library.", "error")
-                return redirect(url_for("books.show_book", id=book_id))
-            if not book_id:
-                # Process uploaded image or use downloaded cover
-                cover_image_url = process_image(
-                    request.files.get("image"),
-                    request.form.get("existing_cover_url")
-                )
-
-                # Insert new book
-                cursor = conn.execute("""
-                    INSERT INTO books (title, author, publisher, publish_year, isbn,
-                                     page_count, cover_image_url, description, subtitle, genre, added_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    request.form["title"],
-                    request.form["author"],
-                    request.form.get("publisher", ""),
-                    request.form.get("year", ""),
-                    isbn,
-                    request.form.get("page_count", 0),
-                    cover_image_url,
-                    request.form.get("description", ""),
-                    request.form.get("subtitle", ""),
-                    request.form.get("genre", ""),
-                    current_user.id
-                ))
-                book_id = cursor.lastrowid
-
-            # Add to wishlist
-            try:
-                conn.execute("""
-                    INSERT INTO wishlist (user_id, book_id, notes)
-                    VALUES (?, ?, ?)
-                """, (current_user.id, book_id, request.form.get("notes", "")))
-                conn.commit()
-                flash("Book added to wishlist!", "success")
-            except Exception as e:
-                conn.rollback()  # undo a half-done insert (e.g. book added, wishlist row failed)
-                if "UNIQUE constraint failed" in str(e):
-                    flash("This book is already in your wishlist!", "error")
-                else:
-                    current_app.logger.exception('Error adding to wishlist')
-                    flash("Couldn't add the book to your wishlist.", "error")
-
-            return redirect(url_for("wishlist.view_wishlist"))
-
-    # Get wishlist books for display
-    conn = get_db()
-    wishlist_books = conn.execute("""
+def _wishlist_rows(conn, user_id):
+    """A user's wishlist, newest first: books rows plus the wishlist note."""
+    return conn.execute("""
         SELECT b.*, w.wishlist_id, w.notes, w.added_at as wishlist_added_at
         FROM wishlist w
         JOIN books b ON w.book_id = b.id
         WHERE w.user_id = ?
         ORDER BY w.added_at DESC
-    """, (current_user.id,)).fetchall()
+    """, (user_id,)).fetchall()
 
+
+@wishlist_blueprint.route("/view", methods=["GET", "POST"])
+@login_required
+def view_wishlist():
+    """Your wishlist: books and movies, in separate sections, with tabs on
+    top (?show=books|movies, default both). Adding happens on the shared add
+    page (add_to_wishlist), opened from the + button; a POST here is the old
+    form's address and is handled the same way."""
+    if request.method == "POST":
+        return add_to_wishlist()
+    show = request.args.get("show")
+    show = show if show in WISHLIST_TABS else "both"
+    rows = _wishlist_rows(get_db(), current_user.id)
     return render_template(
         "wishlist.html",
-        wishlist_books=wishlist_books
+        show=show,
+        wishlist_books=[r for r in rows if media.media_type_of(r) == media.BOOK],
+        wishlist_movies=[r for r in rows if media.media_type_of(r) == media.VIDEO],
     )
+
+
+# The wishlist page's tabs, in order
+WISHLIST_TABS = ("books", "movies", "both")
+
+
+@wishlist_blueprint.route("/add", methods=["GET", "POST"])
+@login_required
+def add_to_wishlist():
+    """Add a book or movie to your wishlist: the shared add page
+    (templates/add_item.html) with a note field, pointed here.
+
+    GET ?type=book|video (&format=, &barcode= for movies). POST is the form;
+    for books, also the ISBN box's no-JS lookup (isbn_lookup)."""
+    kind = request.values.get("type") or request.form.get("media_type") or media.BOOK
+    if kind == media.VIDEO:
+        return _add_movie()
+    return _add_book()
+
+
+def _add_book():
+    from blueprints.books import render_add_book
+    conn = get_db()
+    if request.method == "POST" and "isbn_lookup" not in request.form:
+        isbn = request.form.get("isbn")
+        # Only your own books are reused (utils/book_matching.py)
+        book_id, kind = own_book_for_wishlist(conn, current_user.id, isbn)
+        if kind == 'library':
+            flash("That book is already in your library.", "error")
+            return redirect(url_for("books.show_book", id=book_id))
+        if not book_id:
+            cover_image_url = process_image(request.files.get("image"),
+                                            request.form.get("existing_cover_url"))
+            page_count = request.form.get("page_count", type=int) or 0
+            cursor = conn.execute("""
+                INSERT INTO books (title, author, publisher, publish_year, isbn,
+                                 page_count, cover_image_url, description, subtitle, genre, added_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                request.form["title"],
+                request.form["author"],
+                request.form.get("publisher", ""),
+                request.form.get("year", ""),
+                isbn,
+                max(0, page_count),
+                cover_image_url,
+                request.form.get("description", ""),
+                request.form.get("subtitle", ""),
+                request.form.get("genre", ""),
+                current_user.id
+            ))
+            book_id = cursor.lastrowid
+        return _add_wishlist_row(conn, book_id, "Book")
+    # The page, or the ISBN box's no-JS lookup
+    return render_add_book(destination="wishlist")
+
+
+def _add_movie():
+    from blueprints.videos import _add_page, _form_values
+    conn = get_db()
+    if request.method == "GET":
+        fmt = request.args.get("format")
+        values = {"format": fmt if fmt in media.VIDEO_FORMATS else media.DEFAULT_VIDEO_FORMAT,
+                  "barcode_input": media.normalize_barcode(request.args.get("barcode")) or ""}
+        return _add_page(values, destination="wishlist")
+
+    values, errors = _form_values(request.form)
+    values["notes"] = request.form.get("notes", "")
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        return _add_page(values, destination="wishlist", status=400)
+    # Your own copy with this barcode: on your shelf already, or wished
+    if values["barcode"]:
+        mine = conn.execute("""
+            SELECT b.id, b.removed_at,
+                   EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?) AS wished
+            FROM books b WHERE b.added_by = ? AND b.media_type = 'video' AND b.barcode = ?
+        """, (current_user.id, current_user.id, values["barcode"])).fetchall()
+        for row in mine:
+            if row["wished"]:
+                flash("This movie is already on your wishlist!", "error")
+                return redirect(url_for("wishlist.view_wishlist"))
+            if row["removed_at"] is None:
+                flash("That movie is already in your collection.", "error")
+                return redirect(url_for("videos.show_video", id=row["id"]))
+    cover = process_image(request.files.get("image"), request.form.get("existing_cover_url"))
+    cursor = conn.execute("""
+        INSERT INTO books (title, subtitle, author, publisher, publish_year, runtime_minutes,
+                           format, barcode, catalog_number, genre, description, cover_image_url,
+                           page_count, added_by, media_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'video')
+    """, (values['title'], values['subtitle'], values['author'], values['publisher'],
+          values['publish_year'], values['runtime_minutes'], values['format'], values['barcode'],
+          values['catalog_number'], values['genre'], values['description'], cover, current_user.id))
+    return _add_wishlist_row(conn, cursor.lastrowid, "Movie")
+
+
+def _add_wishlist_row(conn, book_id, noun):
+    try:
+        conn.execute("INSERT INTO wishlist (user_id, book_id, notes) VALUES (?, ?, ?)",
+                     (current_user.id, book_id, request.form.get("notes", "")))
+        conn.commit()
+        flash(f"{noun} added to your wishlist!", "success")
+    except Exception as e:
+        conn.rollback()  # undo a half-done insert (e.g. book added, wishlist row failed)
+        if "UNIQUE constraint failed" in str(e):
+            flash(f"This {noun.lower()} is already on your wishlist!", "error")
+        else:
+            current_app.logger.exception('Error adding to wishlist')
+            flash("Couldn't add it to your wishlist.", "error")
+    return redirect(url_for("wishlist.view_wishlist"))
 
 
 @wishlist_blueprint.route("/check_duplicates", methods=["POST"])
@@ -155,186 +209,46 @@ def check_duplicates():
     return jsonify({"has_duplicates": bool(duplicates), "duplicates": duplicates})
 
 
-@wishlist_blueprint.route("/select_search_result", methods=["POST"])
-@login_required
-def select_search_result():
-    """Handle selection of a book from search results - directly add to wishlist"""
-    try:
-        data = request.get_json()
-        current_app.logger.debug(f"Received wishlist book selection data: {data}")
-
-        original_data = data.get("bookData", {})
-        isbn = original_data.get("isbn")
-        thumbnail_url = original_data.get("thumbnail")
-
-        conn = get_db()
-        # Only your own books are reused (utils/book_matching.py). Checked
-        # before the cover download so a refusal leaves no orphaned file.
-        book_id, kind = own_book_for_wishlist(conn, current_user.id, isbn)
-        if kind == 'library':
-            return jsonify({"success": False, "error": "That book is already in your library."})
-        if kind == 'wishlist':
-            return jsonify({"success": False, "error": "This book is already in your wishlist!"})
-
-        # Download and save the cover
-        local_cover_url = None
-        if thumbnail_url:
-            current_app.logger.info(f"Attempting to download cover from: {thumbnail_url}")
-            local_cover_url = download_and_save_cover(thumbnail_url)
-            if not local_cover_url:
-                current_app.logger.warning("Failed to download cover image")
-
-        if not book_id:
-            # Insert new book
-            cursor = conn.execute("""
-                INSERT INTO books (title, author, publisher, publish_year, isbn,
-                                 page_count, cover_image_url, description, subtitle, genre, added_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                original_data.get("title", ""),
-                original_data.get("author", ""),
-                original_data.get("publisher", ""),
-                original_data.get("publishedDate", "").split("-")[0] if original_data.get("publishedDate") else "",
-                isbn,
-                original_data.get("pageCount", 0),
-                local_cover_url,
-                original_data.get("description", ""),
-                original_data.get("subtitle", ""),
-                original_data.get("genre", ""),
-                current_user.id
-            ))
-            book_id = cursor.lastrowid
-
-        # Add to wishlist
-        try:
-            conn.execute("""
-                INSERT INTO wishlist (user_id, book_id, notes)
-                VALUES (?, ?, ?)
-            """, (current_user.id, book_id, ""))
-            conn.commit()
-
-            # Fetch the complete book data to return
-            book = conn.execute("""
-                SELECT b.*, w.wishlist_id, w.notes, w.added_at as wishlist_added_at
-                FROM wishlist w
-                JOIN books b ON w.book_id = b.id
-                WHERE w.user_id = ? AND b.id = ?
-            """, (current_user.id, book_id)).fetchone()
-
-            if local_cover_url:
-                current_app.logger.info(f"Successfully added book to wishlist with local cover: {local_cover_url}")
-            else:
-                current_app.logger.warning("Book added to wishlist but no cover image was saved")
-
-            return jsonify({
-                "success": True,
-                "message": "Book added to wishlist!",
-                "book": dict(book)
-            })
-
-        except Exception as e:
-            conn.rollback()  # undo a half-done insert (e.g. book added, wishlist row failed)
-            if "UNIQUE constraint failed" in str(e):
-                return jsonify({"success": False, "error": "This book is already in your wishlist!"})
-            else:
-                raise e
-
-    except Exception as e:
-        current_app.logger.error(f"Error in select_search_result: {str(e)}")
-        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
-
-
-@wishlist_blueprint.route("/search_books")
-@login_required
-def search_books():
-    """AJAX endpoint for book search - returns JSON for frontend"""
-    query = request.args.get("q", "")
-    if not query:
-        return jsonify({"items": []})
-
-    try:
-        current_app.logger.debug(f"Wishlist search for query: {query}")
-        processed_items = search_google_books(query, max_results=6)
-        current_app.logger.debug(f"Found {len(processed_items)} results")
-        response = jsonify({"items": processed_items})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
-
-    except Exception as e:
-        current_app.logger.error(f"Unexpected error in wishlist search: {str(e)}", exc_info=True)
-        return jsonify({"error": "Search failed. Please try again."}), 500
-
-
-@wishlist_blueprint.route("/fetch_isbn_details")
-@login_required
-def fetch_isbn_details():
-    """AJAX endpoint for barcode scanner - fetches book by ISBN"""
-    isbn = request.args.get("isbn", "")
-    if not isbn:
-        return jsonify({"success": False, "error": "No ISBN provided"})
-
-    try:
-        current_app.logger.debug(f"Fetching book details for ISBN: {isbn}")
-        book_details = fetch_book_details_from_isbn(isbn)
-
-        if book_details:
-            current_app.logger.info(f"Successfully fetched book: {book_details.get('title')}")
-            return jsonify({"success": True, "book_details": book_details})
-        else:
-            current_app.logger.warning(f"No book found for ISBN: {isbn}")
-            return jsonify({"success": False, "error": "Book not found"})
-
-    except Exception as e:
-        current_app.logger.error(f"Error fetching ISBN details: {str(e)}")
-        return jsonify({"success": False, "error": "Something went wrong. Please try again."})
-
-
 @wishlist_blueprint.route("/move_to_library/<int:book_id>", methods=["POST"])
 @login_required
 def move_to_library(book_id):
-    """Move a book from wishlist to the user's library"""
+    """You got it: a wishlist item moves onto your shelf (the Library for a
+    book, Movies for a movie), marked want to read / want to watch."""
     conn = get_db()
-    # Check if book is in user's wishlist
-    wishlist_entry = conn.execute("""
-        SELECT wishlist_id FROM wishlist
-        WHERE user_id = ? AND book_id = ?
+    entry = conn.execute("""
+        SELECT b.media_type FROM wishlist w JOIN books b ON b.id = w.book_id
+        WHERE w.user_id = ? AND w.book_id = ?
     """, (current_user.id, book_id)).fetchone()
 
-    if not wishlist_entry:
-        flash("Book not found in your wishlist.", "error")
+    if not entry:
+        flash("That isn't on your wishlist.", "error")
         return redirect(url_for("wishlist.view_wishlist"))
+    is_movie = entry["media_type"] == media.VIDEO
 
-    # Add to collections with default status "want to read"
     try:
-        # Check if already in collections
         existing = conn.execute("""
             SELECT 1 FROM collections
             WHERE user_id = ? AND book_id = ?
         """, (current_user.id, book_id)).fetchone()
-
         if not existing:
             conn.execute("""
                 INSERT INTO collections (user_id, book_id, status, created_at, updated_at)
-                VALUES (?, ?, 'want to read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            """, (current_user.id, book_id))
-
-        # Remove from wishlist
-        conn.execute("""
-            DELETE FROM wishlist
-            WHERE user_id = ? AND book_id = ?
-        """, (current_user.id, book_id))
-
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, (current_user.id, book_id, 'want to watch' if is_movie else 'want to read'))
+        conn.execute("DELETE FROM wishlist WHERE user_id = ? AND book_id = ?",
+                     (current_user.id, book_id))
         conn.commit()
-        flash("Book added to your library!", "success")
-
-        # Redirect to book detail page
-        return redirect(url_for("books.show_book", id=book_id))
-
-    except Exception as e:
-        conn.rollback()  # undo a half-done insert (e.g. book added, wishlist row failed)
-        current_app.logger.exception('Error moving book to library')
-        flash("Couldn't move the book to your library.", "error")
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Error moving a wishlist item to the shelf')
+        flash("Couldn't move it off your wishlist.", "error")
         return redirect(url_for("wishlist.view_wishlist"))
+
+    if is_movie:
+        flash("Movie added to your collection!", "success")
+        return redirect(url_for("videos.show_video", id=book_id))
+    flash("Book added to your library!", "success")
+    return redirect(url_for("books.show_book", id=book_id))
 
 
 @wishlist_blueprint.route("/remove/<int:book_id>", methods=["POST"])
@@ -352,7 +266,9 @@ def remove_from_wishlist(book_id):
     removed = conn.execute(
         "DELETE FROM wishlist WHERE user_id = ? AND book_id = ?",
         (current_user.id, book_id)).rowcount
-    book = conn.execute("SELECT added_by FROM books WHERE id = ?", (book_id,)).fetchone()
+    book = conn.execute("SELECT added_by, media_type FROM books WHERE id = ?", (book_id,)).fetchone()
+    is_movie = bool(book) and book['media_type'] == media.VIDEO
+    noun = "Movie" if is_movie else "Book"
 
     shelved_as_read = False
     if removed and book and book['added_by'] == current_user.id:
@@ -364,18 +280,19 @@ def remove_from_wishlist(book_id):
             # Goodreads to-read row) has data on it. Without its wishlist row
             # it would count as owned and show up in your library, so mark
             # it removed instead; reviews keep working on removed books.
-            shelved_as_read = _keep_as_not_owned(conn, book_id)
+            shelved_as_read = _keep_as_not_owned(conn, book_id, is_movie)
     conn.commit()
 
     if book_was_deleted:
-        flash("Book removed from wishlist and deleted.", "success")
+        flash(f"{noun} removed from wishlist and deleted.", "success")
     elif shelved_as_read:
-        flash(f"Book removed from wishlist. You've read it, so it's kept on your "
-              f"\"{READ_NOT_OWNED}\" collection with your review.", "success")
+        verb = "watched" if is_movie else "read"
+        flash(f"{noun} removed from wishlist. You've {verb} it, so it's kept on your "
+              f"\"{NOT_OWNED[is_movie]}\" collection with your review.", "success")
     elif removed:
-        flash("Book removed from wishlist.", "success")
+        flash(f"{noun} removed from wishlist.", "success")
     else:
-        flash("That book isn't on your wishlist.", "error")
+        flash("That isn't on your wishlist.", "error")
 
     # Determine where to redirect based on context
     referrer = request.referrer
@@ -394,13 +311,16 @@ def remove_from_wishlist(book_id):
 # Custom collection for books you've read but don't own, kept when such a book
 # leaves your wishlist (see remove_from_wishlist).
 READ_NOT_OWNED = "Read but not owned"
+WATCHED_NOT_OWNED = "Watched but not owned"
+NOT_OWNED = {False: READ_NOT_OWNED, True: WATCHED_NOT_OWNED}     # by is_movie
 
 
-def _keep_as_not_owned(conn, book_id):
+def _keep_as_not_owned(conn, book_id, is_movie=False):
     """Mark the current user's ex-wishlist book removed (not in the library).
 
     If they've read it (a rating/review or a 'read' status), also put it on
-    the READ_NOT_OWNED collection, created on first use. Returns True if it
+    the READ_NOT_OWNED collection, created on first use; for a movie,
+    watched and WATCHED_NOT_OWNED. Returns True if it
     went on that collection. Restoring the book on its page (you bought it
     after all) brings it into the library as usual.
     """
@@ -410,14 +330,16 @@ def _keep_as_not_owned(conn, book_id):
     """, (book_id,))
     has_read = conn.execute("""
         SELECT 1 FROM read_data WHERE user_id = ? AND book_id = ?
-        UNION SELECT 1 FROM collections WHERE user_id = ? AND book_id = ? AND status = 'read'
-    """, (current_user.id, book_id, current_user.id, book_id)).fetchone()
+        UNION SELECT 1 FROM collections WHERE user_id = ? AND book_id = ? AND status = ?
+    """, (current_user.id, book_id, current_user.id, book_id,
+          media.DONE_STATUS[media.VIDEO if is_movie else media.BOOK])).fetchone()
     if not has_read:
         return False
+    name = NOT_OWNED[is_movie]
     conn.execute("INSERT OR IGNORE INTO user_collections (user_id, name) VALUES (?, ?)",
-                 (current_user.id, READ_NOT_OWNED))
+                 (current_user.id, name))
     collection_id = conn.execute("SELECT collection_id FROM user_collections WHERE user_id = ? AND name = ?",
-                                 (current_user.id, READ_NOT_OWNED)).fetchone()[0]
+                                 (current_user.id, name)).fetchone()[0]
     conn.execute("INSERT OR IGNORE INTO collection_books (collection_id, book_id) VALUES (?, ?)",
                  (collection_id, book_id))
     return True
@@ -450,19 +372,21 @@ def quick_add_to_wishlist(book_id):
     if not can_view_book(conn, current_user, book_id):
         flash("Book not found.", "error")
         return redirect(request.referrer or url_for("base.index"))
+    row = conn.execute("SELECT media_type FROM books WHERE id = ?", (book_id,)).fetchone()
+    noun = "Movie" if row and row["media_type"] == media.VIDEO else "Book"
     try:
         conn.execute("""
             INSERT INTO wishlist (user_id, book_id)
             VALUES (?, ?)
         """, (current_user.id, book_id))
         conn.commit()
-        flash("Book added to wishlist!", "success")
+        flash(f"{noun} added to your wishlist!", "success")
     except Exception as e:
         conn.rollback()  # undo a half-done insert (e.g. book added, wishlist row failed)
         if "UNIQUE constraint failed" in str(e):
-            flash("This book is already in your wishlist!", "error")
+            flash(f"This {noun.lower()} is already on your wishlist!", "error")
         else:
             current_app.logger.exception('Error adding to wishlist')
-            flash("Couldn't add the book to your wishlist.", "error")
+            flash("Couldn't add it to your wishlist.", "error")
 
     return redirect(request.referrer or url_for("base.index"))

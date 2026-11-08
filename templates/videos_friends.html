@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{# Friends and how many videos each has; each links to their Videos grid. #}
+
+{% block title %}Friends' Movies - libaraxia{% endblock %}
+{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
+
+{% block content %}
+    {% include '_videos_tabs.html' %}
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-3xl font-display text-content-primary mb-6">Friends' Movies</h1>
+        {% if friends %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for friend in friends %}
+            <a href="{{ url_for('videos.user_videos', username=friend.username) }}"
+               class="bg-secondary rounded-lg p-6 cursor-pointer group card-link">
+                <div class="flex items-center gap-4">
+                    {% if friend.avatar_url %}
+                    <img src="{{ url_for('static', filename=friend.avatar_url) }}" alt=""
+                         class="h-16 w-16 rounded-full object-cover">
+                    {% else %}
+                    <div class="h-16 w-16 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold text-2xl" aria-hidden="true">
+                        {{ friend.username[0].upper() }}
+                    </div>
+                    {% endif %}
+                    <div class="flex-1">
+                        <h2 class="text-xl font-semibold text-content-primary group-hover:text-accent transition-colors">{{ friend.username }}</h2>
+                        <p class="text-sm text-content-secondary">{{ friend.video_count }} movie{{ '' if friend.video_count == 1 else 's' }}</p>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        {% with title='No friends yet', text="Once you have friends, you can browse their movies here.", links=[] %}
+            {% include '_empty_state.html' %}
+        {% endwith %}
+        {% endif %}
+    </div>
+{% endblock %}

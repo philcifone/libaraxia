@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ book['title'] }} - Details{% endblock %}
+{# Shared by books and videos: `m` holds the wording for this media type
+   (utils/media.py media_labels), e.g. m.creator = Author / Director. #}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
@@ -18,6 +20,12 @@
            class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
             <span class="mr-2">←</span>
             <span>Back to Wishlist</span>
+        </a>
+        {% elif m.type == 'video' %}
+        <a href="{{ url_for('videos.index') }}"
+           class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
+            <span class="mr-2">←</span>
+            <span>Back to Movies</span>
         </a>
         {% else %}
         <a href="{{ url_for('base.index') }}"
@@ -37,7 +45,7 @@
                         <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
                     {% endif %}
                 </h1>
-                <p class="text-xl text-content-secondary italic">by {{ book['author'] }}</p>
+                <p class="text-xl text-content-secondary italic">{{ m.by }} {{ book['author'] }}</p>
             </header>
 
             <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
@@ -59,13 +67,26 @@
                     <!-- Details Grid -->
                     <div class="p-4 bg-primary rounded-lg">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {% for item in [
+                            {% if m.type == 'video' %}
+                            {% set details = [
+                                ('Format', book['format']|format_label),
+                                (m.publisher, book['publisher']),
+                                (m.year, book['publish_year']),
+                                (m.length, runtime),
+                                (m.code, book['barcode']),
+                                ('Catalogue Number', book['catalog_number']),
+                                ('Genre', book['genre'])
+                            ] %}
+                            {% else %}
+                            {% set details = [
                                 ('Publisher', book['publisher']),
                                 ('Publication Year', book['publish_year']),
                                 ('Page Count', book['page_count']|string + ' pages'),
                                 ('ISBN', book['isbn']),
                                 ('Genre', book['genre'])
                             ] %}
+                            {% endif %}
+                            {% for item in details %}
                             <div class="space-y-1">
                                 <span class="label text-sm pb-1">{{ item[0] }}</span>
                                 <p class="text-content-primary font-medium break-words">{{ item[1] }}</p>
@@ -76,7 +97,7 @@
 
                     <!-- Description Section -->
                     <div class="bg-primary rounded-lg p-4">
-                        <h2 class="text-xl font-display text-content-primary mb-4">About this Book</h2>
+                        <h2 class="text-xl font-display text-content-primary mb-4">{{ m.about }}</h2>
                         <div class="relative">
                             {% if book['description'] and book['description'].strip() %}
                             <div data-read-more>
@@ -89,9 +110,9 @@
                             {% else %}
                             <div class="text-content-secondary/60 italic text-center py-4">
                                 {% if current_user.is_admin or book['added_by'] == current_user.id %}
-                                No description available. Click "Edit Book" below to add one.
+                                No description available. Click "Edit {{ m.Noun }}" below to add one.
                                 {% else %}
-                                No description available for this book.
+                                No description available for this {{ m.noun }}.
                                 {% endif %}
                             </div>
                             {% endif %}
@@ -101,8 +122,8 @@
                     {% if book['removed_at'] %}
                     <!-- Deaccessioned -->
                     <div class="bg-primary rounded-lg p-4 border border-card text-sm text-content-primary">
-                        <strong>Removed from the library</strong> on {{ book['removed_at'][:10] }}{% if book['removed_note'] %} ({{ book['removed_note'] }}){% endif %}.
-                        <span class="text-content-secondary">Reviews and reading history are kept.</span>
+                        <strong>Removed from the {{ m.shelf }}</strong> on {{ book['removed_at'][:10] }}{% if book['removed_note'] %} ({{ book['removed_note'] }}){% endif %}.
+                        <span class="text-content-secondary">Reviews and {{ m.history|lower }} are kept.</span>
                     </div>
                     {% endif %}
 
@@ -116,14 +137,15 @@
                             </svg>
                             <div class="flex-1">
                                 <h3 class="text-lg font-semibold text-white mb-1">On {{ wishlist_owner.capitalize() }}'s Wishlist</h3>
-                                <p class="text-sm text-content-secondary">{{ wishlist_owner.capitalize() }} wants to purchase this book</p>
+                                <p class="text-sm text-content-secondary">{{ wishlist_owner.capitalize() }} wants to buy this {{ m.noun }}</p>
                                 {% if wishlist_owner_entry['notes'] %}
                                 <p class="text-sm text-content-primary mt-2 italic">"{{ wishlist_owner_entry['notes'] }}"</p>
                                 {% endif %}
                             </div>
                         </div>
 
-                        <!-- Buy Links -->
+                        <!-- Buy Links (book shops: books only) -->
+                        {% if m.type != 'video' %}
                         <div class="mb-4">
                             <p class="text-sm text-content-secondary mb-2">Purchase this book:</p>
                             <div class="grid grid-cols-2 gap-3">
@@ -149,6 +171,7 @@
                                 </a>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
 
                     {% elif in_wishlist %}
@@ -160,14 +183,15 @@
                             </svg>
                             <div class="flex-1">
                                 <h3 class="text-lg font-semibold text-white mb-1">On Your Wishlist</h3>
-                                <p class="text-sm text-content-secondary">This book is on your wishlist to purchase</p>
+                                <p class="text-sm text-content-secondary">This {{ m.noun }} is on your wishlist to buy</p>
                                 {% if wishlist_entry and wishlist_entry['notes'] %}
                                 <p class="text-sm text-content-primary mt-2 italic">"{{ wishlist_entry['notes'] }}"</p>
                                 {% endif %}
                             </div>
                         </div>
 
-                        <!-- Buy Links -->
+                        <!-- Buy Links (book shops: books only) -->
+                        {% if m.type != 'video' %}
                         <div class="mb-4">
                             <p class="text-sm text-content-secondary mb-2">Buy this book:</p>
                             <div class="grid grid-cols-2 gap-3">
@@ -193,13 +217,14 @@
                                 </a>
                             </div>
                         </div>
+                        {% endif %}
 
                         <div class="flex flex-col sm:flex-row gap-3">
                             <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit"
                                         class="w-full px-4 py-3 bg-accent text-on-accent rounded-lg flex items-center justify-center gap-2 font-medium btn">
-                                    Add to Library
+                                    Add to {{ m.section }}
                                 </button>
                             </form>
                             <form action="/wishlist/remove/{{ book.id }}" method="POST">
@@ -220,25 +245,25 @@
                     <!-- Owner / admin actions -->
                     {% if can_manage %}
                     <div class="grid grid-cols-2 gap-4">
-                        <a href="/books/edit/{{ book['id'] }}"
+                        <a href="{{ url_for('videos.edit_video', id=book['id']) if m.type == 'video' else url_for('books.edit_book', id=book['id']) }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-on-accent text-sm rounded-lg hover:bg-accent-hover btn">
                             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
                             </svg>
-                            Edit Book
+                            Edit {{ m.Noun }}
                         </a>
                         {% if book['removed_at'] %}
                         <form action="{{ url_for('books.restore_book', id=book['id']) }}" method="POST" class="flex">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit"
                                     class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary text-sm rounded-lg hover:bg-primary-hover btn btn-outline">
-                                Put Back in Library
+                                Put Back {{ 'on the Shelf' if m.type == 'video' else 'in Library' }}
                             </button>
                         </form>
                         {% elif not in_wishlist %}
                         <button type="button" data-click="toggleHidden" data-target="remove-book-panel"
                                 class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary text-sm rounded-lg hover:bg-primary-hover btn btn-outline">
-                            Remove from Library
+                            Remove from {{ m.section }}
                         </button>
                         {% endif %}
                     </div>
@@ -247,17 +272,17 @@
                     <form id="remove-book-panel" action="{{ url_for('books.remove_book', id=book['id']) }}" method="POST"
                           class="hidden mt-4 p-4 bg-primary border border-card rounded-lg space-y-3">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <p class="text-sm text-content-primary">The book leaves your library (given away, sold, lost). It stops showing on your shelves, but its record stays, with everyone's reviews, ratings and reading history. You can put it back any time.</p>
+                        <p class="text-sm text-content-primary">The {{ m.noun }} leaves your {{ m.shelf }} (given away, sold, lost). It stops showing on your shelves, but its record stays, with everyone's reviews, ratings and {{ m.history|lower }}. You can put it back any time.</p>
                         <label for="removed_note" class="block text-xs text-content-secondary">Where did it go? (optional)</label>
                         <input type="text" name="removed_note" id="removed_note" maxlength="200" placeholder="e.g. Little Free Library"
                                class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                         <button type="submit" class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
-                            Remove from Library
+                            Remove from {{ m.section }}
                         </button>
                     </form>
                     {% endif %}
 
-                    <p class="mt-4 text-xs text-content-secondary">Transfer and permanent delete are under <a href="{{ url_for('books.edit_book', id=book['id']) }}#book-tools">Edit Book → Book tools</a>.</p>
+                    <p class="mt-4 text-xs text-content-secondary">Transfer and permanent delete are under <a href="{{ url_for('videos.edit_video', id=book['id']) if m.type == 'video' else url_for('books.edit_book', id=book['id']) }}#book-tools">Edit {{ m.Noun }} → {{ m.Noun }} tools</a>.</p>
                     {% endif %}
                 </div>
             </div>
@@ -321,7 +346,7 @@
         <div class="max-w-4xl mx-auto px-4 py-8">
             <div class="bg-secondary rounded-lg p-6 space-y-8 card">
                 <h2 class="text-2xl font-display text-content-primary text-center">
-                    {{ current_user.username.capitalize() }}'s Reading Info
+                    {{ current_user.username.capitalize() }}'s {{ m.info_heading }}
                 </h2>
             
             <div class="space-y-8">
@@ -329,15 +354,14 @@
                 <form action="{{ url_for('collections.add_to_status_collection') }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="id" value="{{ book['id'] }}">
-                    <label for="status" class="block text-sm font-medium text-content-secondary pb-4">Reading Status</label>
+                    <label for="status" class="block text-sm font-medium text-content-secondary pb-4">{{ m.status_label }}</label>
                     <div class="flex flex-col sm:flex-row gap-4">
                         <select name="status" id="status" 
                                 class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                             <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>Untracked</option>
-                            <option value="read" {% if collection_status == "read" %}selected{% endif %}>Read</option>
-                            <option value="want to read" {% if collection_status == "want to read" %}selected{% endif %}>Want to Read</option>
-                            <option value="currently reading" {% if collection_status == "currently reading" %}selected{% endif %}>Currently Reading</option>
-                            <option value="did not finish" {% if collection_status == "did not finish" %}selected{% endif %}>Did Not Finish</option>
+                            {% for status in m.statuses %}
+                            <option value="{{ status }}" {% if collection_status == status %}selected{% endif %}>{{ m.status_labels[status] }}</option>
+                            {% endfor %}
                         </select>
                         <button type="submit" 
                                 class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
@@ -397,7 +421,7 @@
                 <!-- Reading History (shown with or without a review) -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="label text-sm pb-1">Reading History</h3>
+                        <h3 class="label text-sm pb-1">{{ m.history }}</h3>
                         <button type="button"
                                 data-click="showAddSessionForm"
                                 class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded btn">
@@ -411,7 +435,7 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="session_id" id="form_session_id" value=""/>
 
-                            <h4 class="font-medium text-content-primary mb-4" id="session-form-title">Add New Reading Session</h4>
+                            <h4 class="font-medium text-content-primary mb-4" id="session-form-title">Add New {{ m.session }}</h4>
 
                             <div class="space-y-3">
                                 <div>
@@ -456,10 +480,10 @@
                         <div class="flex items-center justify-between text-sm py-2 border-b border-gray-700 last:border-b-0">
                             <div class="flex items-center gap-3">
                                 <span class="text-white font-medium">
-                                    {% if loop.index == 1 %}First time read
-                                    {% elif loop.index == 2 %}Second time read
-                                    {% elif loop.index == 3 %}Third time read
-                                    {% else %}{{ loop.index }}th time read
+                                    {% if loop.index == 1 %}First time {{ m.verb_past }}
+                                    {% elif loop.index == 2 %}Second time {{ m.verb_past }}
+                                    {% elif loop.index == 3 %}Third time {{ m.verb_past }}
+                                    {% else %}{{ loop.index }}th time {{ m.verb_past }}
                                     {% endif %}
                                 </span>
                             </div>
@@ -472,7 +496,7 @@
                                     {% if session.date_completed %}
                                         <span class="text-content-primary">{{ session.date_completed }}</span>
                                     {% elif session.date_started %}
-                                        <span class="text-yellow-500 italic">Currently Reading</span>
+                                        <span class="text-yellow-500 italic">{{ m.in_progress }}</span>
                                     {% else %}{# undated past read, e.g. from a Goodreads Read Count #}
                                         <span class="text-content-secondary italic">Date unknown</span>
                                     {% endif %}
@@ -496,7 +520,7 @@
                     </div>
                     {% else %}
                     <div class="bg-primary rounded-lg p-4 text-center">
-                        <p class="text-content-secondary text-sm italic">No reading sessions yet. Click "Add Session" to record when you read this book.</p>
+                        <p class="text-content-secondary text-sm italic">{% if m.type == 'video' %}No viewings yet. Click "Add Session" to record when you watched it.{% else %}No reading sessions yet. Click "Add Session" to record when you read this book.{% endif %}</p>
                     </div>
                     {% endif %}
                 </div>
@@ -544,7 +568,7 @@
             <!-- Tags Section -->
             <div class="bg-secondary rounded-lg p-6 card" data-book-id="{{ book.id }}">
                 <h2 class="text-xl font-display text-content-primary mb-4">
-                    {{ current_user.username.capitalize() }}'s Book Tags
+                    {{ current_user.username.capitalize() }}'s {{ m.tags_heading }}
                 </h2>
                 <div class="space-y-4">
                     <div class="flex gap-2">

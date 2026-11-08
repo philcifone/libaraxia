@@ -74,7 +74,8 @@ def test_security_headers(client):
 
 # Routes that are GET but act, or need arguments filled in below.
 # books.thumbnail needs a ?url= and 404s without one; tests/test_csp.py covers it.
-SKIP = {'static', 'auth.verify_email', 'books.thumbnail'}
+# videos.lookup needs ?barcode= or ?title= and answers 400 without; test_videos.py covers it.
+SKIP = {'static', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'videos.search'}
 
 
 def test_every_page_loads(app, client, db, people):
@@ -107,9 +108,17 @@ def test_every_page_loads(app, client, db, people):
         checked.append(url)
     assert len(checked) > 35
 
+    # Videos (Phase 8): the routes above get a book id and redirect, so check a real one
+    video = db.execute("INSERT INTO books (title, author, runtime_minutes, barcode, format, added_by, media_type) "
+                       "VALUES ('Jaws', 'Steven Spielberg', 124, '0012345678905', 'VHS', ?, 'video')",
+                       (alice,)).lastrowid
+    db.commit()
     extra = ['/base/index?show_removed=1', f'/books/book/{removed}', '/user/alice', '/user/bob',
              '/base/library/carol', '/wishlist/user/carol', '/books/search?q=dune',
-             '/admin/users/%d/removal' % alice]
+             '/admin/users/%d/removal' % alice,
+             f'/videos/{video}', f'/videos/edit/{video}', f'/read/rate_review/{video}',
+             '/videos/?q=jaws&format=VHS&sort_by=runtime_minutes&sort_order=desc',
+             '/videos/add?barcode=012345678905', '/videos/user/alice']
     for url in extra:
         r = client.get(url)
         assert r.status_code < 400, url
@@ -172,7 +181,7 @@ def test_no_global_rate_limit_but_login_is_limited(client, db, people, monkeypat
 def test_scanner_scripts_are_served_locally(client, db, people):
     """Both scanning pages load quagga2 and the shared scanner from static/."""
     login(client, 'bob')
-    for page in ('/books/add', '/wishlist/view'):
+    for page in ('/books/add', '/videos/add', '/wishlist/add?type=book'):
         html = client.get(page, follow_redirects=True).get_data(as_text=True)
         assert 'vendor/quagga2-1.12.1.min.js' in html and 'cdnjs' not in html, page
         assert html.index('vendor/quagga2-1.12.1.min.js') < html.index('/static/scanner.js'), page

@@ -20,7 +20,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 5 ✅ | [Finish the Goodreads import](#phase-5-finish-the-goodreads-import) | Self-contained; benefits from Phase 2 tests | A real Goodreads export imports cleanly, shelves included |
 | 6 ✅ | [Page structure](#phase-6-page-structure) | One layout, no inline scripts; unlocks CSP | All pages extend `base.html`; CSP on |
 | 7 ✅ | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
-| 8 | [VHS / UPC support](#phase-8-vhs--upc-support) | Built in the new style | Videos are their own section: a VHS can be scanned or entered, watched, reviewed and shared, and never shows up among the books |
+| 8 | [Physical media: movies and vinyl](#phase-8-physical-media-movies-and-vinyl) | Built in the new style | Movies (VHS, DVD) and vinyl are their own sections: scanned or entered, watched/listened, reviewed and shared, never among the books; one add form and one grid layout for every type |
 | 9 | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
 | 10 | [Fork (parked)](#phase-10-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
@@ -553,7 +553,7 @@ Go over the whole search/sort/filter bar (`_search_sort_filter.html`, `script.js
 
 ---
 
-## Phase 8: VHS / UPC support
+## Phase 8: Physical media: movies and vinyl
 
 A core Libaraxia feature. The design notes were written alongside the fork plan, in [FORK-SPEC §5](FORK-SPEC.md#5-phase-2-core-change-b-vhs-support), but nothing here needs the fork.
 
@@ -581,16 +581,69 @@ Supersedes FORK-SPEC §5.4's "VHS in the library grid with a badge". Phil wants 
 - **Defaults (Phil can override):** no video wishlist for now (a tape scanned on the wishlist page says so); the cover fetcher skips videos; tags and custom collections are shared with books (a collection may hold both); export includes videos, marked by type.
 
 ### 8.2 Build
-- [ ] **Scanner dispatch** (server + `add_book.js`/`wishlist.js`): an EAN-13 starting `978`/`979`, or a valid ISBN-10, takes the book path; any other EAN-13/UPC-A takes the video path. UPC-A is stored as EAN-13 (the scanner already hands it over that way). A server-side twin of the check-digit helpers in `utils/media.py`.
-- [ ] **Migration** `023_add_videos.sql`: on `books`, appended at the end, `media_type TEXT NOT NULL DEFAULT 'book' CHECK (media_type IN ('book','video'))`, `format`, `barcode`, `catalog_number`, `runtime_minutes`; indexes on `media_type` and `barcode`; `collections.status` CHECK extended with `'watched'` and `'want to watch'` (a table rebuild); `library_books` restricted to books and `library_videos` added (drop/recreate both). Folded into `create_database.sql`.
-- [ ] **`utils/media.py`:** media types, formats, field labels by type (Author ↔ Director, Publisher ↔ Studio, Pages ↔ Runtime, ISBN ↔ Barcode), statuses by type, barcode helpers. One place, used by templates and JS (via `data-` attributes).
-- [ ] **Books-only audit:** every direct `books` query checked; book stats, counts, filters, Goodreads import, cover jobs and book matching exclude videos. Tests for each.
-- [ ] **Videos section (routes/UI):** sidebar entry; `/videos` grid with search/sort/filter (format, status, rating); add form (manual entry first, scanner on it); detail/edit pages showing runtime, studio, barcode, catalogue number; Watched / Want to watch; rating + review; household and friends' Videos views; duplicate check on `barcode`; `fetch_barcode_details` (keep `fetch_isbn_details` as an alias).
-- [ ] **Feed:** video reviews and "watched" activity in friends' feeds.
-- [ ] **Video stats** on the profile, separate from book stats.
-- [ ] **Lookups** (`utils/media_lookup.py`), last and optional: ask Phil which services first. Candidates: UPCitemdb (no key, rate-limited), TMDb (key), Discogs (token). All through the SSRF guard; manual entry stays the main path.
+- [x] **Scanner dispatch** (server + `add_book.js`/`wishlist.js`): an EAN-13 starting `978`/`979`, or a valid ISBN-10, takes the book path; any other EAN-13/UPC-A takes the video path. UPC-A is stored as EAN-13 (the scanner already hands it over that way). A server-side twin of the check-digit helpers in `utils/media.py`.
+- [x] **Migration** `023_add_videos.sql`: on `books`, appended at the end, `media_type TEXT NOT NULL DEFAULT 'book' CHECK (media_type IN ('book','video'))`, `format`, `barcode`, `catalog_number`, `runtime_minutes`; indexes on `media_type` and `barcode`; `collections.status` CHECK extended with `'watched'` and `'want to watch'` (a table rebuild); `library_books` restricted to books and `library_videos` added (drop/recreate both). Folded into `create_database.sql`.
+- [x] **`utils/media.py`:** media types, formats, field labels by type (Author ↔ Director, Publisher ↔ Studio, Pages ↔ Runtime, ISBN ↔ Barcode), statuses by type, barcode helpers. One place, used by templates and JS (via `data-` attributes).
+- [x] **Books-only audit:** every direct `books` query checked; book stats, counts, filters, Goodreads import, cover jobs and book matching exclude videos. Tests for each.
+- [x] **Videos section (routes/UI):** sidebar entry; `/videos` grid with search/sort/filter (format, status, rating); add form (manual entry first, scanner on it); detail/edit pages showing runtime, studio, barcode, catalogue number; Watched / Want to watch; rating + review; household and friends' Videos views; duplicate check on `barcode`; `fetch_barcode_details` (keep `fetch_isbn_details` as an alias).
+- [x] **Feed:** video reviews and "watched" activity in friends' feeds.
+- [x] **Video stats** on the profile, separate from book stats.
+- [x] **Lookups** (`utils/media_lookup.py`), last and optional. *(Phil, 2026-11-07: UPCitemdb + TMDb; Discogs not used.)* Barcode → UPCitemdb (trial endpoint, no key, ~100/day) → cleaned title → TMDb (`TMDB_API_KEY`, optional; a v4 read token goes in a header, a v3 key in the query) for director, runtime, synopsis, genre, poster. Studio and the sleeve photo come from UPCitemdb, the film data from TMDb. Title-only lookup (TMDb) for tapes without a barcode. `/videos/lookup` (60/hour), runs after a scan and when Add Video opens with a barcode; it only fills empty fields. Hits cached per process for 6 h, misses not (could be the rate limit). JSON and images via `_get_public` / `save_best_cover`; `_get_public` takes `headers`, sent on the first hop only. TMDb attribution on the form.
+
+**Status 2026-11-07 (branch `phase-8`):** all of the above. In the UI the section is called **Cartridges** (Phil, 2026-11-07); code, URLs and the DB say "video". `blueprints/videos.py` (`/videos/`, `/shared`, `/friends`, `/user/<name>`, `/<id>`, `/add`, `/edit/<id>`, `/check_duplicates`) on the `library_videos` view; the detail page is `book_detail.html` worded by `media_labels()` (`/books/book/<id>` redirects videos there, so feed and collection links work). Scans: `classifyCode()` in `scanner.js` and `media.classify_code()` agree (one test runs both); a tape scanned or typed on Add Book goes to `/videos/add?barcode=`, on the wishlist it's refused with a pointer to Videos; `/books/fetch_barcode_details` with `fetch_isbn_details` as alias. Duplicate barcode/title in the household needs an "Add it anyway" tick. Status changes are now checked against the item's type, and *Untracked* clears a status (it used to fail on the CHECK constraint). Book stats, the profile's shelves and reviews, the Collections page's reading lists, book matching (Goodreads), the book duplicate check and the cover fetcher are books only; export adds Type/Format/Barcode/Catalogue Number/Runtime columns at the end; the account-removal dialog counts videos too. Admin's unowned-books page lists videos as well (reassigning one is harmless). Tests: `tests/test_videos.py`.
 
 **Done when:** a VHS can be scanned or typed in from the Videos section and lands there with its barcode; it shows runtime/studio/barcode, can be marked watched and reviewed, and household/friends see it under Videos; no video appears in the Library, book stats, Goodreads import or cover fetching (tests); book flows are unchanged.
+
+### 8.3–8.7: Movies, shared UI, vinyl (from Phil, 2026-11-07)
+Worked in this order: each step makes the next one smaller. Movies and the shared grid/add-form pieces come first, so Vinyls is built on them instead of being a third copy. Items marked *(proposed)* are Claude's recommendation, to be confirmed by Phil before building.
+
+### 8.3 Cartridges become Movies, with DVD
+- [x] **Sidebar "Cartridges" → "Movies"**, likewise the headings and tabs (My Movies, Household Movies, Friends' Movies), with "Movie" as the noun in `media_labels()`. "Cartridge" stays as the name shown for the VHS format (*proposed:* a display name per format in `utils/media.py`: VHS → "Cartridge", DVD → "DVD"; the stored value stays `'VHS'`).
+- [x] **DVD needs no migration.** `format` already allows any value and `media.VIDEO_FORMATS` lists DVD; a DVD is a `video` row with `format = 'DVD'`. The movie data (title, director, year, runtime, synopsis) is the same for both. *(Proposed: no DVD-only fields for now. Region code and disc count are the candidates if Phil wants them later; both would be plain columns.)*
+- [x] Format filter, the badge on the grid and the stats' "by format" use the display names.
+- [x] Tests: wording; a DVD added, filtered and counted.
+
+**Status 2026-11-07:** done. "Movies" everywhere in the UI (sidebar with a film-strip icon instead of the cassette, headings, tabs, flashes, feed, profile tab); `media.FORMAT_LABELS` / `format_label()` (template filter `format_label`, and `format_label` in the duplicate-check JSON) show VHS as "Cartridge" on the grid badge, the format filter and picker, the detail page, the duplicate notice and the stats. "Sleeve" wording became "box" so it fits DVD cases. The "Add a Movie" button under the heading stays until 8.4's floating button replaces it.
+
+### 8.4 Grid pages: one add button and one search for every section
+- [x] **Floating add button, shared** (`_add_book_fab.html` → `_add_fab.html`, items passed in): a square `[+]` button only (no "Add Book" text), smaller, closer to the bottom-right corner on phones (about 16px in, instead of 24). The menu it opens is text only:
+  - Library: `[Library]` / `[Wishlist]`
+  - Movies: one flat menu, `[Cartridge]` / `[DVD]` / `[Wishlist]` (decided 2026-11-07; one tap less than a Cartridge/DVD → collection/wishlist tree, and the wishlist form picks the format itself).
+  - Vinyls: `[Vinyl]` / `[Wishlist]`.
+- [x] The Movies page's "Add a Cartridge" button under the heading goes; the floating button replaces it.
+- [x] **Search via the magnifying glass in the top bar** on Movies (and later Vinyls), like the Library. Today `_search_sort_filter.html` always searches books (`books.search`); make it take the section's action URL, placeholder and filters (format, status, rating for movies), and drop the inline search/filter form from `videos.html`.
+- [x] Tests: the menu items per section; the Movies search form points at `/videos/`.
+
+**Status 2026-11-07:** done. `_add_fab.html` (replaces `_add_book_fab.html`) takes `fab_items`; `fab.js` rewritten (aria-expanded, Escape closes, menu links out of the tab order while closed). Library pages: Library / Wishlist. Movies: Cartridge / DVD, which open Add Movie with `?format=` picked; the Wishlist item waits for 8.6. `_search_sort_filter.html` takes `search_action` and `m`: on Movies the magnifier opens the same search box and Advanced Filters (genre, format, watch status, rating, removed, tags) and stays on the page; the Movies grid reads the Library's parameter names (`search_term`, `read_status`, `tags[]`, ...). `get_filter_options(owner_ids, media_type)` is per section, which also fixed the Library's status filter offering "watched" and movie-only tags. LaserDisc and Betamax dropped from the formats (Phil, 2026-11-07).
+
+### 8.5 One add form for every media type
+The book and movie add forms have drifted apart (book: Search / ISBN / Scan tabs over a hand-written form; movie: a collapsible scanner, a lookup bar and fields from a macro). Make them one template and one script, with the fields, wording and lookup sources driven by `media_labels()`.
+- [x] **Same tab box on every type:** `[Search | Barcode | Scan]`, where Barcode is ISBN for books.
+  - **Search:** books keep Google Books / Open Library. Movies get a **TMDb title search** that lists results (poster, title, year) to pick from, like the book search, and the pick fills the form. That's film data only, which suits VHS and DVD alike. It needs `TMDB_API_KEY`; without it the Search tab says so and Barcode and Scan still work.
+  - **Barcode / ISBN:** the lookup button sits **next to the input** (as the movie form's "Look up barcode" does), instead of the book form's separate "Fetch with ISBN" button below it. A movie barcode goes to UPCitemdb, then TMDb.
+  - **Scan:** the shared scanner; a read fills the code and runs the barcode lookup.
+- [x] A lookup fills only empty fields and never reloads the page (the book ISBN lookup reloads today). Duplicate checks look the same on both.
+- [x] One script (`add_item.js`) replacing the form parts of `add_book.js` and `videos.js`.
+- [x] Edit forms use the same field layout: `edit_book.html` and `video_form.html` both use `_item_fields.html`; Edit Book keeps its cover search as "Find a better cover" (`cover_fetch`, `edit_book.js`).
+- [x] Tests: each type's form renders its fields and tabs; lookups (faked) fill the form; no regressions in the book add flow (the existing tests).
+
+**Status 2026-11-07:** done. `templates/add_item.html` (replaces `add_book.html` and the add half of `video_form.html`) with `_item_fields.html` (shared fields: work on the left, this copy on the right) and `static/add_item.js` (replaces `add_book.js` and `videos.js`). Tabs `[Search | ISBN or Barcode | Scan]`; the Look up button sits beside the code box, which still works without JS (books: POST `isbn_lookup`; movies: GET `?barcode=`). Movie title search: `/videos/search` (TMDb, 120/hour, results shown via `/books/thumbnail`, which now allows `image.tmdb.org`), then `/videos/lookup?tmdb_id=`. Without a TMDb key the Search tab says so and Add Movie opens on Barcode. A lookup fills empty fields and fields a previous lookup filled (`data-filled`), never what you typed, and never reloads the page. Duplicates: a notice above the form for both types (books used to get a blocking confirm dialog); movies still need "Add it anyway" on submit. Search runs on Enter / the button, no longer on every keystroke (saves API quota). The `title_search` / `barcode_scan` POST branches of `add_book` were dead and are gone. Checked in headless Chromium with stubbed replies: search, pick, barcode lookup, kept typed field, duplicate notice. Tests in `test_videos.py`.
+
+### 8.6 Movie wishlist
+- [x] Movies on the wishlist: add from the floating button or by scanning a barcode on the wishlist page (it's refused today), with the format picked on the form. "Move to collection" sends a movie to Movies, not the Library.
+- [x] The wishlist page lists books and movies, separated (two sections, with jump links when both have items).
+- [x] Friends' wishlists show both. Goodreads import unchanged (books only).
+
+**Status 2026-11-07:** done. Adding to the wishlist is the shared add page: `/wishlist/add?type=book|video` (`wishlist.add_to_wishlist`) renders `add_item.html` with `destination='wishlist'` (a note field, "Add to Wishlist", Back to Wishlist; a code of the other type stays on the wishlist). `/wishlist/view` is the list only: Books and Movies sections (`_wishlist_card.html`, format icon on movies), its own `+` (Book / Cartridge / DVD), and the magnifier filter (`wishlist.js`, 809 lines down to 60). The Library's `+` Wishlist item opens the book form, Movies' `+` has a Wishlist item. A movie you already own (same barcode) is refused, like a book. "Add to Movies" moves it onto the shelf marked Want to Watch. Removing a watched wishlist movie keeps it on **"Watched but not owned"** (books: "Read but not owned"). Quick-add and remove work for movies; the book page's wishlist panel is worded per type, and the ThriftBooks/Bookshop links show for books only. The one-click "add from a search result" on the old wishlist page is gone (pick fills the form, then Add to Wishlist), as are its dead endpoints (`select_search_result`, `search_books`, `fetch_isbn_details`). Also fixed in Edit Book: the ISBN is saved (the UPDATE left it out), Genre isn't required, and saving goes back to the book's page instead of the Library. Follow-ups (Phil, same day): the wishlist has Books / Movies / Both tabs (`?show=`, default Both) instead of jump links; Add Book now refuses a copy already on the household's shelf until "Add it anyway" is ticked, like Add Movie (a wishlist-only match stays a warning); the `+` sits 14px further in from the edge (30px on phones, 38px wider).
+
+### 8.7 Vinyls
+Sidebar link **"Vinyls"**. Laid out like Books and Movies: the same grid, view bar, magnifying-glass search, floating add button, the 8.5 add form, the detail page worded by `media_labels()`, household and friends' tabs, stats on the profile, feed activity.
+- [ ] **Migration:** `media_type` gains `'record'` (Phil understands the rebuild, 2026-11-07). The CHECK constraint is part of the `books` table, so this is a **table rebuild of `books`** (drop and recreate `library_books`/`library_videos`, keep ids and FKs, check `foreign_key_check`), a bigger migration than 023. A `library_records` view.
+- [ ] **Fields:** artist (`author`), label (`publisher`), year, catalogue number (exists), barcode, format (LP, EP, 7" single, 12" single, 10"), *(proposed)* speed as part of the format, tracklist in the description for now.
+- [ ] **Statuses:** Listened / Want to listen.
+- [ ] **Lookups: MusicBrainz** (decided 2026-11-07): open data, no key, a **title search** (artist + title) like the book and movie Search tabs; covers from the **Cover Art Archive**. Through the SSRF guard like the others.
+- [ ] **No barcode scanning for vinyl** (decided 2026-11-07): title search is enough, so Add Vinyl has no Scan tab. Records and movies both use plain UPC/EAN codes, so once Vinyls exists a non-ISBN code scanned on Add Book asks "Movie or vinyl?" instead of going straight to Movies (safest; a vinyl answer opens Add Vinyl with the code kept in the barcode field).
+- [ ] Books-only audit repeated for `'record'` (the 8.2 tests, run for each type).
 
 ---
 

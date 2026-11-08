@@ -127,3 +127,25 @@ def labels(*names):
 ])
 def test_preferred_back_camera(devices, expected):
     assert call('preferredBackCamera', devices) == expected
+
+
+# Phase 8.2: what a code is. Must agree with utils/media.py classify_code,
+# so the same cases run through both.
+CLASSIFY_CASES = [
+    ('9780306406157', 'book'),       # ISBN-13 (978)
+    ('9791090636071', 'book'),       # ISBN-13 (979)
+    ('0306406152', 'book'),          # ISBN-10
+    ('080442957X', 'book'),          # ISBN-10, X check digit
+    ('012345678905', 'video'),       # UPC-A
+    ('0012345678905', 'video'),      # the same as EAN-13
+    ('4006381333931', 'video'),      # non-book EAN-13
+    ('012345678906', None),          # bad check digit
+    ('', None),
+]
+
+
+@pytest.mark.parametrize('code, kind', CLASSIFY_CASES)
+def test_classify_code_matches_server(code, kind):
+    from utils import media
+    assert call('classifyCode', code) == kind
+    assert media.classify_code(code) == kind

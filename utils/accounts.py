@@ -22,9 +22,11 @@ def removal_context(conn, user_id, viewer_is_admin):
                         (user_id,)).fetchone()
     if not user:
         return None
+    # Books and videos (both are handed over by delete_account)
     owned = conn.execute('''
-        SELECT COUNT(*) FROM library_books b WHERE b.added_by = ?
-    ''', (user_id,)).fetchone()[0]
+        SELECT (SELECT COUNT(*) FROM library_books WHERE added_by = :u)
+             + (SELECT COUNT(*) FROM library_videos WHERE added_by = :u)
+    ''', {'u': user_id}).fetchone()[0]
     household_ids = [i for i in get_library_members(user_id) if i != user_id]
     household = conn.execute(
         f"SELECT id, username FROM users WHERE id IN ({','.join('?' * len(household_ids))}) ORDER BY username",

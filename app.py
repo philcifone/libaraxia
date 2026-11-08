@@ -25,6 +25,7 @@ from blueprints.feed import feed_blueprint
 from blueprints.wishlist import wishlist_blueprint
 from blueprints.friends import friends_blueprint
 from blueprints.covers import covers_blueprint
+from blueprints.videos import videos_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES
 from utils.rate_limiting import limiter
@@ -187,6 +188,11 @@ def create_app():
     app.register_blueprint(wishlist_blueprint, url_prefix='/wishlist')
     app.register_blueprint(friends_blueprint, url_prefix='/friends')
     app.register_blueprint(covers_blueprint, url_prefix='/covers')
+    app.register_blueprint(videos_blueprint, url_prefix='/videos')
+
+    # "VHS" is shown as "Cartridge" (utils/media.py)
+    from utils.media import format_label
+    app.add_template_filter(format_label, 'format_label')
 
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)

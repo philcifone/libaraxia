@@ -1,6 +1,6 @@
 """Phase 3: what counts as "your library" (the library_books view), stats,
 filter options and the removed-books filter."""
-from conftest import add_book, add_review, login
+from conftest import add_book, add_review, login, scalar
 
 
 def wishlist(db, user_id, book_id):
@@ -344,3 +344,45 @@ def test_exception_text_is_not_sent_to_the_browser(client, db, people, monkeypat
     r = client.post('/books/fetch_cover', json={'isbn': '9780000000000', 'title': 'X'})
     assert b'SECRET' not in r.data
     assert r.get_json()['success'] is False
+
+
+# --- Add Book: "Add it anyway" for a second copy (8.6) ------------------------
+
+def _post_book(client, title, **extra):
+    return client.post('/books/add', data={'submit_book': '1', 'title': title,
+                                           'author': 'Ann Author', **extra})
+
+
+def test_add_book_refuses_a_copy_on_the_household_shelf(client, db, people):
+    """bob (household) owns it: refused, re-rendered filled in with the
+    notice and the tick box, nothing saved."""
+    add_book(db, people['bob'], title='Dune', author='Ann Author')
+    login(client, 'alice')
+    r = _post_book(client, 'Dune', isbn='9780441013593')
+    assert r.status_code == 400
+    page = r.get_data(as_text=True)
+    assert 'name="confirm_duplicate"' in page and 'Add it anyway' in page
+    assert 'value="9780441013593"' in page        # the form keeps what you typed
+    assert scalar(db, "SELECT COUNT(*) FROM books WHERE title = 'Dune'") == 1
+
+
+def test_add_book_second_copy_when_ticked(client, db, people):
+    add_book(db, people['alice'], title='Dune', author='Ann Author')
+    login(client, 'alice')
+    r = _post_book(client, 'Dune', confirm_duplicate='1')
+    assert r.status_code == 302
+    assert scalar(db, "SELECT COUNT(*) FROM books WHERE title = 'Dune'") == 2
+
+
+def test_add_book_wishlist_match_is_not_refused(client, db, people):
+    """Buying a book you wished for is the normal case, not a duplicate."""
+    wishlist_stub(db, people['alice'], title='Wanted Book')
+    login(client, 'alice')
+    assert _post_book(client, 'Wanted Book').status_code == 302
+
+
+def test_add_book_refused_keeps_only_safe_cover_paths(client, db, people):
+    add_book(db, people['alice'], title='Dune', author='Ann Author')
+    login(client, 'alice')
+    page = _post_book(client, 'Dune', existing_cover_url='../../etc/passwd').get_data(as_text=True)
+    assert 'etc/passwd' not in page

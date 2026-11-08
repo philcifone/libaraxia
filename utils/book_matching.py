@@ -60,7 +60,7 @@ class BookIndex:
             SELECT b.*, 'own' AS whose,
                    EXISTS (SELECT 1 FROM wishlist w
                            WHERE w.book_id = b.id AND w.user_id = b.added_by) AS is_wishlist_entry
-            FROM books b WHERE b.added_by = ?
+            FROM books b WHERE b.added_by = ? AND b.media_type = 'book'
             UNION ALL
             SELECT lb.*, 'household', 0 FROM library_books lb WHERE lb.added_by IN ({marks})
         ''', [user_id, *members]).fetchall()
@@ -110,7 +110,8 @@ def own_book_for_wishlist(conn, user_id, isbn):
     rows = conn.execute('''
         SELECT b.id, b.isbn, b.removed_at,
                EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?) AS wished
-        FROM books b WHERE b.added_by = ? AND b.isbn IS NOT NULL AND b.isbn != ''
+        FROM books b WHERE b.added_by = ? AND b.media_type = 'book'
+          AND b.isbn IS NOT NULL AND b.isbn != ''
     ''', (user_id, user_id)).fetchall()
     for row in rows:
         if set(_isbn_keys(row['isbn'])) & set(keys):

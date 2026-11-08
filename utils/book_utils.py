@@ -513,13 +513,19 @@ def _is_public_http_url(url: str) -> bool:
             return False
     return True
 
-def _get_public(url: str) -> Optional[requests.Response]:
-    """GET a URL, following redirects by hand so every hop is checked with _is_public_http_url."""
+def _get_public(url: str, headers: Optional[dict] = None) -> Optional[requests.Response]:
+    """GET a URL, following redirects by hand so every hop is checked with _is_public_http_url.
+
+    `headers` (e.g. an API token) go with the first request only, so a
+    redirect can't carry them to another host.
+    """
     for _ in range(MAX_REDIRECTS + 1):
         if not _is_public_http_url(url):
             current_app.logger.warning(f"Blocked cover download from non-public URL: {url}")
             return None
-        response = _session.get(url, stream=True, timeout=HTTP_TIMEOUT, allow_redirects=False)
+        response = _session.get(url, stream=True, timeout=HTTP_TIMEOUT, allow_redirects=False,
+                                headers=headers)
+        headers = None
         if response.is_redirect:
             url = urljoin(url, response.headers.get('Location', ''))
             response.close()
@@ -631,7 +637,9 @@ def _fetch_image(url: str) -> Optional[Image.Image]:
 # Hosts whose cover thumbnails the add-book and wishlist search results show.
 # The browser gets them through /books/thumbnail (thumbnail_jpeg below), so it
 # never contacts these hosts itself and the CSP can keep img-src 'self'.
-THUMBNAIL_HOSTS = {'books.google.com', 'books.googleusercontent.com', 'covers.openlibrary.org'}
+# image.tmdb.org: film posters in the Add Movie search results (Phase 8.5)
+THUMBNAIL_HOSTS = {'books.google.com', 'books.googleusercontent.com', 'covers.openlibrary.org',
+                   'image.tmdb.org'}
 THUMBNAIL_SIZE = (256, 384)
 
 
@@ -731,39 +739,55 @@ def removed_filter(value, alias='b'):
     return f" AND {alias}.removed_at IS NULL"
 
 
-def get_filter_options(owner_ids):
-    """Choices for the library filter panel, from the libraries being shown.
+def get_filter_options(owner_ids, media_type='book'):
+    """Choices for the filter panel (_search_sort_filter.html), from the
+    shelves being shown.
 
     `owner_ids` are the users whose shelves the page lists (yourself for My
     Library, the household for the shared library and search). Genres come
-    from those books only; statuses and tags are the viewer's own, because
-    that's what the status and tag filters match on.
+    from those items only; statuses and tags are the viewer's own, because
+    that's what the status and tag filters match on. `media_type` picks the
+    section ('book' reads library_books, 'video' library_videos), so the
+    Library never offers "watched" or a tag used only on movies. Movies also
+    get the formats on those shelves.
     """
+    from utils import media
+    view = 'library_videos' if media_type == media.VIDEO else 'library_books'
     owner_ids = list(owner_ids) or [current_user.id]
     placeholders = ','.join('?' for _ in owner_ids)
     conn = get_db()
     # One spelling per genre, case-insensitively
     genres = conn.execute(f"""
-        SELECT MIN(genre) FROM library_books
+        SELECT MIN(genre) FROM {view}
         WHERE added_by IN ({placeholders}) AND genre IS NOT NULL AND genre != ''
         GROUP BY LOWER(genre)
         ORDER BY LOWER(genre)
     """, owner_ids).fetchall()
-    read_statuses = conn.execute("""
+    statuses = media.STATUSES[media_type]
+    status_marks = ','.join('?' for _ in statuses)
+    read_statuses = conn.execute(f"""
         SELECT DISTINCT status FROM collections
-        WHERE user_id = ? AND status IS NOT NULL
+        WHERE user_id = ? AND status IN ({status_marks})
         ORDER BY status
-    """, (current_user.id,)).fetchall()
-    tags = conn.execute("""
+    """, (current_user.id, *statuses)).fetchall()
+    tags = conn.execute(f"""
         SELECT DISTINCT tag_name FROM book_tags
-        WHERE user_id = ? AND tag_name IS NOT NULL
+        WHERE user_id = ? AND tag_name IS NOT NULL AND {media.only(media_type)}
         ORDER BY tag_name
     """, (current_user.id,)).fetchall()
-    return {
+    options = {
         'genres': [r[0] for r in genres],
         'read_statuses': [r[0] for r in read_statuses],
         'tags': [r[0] for r in tags],
     }
+    if media_type == media.VIDEO:
+        formats = conn.execute(f"""
+            SELECT DISTINCT format FROM library_videos
+            WHERE added_by IN ({placeholders}) AND format IS NOT NULL AND format != ''
+        """, owner_ids).fetchall()
+        in_use = {r[0] for r in formats}
+        options['formats'] = [f for f in media.VIDEO_FORMATS if f in in_use]
+    return options
 
 
 # ------------------------------------------------------------ duplicate check
@@ -882,10 +906,12 @@ def clear_placeholder_covers(conn) -> Dict[str, int]:
 
 def missing_cover_sql(owner=False):
     """FROM/WHERE for books with no cover but an ISBN to look one up by.
-    With owner=True it takes one parameter, the owner's user id."""
+    With owner=True it takes one parameter, the owner's user id.
+    Books only: the cover fetcher skips videos (Phase 8.1)."""
     sql = """
     FROM books
-    WHERE (cover_image_url IS NULL OR cover_image_url = '')
+    WHERE media_type = 'book'
+      AND (cover_image_url IS NULL OR cover_image_url = '')
       AND isbn IS NOT NULL AND isbn != ''
 """
     return sql + ("  AND added_by = ?\n" if owner else "")

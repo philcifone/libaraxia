@@ -6,6 +6,7 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
+from utils.media import BOOK, VIDEO, only
 from utils.rate_limiting import limiter
 from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES
 from werkzeug.utils import secure_filename
@@ -32,25 +33,26 @@ def calculate_user_stats(conn, user_id):
     copy it was, so these aren't limited to the user's own library; only the
     read percentage is ("how much of my library have I read").
     """
-    stats = conn.execute('''
+    stats = conn.execute(f'''
         SELECT
             COUNT(*) AS books_read,
             SUM(CAST(b.page_count AS INTEGER)) AS pages_read,
             (SELECT AVG(r.rating) FROM read_data r
-             WHERE r.user_id = :u AND r.rating IS NOT NULL) AS avg_rating
+             WHERE r.user_id = :u AND r.rating IS NOT NULL
+               AND {only(BOOK, 'r.book_id')}) AS avg_rating
         FROM collections c
         JOIN books b ON b.id = c.book_id
-        WHERE c.user_id = :u AND c.status = 'read'
+        WHERE c.user_id = :u AND c.status = 'read' AND b.media_type = 'book'
     ''', {'u': user_id}).fetchone()
     result = dict(stats)
 
     # Year-to-date reading progress
     from datetime import datetime
     current_year = datetime.now().year
-    ytd_query = '''
+    ytd_query = f'''
         SELECT COUNT(DISTINCT rs.book_id) as books_read_this_year
         FROM reading_sessions rs
-        WHERE rs.user_id = ?
+        WHERE rs.user_id = ? AND {only(BOOK, 'rs.book_id')}
         AND rs.date_completed IS NOT NULL
         AND strftime('%Y', rs.date_completed) = ?
     '''
@@ -73,12 +75,12 @@ def calculate_user_stats(conn, user_id):
                                  if total_books else 0)
 
     # Reading by month (last 12 months)
-    reading_by_month_query = '''
+    reading_by_month_query = f'''
         SELECT
             strftime('%Y-%m', rs.date_completed) as month,
             COUNT(DISTINCT rs.book_id) as books_count
         FROM reading_sessions rs
-        WHERE rs.user_id = ?
+        WHERE rs.user_id = ? AND {only(BOOK, 'rs.book_id')}
         AND rs.date_completed IS NOT NULL
         AND rs.date_completed >= date('now', '-12 months')
         GROUP BY month
@@ -93,7 +95,8 @@ def calculate_user_stats(conn, user_id):
             COUNT(DISTINCT r.book_id) as count
         FROM collections r
         JOIN books b ON r.book_id = b.id
-        WHERE r.user_id = ? AND r.status = 'read' AND b.genre IS NOT NULL AND b.genre != ''
+        WHERE r.user_id = ? AND r.status = 'read' AND b.media_type = 'book'
+          AND b.genre IS NOT NULL AND b.genre != ''
         GROUP BY b.genre
         ORDER BY count DESC
         LIMIT 5
@@ -101,24 +104,24 @@ def calculate_user_stats(conn, user_id):
     result['top_genres'] = [dict(row) for row in conn.execute(top_genres_query, [user_id]).fetchall()]
 
     # Rating distribution
-    rating_dist_query = '''
+    rating_dist_query = f'''
         SELECT
             r.rating,
             COUNT(*) as count
         FROM read_data r
-        WHERE r.user_id = ? AND r.rating IS NOT NULL
+        WHERE r.user_id = ? AND r.rating IS NOT NULL AND {only(BOOK, 'r.book_id')}
         GROUP BY r.rating
         ORDER BY r.rating
     '''
     result['rating_distribution'] = [dict(row) for row in conn.execute(rating_dist_query, [user_id]).fetchall()]
 
     # Collection status breakdown
-    collection_status_query = '''
+    collection_status_query = f'''
         SELECT
             c.status,
             COUNT(DISTINCT c.book_id) as count
         FROM collections c
-        WHERE c.user_id = ?
+        WHERE c.user_id = ? AND {only(BOOK, 'c.book_id')}
         GROUP BY c.status
     '''
     result['collection_status'] = [dict(row) for row in conn.execute(collection_status_query, [user_id]).fetchall()]
@@ -132,7 +135,7 @@ def calculate_user_stats(conn, user_id):
         FROM collections c
         JOIN books b ON c.book_id = b.id
         LEFT JOIN read_data r ON r.user_id = c.user_id AND r.book_id = c.book_id
-        WHERE c.user_id = ? AND c.status = 'read'
+        WHERE c.user_id = ? AND c.status = 'read' AND b.media_type = 'book'
         GROUP BY b.author
         ORDER BY books_count DESC, avg_rating DESC
         LIMIT 5
@@ -140,13 +143,13 @@ def calculate_user_stats(conn, user_id):
     result['top_authors'] = [dict(row) for row in conn.execute(top_authors_query, [user_id]).fetchall()]
 
     # Reading streak stats
-    streak_query = '''
+    streak_query = f'''
         SELECT
             MIN(date_completed) as first_read,
             MAX(date_completed) as last_read,
             COUNT(DISTINCT date(date_completed)) as unique_days
         FROM reading_sessions
-        WHERE user_id = ? AND date_completed IS NOT NULL
+        WHERE user_id = ? AND date_completed IS NOT NULL AND {only(BOOK)}
     '''
     streak_stats = conn.execute(streak_query, [user_id]).fetchone()
     if streak_stats:
@@ -164,10 +167,10 @@ def reading_by_month(conn, user_id, today=None):
     A book finished twice in one month counts once. Returns None when the
     user has never finished a book.
     """
-    rows = conn.execute("""
+    rows = conn.execute(f"""
         SELECT strftime('%Y-%m', date_completed) AS month, COUNT(DISTINCT book_id) AS books
         FROM reading_sessions
-        WHERE user_id = ? AND date_completed IS NOT NULL
+        WHERE user_id = ? AND date_completed IS NOT NULL AND {only(BOOK)}
           AND strftime('%Y-%m', date_completed) IS NOT NULL
         GROUP BY month
     """, (user_id,)).fetchall()
@@ -231,6 +234,7 @@ def profile(username):
 
     # Library stats (only if friends or own profile)
     library_stats = calculate_library_stats(conn, user['id']) if are_friends else None
+    video_stats = calculate_video_stats(conn, user['id']) if are_friends else None
 
     # Get pending friend request ID if applicable
     friend_request_id = None
@@ -289,10 +293,10 @@ def profile(username):
     reading_list_covers = {}
     if are_friends:
         # Get count for each reading status
-        reading_lists = conn.execute("""
+        reading_lists = conn.execute(f"""
             SELECT status, COUNT(*) as book_count
             FROM collections
-            WHERE user_id = ?
+            WHERE user_id = ? AND {only(BOOK)}
             GROUP BY status
         """, (user['id'],)).fetchall()
         reading_lists = [dict(row) for row in reading_lists]
@@ -339,7 +343,7 @@ def profile(username):
             FROM read_data r
             JOIN books b ON r.book_id = b.id
             LEFT JOIN reading_sessions rs ON r.user_id = rs.user_id AND r.book_id = rs.book_id
-            WHERE r.user_id = ?
+            WHERE r.user_id = ? AND b.media_type = 'book'
             ORDER BY rs.date_completed DESC, r.rowid DESC
             LIMIT 5
         """
@@ -350,6 +354,7 @@ def profile(username):
         user=user,
         stats=stats,
         library_stats=library_stats,
+        video_stats=video_stats,
         current_year=current_year,
         friendship_status=friendship_status,
         is_own_profile=is_own_profile,
@@ -701,6 +706,44 @@ def upload_avatar():
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
+
+def calculate_video_stats(conn, user_id):
+    """Video numbers for the profile's Videos tab, kept apart from the book
+    stats (which are books only). None when the user has no videos and
+    hasn't watched or reviewed any, so the tab stays hidden."""
+    stats = dict(conn.execute(f'''
+        WITH shelf AS (
+            SELECT * FROM library_videos WHERE added_by = :u AND removed_at IS NULL
+        ),
+        watched AS (
+            SELECT b.* FROM collections c JOIN books b ON b.id = c.book_id
+            WHERE c.user_id = :u AND c.status = 'watched' AND b.media_type = 'video'
+        )
+        SELECT
+            (SELECT COUNT(*) FROM shelf) AS owned,
+            (SELECT COUNT(*) FROM watched) AS watched,
+            (SELECT COUNT(*) FROM collections c
+             WHERE c.user_id = :u AND c.status = 'want to watch'
+               AND {only(VIDEO, 'c.book_id')}) AS want_to_watch,
+            (SELECT SUM(runtime_minutes) FROM watched) AS minutes_watched,
+            (SELECT SUM(runtime_minutes) FROM shelf) AS minutes_owned,
+            (SELECT ROUND(AVG(r.rating), 1) FROM read_data r
+             WHERE r.user_id = :u AND r.rating IS NOT NULL AND {only(VIDEO, 'r.book_id')}) AS avg_rating,
+            (SELECT COUNT(*) FROM read_data r
+             WHERE r.user_id = :u AND (r.rating IS NOT NULL OR r.comment IS NOT NULL)
+               AND {only(VIDEO, 'r.book_id')}) AS reviews
+    ''', {'u': user_id}).fetchone())
+    if not (stats['owned'] or stats['watched'] or stats['reviews'] or stats['want_to_watch']):
+        return None
+    stats['by_format'] = [dict(r) for r in conn.execute('''
+        SELECT COALESCE(NULLIF(format, ''), 'Unknown') AS format, COUNT(*) AS count
+        FROM library_videos WHERE added_by = ? AND removed_at IS NULL
+        GROUP BY 1 ORDER BY count DESC, format
+    ''', (user_id,)).fetchall()]
+    stats['hours_watched'] = round((stats['minutes_watched'] or 0) / 60, 1)
+    stats['hours_owned'] = round((stats['minutes_owned'] or 0) / 60, 1)
+    return stats
+
 
 def calculate_library_stats(conn, user_id):
     """Statistics about one user's library: the books on their shelf now

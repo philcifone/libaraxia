@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from utils.database import get_db
 from models import can_view_book
+from utils import media
 from datetime import datetime
 
 # Define the blueprint
@@ -95,11 +96,15 @@ def rate_review(book_id):
         conn.commit()
 
         flash("Your rating and review have been saved!", 'success')
+        kind = media.media_type_of(conn.execute('SELECT media_type FROM books WHERE id = ?',
+                                                (book_id,)).fetchone())
+        if kind == media.VIDEO:
+            return redirect(url_for('videos.show_video', id=book_id))
         return redirect(url_for('base.index', collection_type='read'))
 
     # Fetch book details and existing read data
     book_query = '''
-        SELECT id, title, author, cover_image_url FROM books WHERE id = ?
+        SELECT id, title, author, cover_image_url, media_type FROM books WHERE id = ?
     '''
     book = conn.execute(book_query, (book_id,)).fetchone()
 
@@ -132,7 +137,8 @@ def rate_review(book_id):
         'rate_review.html',
         book=books.get(1),  # Matches book[1] format
         read_data=read_data,
-        sessions=sessions
+        sessions=sessions,
+        m=media.media_labels(media.media_type_of(book)),
     )
 
 

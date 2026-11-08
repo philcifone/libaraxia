@@ -73,12 +73,15 @@ def test_isbn_lookup_keeps_the_add_form_one_column(client, db, people):
     source_line = re.search(r'<div class="([^"]*)">Data source', html).group(1).split()
     assert 'md:col-span-2' in source_line and 'col-span-2' not in source_line
     assert unbalanced_tags(html) == []
-    # ...and the ISBN tab stays selected after the lookup (it reset to Search)
-    assert re.search(r'data-method="isbn" data-active="true"', html)
-    assert 'id="isbn-section" data-method="isbn" class="search-method-content"' in html
-    assert 'id="search-section" class="search-method-content hidden"' in html
+    # ...and the ISBN tab stays selected after the lookup (it reset to Search),
+    # with the ISBN still in its box
+    assert re.search(r'data-method="code" data-active="true"', html)
+    assert 'id="code-section" data-method="code" class="search-method-content"' in html
+    assert 'id="search-section" data-method="search" class="search-method-content hidden"' in html
+    assert 'value="9780385333849"' in html
     first = client.get('/books/add').get_data(as_text=True)
-    assert 'data-method="search" data-active="true"' in first and 'id="isbn-section" data-method="isbn" class="search-method-content hidden"' in first
+    assert 'data-method="search" data-active="true"' in first
+    assert 'id="code-section" data-method="code" class="search-method-content hidden"' in first
 
 
 def test_form_controls_can_shrink_in_flex_rows():
@@ -204,7 +207,7 @@ def test_fab_does_not_block_the_sidebar_or_page():
     covering the Mode switch and Logout on phones, and its container (which
     includes the invisible menu above the button) swallowed clicks on the page
     underneath. Now it's under the sidebar and click-through except the button."""
-    fab = (ROOT / 'templates' / '_add_book_fab.html').read_text()
+    fab = (ROOT / 'templates' / '_add_fab.html').read_text()
     sidebar = (ROOT / 'templates' / '_sidebar.html').read_text()
     container = re.search(r'<div class="([^"]*)" id="fab-container">', fab).group(1).split()
     assert 'pointer-events-none' in container

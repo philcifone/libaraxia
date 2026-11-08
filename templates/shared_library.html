@@ -5,7 +5,7 @@
 
 {% block content %}
     <!-- Floating Add Button -->
-    {% include '_add_book_fab.html' %}
+    {% with fab_items=[('Library', url_for('books.add_book')), ('Wishlist', url_for('wishlist.add_to_wishlist', type='book'))] %}{% include '_add_fab.html' %}{% endwith %}
 
     <!-- Library View Tabs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">

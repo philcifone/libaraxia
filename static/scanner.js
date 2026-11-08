@@ -66,6 +66,17 @@ function normalizeScannedCode(raw) {
     return null;
 }
 
+// What a code is: 'book' for an ISBN (an EAN-13 starting 978/979, or a valid
+// ISBN-10), 'video' for any other valid EAN-13 or UPC-A, null otherwise.
+// Server-side twin: utils/media.py classify_code.
+function classifyCode(raw) {
+    const s = String(raw ?? '').replace(/[\s-]/g, '').toUpperCase();
+    if (isValidIsbn10(s)) return 'book';
+    const ean = normalizeScannedCode(s);
+    if (!ean) return null;
+    return /^97[89]/.test(ean) ? 'book' : 'video';
+}
+
 // Counts identical reads in a row. push(code) returns the code once it has
 // been seen `needed` times running, otherwise null. A read older than
 // maxGapMs (the barcode left the box for a while) doesn't count towards the
@@ -183,6 +194,9 @@ function createBarcodeScanner({ container, button, cameraSelect = null, onCode,
     let video = null;
     let box = null;
     let timer = null;
+    // What the container shows while the camera is off ("Camera will appear
+    // here..."), put back by stop().
+    const placeholder = container ? [...container.childNodes] : [];
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const confirmer = createReadConfirmer(CONFIRM_READS);
@@ -303,6 +317,7 @@ function createBarcodeScanner({ container, button, cameraSelect = null, onCode,
             }
 
             await enableAutofocus(stream.getVideoTracks()[0]);
+            if (mySession !== session) { stopTracks(); return; }   // stopped meanwhile: no video now
             video.srcObject = stream;
             await video.play();
             if (mySession !== session) return;
@@ -346,6 +361,13 @@ function createBarcodeScanner({ container, button, cameraSelect = null, onCode,
             video.pause();
             video.srcObject = null;
         }
+        // Take the video and target box out, not just the scanner-live class:
+        // without the container's position: relative, the absolutely placed
+        // box (and its page-dimming 9999px shadow) escapes the container's
+        // overflow clip and sits over the form until the page is reloaded.
+        video = null;
+        box = null;
+        container?.replaceChildren(...placeholder);
         container?.classList.remove('scanner-live');
         setButton(false);
     }
@@ -428,7 +450,7 @@ function createBarcodeScanner({ container, button, cameraSelect = null, onCode,
 // Node (tests) gets the pure helpers; browsers just see the globals above.
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        isValidEan13, isValidUpcA, isValidIsbn10, normalizeScannedCode,
+        isValidEan13, isValidUpcA, isValidIsbn10, normalizeScannedCode, classifyCode,
         createReadConfirmer, preferredBackCamera,
     };
 }

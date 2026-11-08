@@ -1,38 +1,42 @@
-// The floating "Add Book" button and its menu (templates/_add_book_fab.html).
+// The floating add button and its menu (templates/_add_fab.html).
+// The menu links are out of the tab order while it's closed (tabindex -1),
+// so keyboard users don't tab through invisible links.
 
 'use strict';
 
-let fabOpen = false;
-
-function toggleFabMenu() {
-    fabOpen = !fabOpen;
-    const menu = document.getElementById('fab-menu');
-    const icon = document.getElementById('fab-icon');
-    const backdrop = document.getElementById('fab-backdrop');
-
-    if (fabOpen) {
-        menu.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
-        menu.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
-        icon.style.transform = 'rotate(45deg)';
-        backdrop.classList.remove('hidden');
-    } else {
-        closeFabMenu();
-    }
-}
-
-function closeFabMenu() {
-    fabOpen = false;
-    const menu = document.getElementById('fab-menu');
-    const icon = document.getElementById('fab-icon');
-    const backdrop = document.getElementById('fab-backdrop');
-
-    menu.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
-    menu.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
-    icon.style.transform = 'rotate(0deg)';
-    backdrop.classList.add('hidden');
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('fab-toggle')?.addEventListener('click', toggleFabMenu);
-    document.getElementById('fab-backdrop')?.addEventListener('click', closeFabMenu);
+    const toggle = document.getElementById('fab-toggle');
+    const menu = document.getElementById('fab-menu');
+    const icon = document.getElementById('fab-icon');
+    const backdrop = document.getElementById('fab-backdrop');
+    if (!toggle || !menu) return;
+
+    const links = () => menu.querySelectorAll('a');
+    let open = false;
+
+    function setOpen(value) {
+        open = value;
+        menu.classList.toggle('opacity-0', !open);
+        menu.classList.toggle('pointer-events-none', !open);
+        menu.classList.toggle('translate-y-4', !open);
+        menu.classList.toggle('opacity-100', open);
+        menu.classList.toggle('pointer-events-auto', open);
+        menu.classList.toggle('translate-y-0', open);
+        icon?.classList.toggle('rotate-45', open);       // + turns into x
+        backdrop?.classList.toggle('hidden', !open);
+        toggle.setAttribute('aria-expanded', String(open));
+        links().forEach(a => { a.tabIndex = open ? 0 : -1; });
+    }
+
+    toggle.addEventListener('click', () => {
+        setOpen(!open);
+        if (open) links()[0]?.focus();
+    });
+    backdrop?.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && open) {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
 });

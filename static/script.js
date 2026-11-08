@@ -61,7 +61,7 @@ function toggleFilters() {
 // Clear filters
 // The filter-panel fields. Clearing removes only these, so the search term,
 // shared-library member and sort survive.
-const FILTER_PARAMS = ['genre', 'read_status', 'rating', 'tags[]', 'show_removed', 'page', 'csrf_token'];
+const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show_removed', 'page', 'csrf_token'];
 
 function clearFilters() {
     const params = new URLSearchParams(window.location.search);
@@ -84,6 +84,12 @@ function updateActiveFilters() {
     const genre = document.getElementById('genre');
     if (genre && genre.value) {
         activeFilters.push({ label: 'Genre', value: genre.options[genre.selectedIndex].text });
+    }
+
+    // Check format (Movies only)
+    const format = document.getElementById('format');
+    if (format && format.value) {
+        activeFilters.push({ label: 'Format', value: format.options[format.selectedIndex].text });
     }
 
     // Check read status
@@ -133,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const arrow = document.getElementById('filterArrow');
 
     // Check if there are any filter parameters (excluding sort, page, csrf)
-    const filterParams = ['genre', 'read_status', 'rating', 'tags[]', 'show_removed'];
+    const filterParams = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show_removed'];
     const hasFilters = filterParams.some(param => urlParams.has(param));
 
     // Show filters if any filter parameters are present

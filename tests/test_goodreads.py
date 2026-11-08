@@ -273,9 +273,8 @@ def test_wishlist_add_refuses_a_book_in_your_library(client, db, people):
     db.execute("UPDATE books SET isbn = '0143129554' WHERE id = ?", (mine,))
     db.commit()
     login(client, 'alice')
-    r = client.post('/wishlist/select_search_result',
-                    json={'bookData': {'title': 'Mine', 'author': 'X', 'isbn': '9780143129554'}})
-    assert r.get_json()['success'] is False
+    r = client.post('/wishlist/add', data={'title': 'Mine', 'author': 'X', 'isbn': '9780143129554'})
+    assert r.status_code == 302 and f'/books/book/{mine}' in r.headers['Location']
     assert scalar(db, 'SELECT COUNT(*) FROM wishlist') == 0
     assert scalar(db, 'SELECT COUNT(*) FROM library_books WHERE id = ?', mine) == 1
 

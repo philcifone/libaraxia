@@ -61,8 +61,9 @@ npm run watch:css    # rebuild on change
 - **tags** (`/tags`): per-user tags.
 - **admin** (`/admin`): user management (deactivate/delete dialog), avatar management, orphaned image cleanup, unowned books (reassign), bulk cover fetch, household (library) membership.
 - **feed** (`/feed`): activity feed of friends' reviews/updates, likes, dismissals.
-- **wishlist** (`/wishlist`): wishlist with notes, moving items into the library, viewing friends' wishlists.
+- **wishlist** (`/wishlist`): your wishlist (`/view`: books and movies, with Books / Movies / Both tabs, `?show=`), adding (`/add?type=book|video`: the shared `add_item.html` with a note field), moving items onto the shelf (Library or Movies), friends' wishlists.
 - **friends** (`/friends`): friend requests, friend list, notifications page, user search API.
+- **videos** (`/videos`): the Videos section (Phase 8): own / household (`/shared`) / friends' grids (search and filters via the shared header dropdown), add (`add_item.html`, shared with Add Book: TMDb title search `/videos/search`, barcode lookup `/videos/lookup`, scanner), edit (`video_form.html`), detail (`book_detail.html` with video wording; `/books/book/<id>` redirects videos here), barcode duplicate check. Reads the `library_videos` view. **The UI calls the section "Movies"** (sidebar, headings, flashes, feed) and shows the VHS format as **"Cartridge"** (`media.format_label`, the `format_label` template filter; a novel reference, Phil's choice). Code, URLs and the DB keep "video" and `format = 'VHS'`; a DVD is a video row with `format = 'DVD'`. Wording per type comes from `media.media_labels()`.
 - **covers** (`/covers`): background "fetch missing covers" jobs: start (scope `own`, or `all` for admins), status, stop, dismiss. Started from the Goodreads import result, the profile page and admin → placeholder covers.
 
 ### Utilities (`/utils/`)
@@ -71,6 +72,8 @@ npm run watch:css    # rebuild on change
 - **image_utils.py**: `is_safe_upload_path`, `delete_image_file` (refuses paths outside `static/uploads/`), and orphaned image detection/cleanup.
 - **goodreads.py**: the Goodreads CSV import. One SAVEPOINT per row; returns a report with exactly one outcome per row, which the result screen lists.
 - **cover_jobs.py**: the background cover fetcher. A `cover_jobs` row (migration 022) is the job and its progress; a daemon thread per process works through it one book at a time (`book_utils.fetch_cover_for_book`). `worker` + `heartbeat_at` let another gunicorn worker take over a job whose process died; the next `/covers/status` poll restarts it. Tests never start the thread: they call `run_pending()`.
+- **media.py**: books vs videos (Phase 8): media types, video formats, statuses per type, wording per type (`media_labels()`, passed to templates as `m`), barcode helpers (`classify_code`, `normalize_barcode`, the server twin of `scanner.js`) and `only(type, column)` for queries on `read_data`/`collections`/`reading_sessions`.
+- **media_lookup.py**: Add Video pre-fill: UPCitemdb (barcode) then TMDb (title), through the SSRF guard; `clean_title` strips tape noise. Optional; manual entry is the main path.
 - **book_matching.py**: finding an existing book to attach a user's data to (`BookIndex`, `own_book_for_wishlist`). Only the user's own books and their household's shelf are searched, never anyone else's.
 - **households.py**: household invites, joining, leaving and owner hand-over (see Access Model).
 - **email_utils.py**: verification tokens (random, stored in `email_verification_tokens`) and sending via Flask-Mail.
@@ -91,6 +94,7 @@ Gotchas:
 - **Unowned books** (`added_by IS NULL`) are allowed but appear in no library view, since those filter by owner. Handle `None` wherever `added_by` is used.
 - **Removed (deaccessioned) books** have `books.removed_at` set. Library views must add `AND b.removed_at IS NULL` unless `show_removed` is asked for; reading history, reviews and exports keep them. "Remove from library" is the normal way a book leaves; hard delete is only for mistakes.
 - **Accounts:** deactivate/delete logic lives in `utils/accounts.py` (shared by admin and self-delete). Exports are in `utils/export.py`, scoped to one user.
+- **Videos are rows in `books`** (`media_type = 'video'`, migration 023). `library_books` is books only and `library_videos` is the Videos section's view, so pages on either view need nothing else. A query that reads `books`, `read_data`, `collections` or `reading_sessions` directly for a book feature (stats, counts, matching, covers) must add `b.media_type = 'book'` or `media.only(BOOK, ...)`. Statuses differ by type (`media.STATUSES`) and the status route checks them. Movies can be on the wishlist (8.6); the cover fetcher and Goodreads import are books only.
 - **Wishlist entries are rows in `books`** (plus a `wishlist` row). Library queries, counts and stats select `FROM library_books b` (a view, migration 018: owned books that aren't the owner's own wishlist entry) instead of `books`, or they'll count wishlist books as owned. The view keeps removed books, so still add the `removed_at` filter (`book_utils.removed_filter()` for the library pages). A table rebuild of `books` or `wishlist` must drop and recreate the view.
 
 ### Access Model (what the code actually does)
@@ -115,17 +119,17 @@ Decided and enforced in Phase 4; `tests/test_access.py` and `tests/test_househol
 There are no per-item privacy settings (private/friends/public); the unused columns from migration 012 were dropped in 020. Household members who aren't also friends see each other's books (shared library, book pages) but not each other's profiles or feed activity.
 
 ### Frontend
-- **Layout:** every page `{% extends 'base.html' %}` (blocks `title`, `html_class`, `body_class`, `head`, `sidebar`, `content`, `scripts`; auth pages override `sidebar` with nothing). `base.html` includes `_sidebar.html` and `_flash_messages.html` and sets `<meta name="csrf-token">`; pages include `_search_sort_filter.html`, `_book_grid.html` and `_add_book_fab.html` where relevant. `tests/test_pages.py` fails if a page stops extending it.
+- **Layout:** every page `{% extends 'base.html' %}` (blocks `title`, `html_class`, `body_class`, `head`, `sidebar`, `content`, `scripts`; auth pages override `sidebar` with nothing). `base.html` includes `_sidebar.html` and `_flash_messages.html` and sets `<meta name="csrf-token">`; pages include `_search_sort_filter.html`, `_book_grid.html` and `_add_fab.html` (the floating `+`, menu items passed as `fab_items`) where relevant. `tests/test_pages.py` fails if a page stops extending it.
 - **Themes:** two per-user settings on `<html data-style=… data-mode=…>` (injected by a context processor in `app.py`, edited at Profile → Appearance, stored in `users.theme_style` / `users.color_mode`). Style `house` = Gruvbox, Courier Prime, square, strong borders; `classic` = the original look (Outfit, rounded, soft shadows). Mode `system|light|dark`. Every colour, radius, shadow and the body font are CSS variables in `static/styles.css`; `tailwind.config.js` maps Tailwind names onto them. Use the semantic classes (`bg-secondary`, `text-content-primary`, `bg-accent text-on-accent`, `border-card` for card outlines, `rounded-pill` for badges) rather than raw colours. Fonts are served from `static/fonts/`.
 - **Vanilla JS in `/static/`:**
   - `static/vendor/`: vendored third-party JS (quagga2 for barcode decoding), with source and hashes in its README (`tests/test_csp.py` checks the hashes). Don't load scripts from CDNs.
-  - `scanner.js`: the barcode scanner shared by the add-book and wishlist pages (`createBarcodeScanner`): camera, camera picker, target box, check digits and read confirmation. The decoder sits behind a small interface (`quaggaDecoder`). Its pure helpers are tested under node in `tests/test_scanner_js.py`.
+  - `scanner.js`: the barcode scanner of the add page (`add_item.html`: Add Book, Add Movie, the wishlist's add) (`createBarcodeScanner`): camera, camera picker, target box, check digits and read confirmation. The decoder sits behind a small interface (`quaggaDecoder`). Its pure helpers are tested under node in `tests/test_scanner_js.py`.
   - `common.js`: loaded in `<head>` by `base.html` on every page. `getCSRFToken`, `getCSRFHeaders`, `addCSRFToFormData`, `escapeHtml`, `coverSrc`, `showFlashMessage`, `dismissFlash`, `postForm`, and the `data-click`/`data-change`/`data-submit`/`data-confirm`/`data-fallback-src` dispatcher (`registerActions`). Don't redefine these in page scripts.
   - One file per page that needs script: `user.js`, `admin_settings.js`, `book_detail.js`, `rate_review.js`, `goodreads_import.js`, `activity_feed.js`, `orphaned_images.js`, `fab.js` (the add-book button partial), loaded in the page's `{% block scripts %}`.
   - `script.js`: library grid, filters, infinite scroll, status updates (and a few book-page helpers).
-  - `add_book.js`: add form, ISBN/title search, what a scanned code means (scanning itself is `scanner.js`).
-  - `edit_book.js`: edit form, cover fetching.
-  - `wishlist.js`: wishlist add/search, scanned codes (via `scanner.js`).
+  - `add_item.js`: the add page for books and movies (`add_item.html`, fields in `_item_fields.html`): Search / ISBN-or-Barcode / Scan tabs, one adapter per media type, lookups that never overwrite what you typed, the duplicate notice.
+  - `edit_book.js`: Edit Book's "Find a better cover" and upload preview (the fields are `_item_fields.html`).
+  - `wishlist.js`: the wishlist page's filter (adding is `add_item.js`).
   - `tags.js`: tag add/remove.
   - `sidebar.js`: hamburger menu and search dropdown, loaded by `_sidebar.html`.
   - `cover_jobs.js`: the floating cover-fetch progress panel, loaded by `_sidebar.html`; it only shows and polls when the user has a job (`cover_job`, from a context processor in `app.py`).
@@ -177,6 +181,7 @@ Not scheduled and not to be worked on until Phil picks them up; they belong in a
 Read via python-dotenv from `.env`:
 - **SECRET_KEY**: required in production. A warning is logged if it's still the `.env.example` placeholder.
 - **GOOGLE_BOOKS_API_KEY**: Google Books lookups.
+- **TMDB_API_KEY**: optional, film details for video lookups (v4 read access token preferred, or v3 key). Without it, UPCitemdb only.
 - **FLASK_ENV**: `development` or `production`.
 - **DATABASE_PATH**: SQLite file used by `utils/database.py` and `manage.py` (default `library.db` in the project directory).
 - **ALLOW_REGISTRATION**: `False` closes self-registration once the first user exists (default `True`).

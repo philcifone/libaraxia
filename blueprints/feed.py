@@ -20,6 +20,7 @@ def activity_feed():
             b.title,
             b.author,
             b.cover_image_url,
+            b.media_type,
             b.created_at,
             b.genre,
             b.added_by,
@@ -51,6 +52,7 @@ def activity_feed():
             b.title,
             b.author,
             b.cover_image_url,
+            b.media_type,
             b.genre,
             u.username,
             'wishlist_added' as activity_type
@@ -79,12 +81,14 @@ def activity_feed():
             b.title,
             b.author,
             b.cover_image_url,
+            b.media_type,
             u.username,
             'collection_added' as activity_type
         FROM collections c
         JOIN books b ON c.book_id = b.id
         JOIN users u ON c.user_id = u.id
-        WHERE c.status IN ('currently reading', 'want to read')
+        -- videos: 'watched' is the "finished" activity (books use reviews for that)
+        WHERE c.status IN ('currently reading', 'want to read', 'watched', 'want to watch')
         AND NOT EXISTS (
             SELECT 1 FROM dismissed_activities da
             WHERE da.activity_type = 'collection_added'
@@ -108,6 +112,7 @@ def activity_feed():
             b.title,
             b.author,
             b.cover_image_url,
+            b.media_type,
             u.username,
             'review_added' as activity_type
         FROM read_data r
@@ -143,6 +148,7 @@ def activity_feed():
             'title': book['title'],
             'author': book['author'],
             'cover_image_url': book['cover_image_url'],
+            'media_type': book['media_type'],
             'genre': book['genre'],
             'username': book['username'],
             'user_id': book['added_by'],
@@ -166,6 +172,7 @@ def activity_feed():
             'title': wishlist_item['title'],
             'author': wishlist_item['author'],
             'cover_image_url': wishlist_item['cover_image_url'],
+            'media_type': wishlist_item['media_type'],
             'genre': wishlist_item['genre'],
             'username': wishlist_item['username'],
             'user_id': wishlist_item['user_id'],
@@ -190,6 +197,7 @@ def activity_feed():
             'title': collection['title'],
             'author': collection['author'],
             'cover_image_url': collection['cover_image_url'],
+            'media_type': collection['media_type'],
             'username': collection['username'],
             'user_id': collection['user_id'],
             'status': collection['status'],
@@ -213,6 +221,7 @@ def activity_feed():
             'title': review['title'],
             'author': review['author'],
             'cover_image_url': review['cover_image_url'],
+            'media_type': review['media_type'],
             'username': review['username'],
             'user_id': review['user_id'],
             'rating': review['rating'],

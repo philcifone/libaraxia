@@ -7,9 +7,14 @@
         <div id="book-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             <div class="book-item group">
-                <a href="/books/book/{{ book['id'] }}"
+                <a href="{{ url_for('videos.show_video', id=book['id']) if book['media_type'] == 'video' else '/books/book/' ~ book['id'] }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
+                        {% if book['media_type'] == 'video' and book['format'] %}
+                        {% set has_icon = book['format'] in ('VHS', 'DVD') %}
+                        <span class="absolute top-2 right-2 z-10 {{ 'p-1' if has_icon else 'px-2 py-0.5' }} flex items-center text-xs font-mono font-bold bg-primary-bg text-content-primary border border-card rounded-pill"
+                              title="{{ book['format']|format_label }}">{% with fmt=book['format'] %}{% include '_format_icon.html' %}{% endwith %}</span>
+                        {% endif %}
                         {% if book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
                         {% endif %}
@@ -27,7 +32,7 @@
                             {{ book['title'] }}
                         </h3>
                         <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
-                            by {{ book['author'] }}
+                            {% if book['author'] %}{{ m.by if m else 'by' }} {{ book['author'] }}{% else %}&nbsp;{% endif %}
                         </p>
                     </div>
                 </a>

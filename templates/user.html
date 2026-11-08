@@ -651,6 +651,11 @@
                 <button data-click="switchTab" data-tab="library" id="tab-library" class="tab tab-button text-content-secondary">
                     Library
                 </button>
+                {% if video_stats %}
+                <button data-click="switchTab" data-tab="videos" id="tab-videos" class="tab tab-button text-content-secondary">
+                    Movies
+                </button>
+                {% endif %}
             </div>
 
             <!-- Tab Content -->
@@ -815,6 +820,41 @@
                     </div>
                     {% endif %}
                 </div>
+
+                {# Videos tab: separate from the book stats (blueprints/user.py calculate_video_stats) #}
+                {% if video_stats %}
+                <div id="content-videos" class="tab-content hidden">
+                    <div class="flex flex-wrap items-baseline gap-3 mb-6">
+                        <h2 class="mr-auto text-2xl font-display text-content-primary">Movie Statistics</h2>
+                        <a href="{{ url_for('videos.index') if is_own_profile else url_for('videos.user_videos', username=user.username) }}"
+                           class="text-sm text-accent hover:text-accent-hover underline">See the movies</a>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                        {% for label, value in [
+                            ('Videos owned', video_stats.owned),
+                            ('Watched', video_stats.watched),
+                            ('Want to watch', video_stats.want_to_watch),
+                            ('Hours watched', video_stats.hours_watched),
+                            ('Hours on the shelf', video_stats.hours_owned),
+                            ('Reviews', video_stats.reviews),
+                            ('Average rating', video_stats.avg_rating or '-'),
+                        ] %}
+                        <div class="bg-primary rounded-lg p-4">
+                            <p class="text-sm text-content-secondary mb-1">{{ label }}</p>
+                            <p class="text-3xl font-bold text-content-primary">{{ value }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if video_stats.by_format %}
+                    <h3 class="label text-sm pb-1 mb-3">By format</h3>
+                    <ul class="flex flex-wrap gap-3">
+                        {% for f in video_stats.by_format %}
+                        <li class="px-3 py-1 bg-primary border border-card rounded-pill text-sm text-content-primary font-mono">{{ f.format|format_label }}: {{ f.count }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </section>
         {% endif %}

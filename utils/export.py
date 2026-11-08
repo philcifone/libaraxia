@@ -22,6 +22,9 @@ LIBRARY_HEADER = [
     'Owner', 'You Own It', 'Removed From Library', 'Removed Note',
     'Reading Status', 'Date Added to Collection', 'Date Started', 'Date Completed', 'Reread Count',
     'Rating', 'Review', 'Tags', 'Custom Collections',
+    # Videos (Phase 8) share the file; appended so older readers of it keep working.
+    # For a video, Author is the director and Publisher the studio.
+    'Type', 'Format', 'Barcode', 'Catalogue Number', 'Runtime (min)',
 ]
 
 
@@ -31,6 +34,7 @@ def library_rows(conn, user_id):
         SELECT b.id, b.title, b.subtitle, b.author, b.publisher, b.publish_year, b.isbn,
                b.page_count, b.genre, owner.username AS owner, b.added_by = :u AS own,
                b.removed_at, b.removed_note,
+               b.media_type, b.format, b.barcode, b.catalog_number, b.runtime_minutes,
                c.status, c.created_at AS status_added,
                (SELECT MIN(date_started) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS started,
                (SELECT MAX(date_completed) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS completed,
@@ -58,6 +62,8 @@ def library_rows(conn, user_id):
         r['removed_at'] or '', r['removed_note'] or '',
         r['status'] or 'Untracked', r['status_added'], r['started'], r['completed'], r['reads'] or 0,
         r['rating'], r['comment'], r['tags'], r['shelves'],
+        r['media_type'], r['format'] or '', r['barcode'] or '', r['catalog_number'] or '',
+        r['runtime_minutes'] or '',
     ] for r in rows]
 
 

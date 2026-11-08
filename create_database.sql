@@ -62,16 +62,25 @@ CREATE TABLE books (
     added_by INTEGER,
     removed_at TIMESTAMP,   -- set when the book leaves the library (deaccession); NULL = on the shelf
     removed_note TEXT,
+    -- Videos (migration 023, utils/media.py): a video is a row with media_type 'video'
+    media_type TEXT NOT NULL DEFAULT 'book' CHECK (media_type IN ('book', 'video')),
+    format TEXT,            -- video format: 'VHS', ...
+    barcode TEXT,           -- normalised EAN-13 (UPC-A with a leading 0)
+    catalog_number TEXT,    -- studio catalogue number
+    runtime_minutes INTEGER,
     FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_books_added_by ON books(added_by);
+CREATE INDEX idx_books_media_type ON books(media_type);
+CREATE INDEX idx_books_barcode ON books(barcode);
 
--- Per-user reading status.
+-- Per-user reading (or, for videos, watching) status.
 CREATE TABLE collections (
     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
-    status TEXT CHECK(status IN ('read', 'want to read', 'currently reading', 'did not finish')) NOT NULL,
+    status TEXT CHECK(status IN ('read', 'want to read', 'currently reading', 'did not finish',
+                                 'watched', 'want to watch')) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -273,12 +282,25 @@ CREATE INDEX idx_cover_jobs_status ON cover_jobs(status);
 -- ---------------------------------------------------------------- views
 
 -- Books on their owner's shelf: owned, and not the owner's own wishlist entry.
--- Includes removed books (filter on removed_at). See migration 018.
--- A table rebuild of books or wishlist must drop and recreate this view.
+-- Includes removed books (filter on removed_at). See migrations 018 and 023.
+-- Books only: videos are in library_videos.
+-- A table rebuild of books or wishlist must drop and recreate these views.
 CREATE VIEW library_books AS
 SELECT b.*
 FROM books b
-WHERE b.added_by IS NOT NULL
+WHERE b.media_type = 'book'
+  AND b.added_by IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM wishlist w
+      WHERE w.book_id = b.id AND w.user_id = b.added_by
+  );
+
+-- Videos on their owner's shelf (the Videos section). Same rule as above.
+CREATE VIEW library_videos AS
+SELECT b.*
+FROM books b
+WHERE b.media_type = 'video'
+  AND b.added_by IS NOT NULL
   AND NOT EXISTS (
       SELECT 1 FROM wishlist w
       WHERE w.book_id = b.id AND w.user_id = b.added_by
@@ -314,4 +336,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('019_clean_goodreads_reviews.sql'),
     ('020_drop_privacy_columns.sql'),
     ('021_household_invites.sql'),
-    ('022_cover_jobs.sql');
+    ('022_cover_jobs.sql'),
+    ('023_add_videos.sql');

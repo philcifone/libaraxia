@@ -5,7 +5,7 @@ Content-Security-Policy can stay `script-src 'self'`.
 
 | File | Source | License | sha512 (base64, as in SRI) |
 |---|---|---|---|
-| `quagga2-1.12.1.min.js` | `dist/quagga.min.js` from the npm package [`@ericblade/quagga2@1.12.1`](https://www.npmjs.com/package/@ericblade/quagga2/v/1.12.1), also at <https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js> (barcode decoding for `static/scanner.js`, on `add_book.html` and `wishlist.html`) | MIT ([LICENSE-quagga2.txt](LICENSE-quagga2.txt)) | `1he4UFO/6p7g4298+BF4xJm8m+Cjpenn2VxkzN1XYDx6v9PtNfoyYDDP5gF5FGHEjTWPHLN5lsBryVHcIFSZrg==` |
+| `quagga2-1.12.1.min.js` | `dist/quagga.min.js` from the npm package [`@ericblade/quagga2@1.12.1`](https://www.npmjs.com/package/@ericblade/quagga2/v/1.12.1), also at <https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js> (barcode decoding for `static/scanner.js`, on `add_item.html` (Add Book, Add Movie and the wishlist's add page)) | MIT ([LICENSE-quagga2.txt](LICENSE-quagga2.txt)) | `1he4UFO/6p7g4298+BF4xJm8m+Cjpenn2VxkzN1XYDx6v9PtNfoyYDDP5gF5FGHEjTWPHLN5lsBryVHcIFSZrg==` |
 
 `tests/test_csp.py` checks that every `.js` file here is listed in this table
 with a matching hash.

@@ -329,6 +329,16 @@
     input, select, textarea {
         min-width: 0;
     }
+
+    /* Long text (a synopsis from a lookup) scrolls inside the box: a visible
+       thin scrollbar, and a swipe that reaches the end doesn't carry on and
+       scroll the page underneath (overscroll-behavior: contain). */
+    textarea {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: rgb(var(--rule-strong)) transparent;
+    }
 }
 
 @layer components {
@@ -724,6 +734,20 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 .rating-star { position: relative; z-index: 1; }
 .rating-star:hover { transform: scale(1.1); }
 .rating-group:hover .rating-star:hover ~ .rating-star { color: #9ca3af; /* gray-400 */ }
+
+/* Header search dropdown (_search_sort_filter.html, toggled by sidebar.js).
+   It slides up out of view when closed. Safari (seen on an iPhone, zoomed
+   in) didn't repaint everywhere the cards' hard box-shadows had passed, and
+   left a cream-and-green corner on the page. On its own compositing layer the
+   slide is done by moving the layer, so the page underneath is never
+   repainted and nothing is left behind. The add button's menu (#fab-menu)
+   slides and fades shadowed buttons the same way. */
+.search-form-container,
+.wishlist-search-container,
+#fab-menu {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+}
 
 /* Barcode scanner (static/scanner.js). The video fills the viewport with
    object-fit: cover, so there are no bars and no half-filled box. Only the
