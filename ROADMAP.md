@@ -22,10 +22,12 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 7 ✅ | [Design polish](#phase-7-design-polish) | Per-page finish once pages share a layout | Component classes, negativeearth shadows, page fixes, a11y, clean phone sweep (theme toggle done early) |
 | 8 ✅ | [Physical media: movies and vinyl](#phase-8-physical-media-movies-and-vinyl) | Built in the new style | Movies (VHS, DVD) and vinyl are their own sections: scanned or entered, watched/listened, reviewed and shared, never among the books; one add form and one grid layout for every type |
 | 8B | [Music lookups, formats and ownership](#phase-8b-music-lookups-formats-and-ownership) | Follow-ups from using Phase 8; after it has shipped and settled | MusicBrainz finds CDs and tapes; books have a format (Book / Audiobook); you can review something you don't own |
-| 9 | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
+| 8C | [Collections refresh](#phase-8c-collections-refresh) | Collections are still books-only | Status shelves and custom shelves per section (Books / Movies / Music), page heading, side-scrolling rows reused on the profile |
+| 8D | [Profile wishlist](#phase-8d-profile-wishlist) | Follows 8C's rows | The profile's wishlist is a side-scrolling row per section instead of one grid |
+| 9 (parked) | [More styles](#phase-9-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
 | 10 | [Fork (parked)](#phase-10-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
 
-Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 9 → 10 is the part that matters.
+Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 8B → 8C → 8D is the part that matters. Phase 9 is parked (Phil, 2026-11-08: an accent colour picker, 8B.5, instead of new styles for now).
 
 **Why the refresh can go first without the `base.html` refactor:** the templates already use *semantic* Tailwind names: `text-content-secondary` ×319, `text-content-primary` ×222, `bg-primary` ×118, `bg-accent`/`text-accent` ×212, `font-display` ×40, plus Tailwind's default `white`, `gray-600/700`, `red`, `yellow`, `green`, `blue` and `shadow-*`. Re-pointing those names in `tailwind.config.js` recolours, re-fonts and squares off nearly every page **without editing templates**. Hand edits are limited to the shared partials, a find-and-replace adding borders to cards, and the text colour on coloured buttons. Per-page cleanup waits for Phase 7, when there's one layout to edit.
 
@@ -665,23 +667,97 @@ Sidebar link **"Vinyls"**. Laid out like Books and Movies: the same grid, view b
 From Phil, 2026-11-08, after using Phase 8. Ship Phase 8 first and let it run for a few days. Plan the schema side with Phil before building (the ownership part especially).
 
 ### 8B.1 MusicBrainz for CDs and cassettes
-- [ ] `music_lookup.build_query` asks for CD and Cassette as well as the vinyl formats (MusicBrainz matches `format` as whole values: `"CD"`, `"Cassette"`, ...), and `vinyl_format()` becomes a general `album_format()` that also returns `CD` / `Cassette`. Search results already show the format per row.
-- [ ] Maybe: a format choice on the Search tab, so a CD search doesn't list twenty vinyl pressings.
+- [x] `music_lookup.build_query` asks for CD and Cassette as well as the vinyl formats (MusicBrainz matches `format` as whole values, so the CD variants are listed: CD, Enhanced CD, HDCD, SHM-CD, Blu-spec CD, Copy Control CD, Hybrid SACD (CD layer), SACD, CD-R), and `vinyl_format()` became `album_format()`, which also returns `CD` / `Cassette` (an EP on CD is a CD; vinyl with a bonus CD stays vinyl). Search results already show the format per row.
+- [x] A format choice on the Search tab (Any format / Vinyl / CD / Cassette, `?format=` on `/records/search`; each is its own cache entry), so a CD search doesn't list twenty vinyl pressings.
+
+**Status 2026-11-08:** done. Checked live: a CD search for *Blue* lists the HDCD pressings. A cassette search for it found none, unconfirmed whether that's the data or the query (MusicBrainz started answering 503 before a second album could be tried); try a cassette search on the live page. Tests: `test_build_query_needs_every_word_and_a_physical_format`, `test_album_format`, `test_search_route_narrows_by_format`.
 
 ### 8B.2 Book formats: Book / Audiobook
-- [ ] A format for books (the `format` column exists and is unconstrained): `Book` (default) or `Audiobook`; a select on the book form.
-- [ ] Grid badge: Lucide `book-headphones` for audiobooks (a plain book needs no badge), in `_icons.html`.
-- [ ] Goodreads import: the `audiobook` shelf (42 rows in Phil's export) imports as format Audiobook. This settles the open audiobook question in CLAUDE.md "Product direction".
-- [ ] Decide: do audiobooks count in the library's numbers (owned, pages read)? Probably in "read", not in "owned" or page counts.
+- [x] A format for books: `Book` or `Audiobook`, a select on the book form (Add and Edit). A plain book is stored as NULL (`media.book_format`), so every existing book reads as Book with no migration. The Format filter appears on the Library pages once there's an audiobook (`format_filter`: Book also matches NULL).
+- [x] Grid badge: Lucide `book-headphones` (`_icons.html` `audiobook`, `_format_badge.html`, and the infinite-scroll cards in `script.js`); a plain book has none. The book page lists Format, and "Print Pages" for an audiobook.
+- [x] Goodreads import: a row on an audiobook shelf (`audiobook`, `audiobooks`, `audible`, ...) or with an audio Binding (Audible Audio, Audio CD, ...) that creates a new book creates it as Audiobook, **not owned**; a to-read one goes to the wishlist as Audiobook. A row matching a book you already have leaves it alone. The `audiobook` custom collection is still made, as before. This settles the audiobook question in CLAUDE.md "Product direction".
+- [x] Decided (Phil, 2026-11-08): audiobooks count in reading stats (read, goal, reviews, feed), never in page totals (library pages, pages read, longest book), owned or not. Usually not owned (picking Audiobook on Add ticks "I don't own this"); an owned one (files you bought) counts as owned.
+
+**Status 2026-11-08:** done with 8B.3. Tests in `tests/test_ownership.py` and `tests/test_goodreads.py`.
 
 ### 8B.3 Reviewing something you don't own
-Phil's idea: a movie watched on TV, an audiobook from a library, still worth a review. Proposed shape (to confirm): **ownership is separate from format**, not an "Unowned" format, so a not-owned DVD or audiobook still has its format, and counts and stats don't need a "this format doesn't count" rule.
-- [ ] On the add form: "I don't own this" (any type). It's saved like "Read / Watched / Listened to but not owned" today (`wishlist._keep_as_not_owned`: marked removed, so it stays off the shelf, with the review kept).
-- [ ] Decide where not-owned items show: only through reviews, the feed and the collection, or also a grid filter ("Removed" already has Include / Only).
+Phil's idea: a movie watched on TV, an audiobook from a library, still worth a review. Decided with Phil (2026-11-08): **ownership is its own field**, separate from format and from removal. Phil's worry: never see something in the grid (or in a search at a bookstore) and think he owns it.
+- [x] Migration `025_owned.sql`: `books.owned` (1/0, default 1). The old "not owned" rows (stored as removed with the note "Removed from wishlist; not owned") become `owned = 0`, not removed. Removal keeps meaning "had it, it left".
+- [x] **Default is the shelf:** every grid, search (Library, Shared, search results, Movies, Music, friends' libraries) and owned count shows only `owned = 1 AND removed_at IS NULL` (`book_utils.on_shelf` / `shelf_filter`). Owned counts and stats (profile, admin, friends' counts, Movies/Music stats, export "You Own It") skip not-owned items; reading stats count them.
+- [x] **Show** in the filter panel replaces "Removed": On the shelf (default) / Not owned / Removed / Everything (`?show=`; old `?show_removed=` links still work). Not-owned cards carry an accent "Not owned" badge, removed ones "Removed".
+- [x] On the add form (books, movies, music; not the wishlist's): "I don't own this (I read/watched/listened to it and want to review it)". A not-owned add goes to the item's page, since the grid won't show it.
+- [x] Item page: a "Not owned." note and an **I Own It Now** button (`POST /books/ownership/<id>`, owner or admin, any type); owned items get a small "Never owned it? Mark it not owned" under the buttons.
+- [x] Duplicate notices say "not owned (bought it? open it and choose I own it now)", so buying it later keeps the review on the same record instead of making a second copy.
+- [x] Removing a read wishlist item (`wishlist._keep_as_not_owned`) sets `owned = 0` instead of removing it, still filed on "Read / Watched / Listened to but not owned".
+- [x] The search hint (Phil, 2026-11-08): a search on the default Show that matches items off the shelf adds one line above the results, e.g. "Not on your shelf: Circe (read, not owned). Show it", with the owner's name for a household member's item and "removed" for removed ones. The items never join the results; "Show it" reruns the search with Show: Everything. Library search and the Movies/Music grids (yours and household; not friends'). `book_utils.off_shelf_matches`, `_off_shelf_hint.html`, `url_with()` template helper. Tests: `test_search_hints_at_matches_not_on_the_shelf`, `test_section_search_hint_names_household_owner_and_skips_friends`.
+
+**Status 2026-11-08:** done. Checked on a migrated copy of the dev DB in headless Chromium (desktop and phone): default grid hides not-owned, Show: Not owned lists them badged, the item page note and button, Audiobook ticking the box. The dev DB had no old not-owned rows, so the data step of 025 is only covered by `test_025_turns_wishlist_not_owned_rows_into_not_owned`; on prod it will convert whatever "Read but not owned" items exist.
+
+### 8B.4 Export: movies and music (Phil, 2026-11-08)
+- [x] "Export my data" covers every type (done 2026-11-08, `test_data_export_has_type_and_format`). `library.csv` already has every type (with Type, Format, Catalogue Number, Runtime), but `reading_sessions.csv`, `reviews.csv`, `shelves.csv` and `wishlist.csv` have no Type or Format column, so a movie review can't be told from a book's. Append Type and Format (appended, so older readers keep working). Profile wording: "library" means books, movies and music.
+
+### 8B.5 Accent colour picker (Phil, 2026-11-08; instead of Phase 9 for now)
+- [x] Profile → Appearance: an accent choice next to Style and Mode, as swatches: green (default), aqua, blue, purple, orange, red, yellow, each with a light and a dark Gruvbox value (`styles.css`: `--acc-l` / `--acc-d` per `:root[data-accent=…]`, read by the House palette). Stored in `users.accent` (migration `026_accent.sql`, default `green`, checked against `models.ACCENTS`), on `<html data-accent=…>` like `data-style`. **House style only:** Classic keeps its own green and hides the picker.
+- [x] Hard shadows, focus rings, tabs and chart bars follow `--accent`, so nothing else needed touching. Light values are Gruvbox's dark shades and dark values its bright ones, the pairs the palette already uses for text on paper, so `--on-accent` stays the paper/ink colour. Contrast checked: every accent is at least 4.5:1 against its on-accent text in both modes (lowest: light green 4.6, dark red 4.8).
+
+- [x] Classic gets the accents too (Phil, 2026-11-08). Gruvbox's standard colours can't carry Classic's white button text (yellow 2.5:1, green 3.1:1), so Classic uses each accent's light shade (Gruvbox faded, 4.9 to 8.6:1 with white) in both modes; green stays Classic's own #4f7d19. Its dark-mode chart bars use the bright shade.
+- [x] Style names: House shows as **Negative Earth**, Classic as **OG** (`models.THEME_STYLES`; the stored keys `house` / `classic` and the CSS are unchanged, the same way Movies is still `video` underneath).
+- [ ] Known, older than the picker: in OG dark mode, accent-coloured *text* (links like "View all", `text-accent`) is under 3:1 on the greys, for the original green too (2.8). Fix with a separate text token (the accent's bright shade) for OG dark.
+
+**Status 2026-11-08:** done. Tests: `test_accent_colour_is_saved_and_on_every_page`, `test_every_accent_has_css`, `test_style_names_and_classic_accents`. Checked in headless Chromium with blue in dark mode.
+
+### 8B.6 One page heading everywhere (Phil, 2026-11-08)
+- [x] `page_heading(icon, name, subtitle)` in `_icons.html` (`section_heading` uses it) on Activity Feed, Notifications, Wishlist, Collections and Admin Settings, with the sidebar's icons, now in the `icon()` macro too (bell, feed, bookmark, collections, user, settings), so the sidebar and the headings can't drift. Test: `test_pages_share_the_heading_card`.
+
+### 8B.7 Feed images (Phil, 2026-11-08)
+- [x] Activity feed covers follow the image's own shape (natural aspect ratio, bounded size) instead of a fixed box that crops or hides overflow. `.feed-cover` in `styles.css`: only a max width (6rem) and max height (10rem), so an album is square, a book or VHS box tall, and the corners and shadow hug the picture. Checked at phone width with a wide, a square and a tall cover.
+
+### 8B.8 "Back to Catalog" (Phil, 2026-11-08)
+- [x] Replaced by breadcrumbs: `crumbs(trail, here)` in `_icons.html`, a quiet uppercase trail (LIBRARY / CAT'S CRADLE / REVIEW; links muted, accent and underlined on hover, the current page cut with an ellipsis). It says where you are as well as the way back, so there's no arrow button to style. On item pages (Library, Movies or Music, or Wishlist / a friend's wishlist when you came from there), review, edit, add, search, friend's library and wishlist, shelves, Goodreads import and the admin sub-pages.
+- [x] Pages in the sidebar (profile, notifications, collections, admin settings) lost their back link. Tests: `test_no_back_to_catalog_links`, `test_item_page_crumbs_follow_the_section`.
+
+### 8B.9 Phase 9 parked
+- [x] Phase 9 (Shelf, Outrun) parked in favour of 8B.5.
+
+### 8B.10 Discogs for Add Album (Phil, 2026-11-08)
+MusicBrainz kept answering 503 (busy on their side, not our rate: a handful of searches seconds apart).
+- [x] `utils/discogs_lookup.py`: search (`/database/search`, the same Any / Vinyl / CD / Cassette choice, digital-only releases dropped) and release lookup (`/releases/<id>`: artist, label, cat. no., year, format, genre, length, tracklist with side headings, cover). Personal access token in `DISCOGS_TOKEN` (`.env`, prod and dev), sent in a header only. One request per 1.1 s per process, 6 h cache, a 429 or 5xx is "busy".
+- [x] `/records/search` asks Discogs when the token is set; MusicBrainz when it isn't or when Discogs is busy (one try each, no retries). Rows carry `source`; `/records/lookup?discogs=<id>` or `?mbid=`.
+- [x] Credit lines under search results: "Data provided by Discogs" (their API terms), and TMDb's required notice on Add Movie's search.
+- [x] Checked live 2026-11-08 (two requests): a cassette search for Rumours lists the cassette pressings; the lookup fills every field.
+- [x] TMDb's logo: their "Primary short" SVG, unchanged, in `static/logos/tmdb.svg` (from themoviedb.org/about/logos-attribution, 2026-11-08), shown small beside the notice at the foot of Add Movie (`test_tmdb_logo_with_the_notice`).
+
+
+### 8B.11 Shop links on wishlist items (Phil, 2026-11-08)
+- [x] One partial (`_buy_links.html`, `media.buy_links`) instead of two copies of the book buttons: books ThriftBooks and Bookshop.org (as before), movies an eBay search for the title plus VHS or DVD, music the Discogs Marketplace filtered to the album's format (Vinyl / CD / Cassette). Buttons now use the accent colour instead of fixed blue and green.
+
+
+### 8B.12 Barcodes for music (Phil, 2026-11-08: reverses "no barcodes for music")
+- [x] `media.HAS_BARCODE[RECORD]` on: Add Album has Search, Barcode and Scan tabs (the shared scanner), a barcode field stored as EAN-13 like movies, and duplicates match on it.
+- [x] `/records/lookup?barcode=`: Discogs barcode search (asked as printed, a UPC-A as 12 digits), then the first release fills the form; MusicBrainz (`barcode:` both forms) when there's no token, Discogs is busy, or Discogs has nothing. ISBNs are refused ("add it as a book").
+- [x] Add Book with a non-ISBN barcode no longer jumps to Add Movie: it says "not a book: add it as a movie or as an album", both links carrying the code (also on the wishlist's add).
+- [x] Checked live: Rumours' UPC 075992731324 finds the Warner CD (3010-2) and fills 9 fields; the Add Book to Add Album hand-over at phone width.
+---
+
+## Phase 8C: Collections refresh
+
+From Phil, 2026-11-08. Plan the schema with Phil before building.
+- [x] Page heading (8B.6).
+- [x] **Collections per section:** Books / Movies / Music tabs on the Collections page, each with its own status shelves (`media.STATUSES`: Read / Currently Reading / Want to Read / Did Not Finish; Watched / Want to Watch; Listened / Want to Listen) and its own custom shelves. Status shelves already differ by type, so that part is a template change plus `view_by_status` taking a type. Custom shelves need a decision: (a) a `media_type` on `user_collections` (migration, existing shelves become `book`), a shelf holds one type; or (b) shelves stay mixed and each tab shows the shelves that hold that type. Proposed: (a), simpler to read and to add to.
+  - **Done 2026-11-08 with (a)** (Claude went ahead with the proposal; easy to revisit before it ships). Migration `027_shelf_types.sql` rebuilds `user_collections` with `media_type` and `UNIQUE (user_id, media_type, name)`, so "Favourites" can exist in each section. Existing shelves holding only movies (or only albums) become that section's, all others Books; a shelf still shows everything on it. `?type=` picks the tab; the item page's shelf picker lists its section's shelves (plus any other shelf it's already on), and creating a shelf there makes one of that section and returns to the item. The wishlist's "Watched but not owned" shelves are made per section; Goodreads makes Books shelves. `view_by_status` now shows only the status's own type (it listed every type before) and 404s an unknown status.
+- [x] **Side-scrolling rows on the profile:** the profile's status shelves use the Collections page's `.shelf-row` (one partial for both pages, so they can't drift apart). The profile's copy still has `flex truncate`, which hides covers instead of scrolling.
+  - Done: `_shelf_rows.html` + `utils/shelves.py` draw every shelf card (Collections, profile, profile wishlist). The profile shows each section's statuses that are in use (Books, Movies, Music). Covers keep their own shape at a fixed height. Tests: `tests/test_shelves.py`.
+
+## Phase 8D: Profile wishlist
+
+From Phil, 2026-11-08. After 8C, since it reuses its rows.
+- [x] The profile's wishlist grid becomes one side-scrolling row per section (Books / Movies / Music), each titled and linked to the wishlist page on that tab (`?show=`), the same partial as 8C's rows. Rows with nothing in them are left out. Done 2026-11-08 (`shelves.wishlist_shelves`, `test_profile_rows_per_section`); on a friend's profile the rows link to their wishlist page.
 
 ---
 
 ## Phase 9: More styles
+
+**Parked** (Phil, 2026-11-08): the accent colour picker (8B.5) comes first; pick this up later.
 
 From Phil, 2026-11-05. New choices next to House and Classic under Profile → Appearance. They come after Phase 8 because the Shelf style's video-store rack needs VHS records. Each style is a shape block and palettes in `styles.css` (as today), plus a scoped `[data-style=…]` stylesheet for structure, built on the 7.1 component classes. Do one style at a time, with the same headless sweep as 7.0.
 

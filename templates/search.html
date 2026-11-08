@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 
 {% block title %}libaraxia | Search Results{% endblock %}
 {% block html_class %}min-h-screen bg-primary-bg{% endblock %}
@@ -10,14 +11,11 @@
 
     {% with top_padding=true %}{% include '_search_sort_filter.html' %}{% endwith %}
 
-    <!-- Back Navigation -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2 mb-4">
-        <a href="{{ url_for('base.index') }}" 
-           class="inline-flex items-center space-x-2 text-content-secondary hover:text-content-primary transition-colors duration-200">
-            <span class="text-xl">←</span>
-            <span class="text-lg">Back to Catalog</span>
-        </a>
+        {{ crumbs([('Library', url_for('base.index'))], 'Search' ~ (': ' ~ search_term if search_term else ''), class='') }}
     </div>
+
+    {% include '_off_shelf_hint.html' %}
 
     {% if books %}
     {% include '_book_grid.html' %}

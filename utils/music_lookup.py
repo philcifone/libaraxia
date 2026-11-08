@@ -1,11 +1,12 @@
-"""Vinyl lookups (Phase 8.7): MusicBrainz for release data, the Cover Art
-Archive for covers. Open data, no API key.
+"""Music lookups (Phase 8.7, CDs and cassettes since 8B.1): MusicBrainz for
+release data, the Cover Art Archive for covers. Open data, no API key.
 
-Add Vinyl's Search tab lists vinyl releases matching what was typed (each
-word must be in the artist or the title), one row per pressing: label,
-cat. no., year and country tell the pressings apart. Picking one fetches
-the release and fills the form: artist, title, label, cat. no., year,
-format, length (summed track lengths), tracklist, genre, cover.
+Add Album's Search tab lists physical releases (vinyl, CD, cassette, or one
+of them: the format choice beside the search box) matching what was typed
+(each word must be in the artist or the title), one row per pressing:
+format, label, cat. no., year and country tell the pressings apart. Picking
+one fetches the release and fills the form: artist, title, label, cat. no.,
+year, format, length (summed track lengths), tracklist, genre, cover.
 
 MusicBrainz rules (https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting):
   - a User-Agent naming the application and a contact (MUSICBRAINZ_CONTACT
@@ -40,8 +41,16 @@ MIN_INTERVAL = 1.1          # seconds between requests (MusicBrainz allows 1/s)
 CACHE_SECONDS = 6 * 3600
 
 # MusicBrainz's `format` field matches whole values only: "Vinyl" doesn't
-# match '12" Vinyl', so every vinyl format is listed.
-MB_VINYL_FORMATS = ('Vinyl', '12" Vinyl', '10" Vinyl', '7" Vinyl')
+# match '12" Vinyl' and "CD" doesn't match "Enhanced CD", so every variant
+# we'd store as that format is listed. Keys are the Search tab's format
+# choice (?format=); the choice "" searches all of them.
+MB_FORMATS = {
+    'vinyl': ('Vinyl', '12" Vinyl', '10" Vinyl', '7" Vinyl'),
+    # A hybrid SACD lists one medium per layer: 'Hybrid SACD (CD layer)', ...
+    'cd': ('CD', 'Enhanced CD', 'HDCD', 'SHM-CD', 'Blu-spec CD', 'Copy Control CD',
+           'Hybrid SACD (CD layer)', 'SACD', 'CD-R'),
+    'cassette': ('Cassette',),
+}
 
 
 class Busy(Exception):
@@ -120,12 +129,15 @@ def _escape(term):
     return ''.join('\\' + ch if ch in '+-&|!(){}[]^"~*?:\\/' else ch for ch in term)
 
 
-def build_query(text):
-    """'joni mitchell blue' -> every word in the artist or the title, vinyl
-    releases only. Words, not a phrase, so 'mitchell blue' finds it too."""
+def build_query(text, kind=''):
+    """'joni mitchell blue' -> every word in the artist or the title, physical
+    releases of `kind` ('vinyl', 'cd', 'cassette'; '' = any of them). Words,
+    not a phrase, so 'mitchell blue' finds it too."""
     words = [_escape(w) for w in text.split() if w.strip()][:10]
     terms = [f'(release:{w} OR artist:{w})' for w in words if w]
-    formats = ' OR '.join('"' + f.replace('"', '\\"') + '"' for f in MB_VINYL_FORMATS)
+    wanted = MB_FORMATS[kind] if kind in MB_FORMATS else \
+        [f for group in MB_FORMATS.values() for f in group]
+    formats = ' OR '.join('"' + f.replace('"', '\\"') + '"' for f in wanted)
     return ' AND '.join(terms + [f'format:({formats})'])
 
 
@@ -151,11 +163,19 @@ def _year(date):
     return int(date[:4]) if (date or '')[:4].isdigit() else None
 
 
-def vinyl_format(release):
+def album_format(release):
     """Our stored format for a release (media.FORMATS[RECORD]): from its
-    medium format ('7" Vinyl') and its release group's type (Album, EP,
-    Single). A single is a 7" unless it says 12" or 10"."""
-    formats = ' '.join(m.get('format') or '' for m in release.get('media') or [])
+    media formats ('7" Vinyl', 'CD', 'Cassette') and, for vinyl, its release
+    group's type (Album, EP, Single). A vinyl single is a 7" unless it says
+    12" or 10". A set mixing vinyl with a CD (a bonus disc) counts as vinyl."""
+    media_formats = [m.get('format') or '' for m in release.get('media') or []]
+    formats = ' '.join(media_formats)
+    # By substring, so variants the search list doesn't name still land right
+    if 'Vinyl' not in formats:
+        if 'CD' in formats:
+            return 'CD'
+        if 'Cassette' in formats:
+            return 'Cassette'
     kind = ((release.get('release-group') or {}).get('primary-type') or '').lower()
     if kind == 'ep':
         return 'EP'
@@ -214,8 +234,9 @@ def cover_urls(mbid, group_id=None, size=500):
 
 # ------------------------------------------------------------ the lookups
 
-def search(text, limit=12):
-    """Vinyl releases matching `text` for the Search tab: a list of
+def search(text, kind='', limit=12):
+    """Releases matching `text` for the Search tab (of format `kind`, see
+    MB_FORMATS; '' = vinyl, CD or cassette): a list of
     {'id', 'title', 'artist', 'year', 'country', 'label', 'catalog_number',
      'format', 'format_label', 'thumb'}, best match first. Raises Busy."""
     text = (text or '').strip()
@@ -223,13 +244,13 @@ def search(text, limit=12):
         return []
 
     def compute():
-        data = _mb('/release/', query=build_query(text), limit=limit) or {}
+        data = _mb('/release/', query=build_query(text, kind), limit=limit) or {}
         results = []
         for r in data.get('releases') or []:
             if not r.get('id'):
                 continue
             label, catno = _labels(r)
-            fmt = vinyl_format(r)
+            fmt = album_format(r)
             group = (r.get('release-group') or {}).get('id')
             results.append({
                 'id': r['id'],
@@ -245,7 +266,20 @@ def search(text, limit=12):
                 'thumb': cover_urls(r['id'], group, 250)[-1],
             })
         return results
-    return _cached(('search', text.lower()), compute)
+    return _cached(('search', kind, text.lower()), compute)
+
+
+def barcode_search(ean):
+    """MusicBrainz release ids with this barcode, best match first (`ean`:
+    media.normalize_barcode's 13 digits). Releases store the barcode as
+    printed, so a UPC-A is asked for both ways. Raises Busy."""
+    codes = {ean, ean[1:]} if ean.startswith('0') else {ean}
+    query = ' OR '.join(f'barcode:{c}' for c in sorted(codes))
+
+    def compute():
+        data = _mb('/release/', query=query, limit=5) or {}
+        return [r['id'] for r in data.get('releases') or [] if r.get('id')]
+    return _cached(('barcode', ean), compute)
 
 
 def release_details(mbid):
@@ -270,7 +304,7 @@ def release_details(mbid):
                 'catalog_number': catno,
                 'year': _year(r.get('date')) or _year(group.get('first-release-date')) or '',
                 'runtime_minutes': _length_minutes(r) or '',
-                'format': vinyl_format(r),
+                'format': album_format(r),
                 'genre': _genre(r),
                 'description': '\n\n'.join(n for n in notes if n),
             },
@@ -283,7 +317,7 @@ def release_details(mbid):
 
 
 def lookup(mbid):
-    """Pre-fill for the Add Vinyl form from a picked release. Same shape as
+    """Pre-fill for the Add Album form from a picked release. Same shape as
     media_lookup.lookup: {'found', 'details', 'sources', 'cover'}; `cover` is
     a saved file under static/uploads (the form sends it back as
     existing_cover_url, which process_image re-checks). Raises Busy."""

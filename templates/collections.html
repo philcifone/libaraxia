@@ -1,136 +1,57 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import page_heading %}
+{# Your shelves, one section at a time (collections.view_collections, ROADMAP
+   8C): Books | Movies | Music tabs (?type=), then that section's status
+   shelves and its custom shelves, all drawn by _shelf_rows.html. #}
 
-{% block title %}Libaraxia - Collections{% endblock %}
+{% block title %}Collections - libaraxia{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <main class="px-6 py-20 max-w-7xl mx-auto">
-        <!-- Back Navigation -->
-        <a href="{{ url_for('base.index') }}" 
-           class="inline-flex items-center gap-2 text-content-secondary hover:text-accent transition-colors mb-8">
-            <span class="text-xl">←</span>
-            <span>Back to Catalog</span>
-        </a>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+        {{ page_heading('collections', 'Collections', class='mb-8') }}
 
-        <!-- Reading Lists Section -->
-        <section class="bg-secondary rounded-lg p-4 sm:p-8 mb-8 card">
-            <h1 class="text-2xl font-display text-content-primary mb-6">Reading Shelves</h1>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {% set statuses = [
-                    ('read', 'Read'),
-                    ('currently reading', 'Currently Reading'),
-                    ('want to read', 'Want to Read'),
-                    ('did not finish', 'Did Not Finish')
-                ] %}
-
-                {% for status, label in statuses %}
-                    <a href="{{ url_for('collections.view_by_status', status=status) }}"
-                       class="group min-w-0 bg-primary hover:bg-primary-hover p-4 rounded-lg transition-all duration-300">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-content-primary text-lg">{{ label }}</span>
-                            {% if reading_lists %}
-                                {% for list in reading_lists %}
-                                    {% if list['status'] == status %}
-                                        <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm">
-                                            {{ list['book_count'] }}
-                                        </span>
-                                    {% endif %}
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-
-                        <!-- Book Cover Previews -->
-                        {% if reading_list_covers.get(status) %}
-                            <div class="shelf-row mt-2">
-                                {% for cover_url in reading_list_covers[status][:8] %}
-                                    {% if cover_url %}
-                                        <img src="{{ url_for('static', filename=cover_url) }}"
-                                             alt="Book cover"
-                                             class="w-12 h-16 object-cover rounded shadow-sm">
-                                    {% else %}
-                                        {% with title=none, size='sm', box='w-12 h-16 shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </a>
+        <div class="bg-secondary rounded-xl overflow-hidden card mb-8">
+            <nav class="flex items-stretch" aria-label="Collection sections">
+                {% for key, label, count in tabs %}
+                <a href="{{ url_for('collections.view_collections', type=key) }}"
+                   class="tab {% if media_type == key %}tab-active{% endif %}" {% if media_type == key %}aria-current="page"{% endif %}>
+                    <span class="text-center">{{ label }} <span class="text-sm opacity-75">({{ count }})</span></span>
+                </a>
                 {% endfor %}
-            </div>
+            </nav>
+        </div>
+
+        <!-- Status shelves of this section (media.STATUSES) -->
+        <section class="bg-secondary rounded-lg p-4 sm:p-8 mb-8 card">
+            <h2 class="text-2xl font-display text-content-primary mb-6">
+                {{ {'book': 'Reading', 'video': 'Watching', 'record': 'Listening'}[media_type] }} Shelves
+            </h2>
+            {% with shelves=status_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
         </section>
 
-        <!-- Custom Collections Section -->
+        <!-- Custom shelves for this section -->
         <section class="bg-secondary rounded-lg p-4 sm:p-8 card">
-            <h1 class="text-2xl font-display text-content-primary mb-6">Custom Shelves</h1>
-            
-            <!-- Create Collection Form -->
-            <form action="{{ url_for('collections.create_custom_collection') }}" 
-                  method="POST" 
+            <h2 class="text-2xl font-display text-content-primary mb-6">Custom Shelves</h2>
+
+            <form action="{{ url_for('collections.create_custom_collection') }}" method="POST"
                   class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="text" 
-                       name="name" 
-                       aria-label="New shelf name"
-                       placeholder="Collection Name" 
-                       required
-                       class="flex-1 bg-primary text-content-primary px-4 py-2 rounded-lg
-                              border border-primary-hover focus:border-accent
-                              outline-none transition-colors">
-                <button type="submit" 
-                        class="bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 rounded-lg btn">
-                    Create Collection
+                <input type="hidden" name="media_type" value="{{ media_type }}"/>
+                <input type="text" name="name" aria-label="New shelf name" required maxlength="100"
+                       placeholder="New {{ m.noun }} shelf"
+                       class="flex-1 min-w-0 bg-primary text-content-primary px-4 py-2 rounded-lg
+                              border border-primary-hover focus:border-accent outline-none transition-colors">
+                <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 rounded-lg btn">
+                    Create Shelf
                 </button>
             </form>
 
-            <!-- Collections List -->
-            <div class="space-y-4">
-                {% if custom_collections %}
-                    {% for collection in custom_collections %}
-                        <div class="flex items-center gap-4 group">
-                            <a href="{{ url_for('collections.view_custom_collection', collection_id=collection['collection_id']) }}"
-                               class="flex-1 min-w-0 bg-primary hover:bg-primary-hover p-4 rounded-lg
-                                      transition-all duration-300">
-                                <div class="flex items-center justify-between mb-3">
-                                    <span class="text-content-primary">{{ collection['name'] }}</span>
-                                    <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm">
-                                        {{ collection['book_count'] }}
-                                    </span>
-                                </div>
-
-                                <!-- Book Cover Previews -->
-                                {% if custom_collection_covers.get(collection['collection_id']) %}
-                                    <div class="shelf-row mt-2">
-                                        {% for cover_url in custom_collection_covers[collection['collection_id']][:8] %}
-                                            {% if cover_url %}
-                                                <img src="{{ url_for('static', filename=cover_url) }}"
-                                                     alt="Book cover"
-                                                     class="w-12 h-16 object-cover rounded shadow-sm">
-                                            {% else %}
-                                                {% with title=none, size='sm', box='w-12 h-16 shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
-                                            {% endif %}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </a>
-                            <form action="{{ url_for('collections.delete_collection', collection_id=collection['collection_id']) }}"
-                                  method="POST"
-                                  data-confirm="{{ ("Delete the shelf \"" ~ collection['name'] ~ "\"? The books stay in your library.") }}"
-                                  data-confirm-ok="Delete shelf"
-                                  class="reveal">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" aria-label="Delete shelf {{ collection['name'] }}"
-                                        class="text-red-500 hover:text-red-400 p-2 transition-colors">
-                                    <span class="text-xl">×</span>
-                                </button>
-                            </form>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="text-content-secondary text-center italic">No custom collections yet</p>
-                {% endif %}
-            </div>
+            {% if custom_shelves %}
+                {% with shelves=custom_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
+            {% else %}
+                <p class="text-content-secondary text-center italic">No {{ m.noun }} shelves yet</p>
+            {% endif %}
         </section>
     </main>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}

@@ -302,3 +302,26 @@ def test_saving_a_review_without_dates_adds_no_session(client, db, people):
     assert scalar(db, 'SELECT COUNT(*) FROM reading_sessions WHERE book_id = ?', book) == 0
     client.post(f'/read/rate_review/{book}', data={'rating': '5', 'date_completed': '2024-02-02'})
     assert scalar(db, 'SELECT COUNT(*) FROM reading_sessions WHERE book_id = ?', book) == 1
+
+
+# --- audiobooks (ROADMAP 8B.2) ------------------------------------------------
+
+def test_audiobook_shelf_imports_as_not_owned_audiobook(client, db, people):
+    run(client, 'carol',
+        row('Heard It', bookshelves='audiobook', number_of_pages='400', my_rating='4'),
+        row('By Binding', binding='Audible Audio'),
+        row('Paper Copy', number_of_pages='200'),
+        row('Want The Audio', shelf='to-read', bookshelves='to-read, audiobook'))
+    got = {r['title']: (r['format'], r['owned']) for r in
+           db.execute('SELECT title, format, owned FROM books')}
+    assert got == {'Heard It': ('Audiobook', 0), 'By Binding': ('Audiobook', 0),
+                   'Paper Copy': (None, 1), 'Want The Audio': ('Audiobook', 1)}
+    heard = scalar(db, "SELECT id FROM books WHERE title = 'Heard It'")
+    assert status_of(db, people['carol'], heard) == 'read'
+    assert scalar(db, 'SELECT rating FROM read_data WHERE book_id = ?', heard) == 4
+
+
+def test_audiobook_row_matching_a_book_you_own_leaves_it_alone(client, db, people):
+    book = add_book(db, people['carol'], title='Already Mine', author='Some Author')
+    run(client, 'carol', row('Already Mine', bookshelves='audiobook'))
+    assert db.execute('SELECT format, owned FROM books WHERE id = ?', (book,)).fetchone()[:] == (None, 1)

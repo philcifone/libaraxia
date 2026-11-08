@@ -1,90 +1,76 @@
-from flask import current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify
+import sqlite3
+
+from flask import abort, current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify
 from utils.database import get_db
 from flask_login import login_required, current_user
 from models import can_view_book
-from utils import media
+from utils import media, shelves
 
 collections_blueprint = Blueprint('collections', __name__, template_folder='templates')
+
+# The Collections page's tabs (?type=), in order: Books, Movies, Music
+TABS = (media.BOOK, media.VIDEO, media.RECORD)
+
+
+def _tab(value):
+    return value if value in TABS else media.BOOK
+
 
 @collections_blueprint.route('/collections', methods=['GET'])
 @login_required
 def view_collections():
+    # Your shelves for one section (ROADMAP 8C): its status shelves (Read /
+    # Want to Read..., Watched / Want to Watch, Listened / Want to Listen)
+    # and the custom shelves you made for it (utils/shelves.py).
     conn = get_db()
-    # Fetch default reading lists (status-based collections) with book count
-    cursor = conn.execute('''
-        SELECT c.status, COUNT(b.id) as book_count
-        FROM collections c
-        JOIN books b ON c.book_id = b.id
-        WHERE c.user_id = ? AND b.media_type = 'book'   -- videos: Videos section
-        GROUP BY c.status
-    ''', (current_user.id,))
-    reading_lists = cursor.fetchall()
-
-    # Fetch cover previews for each reading status (up to 8 covers)
-    reading_list_covers = {}
-    for reading_list in reading_lists:
-        status = reading_list['status']
-        cursor = conn.execute('''
-            SELECT b.cover_image_url
-            FROM collections c
-            JOIN books b ON c.book_id = b.id
-            WHERE c.user_id = ? AND c.status = ?
-            ORDER BY c.collection_id DESC
-            LIMIT 8
-        ''', (current_user.id, status))
-        reading_list_covers[status] = [row['cover_image_url'] for row in cursor.fetchall()]
-
-    # Fetch custom collections
-    cursor = conn.execute('''
-        SELECT uc.collection_id, uc.name, COUNT(b.id) as book_count
-        FROM user_collections uc
-        LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
-        LEFT JOIN books b ON cb.book_id = b.id
-        WHERE uc.user_id = ?
-        GROUP BY uc.collection_id, uc.name
-    ''', (current_user.id,))
-    custom_collections = cursor.fetchall()
-
-    # Fetch cover previews for each custom collection (up to 8 covers)
-    custom_collection_covers = {}
-    for collection in custom_collections:
-        collection_id = collection['collection_id']
-        cursor = conn.execute('''
-            SELECT b.cover_image_url
-            FROM collection_books cb
-            JOIN books b ON cb.book_id = b.id
-            WHERE cb.collection_id = ?
-            ORDER BY cb.added_at DESC
-            LIMIT 8
-        ''', (collection_id,))
-        custom_collection_covers[collection_id] = [row['cover_image_url'] for row in cursor.fetchall()]
-
+    media_type = _tab(request.args.get('type'))
+    custom = shelves.custom_shelves(conn, current_user.id, media_type)
+    for shelf in custom:
+        shelf['delete_url'] = url_for('collections.delete_collection', collection_id=shelf['id'])
+    # Tab counts: statuses plus custom shelf entries, per section
+    counts = shelves.section_counts(conn, current_user.id)
+    for t, n in conn.execute('''
+        SELECT uc.media_type, COUNT(cb.book_id) FROM user_collections uc
+        JOIN collection_books cb ON cb.collection_id = uc.collection_id
+        WHERE uc.user_id = ? GROUP BY uc.media_type''', (current_user.id,)).fetchall():
+        counts[t] = counts.get(t, 0) + n
     return render_template('collections.html',
-                         reading_lists=reading_lists,
-                         custom_collections=custom_collections,
-                         reading_list_covers=reading_list_covers,
-                         custom_collection_covers=custom_collection_covers)
+                           media_type=media_type,
+                           m=media.media_labels(media_type),
+                           tabs=[(t, shelves.SECTION_NAMES[t], counts.get(t, 0)) for t in TABS],
+                           status_shelves=shelves.status_shelves(conn, current_user.id, media_type),
+                           custom_shelves=custom)
 
 @collections_blueprint.route('/collections/create', methods=['POST'])
 @login_required
 def create_custom_collection():
-    name = request.form.get('name')
+    name = (request.form.get('name') or '').strip()
+    media_type = _tab(request.form.get('media_type'))
+    back = url_for('collections.view_collections', type=media_type)
     if not name:
         flash('Collection name is required.', 'error')
-        return redirect(url_for('collections.view_collections'))
-    
+        return redirect(back)
+
     conn = get_db()
     try:
-        cursor = conn.execute('''
-            INSERT INTO user_collections (user_id, name)
-            VALUES (?, ?)
-        ''', (current_user.id, name))
+        conn.execute('''
+            INSERT INTO user_collections (user_id, name, media_type)
+            VALUES (?, ?, ?)
+        ''', (current_user.id, name, media_type))
         conn.commit()
         flash('Collection created successfully!', 'success')
-    except Exception as e:
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        flash(f'You already have a shelf called "{name}" here.', 'error')
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Error creating collection')
         flash('Error creating collection.', 'error')
-    
-    return redirect(url_for('collections.view_collections'))
+
+    # From an item page's "Create Collection" box: back to that page
+    if request.form.get('next') == 'item' and request.referrer:
+        return redirect(request.referrer)
+    return redirect(back)
 
 @collections_blueprint.route('/collections/<int:collection_id>/add', methods=['POST'])
 @login_required
@@ -165,15 +151,18 @@ def view_custom_collection(collection_id):
         return redirect(url_for('collections.view_collections'))
     
     # Get books in collection
-    cursor = conn.execute('''
-        SELECT b.id, b.title, b.author, b.cover_image_url
+    books = conn.execute('''
+        SELECT b.*
         FROM books b
         JOIN collection_books cb ON b.id = cb.book_id
         WHERE cb.collection_id = ?
-    ''', (collection_id,))
-    books = cursor.fetchall()
-    
+        ORDER BY cb.added_at DESC
+    ''', (collection_id,)).fetchall()
+
     return render_template('collection_status.html',
+                         media_type=collection['media_type'],
+                         m=media.media_labels(collection['media_type']),
+                         status_labels=media.STATUS_LABELS,
                          collection=collection,
                          books=books,
                          is_custom=True,
@@ -268,16 +257,23 @@ def view_by_status(status):
             flash('You must be friends to view this shelf!', 'warning')
             return redirect(url_for('user.profile', username=username))
 
-    # Fetch books for the target user
-    cursor = conn.execute('''
-        SELECT b.id, b.title, b.author, b.cover_image_url
+    # Status names are per type (media.STATUSES), so the status says which
+    # section's shelf this is
+    media_type = next((t for t in TABS if media.is_valid_status(t, status)), None)
+    if media_type is None:
+        abort(404)
+    books = conn.execute('''
+        SELECT b.*
         FROM collections c
         JOIN books b ON c.book_id = b.id
-        WHERE c.user_id = ? AND c.status = ?
-    ''', (target_user_id, status))
-    books = cursor.fetchall()
+        WHERE c.user_id = ? AND c.status = ? AND b.media_type = ?
+        ORDER BY c.updated_at DESC
+    ''', (target_user_id, status, media_type)).fetchall()
 
     return render_template('collection_status.html',
+                         media_type=media_type,
+                         m=media.media_labels(media_type),
+                         status_labels=media.STATUS_LABELS,
                          status=status,
                          books=books,
                          is_custom=False,
@@ -341,15 +337,16 @@ def manage_book_collections():
 @login_required
 def delete_collection(collection_id):
     conn = get_db()
+    media_type = media.BOOK
     try:
         # Verify ownership and delete
-        cursor = conn.execute('''
-            DELETE FROM user_collections 
-            WHERE collection_id = ? AND user_id = ? 
-            RETURNING 1
-        ''', (collection_id, current_user.id))
-        
-        if cursor.fetchone():
+        deleted = conn.execute('''
+            DELETE FROM user_collections
+            WHERE collection_id = ? AND user_id = ?
+            RETURNING media_type
+        ''', (collection_id, current_user.id)).fetchone()
+        if deleted:
+            media_type = deleted['media_type']
             # Also delete associated books
             conn.execute('DELETE FROM collection_books WHERE collection_id = ?', (collection_id,))
             conn.commit()
@@ -360,8 +357,8 @@ def delete_collection(collection_id):
     except Exception as e:
         current_app.logger.exception('Error deleting collection')
         flash('Error deleting collection.', 'error')
-    
-    return redirect(url_for('collections.view_collections'))
+
+    return redirect(url_for('collections.view_collections', type=media_type))
 
 @collections_blueprint.route('/get_book_collections/<int:book_id>')
 @login_required

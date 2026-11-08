@@ -23,6 +23,10 @@ os.environ['SECRET_KEY'] = 'test-secret-key'
 os.environ['EMAIL_VERIFICATION_REQUIRED'] = 'False'
 os.environ['ALLOW_REGISTRATION'] = 'True'
 os.environ['TRUSTED_PROXY_COUNT'] = '0'
+# Lookups that only switch on with a key: off unless a test turns one on.
+# Set (to empty) so load_dotenv can't fill them in from a real .env.
+os.environ['DISCOGS_TOKEN'] = ''
+os.environ['MUSICBRAINZ_CONTACT'] = ''
 os.environ['DATABASE_PATH'] = os.path.join(ROOT, 'tests', '.no-database-yet.db')
 
 PASSWORD = 'correct-horse-battery'

@@ -12,13 +12,20 @@ What goes where:
   book, in which case it gets the *Want to Read* status instead.
 - Every other shelf in `Bookshelves` (audiobook, re-read, ...) becomes a
   custom collection of the same name.
+- Audiobooks (ROADMAP 8B.2): a row on an audiobook shelf, or with an audio
+  Binding (Audible Audio, Audio CD, ...), that creates a new book creates it
+  with format Audiobook and not owned (8B.3): read, reviewed, counted in
+  reading stats, never on the shelf or in page totals. A to-read audiobook
+  still goes to the wishlist (format Audiobook). A row that matches a book
+  you already have leaves that book as it is.
 - My Rating / My Review: a review, with or without a rating, on any shelf.
 - Read Count: that many reading sessions; the last one is dated Date Read.
 - Private Notes: the wishlist note for to-read books. Library books have
   nowhere to keep them, so the report counts them as not imported.
 
 Not imported, on purpose: Additional Authors (mostly translators, editors
-and illustrators, not co-authors), Binding (no format column yet), Owned
+and illustrators, not co-authors), Binding (beyond telling audiobooks
+apart), Owned
 Copies (Goodreads rarely has it set; read books go to your library as
 before), Spoiler, Average Rating, Original Publication Year when Year
 Published is present.
@@ -56,6 +63,11 @@ WISHLIST_SHELVES = {'to-read', 'want-to-read'}
 DNF_SHELVES = {'dnf', 'did-not-finish', 'didnt-finish', 'did-not-finish-reading',
                'abandoned', 'gave-up', 'unfinished', 'not-finished', 'stopped-reading'}
 REQUIRED_COLUMNS = {'Title', 'Author', 'Exclusive Shelf'}
+# Audiobooks: by shelf name, or by Goodreads' Binding column
+AUDIOBOOK_SHELVES = {'audiobook', 'audiobooks', 'audio-book', 'audio-books', 'audio', 'audible',
+                     'listened', 'listened-to'}
+AUDIO_BINDINGS = {'audible audio', 'audiobook', 'audio cd', 'audio cassette', 'mp3 cd',
+                  'audio', 'audio play', 'preloaded digital audio player'}
 
 
 class ImportFileError(ValueError):
@@ -160,6 +172,8 @@ def parse_row(row):
         'read_count': read_count,
         'status': status,
         'collections': custom,
+        'audiobook': (any(s in AUDIOBOOK_SHELVES for s in shelves)
+                      or clean_text(get('Binding')).lower() in AUDIO_BINDINGS),
     }
 
 
@@ -190,6 +204,11 @@ class _Importer:
         cols = ['title', 'author', 'isbn', 'publisher', 'publish_year', 'page_count', 'added_by']
         vals = [r['title'], r['author'] or 'Unknown', r['isbns'][0] if r['isbns'] else None,
                 r['publisher'], r['year'], r['pages'], self.user_id]
+        if r['audiobook']:
+            # Not owned, unless it's a wishlist entry (those aren't "owned"
+            # either way; buying one is "Move to library")
+            cols += ['format', 'owned']
+            vals += ['Audiobook', 1 if r['status'] == 'wishlist' else 0]
         if r['date_added']:
             cols.append('created_at')
             vals.append(r['date_added'])
@@ -237,13 +256,15 @@ class _Importer:
         for name in names:
             cid = self._collection_ids.get(name)
             if cid is None:
+                # Goodreads is books only, so its shelves are Books shelves (8C)
                 row = self.conn.execute('SELECT collection_id FROM user_collections '
-                                        'WHERE user_id = ? AND name = ?', (self.user_id, name)).fetchone()
+                                        "WHERE user_id = ? AND name = ? AND media_type = 'book'",
+                                        (self.user_id, name)).fetchone()
                 if row:
                     cid = row['collection_id']
                 else:
-                    cid = self.conn.execute('INSERT INTO user_collections (user_id, name) VALUES (?, ?)',
-                                            (self.user_id, name)).lastrowid
+                    cid = self.conn.execute("INSERT INTO user_collections (user_id, name, media_type) "
+                                            "VALUES (?, ?, 'book')", (self.user_id, name)).lastrowid
                     self._pending_new_collections.append(name)
                 self._collection_ids[name] = cid
             cur = self.conn.execute('INSERT OR IGNORE INTO collection_books (collection_id, book_id) '
@@ -295,7 +316,8 @@ class _Importer:
                 new_book = {'id': book_id, 'isbn': r['isbns'][0] if r['isbns'] else None,
                             'title': r['title'], 'author': r['author'], 'removed_at': None,
                             'whose': 'own', 'is_wishlist_entry': 0}
-                outcome, detail = 'added', None
+                outcome, detail = 'added', ('audiobook, not owned: off your shelf, in your reading stats'
+                                            if r['audiobook'] else None)
             if status:
                 self.set_status(book_id, status, r['date_added'])
             else:

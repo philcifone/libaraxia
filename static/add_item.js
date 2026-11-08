@@ -1,10 +1,10 @@
 // The add page for every media type (templates/add_item.html): Add Book,
-// Add Movie and Add Vinyl. Shared helpers (escapeHtml, coverSrc, getCSRFHeaders,
+// Add Movie and Add Album. Shared helpers (escapeHtml, coverSrc, getCSRFHeaders,
 // showFlashMessage) are in common.js; the camera is scanner.js.
 //
 // Three ways to fill the form, one tab each: Search (pick a result), the
 // code box (ISBN / barcode, with its Look up button beside it) and Scan.
-// Vinyls have Search only (no barcodes). What differs by type (which
+// Music has all three (barcodes since 8B.12). What differs by type (which
 // endpoints, how their answers map onto the form's fields) lives in the
 // three adapters, BOOK, MOVIE and RECORD, below; the rest is shared.
 //
@@ -28,10 +28,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Where a code of the other type goes (a movie barcode on Add Book, or
     // on the wishlist's Add Book), with the code attached
-    function otherAddUrl(params = {}) {
-        const url = new URL(root.dataset.otherAddUrl || '/', window.location.origin);
+    function otherAddUrl(params = {}, base = root.dataset.otherAddUrl) {
+        const url = new URL(base || '/', window.location.origin);
         for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
         return url.pathname + url.search;
+    }
+
+    // Add Book with a barcode that isn't an ISBN: a movie or an album, and
+    // only you know which. Both links carry the code.
+    function notABook(code) {
+        const link = (url, label) => `<a class="underline" href="${escapeHtml(url)}">${label}</a>`;
+        const movie = link(otherAddUrl({ barcode: code }), 'Add it as a movie');
+        const music = root.dataset.musicAddUrl
+            ? ' or ' + link(otherAddUrl({ barcode: code }, root.dataset.musicAddUrl), 'as an album') : '';
+        setStatus(`${escapeHtml(code)} isn't an ISBN, so it's not a book. ${movie}${music}.`, true);
+        return null;
     }
 
     function setStatus(text, html = false) {
@@ -50,6 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return data;
     }
+
+    // A match you have as "not owned" (read, watched or listened to, never
+    // had): bought it now? Its page has "I own it now", which keeps your review
+    const NOT_OWNED_NOTE = 'not owned (if you\'ve bought it, open it and choose "I own it now")';
 
     // --- Filling the form ----------------------------------------------------
 
@@ -144,16 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         async code(code) {
-            if (classifyCode(code) === 'video') {
-                // A tape or DVD barcode: that's Add Movie's job
-                window.location.href = otherAddUrl({ barcode: code });
-                return null;
-            }
+            // A UPC/EAN that isn't an ISBN: a movie or an album
+            if (classifyCode(code) === 'video') return notABook(code);
             const data = await getJSON(`/books/fetch_barcode_details?code=${enc(code)}`);
-            if (data.media_type === 'video') {
-                window.location.href = otherAddUrl({ barcode: data.barcode || code });
-                return null;
-            }
+            if (data.media_type === 'video') return notABook(data.barcode || code);
             if (!data.success || !data.book_details) {
                 return { notFound: `No book found for ISBN ${code}. Fill the form in by hand.` };
             }
@@ -180,7 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             return (data.duplicates || []).map(d => {
                 const where = [];
-                if (d.in_library) where.push(d.removed ? 'removed from the library' : 'in the library');
+                if (d.in_library) {
+                    where.push(d.not_owned ? NOT_OWNED_NOTE
+                        : d.removed ? 'removed from the library' : 'in the library');
+                }
                 if (d.in_wishlist) where.push('on your wishlist');
                 return {
                     title: d.title, url: d.in_library ? `/books/book/${enc(d.id)}` : null,
@@ -202,6 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return (data.results || []).map(r => ({
                 title: r.title, line: r.year ? String(r.year) : '', thumb: r.poster, id: r.id,
             }));
+        },
+
+        // TMDb's API terms require this notice wherever their data is used
+        credit(data) {
+            return data.success
+                ? 'This product uses the <a class="underline hover:text-accent" href="https://www.themoviedb.org/" rel="noopener">TMDB</a> API but is not endorsed or certified by TMDB.'
+                : '';
         },
 
         async pick(result) {
@@ -241,7 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             return (data.duplicates || []).map(d => ({
                 title: d.title, url: `/videos/${enc(d.id)}`,
-                note: [d.format_label, `${d.owner || 'no owner'}'s`, d.removed ? 'removed' : '',
+                note: [d.format_label, `${d.owner || 'no owner'}'s`, d.not_owned ? NOT_OWNED_NOTE : '',
+                       d.removed ? 'removed' : '',
                        `same ${d.match_reason.join(' and ')}`].filter(Boolean).join(', '),
             }));
         },
@@ -251,7 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const RECORD = {
-        searchUrl: q => `/records/search?q=${enc(q)}`,
+        // The format choice beside the search box (Any / Vinyl / CD / Cassette)
+        searchUrl: q => `/records/search?q=${enc(q)}&format=${enc($('search-format')?.value || '')}`,
 
         // One row per pressing: label, cat. no., year and country tell them apart
         results(data) {
@@ -260,14 +281,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: r.title,
                 line: [r.artist, r.year, r.country].filter(Boolean).join(', '),
                 line2: [r.format_label, r.label, r.catalog_number].filter(Boolean).join(' \u00b7 '),
-                thumb: r.thumb, id: r.id,
+                thumb: r.thumb, id: r.id, source: r.source,
             }));
         },
 
+        // Discogs' API terms ask for attribution under their data. Fixed
+        // markup, no data in it.
+        credit(data) {
+            return data.source === 'discogs'
+                ? 'Data provided by <a class="underline hover:text-accent" href="https://www.discogs.com/" rel="noopener">Discogs</a>.'
+                : '';
+        },
+
         async pick(result) {
-            const data = await getJSON(`/records/lookup?mbid=${enc(result.id)}`);
+            // Discogs ids are numbers, MusicBrainz ids UUIDs: each to its own lookup
+            const param = result.source === 'discogs' ? 'discogs' : 'mbid';
+            const data = await getJSON(`/records/lookup?${param}=${enc(result.id)}`);
+            if (data.success && !data.found) return { notFound: 'Nothing more on that one. Fill the form in by hand.' };
+            return RECORD.form(data);
+        },
+
+        // Barcode tab and scanner (8B.12): Discogs, then MusicBrainz, server side
+        async code(code) {
+            if (classifyCode(code) === 'book') {
+                setStatus(`${escapeHtml(code)} is an ISBN: that's a book. <a class="underline" href="${escapeHtml(otherAddUrl())}">Add it as a book</a>.`, true);
+                return null;
+            }
+            setField('barcode', code);
+            const data = await getJSON(`/records/lookup?barcode=${enc(code)}`);
+            if (data.success && !data.found) {
+                return { notFound: `Nothing found for barcode ${code}: try searching by artist and title, or fill it in from the sleeve.` };
+            }
+            return RECORD.form(data);
+        },
+
+        form(data) {
             if (!data.success) throw new Error(data.error || 'The lookup failed.');
-            if (!data.found) return { notFound: 'MusicBrainz has nothing more on that one. Fill the form in by hand.' };
             const d = data.details || {};
             return {
                 fields: {
@@ -284,11 +333,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await getJSON('/records/check_duplicates', {
                 method: 'POST', headers: getCSRFHeaders(),
                 body: JSON.stringify({ title: $('title').value, author: $('author').value,
-                                       catalog_number: $('catalog_number').value }),
+                                       catalog_number: $('catalog_number').value,
+                                       barcode: $('barcode')?.value || '' }),
             });
             return (data.duplicates || []).map(d => ({
                 title: d.title, url: d.url,
-                note: [d.author, d.format_label, `${d.owner || 'no owner'}'s`, d.removed ? 'removed' : '',
+                note: [d.author, d.format_label, `${d.owner || 'no owner'}'s`,
+                       d.not_owned ? NOT_OWNED_NOTE : '', d.removed ? 'removed' : '',
                        `same ${d.match_reason.join(' and ')}`].filter(Boolean).join(', '),
             }));
         },
@@ -302,6 +353,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // a picked release may set it (setField keeps what you changed yourself)
     const formatSelect = $('format');
     if (formatSelect && type === RECORD) formatSelect.dataset.filled = formatSelect.value;
+
+    // Books (8B.2): an audiobook is usually borrowed or streamed, so picking
+    // Audiobook ticks "I don't own this", and back to Book unticks it. Once
+    // you've clicked the box yourself, it's yours and the format leaves it be.
+    const notOwnedBox = $('not_owned');
+    if (formatSelect && notOwnedBox && type === BOOK) {
+        notOwnedBox.addEventListener('change', () => { notOwnedBox.dataset.touched = '1'; });
+        formatSelect.addEventListener('change', () => {
+            if (!notOwnedBox.dataset.touched) notOwnedBox.checked = formatSelect.value === 'Audiobook';
+        });
+    }
 
     // --- Duplicates: a notice above the form, never a blocking dialog --------
 
@@ -390,8 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setStatus('Searching...');
         resultsBox.innerHTML = '';
         try {
-            showResults(type.results(await getJSON(type.searchUrl(query))));
-            setStatus('');
+            const data = await getJSON(type.searchUrl(query));
+            showResults(type.results(data));
+            // A source's credit line (Discogs), else clear the status
+            setStatus(type.credit ? type.credit(data) : '', true);
         } catch (err) {
             console.error('Search failed', err);
             setStatus(err.message || 'The search failed. Try again.');

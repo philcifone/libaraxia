@@ -7,11 +7,6 @@
     <!-- Main Content -->
     <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
         <!--Back Nav-->
-        <a href="{{ url_for('base.index') }}" 
-        class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
-         <span class="mr-2">←</span>
-         <span>Back to Catalog</span>
-     </a>
         <!-- Profile Info -->
         <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
             <!-- Header row: avatar | name, bio, friend/household actions -->
@@ -323,60 +318,44 @@
                             </div>
                         </div>
                         {% endfor %}
+                        {# Accent (8B.5): both styles; Classic shows each swatch's dark shade (styles.css) #}
+                        <div class="flex items-center gap-3" data-accent-picker>
+                            <span class="text-sm text-content-secondary w-12">Accent</span>
+                            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Accent colour">
+                                {% for key, name in theme_accents.items() %}
+                                <button type="button" title="{{ name }}"
+                                        class="theme-opt accent-opt p-1 border border-rule-strong transition-colors"
+                                        data-kind="accent" data-value="{{ key }}"
+                                        aria-pressed="{{ 'true' if key == theme_accent else 'false' }}">
+                                    <span class="accent-swatch block w-5 h-5" data-swatch="{{ key }}" aria-hidden="true"></span>
+                                    <span class="sr-only">{{ name }}</span>
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 {% endif %}
             </div>
         </section>
 
-                <!-- Reading Shelves Section -->
-        {% if are_friends and reading_lists %}
-        <section class="bg-secondary rounded-xl p-6 card">
-            <a href="{{ url_for('base.friend_library', username=user['username']) }}" class="block mb-6">
-                <h2 class="text-2xl font-display text-content-primary hover:text-accent transition-colors">
-                    {{ user['username'] }}'s Library →
-                </h2>
-            </a>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {% set statuses = [
-                    ('read', 'Read'),
-                    ('currently reading', 'Currently Reading'),
-                    ('want to read', 'Want to Read'),
-                    ('did not finish', 'Did Not Finish')
-                ] %}
-
-                {% for status, label in statuses %}
-                    <a href="{{ url_for('collections.view_by_status', status=status, username=user['username']) }}"
-                       class="group bg-primary hover:bg-primary-hover p-4 rounded-lg transition-all duration-300">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-content-primary text-lg">{{ label }}</span>
-                            {% if reading_lists %}
-                                {% for list in reading_lists %}
-                                    {% if list['status'] == status %}
-                                        <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm">
-                                            {{ list['book_count'] }}
-                                        </span>
-                                    {% endif %}
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-
-                        <!-- Book Cover Previews -->
-                        {% if reading_list_covers.get(status) %}
-                            <div class="flex gap-2 mt-2 truncate">
-                                {% for cover_url in reading_list_covers[status][:8] %}
-                                    {% if cover_url %}
-                                        <img src="{{ url_for('static', filename=cover_url) }}"
-                                             alt="Book cover"
-                                             class="w-12 h-16 object-cover rounded shadow-sm">
-                                    {% else %}
-                                        {% with title=none, size='sm', box='w-12 h-16 shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </a>
+        <!-- Shelves (8C): each section's statuses in use, rows that scroll sideways -->
+        {% if profile_shelves %}
+        <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-display text-content-primary">Shelves</h2>
+                {% if is_own_profile %}
+                <a href="{{ url_for('collections.view_collections') }}" class="text-accent hover:text-accent-hover transition-colors text-sm">All collections →</a>
+                {% else %}
+                <a href="{{ url_for('base.friend_library', username=user['username']) }}" class="text-accent hover:text-accent-hover transition-colors text-sm">{{ user['username'] }}'s library →</a>
+                {% endif %}
+            </div>
+            <div class="space-y-6">
+                {% for section_name, rows in profile_shelves %}
+                <div>
+                    {% if profile_shelves|length > 1 %}<h3 class="text-sm uppercase tracking-wider text-content-secondary mb-3">{{ section_name }}</h3>{% endif %}
+                    {% with shelves=rows %}{% include '_shelf_rows.html' %}{% endwith %}
+                </div>
                 {% endfor %}
             </div>
         </section>
@@ -512,53 +491,17 @@
         {% endif %}
 
         <!-- Wishlist Section -->
-        {% if are_friends and wishlist_books %}
-        <section class="bg-secondary rounded-xl p-6 card">
-            <div class="flex items-center justify-between mb-6">
+        {# Wishlist (8D): a row per section, each linked to that tab of the wishlist #}
+        {% if wishlist_shelves %}
+        <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
+            <div class="flex items-center justify-between gap-4 mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
                 </h2>
-                {% if is_own_profile %}
-                <a href="{{ url_for('wishlist.view_wishlist') }}"
-                   class="text-accent hover:text-accent-hover transition-colors text-sm">
-                    View all →
-                </a>
-                {% else %}
-                <a href="{{ url_for('wishlist.view_user_wishlist', username=user['username']) }}"
-                   class="text-accent hover:text-accent-hover transition-colors text-sm">
-                    View all →
-                </a>
-                {% endif %}
+                <a href="{{ url_for('wishlist.view_wishlist') if is_own_profile else url_for('wishlist.view_user_wishlist', username=user['username']) }}"
+                   class="text-accent hover:text-accent-hover transition-colors text-sm">View all →</a>
             </div>
-
-            <!-- Book Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
-                {% for book in wishlist_books %}
-                <div class="book-item group">
-                    <a href="{% if is_own_profile %}{{ url_for('books.show_book', id=book.id) }}{% else %}{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ user['username'] }}{% endif %}"
-                       class="book-link block bg-primary rounded-lg overflow-hidden card-link">
-                        <div class="book-cover w-full h-56 overflow-hidden">
-                            {% if book.cover_image_url %}
-                            <img src="{{ url_for('static', filename=book.cover_image_url) }}"
-                                 alt="{{ book.title }}"
-                                 class="book-cover-img object-cover w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
-                            {% else %}
-                            {% with title=book.title, author=book.author, size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
-                            {% endif %}
-                        </div>
-
-                        <div class="book-info p-2">
-                            <h3 class="book-title text-sm leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-1 text-content-primary">
-                                {{ book.title }}
-                            </h3>
-                            <p class="book-author text-content-secondary text-xs truncate">
-                                {{ book.author }}
-                            </p>
-                        </div>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
+            {% with shelves=wishlist_shelves, shelf_cols='grid-cols-1', cover_h='h-28' %}{% include '_shelf_rows.html' %}{% endwith %}
         </section>
         {% endif %}
 
@@ -896,7 +839,7 @@
             <h2 class="text-2xl font-display text-content-primary mb-4">Account</h2>
             <div class="flex flex-wrap gap-4 items-center justify-between">
                 <p class="text-sm text-content-secondary max-w-xl">
-                    Download everything of yours (library, reviews, reading sessions, shelves, wishlist) as CSV files,
+                    Download everything of yours (books, movies and music; reviews, sessions, shelves, wishlist) as CSV files,
                     or deactivate or delete your account.
                 </p>
                 <div class="flex flex-wrap gap-3">

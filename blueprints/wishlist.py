@@ -159,7 +159,7 @@ def _add_media(section):
     # (Records have no barcode; their duplicates are a warning on the form.)
     if values["barcode"]:
         mine = conn.execute("""
-            SELECT b.id, b.removed_at,
+            SELECT b.id, b.removed_at, b.owned,
                    EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?) AS wished
             FROM books b WHERE b.added_by = ? AND b.media_type = ? AND b.barcode = ?
         """, (current_user.id, current_user.id, section.media_type, values["barcode"])).fetchall()
@@ -167,7 +167,7 @@ def _add_media(section):
             if row["wished"]:
                 flash(f"This {noun} is already on your wishlist!", "error")
                 return redirect(url_for("wishlist.view_wishlist"))
-            if row["removed_at"] is None:
+            if row["owned"] and row["removed_at"] is None:
                 flash(f"That {noun} is already in your collection.", "error")
                 return redirect(url_for(section.endpoint("show"), id=row["id"]))
     cover = process_image(request.files.get("image"), request.form.get("existing_cover_url"))
@@ -310,19 +310,20 @@ def remove_from_wishlist(book_id):
 
 
 def _keep_as_not_owned(conn, book_id, kind=media.BOOK):
-    """Mark the current user's ex-wishlist item removed (not on the shelf).
+    """Mark the current user's ex-wishlist item not owned (owned = 0, ROADMAP
+    8B.3): it stays theirs, off the shelf, with any review. Before 025 this
+    marked it removed instead.
 
     If they've read it (a rating/review or a 'read' status), also put it on
     the "Read but not owned" custom collection, created on first use; for a
     movie "watched" and "Watched but not owned", likewise for a record
     (media_labels' done_status and not_owned). Returns True if it went on
-    that collection. Restoring it on its page (you bought it after all)
-    brings it onto the shelf as usual.
+    that collection. "I own it now" on its page (you bought it after all)
+    puts it on the shelf.
     """
     m = media.media_labels(kind)
     conn.execute("""
-        UPDATE books SET removed_at = CURRENT_TIMESTAMP, removed_note = 'Removed from wishlist; not owned'
-        WHERE id = ? AND removed_at IS NULL
+        UPDATE books SET owned = 0 WHERE id = ? AND removed_at IS NULL
     """, (book_id,))
     has_read = conn.execute("""
         SELECT 1 FROM read_data WHERE user_id = ? AND book_id = ?
@@ -332,10 +333,12 @@ def _keep_as_not_owned(conn, book_id, kind=media.BOOK):
     if not has_read:
         return False
     name = m["not_owned"]
-    conn.execute("INSERT OR IGNORE INTO user_collections (user_id, name) VALUES (?, ?)",
-                 (current_user.id, name))
-    collection_id = conn.execute("SELECT collection_id FROM user_collections WHERE user_id = ? AND name = ?",
-                                 (current_user.id, name)).fetchone()[0]
+    # A shelf of the item's own section (8C): "Watched but not owned" is a Movies shelf
+    conn.execute("INSERT OR IGNORE INTO user_collections (user_id, name, media_type) VALUES (?, ?, ?)",
+                 (current_user.id, name, m["type"]))
+    collection_id = conn.execute("SELECT collection_id FROM user_collections "
+                                 "WHERE user_id = ? AND name = ? AND media_type = ?",
+                                 (current_user.id, name, m["type"])).fetchone()[0]
     conn.execute("INSERT OR IGNORE INTO collection_books (collection_id, book_id) VALUES (?, ?)",
                  (collection_id, book_id))
     return True

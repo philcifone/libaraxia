@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 
 {% block title %}{{ book.title }} - Rate & Review{% endblock %}
 {% block html_class %}bg-primary-bg{% endblock %}
@@ -8,11 +9,7 @@
 {% block content %}
     <main class="max-w-6xl mx-auto px-4 pt-20 pb-12">
         <!-- Back Navigation -->
-        <a href="{{ url_for('base.index') }}" 
-           class="inline-flex items-center gap-2 text-content-secondary hover:text-accent transition-colors mb-8">
-            <span class="text-xl">←</span>
-            <span>Back to Catalog</span>
-        </a>
+        {{ crumbs([(m.section, url_for(m.home)), (book.title, item_url(book))], 'Review', class='mb-8') }}
 
         <!-- Book Header -->
         <div class="text-center mb-12">

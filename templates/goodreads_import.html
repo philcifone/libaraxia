@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 
 {% block title %}Import from Goodreads{% endblock %}
 {% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
@@ -7,11 +8,7 @@
     <!-- Main Content -->
     <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
         <!-- Back Nav -->
-        <a href="{{ url_for('user.profile', username=current_user.username) }}"
-           class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
-            <span class="mr-2">←</span>
-            <span>Back to Profile</span>
-        </a>
+        {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Goodreads Import', class='') }}
 
         <!-- Page Title -->
         <div class="bg-secondary rounded-xl p-6 card">

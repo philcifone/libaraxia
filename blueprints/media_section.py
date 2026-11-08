@@ -25,7 +25,8 @@ from flask_login import login_required, current_user
 
 from models import can_view_book, get_library_members, is_friends_with
 from utils import media
-from utils.book_utils import process_image, removed_filter, _normalise, get_filter_options
+from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches,
+                              _normalise, get_filter_options)
 from utils.database import get_db
 from utils.image_utils import delete_image_file, is_safe_upload_path
 
@@ -73,10 +74,27 @@ class Section:
         return fmt if fmt in self.formats else self.default_format
 
     # ---------------------------------------------------------- queries
+    @staticmethod
+    def search_match(term):
+        """The search box's condition on alias b, and its parameters."""
+        like = f'%{term}%'
+        return ("b.title LIKE ? OR b.author LIKE ? OR b.publisher LIKE ?"
+                " OR b.barcode LIKE ? OR b.catalog_number LIKE ? OR CAST(b.publish_year AS TEXT) LIKE ?",
+                [like] * 6)
+
+    def off_shelf(self, conn, owner_ids, args, viewer_id):
+        """The search hint's matches (book_utils.off_shelf_matches), only
+        for a search on the default Show."""
+        term = (args.get('search_term') or '').strip()
+        if not term or show_choice(args):
+            return None
+        match_sql, match_params = self.search_match(term)
+        return off_shelf_matches(conn, self.view, owner_ids, match_sql, match_params, viewer_id)
+
     def filtered(self, conn, owner_ids, args, viewer_id):
         """Items owned by `owner_ids`, with the search, filters and sort from
         the query string. The parameter names are the Library's
-        (search_term, genre, read_status, rating, tags[], show_removed), so
+        (search_term, genre, read_status, rating, tags[], show), so
         the shared header search and filter panel (_search_sort_filter.html)
         work here too; `format` is the sections' own. Status, rating and tag
         filters are the viewer's own, as on the Library pages."""
@@ -84,14 +102,13 @@ class Section:
         # self.view is one of our own view names, never request input
         sql = f"SELECT b.* FROM {self.view} b WHERE b.added_by IN ({marks})"
         params = list(owner_ids)
-        sql += removed_filter(args.get('show_removed'))
+        sql += shelf_filter(args)
 
         term = (args.get('search_term') or '').strip()
         if term:
-            like = f'%{term}%'
-            sql += (" AND (b.title LIKE ? OR b.author LIKE ? OR b.publisher LIKE ?"
-                    " OR b.barcode LIKE ? OR b.catalog_number LIKE ? OR CAST(b.publish_year AS TEXT) LIKE ?)")
-            params += [like] * 6
+            match_sql, match_params = self.search_match(term)
+            sql += f" AND ({match_sql})"
+            params += match_params
         if args.get('genre'):
             sql += " AND LOWER(b.genre) = LOWER(?)"
             params.append(args.get('genre'))
@@ -131,7 +148,7 @@ class Section:
         marks = ','.join('?' * len(members))
         rows = conn.execute(f"""
             SELECT v.id, v.title, v.author, v.format, v.barcode, v.catalog_number,
-                   v.removed_at, u.username AS owner
+                   v.removed_at, v.owned, u.username AS owner
             FROM {self.view} v LEFT JOIN users u ON u.id = v.added_by
             WHERE v.added_by IN ({marks}) AND v.id IS NOT ?
         """, [*members, exclude_id]).fetchall()
@@ -153,6 +170,7 @@ class Section:
                     reasons.append('title')
             if reasons:
                 found.append({**dict(row), 'removed': row['removed_at'] is not None,
+                              'not_owned': not row['owned'],
                               'format_label': media.format_label(row['format']),
                               'match_reason': reasons})
         return found
@@ -207,17 +225,18 @@ class Section:
                                     catalog_number=values.get('catalog_number'),
                                     exclude_id=exclude_id)
 
-    def insert(self, conn, values, cover, owner_id):
-        """A new books row of this type; returns its id. The caller commits."""
+    def insert(self, conn, values, cover, owner_id, owned=True):
+        """A new books row of this type; returns its id. The caller commits.
+        owned=False: seen or heard but not had (8B.3), kept off the shelf."""
         cur = conn.execute('''
             INSERT INTO books (title, subtitle, author, publisher, publish_year, runtime_minutes,
                                format, barcode, catalog_number, genre, description, cover_image_url,
-                               page_count, added_by, media_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+                               page_count, added_by, media_type, owned)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)
         ''', (values['title'], values['subtitle'], values['author'], values['publisher'],
               values['publish_year'], values['runtime_minutes'], values['format'], values['barcode'],
               values['catalog_number'], values['genre'], values['description'], cover, owner_id,
-              self.media_type))
+              self.media_type, 1 if owned else 0))
         return cur.lastrowid
 
     def add_page(self, values, duplicates=(), status=200, destination='shelf'):
@@ -263,7 +282,11 @@ def make_blueprint(section: Section) -> Blueprint:
             total_count=len(rows), has_more=False, current_page=1,
             sort_by=sort_by, sort_order=sort_order,
             filter_options=get_filter_options(owner_ids, m_type),
-            m=section.m, empty_text=section.empty_text, **extra)
+            m=section.m, empty_text=section.empty_text,
+            # Friends' grids show only their shelf, so no hint there
+            off_shelf=None if tab == 'friend' else section.off_shelf(
+                conn, owner_ids, request.args, current_user.id),
+            **extra)
 
     # ------------------------------------------------------ grids
     @login_required
@@ -284,7 +307,7 @@ def make_blueprint(section: Section) -> Blueprint:
             FROM users u
             JOIN friendships f ON (f.user_id_1 = :me AND f.user_id_2 = u.id)
                                OR (f.user_id_2 = :me AND f.user_id_1 = u.id)
-            LEFT JOIN {section.view} v ON v.added_by = u.id AND v.removed_at IS NULL
+            LEFT JOIN {section.view} v ON v.added_by = u.id AND v.owned = 1 AND v.removed_at IS NULL
             GROUP BY u.id
             ORDER BY u.username
         ''', {'me': current_user.id}).fetchall()
@@ -342,9 +365,14 @@ def make_blueprint(section: Section) -> Blueprint:
         # An upload wins; otherwise the cover a lookup saved (process_image
         # only accepts paths inside static/uploads)
         cover = process_image(request.files.get('image'), request.form.get('existing_cover_url'))
-        new_id = section.insert(conn, values, cover, current_user.id)
+        owned = not request.form.get('not_owned')
+        new_id = section.insert(conn, values, cover, current_user.id, owned=owned)
         conn.commit()
-        flash(f"'{values['title']}' added to your {section.m['plural']}.", 'success')
+        if owned:
+            flash(f"'{values['title']}' added to your {section.m['plural']}.", 'success')
+        else:
+            flash(f"'{values['title']}' added as not owned, so it isn't on your {section.m['shelf']}. "
+                  f"Rate and review it here.", 'success')
         return redirect(url_for(section.endpoint('show'), id=new_id))
 
     @login_required

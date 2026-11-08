@@ -25,7 +25,8 @@ CREATE TABLE users (
     email_verification_sent_at TEXT,
     bio TEXT,
     theme_style TEXT NOT NULL DEFAULT 'house',
-    color_mode TEXT NOT NULL DEFAULT 'system'
+    color_mode TEXT NOT NULL DEFAULT 'system',
+    accent TEXT NOT NULL DEFAULT 'green'    -- models.ACCENTS (migration 026)
 );
 
 CREATE TABLE email_verification_tokens (
@@ -89,6 +90,9 @@ CREATE TABLE books (
     barcode TEXT,           -- normalised EAN-13 (UPC-A with a leading 0)
     catalog_number TEXT,    -- studio catalogue number
     runtime_minutes INTEGER,
+    -- 0 = read/watched/listened to but never owned (migration 025); kept out of
+    -- library grids and owned counts unless asked for. Not the same as removed.
+    owned INTEGER NOT NULL DEFAULT 1 CHECK (owned IN (0, 1)),
     FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_books_added_by ON books(added_by);
@@ -144,13 +148,15 @@ CREATE TABLE book_tags (
 CREATE INDEX idx_book_tags_user_book ON book_tags(user_id, book_id);
 
 -- Custom user collections ("shelves").
+-- Custom shelves; each belongs to one section (027)
 CREATE TABLE user_collections (
     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     name TEXT NOT NULL,
+    media_type TEXT NOT NULL DEFAULT 'book' REFERENCES media_types(name),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE (user_id, name)
+    UNIQUE (user_id, media_type, name)
 );
 
 CREATE TABLE collection_books (
@@ -369,4 +375,7 @@ INSERT INTO schema_migrations (name) VALUES
     ('021_household_invites.sql'),
     ('022_cover_jobs.sql'),
     ('023_add_videos.sql'),
-    ('024_add_records.sql');
+    ('024_add_records.sql'),
+    ('025_owned.sql'),
+    ('026_accent.sql'),
+    ('027_shelf_types.sql');

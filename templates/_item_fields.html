@@ -45,7 +45,20 @@
     {{ field('barcode', m.code, values.barcode_input, hint='UPC or EAN', attrs='inputmode="numeric" autocomplete="off"') }}
     {% endif %}
     {{ field('publisher', m.publisher, values.publisher, hint='distributor on the box' if m.type == 'video' else '') }}
-    {% if not is_book %}
+    {% if is_book %}
+    {# Book / Audiobook (8B.2). A plain book is stored with no format, so
+       old rows show "Book". Picking Audiobook on Add ticks "I don't own
+       this" (add_item.js), since most are borrowed or streamed. #}
+    <div class="space-y-2">
+        <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>
+        <select id="format" name="format"
+                class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent">
+            {% for f in m.formats %}
+            <option value="{{ f }}" {% if (values.format or 'Book') == f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% else %}
     <div class="grid grid-cols-2 gap-4">
         <div class="space-y-2">
             <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>

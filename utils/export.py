@@ -22,17 +22,23 @@ LIBRARY_HEADER = [
     'Owner', 'You Own It', 'Removed From Library', 'Removed Note',
     'Reading Status', 'Date Added to Collection', 'Date Started', 'Date Completed', 'Reread Count',
     'Rating', 'Review', 'Tags', 'Custom Collections',
-    # Videos (Phase 8) share the file; appended so older readers of it keep working.
-    # For a video, Author is the director and Publisher the studio.
+    # Movies and music (Phase 8) share the file; appended so older readers of it
+    # keep working. For a movie, Author is the director and Publisher the studio;
+    # for an album, Author is the artist and Publisher the label.
     'Type', 'Format', 'Barcode', 'Catalogue Number', 'Runtime (min)',
 ]
+
+
+# Appended to the other files of the ZIP, for the same reason: which section a
+# row belongs to (book, video, record) and its format (VHS, DVD, LP, CD, ...).
+TYPE_COLUMNS = ['Type', 'Format']
 
 
 def library_rows(conn, user_id):
     """One row per book the user owns or has their own data on (wishlist excluded)."""
     rows = conn.execute('''
         SELECT b.id, b.title, b.subtitle, b.author, b.publisher, b.publish_year, b.isbn,
-               b.page_count, b.genre, owner.username AS owner, b.added_by = :u AS own,
+               b.page_count, b.genre, owner.username AS owner, b.added_by = :u AND b.owned = 1 AS own,
                b.removed_at, b.removed_note,
                b.media_type, b.format, b.barcode, b.catalog_number, b.runtime_minutes,
                c.status, c.created_at AS status_added,
@@ -78,33 +84,37 @@ def data_zip(conn, user_id):
     files = {
         'library.csv': library_csv(conn, user_id),
         'reading_sessions.csv': _csv(
-            ['Book ID', 'Title', 'Author', 'Date Started', 'Date Completed'],
+            ['Book ID', 'Title', 'Author', 'Date Started', 'Date Completed'] + TYPE_COLUMNS,
             conn.execute('''
-                SELECT b.id, b.title, b.author, s.date_started, s.date_completed
+                SELECT b.id, b.title, b.author, s.date_started, s.date_completed,
+                       b.media_type, COALESCE(b.format, '')
                 FROM reading_sessions s JOIN books b ON b.id = s.book_id
                 WHERE s.user_id = ? ORDER BY s.date_completed, s.date_started
             ''', (user_id,)).fetchall()),
         'reviews.csv': _csv(
-            ['Book ID', 'Title', 'Author', 'Rating', 'Review'],
+            ['Book ID', 'Title', 'Author', 'Rating', 'Review'] + TYPE_COLUMNS,
             conn.execute('''
-                SELECT b.id, b.title, b.author, r.rating, r.comment
+                SELECT b.id, b.title, b.author, r.rating, r.comment,
+                       b.media_type, COALESCE(b.format, '')
                 FROM read_data r JOIN books b ON b.id = r.book_id
                 WHERE r.user_id = ? AND (r.rating IS NOT NULL OR r.comment IS NOT NULL)
                 ORDER BY LOWER(b.title)
             ''', (user_id,)).fetchall()),
         'shelves.csv': _csv(
-            ['Shelf', 'Book ID', 'Title', 'Author', 'Added'],
+            ['Shelf', 'Book ID', 'Title', 'Author', 'Added'] + TYPE_COLUMNS,
             conn.execute('''
-                SELECT uc.name, b.id, b.title, b.author, cb.added_at
+                SELECT uc.name, b.id, b.title, b.author, cb.added_at,
+                       b.media_type, COALESCE(b.format, '')
                 FROM user_collections uc
                 JOIN collection_books cb ON cb.collection_id = uc.collection_id
                 JOIN books b ON b.id = cb.book_id
                 WHERE uc.user_id = ? ORDER BY uc.name, LOWER(b.title)
             ''', (user_id,)).fetchall()),
         'wishlist.csv': _csv(
-            ['Book ID', 'Title', 'Author', 'ISBN', 'Added', 'Notes', 'Purchase Link'],
+            ['Book ID', 'Title', 'Author', 'ISBN', 'Added', 'Notes', 'Purchase Link'] + TYPE_COLUMNS,
             conn.execute('''
-                SELECT b.id, b.title, b.author, b.isbn, w.added_at, w.notes, w.purchase_link
+                SELECT b.id, b.title, b.author, b.isbn, w.added_at, w.notes, w.purchase_link,
+                       b.media_type, COALESCE(b.format, '')
                 FROM wishlist w JOIN books b ON b.id = w.book_id
                 WHERE w.user_id = ? ORDER BY w.added_at
             ''', (user_id,)).fetchall()),

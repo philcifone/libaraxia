@@ -12,7 +12,10 @@
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                         {% include '_format_badge.html' %}
-                        {% if book.removed_at %}
+                        {# Only shown when Show asks for them; marked so they can't pass for owned #}
+                        {% if book.owned == 0 %}
+                        <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Not owned</span>
+                        {% elif book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
                         {% endif %}
                         {% if book.cover_image_url %}

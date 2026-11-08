@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from utils.database import get_db
 from datetime import datetime
 from models import get_library_members, is_friends_with
-from utils.book_utils import get_filter_options, removed_filter
+from utils.book_utils import get_filter_options, shelf_filter, format_filter
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
 
@@ -43,13 +43,18 @@ def index():
     '''
     params = [current_user.id]
 
-    # Removed (deaccessioned) books are hidden unless asked for
-    query += removed_filter(request.args.get('show_removed'))
+    # Only what's on the shelf unless Show asks for not-owned or removed ones
+    query += shelf_filter(request.args)
 
     # Apply filters if they exist (simplified - no complex joins unless needed)
     if request.args.get('genre'):
         query += " AND LOWER(b.genre) = LOWER(?)"
         params.append(request.args.get('genre'))
+
+    # Book / Audiobook (8B.2)
+    fmt_sql, fmt_params = format_filter(request.args.get('format'))
+    query += fmt_sql
+    params.extend(fmt_params)
 
     if request.args.get('read_status'):
         query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
@@ -93,7 +98,9 @@ def index():
             'title': book['title'],
             'author': book['author'],
             'cover_image_url': book['cover_image_url'],
-            'removed': book['removed_at'] is not None
+            'removed': book['removed_at'] is not None,
+            'not_owned': not book['owned'],
+            'format': book['format'],
         } for book in books]
 
         return jsonify({
@@ -160,13 +167,18 @@ def shared_library():
     '''
     params = list(shared_user_ids)
 
-    # Removed (deaccessioned) books are hidden unless asked for
-    query += removed_filter(request.args.get('show_removed'))
+    # Only what's on the shelf unless Show asks for not-owned or removed ones
+    query += shelf_filter(request.args)
 
     # Apply filters
     if request.args.get('genre'):
         query += " AND LOWER(b.genre) = LOWER(?)"
         params.append(request.args.get('genre'))
+
+    # Book / Audiobook (8B.2)
+    fmt_sql, fmt_params = format_filter(request.args.get('format'))
+    query += fmt_sql
+    params.extend(fmt_params)
 
     if request.args.get('read_status'):
         query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
@@ -206,7 +218,9 @@ def shared_library():
             'title': book['title'],
             'author': book['author'],
             'cover_image_url': book['cover_image_url'],
-            'removed': book['removed_at'] is not None
+            'removed': book['removed_at'] is not None,
+            'not_owned': not book['owned'],
+            'format': book['format'],
         } for book in books]
 
         return jsonify({
@@ -258,7 +272,7 @@ def friends_libraries():
             (f.user_id_1 = ? AND f.user_id_2 = u.id) OR
             (f.user_id_2 = ? AND f.user_id_1 = u.id)
         )
-        LEFT JOIN library_books b ON b.added_by = u.id AND b.removed_at IS NULL
+        LEFT JOIN library_books b ON b.added_by = u.id AND b.owned = 1 AND b.removed_at IS NULL
         GROUP BY u.id
         ORDER BY u.username
     ''', (current_user.id, current_user.id)).fetchall()
@@ -306,7 +320,7 @@ def friend_library(username):
             SELECT b.*
             FROM library_books b
             WHERE b.added_by = ?
-            AND b.removed_at IS NULL
+            AND b.owned = 1 AND b.removed_at IS NULL
         '''
         params = [friend['id']]
 

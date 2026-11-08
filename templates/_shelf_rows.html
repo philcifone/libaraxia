@@ -1,0 +1,47 @@
+{# Shelf cards (ROADMAP 8C/8D): each a link with its name and count over a
+   row of covers that scrolls sideways (.shelf-row) instead of hiding what
+   doesn't fit. Used by Collections, the profile's shelves and the profile's
+   wishlist; the rows come from utils/shelves.py.
+
+   shelves:     [{label, url, count, covers: [{cover_image_url, title}],
+                  delete_url? (custom shelves: a delete button beside it)}]
+   shelf_cols:  'grid-cols-1 md:grid-cols-2' (default) or 'grid-cols-1'
+   cover_h:     cover height class, default 'h-20'; widths follow the image,
+                so an album is square and a VHS box tall #}
+{% set cover_h = cover_h or 'h-20' %}
+<div class="grid {{ shelf_cols or 'grid-cols-1 md:grid-cols-2' }} gap-4">
+    {% for shelf in shelves %}
+    <div class="flex items-center gap-2 min-w-0 group">
+        <a href="{{ shelf.url }}"
+           class="flex-1 min-w-0 bg-primary hover:bg-primary-hover p-4 rounded-lg transition-colors">
+            <div class="flex items-center justify-between gap-3 {% if shelf.covers %}mb-3{% endif %}">
+                <span class="text-content-primary text-lg truncate">{{ shelf.label }}</span>
+                <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm shrink-0">{{ shelf.count }}</span>
+            </div>
+            {% if shelf.covers %}
+            <div class="shelf-row items-end">
+                {% for c in shelf.covers %}
+                    {% if c.cover_image_url %}
+                    <img src="{{ url_for('static', filename=c.cover_image_url) }}" alt="{{ c.title }}"
+                         loading="lazy" class="{{ cover_h }} w-auto max-w-[8rem] rounded shadow-sm">
+                    {% else %}
+                    {% with title=none, size='sm', box='w-14 ' ~ cover_h ~ ' shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </a>
+        {% if shelf.delete_url %}
+        <form action="{{ shelf.delete_url }}" method="POST" class="reveal"
+              data-confirm="{{ 'Delete the shelf "' ~ shelf.label ~ '"? What is on it stays in your library.' }}"
+              data-confirm-ok="Delete shelf">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit" aria-label="Delete shelf {{ shelf.label }}"
+                    class="text-red-500 hover:text-red-400 p-2 transition-colors">
+                <span class="text-xl" aria-hidden="true">×</span>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>

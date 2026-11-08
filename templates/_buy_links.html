@@ -1,0 +1,20 @@
+{# Shop searches for a wishlist item (media.buy_links): ThriftBooks and
+   Bookshop.org for books, eBay (title + VHS/DVD) for movies, the Discogs
+   Marketplace for music. Needs `book` (a books row) and `lead` (the line
+   above the buttons). Opens in a new tab; nothing is fetched by us. #}
+{% set links = buy_links(book) %}
+<div class="mb-4">
+    <p class="text-sm text-content-secondary mb-2">{{ lead }}</p>
+    <div class="grid {{ 'grid-cols-2' if links|length > 1 else 'grid-cols-1' }} gap-3">
+        {% for name, url in links %}
+        <a href="{{ url }}" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg flex items-center justify-center gap-2 font-medium btn"
+           title="Search on {{ name }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+            </svg>
+            {{ name }}
+        </a>
+        {% endfor %}
+    </div>
+</div>

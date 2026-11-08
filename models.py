@@ -15,15 +15,22 @@ def is_valid_username(username):
 
 # Appearance settings (see the Themes section in static/styles.css).
 # To add a style, add its CSS blocks there and its key + label here.
-THEME_STYLES = {'house': 'House', 'classic': 'Classic'}
+# Keys are stored in users.theme_style and used in CSS; the names are what
+# the Appearance picker shows (renamed 2026-11-08, Phil).
+THEME_STYLES = {'house': 'Negative Earth', 'classic': 'OG'}
 THEME_MODES = {'system': 'System', 'light': 'Light', 'dark': 'Dark'}
 DEFAULT_THEME_STYLE = 'house'
 DEFAULT_THEME_MODE = 'system'
+# Accent colours (8B.5), Gruvbox: each has a light and a dark shade in
+# static/styles.css ([data-accent]). Both styles; Classic uses the dark shades.
+ACCENTS = {'green': 'Green', 'aqua': 'Aqua', 'blue': 'Blue', 'purple': 'Purple',
+           'orange': 'Orange', 'red': 'Red', 'yellow': 'Yellow'}
+DEFAULT_ACCENT = 'green'
 
 
 class User(UserMixin):
     def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None, email_verified=True, bio=None,
-                 theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE):
+                 theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE, accent=DEFAULT_ACCENT):
         self.id = id
         self.username = username
         self.email = email
@@ -34,6 +41,7 @@ class User(UserMixin):
         self.bio = bio
         self.theme_style = theme_style if theme_style in THEME_STYLES else DEFAULT_THEME_STYLE
         self.theme_mode = theme_mode if theme_mode in THEME_MODES else DEFAULT_THEME_MODE
+        self.accent = accent if accent in ACCENTS else DEFAULT_ACCENT
 
     def get_id(self):
         return str(self.id)

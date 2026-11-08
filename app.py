@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, request, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import LoginManager, current_user as _current_user
 from flask_wtf.csrf import CSRFProtect
@@ -28,7 +28,7 @@ from blueprints.covers import covers_blueprint
 from blueprints.videos import videos_blueprint
 from blueprints.records import records_blueprint
 from config import DevelopmentConfig, ProductionConfig
-from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES
+from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT
 from utils.rate_limiting import limiter
 
 def create_app():
@@ -145,6 +145,7 @@ def create_app():
                 bio=user_dict.get('bio'),
                 theme_style=user_dict.get('theme_style'),
                 theme_mode=user_dict.get('color_mode'),
+                accent=user_dict.get('accent'),
             )
         return None
 
@@ -201,6 +202,22 @@ def create_app():
     def item_url(row, action='show'):
         return url_for(media.item_endpoint(media.media_type_of(row), action), id=row['id'])
     app.add_template_global(item_url, 'item_url')
+    app.add_template_global(media.buy_links, 'buy_links')
+    # The library pages' Show choice (8B.3): on the shelf / not owned / removed / everything
+    from utils.book_utils import SHOW_CHOICES, show_choice
+    app.add_template_global(SHOW_CHOICES, 'SHOW_CHOICES')
+    app.add_template_global(show_choice, 'show_choice')
+
+    def url_with(**changes):
+        """This page's URL with some query args changed (None drops one);
+        repeated args such as tags[] are kept."""
+        args = request.args.to_dict(flat=False)
+        for key, value in changes.items():
+            args.pop(key, None)
+            if value is not None:
+                args[key] = [value]
+        return url_for(request.endpoint, **(request.view_args or {}), **args)
+    app.add_template_global(url_with, 'url_with')
     app.add_template_global(lambda row: media.media_labels(media.media_type_of(row)), 'labels_for')
 
     # Register Error Handlers
@@ -215,6 +232,8 @@ def create_app():
             'theme_style': user.theme_style if signed_in else DEFAULT_THEME_STYLE,
             'theme_mode': user.theme_mode if signed_in else DEFAULT_THEME_MODE,
             'theme_styles': THEME_STYLES,
+            'theme_accent': user.accent if signed_in else DEFAULT_ACCENT,
+            'theme_accents': ACCENTS,
             'theme_modes': THEME_MODES,
         }
 

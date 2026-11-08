@@ -32,6 +32,7 @@
     {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
 
 
+    {% include '_off_shelf_hint.html' %}
     {% if books %}
     {% include '_book_grid.html' %}
     {% else %}

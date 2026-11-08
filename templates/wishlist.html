@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import page_heading %}
 {# Your wishlist (wishlist.view_wishlist): books, movies and music you want,
    one section per type (`sections`: key, labels, rows), behind
    Books | Movies | Music | All tabs (`show`). Adding is the shared add page (add_item.html via
@@ -17,10 +18,7 @@
     {% endwith %}
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
-        <div class="mb-8 text-center">
-            <h1 class="text-4xl font-display font-bold text-content-primary mb-2">Wishlist</h1>
-            <p class="text-content-secondary">Books, movies and music you'd like to own</p>
-        </div>
+        {{ page_heading('bookmark', 'Wishlist', "Books, movies and music you'd like to own", class='mb-8') }}
 
         {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
            links, so they work without JS and the filter below still applies #}

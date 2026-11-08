@@ -1,18 +1,20 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 {# Add a book, a movie or a vinyl (Phase 8.5, 8.7): one page for every media
    type. Rendered by books.add_book and media_section's add_item (Add Movie,
    Add Vinyl). On top, a lookup card with up to three tabs, then the form
    (_item_fields.html):
 
      Search  title (and author) search: Google Books / Open Library for
-             books, TMDb for movies, MusicBrainz for vinyls. Pick a result
+             books, TMDb for movies, MusicBrainz for music. Pick a result
              to fill the form.
      ISBN /  type the code and look it up: the book APIs, or UPCitemdb then
      Barcode TMDb for movies. Without JS the box still works as a plain
              form (books: POST isbn_lookup; movies: GET ?barcode=).
      Scan    the camera (scanner.js); a read is looked up like a typed code.
 
-   Vinyls have no barcode (m.has_barcode is false), so only Search.
+   Music: Search, Barcode and Scan; the barcode is looked up on Discogs
+   (MusicBrainz as backup), /records/lookup?barcode=.
 
    Lookups only pre-fill: they never overwrite what you typed (add_item.js).
 
@@ -44,15 +46,13 @@
 {% endblock %}
 
 {% block content %}
-<div id="add-item" data-type="{{ m.type }}" data-other-add-url="{{ other_add_url }}"
+<div id="add-item" data-type="{{ m.type }}" data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
      class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
-    <a href="{{ back_url }}" class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
-        <span class="mr-2">←</span><span>Back to {{ back_label }}</span>
-    </a>
+    {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun) }}
 
     <!-- Lookups: fill the form from a search, a typed code or a scan -->
     <div class="bg-secondary rounded-lg overflow-hidden mb-8 card">
-        {# Vinyls have one tab; it stays, as the card's heading, so every add page looks alike #}
+        {# Music has one tab; it stays, as the card's heading, so every add page looks alike #}
         <div class="flex border-b border-gray-700">
             {% for key, short, long in tabs %}
             <button type="button" class="search-method-btn flex-1 min-w-0 px-2 py-3 text-sm sm:px-6 sm:py-4 sm:text-base text-content-primary hover:bg-primary transition-colors duration-200 text-center font-medium border-b-2 border-transparent data-[active=true]:border-accent"
@@ -65,10 +65,22 @@
         <!-- Search -->
         <div id="search-section" data-method="search" class="search-method-content{{ ' hidden' if active_method != 'search' }}">
             {% if search_enabled %}
-            <form id="search-form" class="flex gap-2 sm:gap-4 p-4">
+            {# Music adds a format choice; on a phone the box then gets its own row #}
+            <form id="search-form" class="flex {{ 'flex-wrap sm:flex-nowrap' if m.type == 'record' }} gap-2 sm:gap-4 p-4">
                 <input type="search" id="search-input" aria-label="Search by {{ 'title' if is_movie else 'title or ' ~ m.creator|lower }}"
-                       class="flex-1 bg-primary text-content-primary rounded-lg px-4 py-3 border border-rule-strong focus:outline-none focus:ring-2 focus:ring-accent"
+                       class="{{ 'basis-full sm:basis-0' if m.type == 'record' }} flex-1 min-w-0 bg-primary text-content-primary rounded-lg px-4 py-3 border border-rule-strong focus:outline-none focus:ring-2 focus:ring-accent"
                        placeholder="{{ m.title_search_placeholder }}">
+                {% if m.type == 'record' %}
+                {# MusicBrainz lists every pressing, so narrowing by format keeps a CD
+                   search from being twenty vinyl rows (?format= on /records/search) #}
+                <select id="search-format" aria-label="Format to search for"
+                        class="flex-1 sm:flex-none bg-primary text-content-primary rounded-lg px-2 py-3 border border-rule-strong focus:outline-none focus:ring-2 focus:ring-accent">
+                    <option value="">Any format</option>
+                    <option value="vinyl">Vinyl</option>
+                    <option value="cd">CD</option>
+                    <option value="cassette">Cassette</option>
+                </select>
+                {% endif %}
                 <button type="submit" class="shrink-0 px-4 sm:px-6 py-3 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Search</button>
             </form>
             <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pb-4"></div>
@@ -80,17 +92,18 @@
         {% if m.has_barcode %}
         <!-- ISBN / barcode: the lookup button sits right beside the box -->
         <div id="code-section" data-method="code" class="search-method-content{{ ' hidden' if active_method != 'code' }}">
-            <form id="code-form" method="{{ 'GET' if is_movie else 'POST' }}" action="{{ code_action }}" class="flex gap-2 sm:gap-4 p-4">
-                {% if is_movie %}
-                <input type="hidden" name="type" value="video">
+            {# Movies and music: a plain GET with ?barcode= pre-fills without JS #}
+            <form id="code-form" method="{{ 'POST' if is_book else 'GET' }}" action="{{ code_action }}" class="flex gap-2 sm:gap-4 p-4">
+                {% if not is_book %}
+                <input type="hidden" name="type" value="{{ m.type }}">
                 {% else %}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="isbn_lookup" value="1">
                 {% endif %}
-                <input type="text" id="code-input" name="{{ 'barcode' if is_movie else 'isbn' }}" aria-label="{{ m.code if is_movie else 'ISBN' }}"
+                <input type="text" id="code-input" name="{{ 'isbn' if is_book else 'barcode' }}" aria-label="{{ 'ISBN' if is_book else m.code }}"
                        inputmode="numeric" autocomplete="off" value="{{ code_value or '' }}"
                        class="flex-1 bg-primary text-content-primary rounded-lg px-4 py-3 border border-rule-strong focus:outline-none focus:ring-2 focus:ring-accent"
-                       placeholder="{{ 'UPC or EAN' if is_movie else 'ISBN, 10 or 13 digits' }}">
+                       placeholder="{{ 'ISBN, 10 or 13 digits' if is_book else 'UPC or EAN' }}">
                 <button type="submit" class="shrink-0 px-4 sm:px-6 py-3 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Look up</button>
             </form>
         </div>
@@ -100,6 +113,7 @@
             <div class="flex flex-col items-center gap-4 p-4 sm:p-6">
                 <p class="text-content-secondary text-center text-sm">
                     {% if is_movie %}Point the camera at the barcode on the back of the box. Most tapes from before the mid-80s have none: search by title instead.
+                    {% elif m.type == 'record' %}Point the camera at the barcode on the back of the sleeve, case or J-card. Records from before the late 70s have none: search instead.
                     {% else %}Point the camera at the barcode on the back cover (the ISBN).{% endif %}
                 </p>
                 <div id="interactive" class="viewport w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
@@ -132,10 +146,10 @@
                 {% for d in duplicates %}
                 {% if not is_book %}
                 <li><a class="underline hover:text-accent" href="{{ url_for(m.bp ~ '.show_' ~ m.item, id=d.id) }}">{{ d.title }}</a>{% if m.type == 'record' and d.author %}, {{ d.author }}{% endif %}
-                    {% if d.format %}({{ d.format|format_label }}){% endif %}, {{ d.owner or 'no owner' }}'s{% if d.removed %}, removed{% endif %}:
+                    {% if d.format %}({{ d.format|format_label }}){% endif %}, {{ d.owner or 'no owner' }}'s{% if d.not_owned %}, not owned (bought it? open it and choose "I own it now"){% endif %}{% if d.removed %}, removed{% endif %}:
                     same {{ d.match_reason|join(' and ') }}</li>
                 {% else %}
-                <li><a class="underline hover:text-accent" href="{{ url_for('books.show_book', id=d.id) }}">{{ d.title }}</a>{% if d.author %}, {{ d.author }}{% endif %}{% if d.removed %}, removed from the library{% endif %}:
+                <li><a class="underline hover:text-accent" href="{{ url_for('books.show_book', id=d.id) }}">{{ d.title }}</a>{% if d.author %}, {{ d.author }}{% endif %}{% if d.not_owned %}, not owned (bought it? open it and choose "I own it now"){% elif d.removed %}, removed from the library{% endif %}:
                     same {{ d.match_reason|join(' and ') }}</li>
                 {% endif %}
                 {% endfor %}
@@ -153,6 +167,17 @@
 
             {# Books get "Find a better cover" (cover_finder.js) #}
             {% with cover_fetch=(m.type == 'book') %}{% include '_item_fields.html' %}{% endwith %}
+
+            {# 8B.3: something you read/watched/listened to but don't have. It's
+               saved as owned = 0: off the shelf and out of owned counts, there
+               for its review. Not on the wishlist's add: wishing is not owning. #}
+            {% if not to_wishlist %}
+            <label class="md:col-span-2 flex items-center justify-center gap-2 text-sm text-content-primary">
+                <input type="checkbox" name="not_owned" value="1" id="not_owned" class="form-checkbox text-accent"
+                       {% if values.not_owned %}checked{% endif %}>
+                I don't own this (I {{ m.verb_past }} it and want to review it)
+            </label>
+            {% endif %}
 
             {# The shelf refuses a second copy until this is ticked (add_book,
                media_section add_item); the wishlist has its own "you own it" check #}
@@ -173,7 +198,15 @@
     </div>
 
     {% if is_movie and tmdb %}
-    <p class="mt-6 text-xs text-content-secondary text-center">Film details from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+    {# TMDB's attribution (their API terms): the notice and their logo,
+       smaller than ours. static/logos/tmdb.svg is their "Primary short"
+       logo from themoviedb.org/about/logos-attribution, unchanged. #}
+    <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-xs text-content-secondary text-center">
+        <a href="https://www.themoviedb.org/" rel="noopener" class="shrink-0" aria-label="TMDB">
+            <img src="{{ url_for('static', filename='logos/tmdb.svg') }}" alt="TMDB" class="h-3 w-auto">
+        </a>
+        <p>Film details from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+    </div>
     {% elif m.type == 'record' %}
     <p class="mt-6 text-xs text-content-secondary text-center">Release data from <a class="underline" href="https://musicbrainz.org/">MusicBrainz</a>, covers from the <a class="underline" href="https://coverartarchive.org/">Cover Art Archive</a>.</p>
     {% endif %}

@@ -30,22 +30,28 @@ static/scanner.js: the scanner hands over 13 digits (UPC-A gets a leading
 aren't scanned (Phil, 2026-11-07): Add Vinyl is title search only.
 """
 import re
+from urllib.parse import quote_plus, urlencode
 
 BOOK = 'book'
 VIDEO = 'video'
 RECORD = 'record'
 MEDIA_TYPES = (BOOK, VIDEO, RECORD)
 
-# Physical formats by type. Adding one needs no migration (books.format has
-# no CHECK), just an entry here. Books have none.
+# Formats by type. Adding one needs no migration (books.format has no
+# CHECK), just an entry here. Books (8B.2): a plain book is stored as NULL
+# (every book from before 8B.2, and new ones), an audiobook as 'Audiobook';
+# book_format() turns the form's choice into that. Audiobooks never count
+# toward page totals (blueprints/user.py), owned or not.
 FORMATS = {
+    BOOK: ('Book', 'Audiobook'),
     VIDEO: ('VHS', 'DVD'),        # Phil, 2026-11-07: no LaserDisc or Betamax
     # Speed isn't stored: it follows from the format (LP 33, 7" 45); the odd
     # exception goes in the notes. CD and Cassette since the section became
     # Music (Phil, 2026-11-08); the type stays 'record' in code and the DB.
     RECORD: ('LP', 'EP', '7in', '10in', '12in', 'CD', 'Cassette'),
 }
-DEFAULT_FORMAT = {VIDEO: 'VHS', RECORD: 'LP'}
+DEFAULT_FORMAT = {BOOK: 'Book', VIDEO: 'VHS', RECORD: 'LP'}
+AUDIOBOOK = 'Audiobook'
 VIDEO_FORMATS = FORMATS[VIDEO]
 DEFAULT_VIDEO_FORMAT = DEFAULT_FORMAT[VIDEO]
 
@@ -58,6 +64,12 @@ FORMAT_LABELS = {
     'VHS': 'Cartridge',
     '7in': '7" single', '10in': '10"', '12in': '12" single',
 }
+
+
+def book_format(value):
+    """What to store for a book form's Format choice: 'Audiobook', or None
+    for a plain book (so old rows and new ones read the same)."""
+    return AUDIOBOOK if (value or '').strip() == AUDIOBOOK else None
 
 
 def format_label(fmt):
@@ -175,16 +187,46 @@ BLUEPRINTS = {BOOK: 'books', VIDEO: 'videos', RECORD: 'records'}
 # The view each section's pages read (migrations 018, 023, 024)
 VIEWS = {BOOK: 'library_books', VIDEO: 'library_videos', RECORD: 'library_records'}
 ITEMS = {BOOK: 'book', VIDEO: 'video', RECORD: 'record'}
+# Each section's own grid (the first crumb on its item pages)
+HOMES = {BOOK: 'base.index', VIDEO: 'videos.index', RECORD: 'records.index'}
 
-# Code (barcode/ISBN) handling per type. Records have none (Phil,
-# 2026-11-07): no Barcode or Scan tab on Add Vinyl, no barcode field.
-HAS_BARCODE = {BOOK: True, VIDEO: True, RECORD: False}
+# Code (barcode/ISBN) handling per type. Music got barcodes back on
+# 2026-11-08 (ROADMAP 8B.12, Phil) once Discogs could look them up;
+# 2026-11-07 to -08 it had none.
+HAS_BARCODE = {BOOK: True, VIDEO: True, RECORD: True}
 
 
 def item_endpoint(media_type, action='show'):
     """'books.show_book', 'videos.edit_video', 'records.add_record', ..."""
     media_type = media_type if media_type in MEDIA_TYPES else BOOK
     return f'{BLUEPRINTS[media_type]}.{action}_{ITEMS[media_type]}'
+
+
+# Where to buy something on a wishlist: shop searches, opened in a new tab
+# from the item page (_buy_links.html). Plain links, nothing fetched.
+# Movies: eBay, with the format so a VHS wish doesn't list Blu-rays.
+# Music: the Discogs Marketplace, filtered to the album's format.
+_DISCOGS_FORMAT = {'LP': 'Vinyl', 'EP': 'Vinyl', '7in': 'Vinyl', '10in': 'Vinyl', '12in': 'Vinyl',
+                   'CD': 'CD', 'Cassette': 'Cassette'}
+
+
+def buy_links(row):
+    """[(shop name, url)] for a books row of any type."""
+    kind = media_type_of(row)
+    title = (row['title'] or '').strip()
+    creator = (row['author'] or '').strip()
+    fmt = row['format'] if 'format' in row.keys() else None
+    if kind == VIDEO:
+        words = f"{title} {fmt or ''}".strip()          # 'Heat VHS', 'Heat DVD'
+        return [('eBay', 'https://www.ebay.com/sch/i.html?' + urlencode({'_nkw': words}))]
+    if kind == RECORD:
+        params = {'q': f'{creator} {title}'.strip()}
+        if _DISCOGS_FORMAT.get(fmt):
+            params['format'] = _DISCOGS_FORMAT[fmt]
+        return [('Discogs', 'https://www.discogs.com/sell/list?' + urlencode(params))]
+    words = quote_plus(f'{title} {creator}'.strip())
+    return [('ThriftBooks', f'https://www.thriftbooks.com/browse/?b.search={words}'),
+            ('Bookshop.org', f'https://bookshop.org/search?keywords={words}')]
 
 
 def media_type_of(row):
@@ -203,7 +245,7 @@ def media_labels(media_type):
     return {**_LABELS[media_type], 'statuses': STATUSES[media_type],
             'status_labels': STATUS_LABELS, 'done_status': DONE_STATUS[media_type],
             'want_status': WANT_STATUS[media_type],
-            'bp': BLUEPRINTS[media_type], 'item': ITEMS[media_type],
+            'bp': BLUEPRINTS[media_type], 'item': ITEMS[media_type], 'home': HOMES[media_type],
             'formats': FORMATS.get(media_type, ()),
             'has_barcode': HAS_BARCODE[media_type]}
 

@@ -1,0 +1,21 @@
+{# The search hint (ROADMAP 8B.3): matches hidden because they aren't on
+   the shelf, so a search at a bookstore still says "you read this" without
+   ever listing it among the results. `off_shelf` from
+   book_utils.off_shelf_matches: {count, rows}. #}
+{% if off_shelf %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+    <p class="text-sm text-content-secondary border-l-4 border-accent pl-3 py-1">
+        {% set all_mine = off_shelf.rows|rejectattr('added_by', 'equalto', current_user.id)|list|length == 0 %}
+        <span class="font-semibold text-content-primary">Not on {{ 'your' if all_mine else 'the' }} shelf:</span>
+        {% for row in off_shelf.rows -%}
+            {%- set details = [] -%}
+            {%- if row.owner and row.added_by != current_user.id %}{% set _ = details.append(row.owner ~ "'s") %}{% endif -%}
+            {%- if row.status %}{% set _ = details.append(labels_for(row).status_labels[row.status]|lower) %}{% endif -%}
+            {%- set _ = details.append('not owned' if row.owned == 0 else 'removed') -%}
+            <a href="{{ item_url(row) }}" class="underline hover:text-accent">{{ row.title }}</a> ({{ details|join(', ') }}){{ ', ' if not loop.last }}
+        {%- endfor %}
+        {%- if off_shelf.count > off_shelf.rows|length %} and {{ off_shelf.count - off_shelf.rows|length }} more{% endif %}.
+        <a href="{{ url_with(show='all', show_removed=none, page=none) }}" class="text-accent hover:text-accent-hover underline whitespace-nowrap">Show {{ 'it' if off_shelf.count == 1 else 'them' }}</a>
+    </p>
+</div>
+{% endif %}

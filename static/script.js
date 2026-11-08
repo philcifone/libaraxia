@@ -59,7 +59,8 @@ function toggleFilters(open) {
 // Clear filters
 // The filter-panel fields. Clearing removes only these, so the search term,
 // shared-library member and sort survive.
-const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show_removed', 'page', 'csrf_token'];
+// show_removed: the old name of `show`, still in some bookmarks
+const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'page', 'csrf_token'];
 
 function clearFilters() {
     const params = new URLSearchParams(window.location.search);
@@ -102,10 +103,10 @@ function updateActiveFilters() {
         activeFilters.push({ label: 'Rating', value: rating.options[rating.selectedIndex].text });
     }
 
-    // Check the removed-books choice (empty = on the shelf only, the default)
-    const showRemoved = document.getElementById('show_removed');
-    if (showRemoved && showRemoved.value) {
-        activeFilters.push({ label: 'Removed', value: showRemoved.options[showRemoved.selectedIndex].text });
+    // Check the Show choice (empty = on the shelf, the default)
+    const show = document.getElementById('show');
+    if (show && show.value) {
+        activeFilters.push({ label: 'Show', value: show.options[show.selectedIndex].text });
     }
 
     // Check tags
@@ -371,9 +372,20 @@ class InfiniteScroll {
         const currentView = localStorage.getItem('libraryView') || 'grid';
         const container = document.getElementById('book-container');
         const isListView = container && container.className.includes('flex-col');
-        // Deaccessioned books only appear with "Include removed books" on
-        const removedBadge = book.removed
+        // Not-owned and removed items only appear when Show asks for them,
+        // and are marked so they can't pass for something on the shelf
+        const removedBadge = book.not_owned
+            ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Not owned</span>'
+            : book.removed
             ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>'
+            : '';
+
+        // Audiobooks get a badge in the top-right corner (_format_badge.html);
+        // a plain book has none. Icon: Lucide "book-headphones".
+        const formatBadge = book.format === 'Audiobook'
+            ? `<span class="absolute top-2 right-2 z-10 p-1 flex items-center text-xs font-mono font-bold bg-primary-bg text-content-primary border border-card rounded-pill" title="Audiobook">
+                   <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M8 12v-2a4 4 0 0 1 8 0v2"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="12" r="1"/></svg>
+                   <span class="sr-only">Audiobook</span></span>`
             : '';
 
         if (isListView || currentView === 'list') {
@@ -390,6 +402,7 @@ class InfiniteScroll {
                        class="book-link flex gap-4 bg-secondary-bg rounded-lg overflow-hidden hover:bg-secondary-bg/80 p-4 card-link">
                         <div class="book-cover relative flex-shrink-0 w-24 h-32 overflow-hidden rounded">
                             ${removedBadge}
+                            ${formatBadge}
                             ${coverImage}
                         </div>
                         <div class="book-info flex-1 flex flex-col justify-center">
@@ -417,6 +430,7 @@ class InfiniteScroll {
                        class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                         <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                             ${removedBadge}
+                            ${formatBadge}
                             ${coverImage}
                         </div>
                         <div class="book-info p-3 sm:p-4">

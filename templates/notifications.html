@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import page_heading %}
 
 {% block title %}Notifications{% endblock %}
 {% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
@@ -6,14 +7,7 @@
 {% block content %}
     <!-- Main Content -->
     <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
-        <!-- Back Nav -->
-        <a href="{{ url_for('base.index') }}"
-           class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
-            <span class="mr-2">←</span>
-            <span>Back to Catalog</span>
-        </a>
-
-        <h1 class="text-3xl font-display text-content-primary">Notifications</h1>
+        {{ page_heading('bell', 'Notifications', class='') }}
 
         <!-- Friend Requests Section -->
         {% if friend_requests %}

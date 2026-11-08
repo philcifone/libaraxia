@@ -42,7 +42,7 @@ def settings():
     stats = {
         'total_users': conn.execute('SELECT COUNT(*) FROM users').fetchone()[0],
         'active_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_active = 1').fetchone()[0],
-        'total_books': conn.execute('SELECT COUNT(*) FROM library_books WHERE removed_at IS NULL').fetchone()[0],
+        'total_books': conn.execute('SELECT COUNT(*) FROM library_books WHERE owned = 1 AND removed_at IS NULL').fetchone()[0],
         'admin_users': conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0],
         'unowned_books': conn.execute('SELECT COUNT(*) FROM books WHERE added_by IS NULL').fetchone()[0],
     }

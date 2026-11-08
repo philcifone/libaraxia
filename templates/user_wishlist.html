@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 
 {% block title %}{{ target_username.capitalize() }}'s Wishlist{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -6,6 +7,7 @@
 {% block content %}
     <!-- Main Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+        {{ crumbs([(target_username, url_for('user.profile', username=target_username))], 'Wishlist') }}
 
         <!-- Page Header -->
         <div class="mb-8 text-center">
@@ -15,14 +17,6 @@
             <p class="text-content-secondary">Books {{ target_username }} wants to purchase</p>
         </div>
 
-        <!-- Back Navigation -->
-        <div class="mb-6">
-            <a href="{{ url_for('user.profile', username=target_username) }}"
-               class="inline-flex items-center text-content-secondary hover:text-accent transition-colors">
-                <span class="mr-2">←</span>
-                <span>Back to {{ target_username.capitalize() }}'s Profile</span>
-            </a>
-        </div>
 
         <!-- Wishlist Books Grid -->
         {% if wishlist_books %}

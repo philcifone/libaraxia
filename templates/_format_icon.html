@@ -1,9 +1,10 @@
-{# A movie's format as an icon (the grid badge): a cassette for VHS (the
-   "Cartridge"), a disc for DVD. Any other format (none today; see
-   media.VIDEO_FORMATS) falls back to its name. Needs `fmt` (the stored value). The
+{# A format as an icon (the grid badge): a cassette for VHS (the
+   "Cartridge"), a disc for DVD, a book with headphones for an audiobook.
+   Any other format (LP, CD, ...) falls back to its name. Needs `fmt` (the stored value). The
    name stays available to screen readers and as a hover tooltip. #}
 {% set label = fmt|format_label %}
 {% from '_icons.html' import icon %}
 {% if fmt == 'VHS' %}{{ icon('vhs') }}<span class="sr-only">{{ label }}</span>
 {% elif fmt == 'DVD' %}{{ icon('dvd') }}<span class="sr-only">{{ label }}</span>
+{% elif fmt == 'Audiobook' %}{{ icon('audiobook') }}<span class="sr-only">{{ label }}</span>
 {% else %}{{ label }}{% endif %}

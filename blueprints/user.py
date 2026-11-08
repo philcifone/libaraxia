@@ -6,10 +6,10 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
-from utils import media
+from utils import media, shelves
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
-from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES, ACCENTS
 from werkzeug.utils import secure_filename
 import bcrypt
 import os
@@ -37,7 +37,8 @@ def calculate_user_stats(conn, user_id):
     stats = conn.execute(f'''
         SELECT
             COUNT(*) AS books_read,
-            SUM(CAST(b.page_count AS INTEGER)) AS pages_read,
+            -- An audiobook's page count is the print edition's: not read pages (8B.2)
+            SUM(CASE WHEN b.format = 'Audiobook' THEN 0 ELSE CAST(b.page_count AS INTEGER) END) AS pages_read,
             (SELECT AVG(r.rating) FROM read_data r
              WHERE r.user_id = :u AND r.rating IS NOT NULL
                AND {only(BOOK, 'r.book_id')}) AS avg_rating
@@ -69,7 +70,7 @@ def calculate_user_stats(conn, user_id):
             SUM(EXISTS (SELECT 1 FROM collections c
                         WHERE c.book_id = b.id AND c.user_id = :u AND c.status = 'read')) AS read_books
         FROM library_books b
-        WHERE b.added_by = :u AND b.removed_at IS NULL
+        WHERE b.added_by = :u AND b.owned = 1 AND b.removed_at IS NULL
     ''', {'u': user_id}).fetchone()
     total_books = shelf['total_books'] or 0
     result['read_percentage'] = (round((shelf['read_books'] or 0) / total_books * 100, 1)
@@ -276,50 +277,17 @@ def profile(username):
     from datetime import datetime
     current_year = datetime.now().year
 
-    # Get wishlist books for the user
-    wishlist_books = []
+    # Shelves (8C) and wishlist rows (8D) for friends and yourself, drawn
+    # by _shelf_rows.html: per section, only the statuses in use
+    profile_shelves, wishlist_shelves = [], []
     if are_friends:
-        wishlist_query = """
-            SELECT
-                b.id,
-                b.title,
-                b.author,
-                b.cover_image_url,
-                w.notes,
-                w.added_at
-            FROM wishlist w
-            JOIN books b ON w.book_id = b.id
-            WHERE w.user_id = ?
-            ORDER BY w.added_at DESC
-            LIMIT 20
-        """
-        wishlist_books = [dict(row) for row in conn.execute(wishlist_query, (user['id'],)).fetchall()]
-
-    # Get reading shelves data (like collections page)
-    reading_lists = []
-    reading_list_covers = {}
-    if are_friends:
-        # Get count for each reading status
-        reading_lists = conn.execute(f"""
-            SELECT status, COUNT(*) as book_count
-            FROM collections
-            WHERE user_id = ? AND {only(BOOK)}
-            GROUP BY status
-        """, (user['id'],)).fetchall()
-        reading_lists = [dict(row) for row in reading_lists]
-
-        # Get cover previews for each status
-        statuses = ['read', 'currently reading', 'want to read', 'did not finish']
-        for status in statuses:
-            covers = conn.execute("""
-                SELECT b.cover_image_url
-                FROM collections c
-                JOIN books b ON c.book_id = b.id
-                WHERE c.user_id = ? AND c.status = ?
-                ORDER BY c.created_at DESC
-                LIMIT 8
-            """, (user['id'], status)).fetchall()
-            reading_list_covers[status] = [row['cover_image_url'] for row in covers]
+        link_user = None if is_own_profile else user['username']
+        for media_type in shelves.SECTION_NAMES:
+            rows = shelves.status_shelves(conn, user['id'], media_type, username=link_user,
+                                          keep_empty=False)
+            if rows:
+                profile_shelves.append((shelves.SECTION_NAMES[media_type], rows))
+        wishlist_shelves = shelves.wishlist_shelves(conn, user['id'], username=link_user)
 
     # Check if this user is in current user's shared library
     in_shared_library = shares_library_with(current_user.id, user['id']) if not is_own_profile else False
@@ -368,9 +336,8 @@ def profile(username):
         are_friends=are_friends,
         friend_request_id=friend_request_id,
         friends=friends,
-        wishlist_books=wishlist_books,
-        reading_lists=reading_lists,
-        reading_list_covers=reading_list_covers,
+        profile_shelves=profile_shelves,
+        wishlist_shelves=wishlist_shelves,
         in_shared_library=in_shared_library,
         household=household,
         recent_reviews=recent_reviews,
@@ -520,24 +487,25 @@ def update_bio():
 @login_required
 @limiter.limit("60 per hour")
 def update_theme():
-    """Save the Appearance settings (style + light/dark mode)."""
+    """Save the Appearance settings (style, light/dark mode, accent colour)."""
     data = request.get_json(silent=True) or {}
     style = data.get('style', current_user.theme_style)
     mode = data.get('mode', current_user.theme_mode)
-    if style not in THEME_STYLES or mode not in THEME_MODES:
+    accent = data.get('accent', current_user.accent)
+    if style not in THEME_STYLES or mode not in THEME_MODES or accent not in ACCENTS:
         return jsonify({'success': False, 'message': 'Unknown theme setting'}), 400
 
     conn = get_db()
     try:
-        conn.execute('UPDATE users SET theme_style = ?, color_mode = ? WHERE id = ?',
-                     (style, mode, current_user.id))
+        conn.execute('UPDATE users SET theme_style = ?, color_mode = ?, accent = ? WHERE id = ?',
+                     (style, mode, accent, current_user.id))
         conn.commit()
     except Exception:
         current_app.logger.exception('Error saving theme settings')
         return jsonify({'success': False, 'message': 'Could not save appearance settings'}), 500
 
-    current_user.theme_style, current_user.theme_mode = style, mode
-    return jsonify({'success': True, 'style': style, 'mode': mode})
+    current_user.theme_style, current_user.theme_mode, current_user.accent = style, mode, accent
+    return jsonify({'success': True, 'style': style, 'mode': mode, 'accent': accent})
 
 @user_blueprint.route('/update_password', methods=['POST'])
 @login_required
@@ -726,7 +694,7 @@ def calculate_media_stats(conn, user_id, kind):
               'done': media.DONE_STATUS[kind], 'want': media.WANT_STATUS[kind]}
     stats = dict(conn.execute(f'''
         WITH shelf AS (
-            SELECT * FROM {view} WHERE added_by = :u AND removed_at IS NULL
+            SELECT * FROM {view} WHERE added_by = :u AND owned = 1 AND removed_at IS NULL
         ),
         done AS (
             SELECT b.* FROM collections c JOIN books b ON b.id = c.book_id
@@ -749,7 +717,7 @@ def calculate_media_stats(conn, user_id, kind):
         return None
     stats['by_format'] = [dict(r) for r in conn.execute(f'''
         SELECT COALESCE(NULLIF(format, ''), 'Unknown') AS format, COUNT(*) AS count
-        FROM {view} WHERE added_by = ? AND removed_at IS NULL
+        FROM {view} WHERE added_by = ? AND owned = 1 AND removed_at IS NULL
         GROUP BY 1 ORDER BY count DESC, format
     ''', (user_id,)).fetchall()]
     stats['hours_done'] = round((stats['minutes_done'] or 0) / 60, 1)
@@ -763,19 +731,21 @@ def calculate_library_stats(conn, user_id):
     stats = dict(conn.execute('''
         WITH shelf AS (
             SELECT * FROM library_books
-            WHERE added_by = :u AND removed_at IS NULL
+            WHERE added_by = :u AND owned = 1 AND removed_at IS NULL
         )
         SELECT
             (SELECT COUNT(*) FROM shelf) AS total_books,
-            (SELECT SUM(CAST(page_count AS INTEGER)) FROM shelf) AS total_pages,
+            (SELECT SUM(CAST(page_count AS INTEGER)) FROM shelf
+             WHERE format IS NOT 'Audiobook') AS total_pages,
             (SELECT COUNT(*) FROM shelf s
              WHERE EXISTS (SELECT 1 FROM collections c
                            WHERE c.book_id = s.id AND c.user_id = :u AND c.status = 'read')) AS read_books,
             (SELECT COUNT(DISTINCT LOWER(author)) FROM shelf
              WHERE author IS NOT NULL AND author != '') AS unique_authors,
-            (SELECT title FROM shelf
+            (SELECT title FROM shelf WHERE format IS NOT 'Audiobook'
              ORDER BY CAST(page_count AS INTEGER) DESC LIMIT 1) AS longest_book,
-            (SELECT MAX(CAST(page_count AS INTEGER)) FROM shelf) AS longest_pages,
+            (SELECT MAX(CAST(page_count AS INTEGER)) FROM shelf
+             WHERE format IS NOT 'Audiobook') AS longest_pages,
             (SELECT genre FROM shelf
              WHERE genre IS NOT NULL AND genre != ''
              GROUP BY LOWER(genre) ORDER BY COUNT(*) DESC LIMIT 1) AS most_common_genre

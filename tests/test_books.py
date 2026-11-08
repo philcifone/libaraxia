@@ -161,7 +161,7 @@ def test_wishlist_remove_deletes_own_wishlist_book(client, db, people):
 def test_wishlist_remove_keeps_rated_book_out_of_library(client, db, people):
     """Phase 5 leftover: a rated wishlist book (e.g. a Goodreads to-read row
     with a rating) used to land in your library when removed from the
-    wishlist. Now it's marked removed and kept on "Read but not owned"."""
+    wishlist. Now it's marked not owned and kept on "Read but not owned"."""
     carol = people['carol']
     book = add_book(db, carol, 'Read it, never bought it')
     db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (carol, book))
@@ -171,7 +171,7 @@ def test_wishlist_remove_keeps_rated_book_out_of_library(client, db, people):
     client.post(f'/wishlist/remove/{book}')
 
     assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE book_id = ?', book) == 1      # review kept
-    assert scalar(db, 'SELECT removed_at IS NOT NULL FROM books WHERE id = ?', book) == 1
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', book) == 1   # not owned, not removed (8B.3)
     assert 'Read it, never bought it' not in client.get('/base/index').get_data(as_text=True)
     assert scalar(db, """SELECT COUNT(*) FROM collection_books cb
                          JOIN user_collections uc ON uc.collection_id = cb.collection_id
@@ -190,7 +190,7 @@ def test_wishlist_remove_unread_book_with_data_is_not_shelved_as_read(client, db
     db.commit()
     login(client, 'carol')
     client.post(f'/wishlist/remove/{book}')
-    assert scalar(db, 'SELECT removed_at IS NOT NULL FROM books WHERE id = ?', book) == 1
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', book) == 1   # not owned, not removed (8B.3)
     assert scalar(db, "SELECT COUNT(*) FROM user_collections WHERE name = 'Read but not owned'") == 0
 
 

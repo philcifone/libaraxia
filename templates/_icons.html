@@ -6,7 +6,9 @@
 
    Names: library (Lucide "library"), disc (Lucide "disc-3", the vinyl
    icon), vhs (a VHS cassette: shell, two reels, the tape between; Lucide
-   has no VHS icon), dvd (a disc with a hole). Stroke icons in currentColor,
+   has no VHS icon), dvd (a disc with a hole), audiobook (Lucide
+   "book-headphones"), and the sidebar's: bell, feed, bookmark (wishlist),
+   collections, user, settings. Stroke icons in currentColor,
    24x24, hidden from screen readers: the caller supplies the words. #}
 {% macro icon(name, class='w-5 h-5') -%}
 <svg class="{{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -28,22 +30,65 @@
 {%- elif name == 'dvd' %}
     <circle cx="12" cy="12" r="9"/>
     <circle cx="12" cy="12" r="2.5"/>
+{%- elif name == 'bell' %}
+    <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+{%- elif name == 'feed' %}
+    <path d="M4 5a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM14 11a1 1 0 011-1h4a1 1 0 011 1v8a1 1 0 01-1 1h-4a1 1 0 01-1-1v-8z"/>
+{%- elif name == 'bookmark' %}
+    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+{%- elif name == 'collections' %}
+    <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+{%- elif name == 'user' %}
+    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+{%- elif name == 'settings' %}
+    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+{%- elif name == 'audiobook' %}
+    {# Lucide "book-headphones" #}
+    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>
+    <path d="M8 12v-2a4 4 0 0 1 8 0v2"/>
+    <circle cx="15" cy="12" r="1"/>
+    <circle cx="9" cy="12" r="1"/>
 {%- endif %}
 </svg>
 {%- endmacro %}
 
-{# A grid page's heading: a card the width of the tabs and search row, with
-   the section's icon and the page's name ("My Vinyls", "alice's Movies")
-   side by side in the middle. It sits between the tabs and the search row,
-   24px from each (the tabs' pb-4 plus pt-2 above, pb-6 below). #}
+{# Every page's heading (8B.6): a card with the page's icon and name side by
+   side in the middle, the same on the grids (section_heading) and on Feed,
+   Notifications, Wishlist, Collections and Admin. `subtitle` is an optional
+   line under it. The caller spaces it (mb-6 or the grid wrapper below). #}
+{% macro page_heading(icon_name, name, subtitle=none, class='mb-6') -%}
+<div class="bg-secondary rounded-xl card px-4 py-3 {{ class }}">
+    <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center">
+        <span class="text-accent shrink-0">{{ icon(icon_name, 'w-8 h-8') }}</span>
+        <span class="min-w-0">{{ name }}</span>
+    </h1>
+    {% if subtitle %}<p class="mt-1 text-sm text-content-secondary text-center">{{ subtitle }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{# A grid page's heading: page_heading the width of the tabs and search row
+   ("My Music", "alice's Movies"), 24px from each (the tabs' pb-4 plus pt-2
+   above, pb-6 below). #}
 {% macro section_heading(media_type, name) -%}
 {% set names = {'book': 'library', 'video': 'vhs', 'record': 'disc'} %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
-    <div class="bg-secondary rounded-xl card px-4 py-3">
-        <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center">
-            <span class="text-accent shrink-0">{{ icon(names[media_type], 'w-8 h-8') }}</span>
-            <span class="min-w-0">{{ name }}</span>
-        </h1>
-    </div>
+    {{ page_heading(names[media_type], name, class='') }}
 </div>
+{%- endmacro %}
+
+{# Where you are, on pages you drill into (8B.8, replacing the "Back to
+   Catalog" links): LIBRARY / DUNE / REVIEW. `trail` is a list of
+   (label, url) for the steps above; `here` is this page, not a link.
+   Long titles are cut with an ellipsis. Pages in the sidebar don't need one. #}
+{% macro crumbs(trail, here, class='mb-6') -%}
+<nav aria-label="Breadcrumb" class="crumbs {{ class }}">
+    <ol class="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {% for label, url in trail %}
+        <li><a href="{{ url }}" class="crumb-link">{{ label }}</a></li>
+        <li aria-hidden="true" class="crumb-sep">/</li>
+        {% endfor %}
+        <li aria-current="page" class="crumb-here">{{ here }}</li>
+    </ol>
+</nav>
 {%- endmacro %}

@@ -5,7 +5,10 @@ from typing import Optional, Dict, Any
 from utils.database import get_db
 from utils.book_utils import (
     get_filter_options,
-    removed_filter,
+    shelf_filter,
+    show_choice,
+    off_shelf_matches,
+    format_filter,
     find_duplicates,
     fetch_book_details_from_isbn,
     process_image,
@@ -88,10 +91,13 @@ def add_book():
             current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
             page_count = 0
 
-        conn.execute("""
+        # "I don't own this" (8B.3): kept off the shelf, there for its review
+        owned = not request.form.get("not_owned")
+        cursor = conn.execute("""
             INSERT INTO books (title, author, publisher, publish_year, isbn,
-                             page_count, cover_image_url, description, subtitle, genre, added_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             page_count, cover_image_url, description, subtitle, genre, added_by, owned,
+                             format)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             request.form["title"],
             request.form["author"],
@@ -103,10 +109,16 @@ def add_book():
             request.form.get("description"),
             request.form.get("subtitle", ""),
             request.form.get("genre", ""),
-            current_user.id
+            current_user.id,
+            1 if owned else 0,
+            media.book_format(request.form.get("format")),   # Book (NULL) or Audiobook
         ))
         conn.commit()
 
+        if not owned:
+            # The library won't show it, so go to its page, where the review is
+            flash("Book added as not owned, so it isn't in your library. Rate and review it here.", "success")
+            return redirect(url_for("books.show_book", id=cursor.lastrowid))
         flash("Book added successfully!", "success")
         return redirect(url_for("base.index"))
 
@@ -169,6 +181,9 @@ def _add_book_page(values, destination, cover_url, isbn, duplicates=()):
         back_label="Wishlist" if to_wishlist else "Library",
         other_add_url=(url_for("wishlist.add_to_wishlist", type=media.VIDEO) if to_wishlist
                        else url_for("videos.add_video")),
+        # A non-ISBN barcode could be a movie or an album: Add Book offers both
+        music_add_url=(url_for("wishlist.add_to_wishlist", type=media.RECORD) if to_wishlist
+                       else url_for("records.add_record")),
         notes="" if to_wishlist else None,
     )
 
@@ -452,7 +467,8 @@ def edit_book(id):
         conn.execute("""
             UPDATE books
             SET title = ?, author = ?, publisher = ?, publish_year = ?, isbn = ?,
-                page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?
+                page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?,
+                format = ?
             WHERE id = ?
         """, (
             request.form["title"],
@@ -465,6 +481,7 @@ def edit_book(id):
             request.form.get("description", ""),
             request.form.get("subtitle", ""),
             request.form.get("genre", ""),
+            media.book_format(request.form.get("format")),
             id
         ))
         conn.commit()
@@ -603,9 +620,11 @@ def render_item_page(conn, book):
         LEFT JOIN collection_books cb ON uc.collection_id = cb.collection_id
             AND cb.book_id = ?
         LEFT JOIN collection_books cb2 ON uc.collection_id = cb2.collection_id
-        WHERE uc.user_id = ?
+        -- this section's shelves (8C), and any other shelf it's already on
+        WHERE uc.user_id = ? AND (uc.media_type = ? OR cb.book_id IS NOT NULL)
         GROUP BY uc.collection_id, uc.name
-    """, (id, current_user.id)).fetchall()
+        ORDER BY uc.name COLLATE NOCASE
+    """, (id, current_user.id, media.media_type_of(book))).fetchall()
 
     # Check if book is in user's wishlist
     wishlist_entry = conn.execute("""
@@ -703,6 +722,36 @@ def restore_book(id):
     return redirect(url_for('books.show_book', id=id))
 
 
+@books_blueprint.route("/ownership/<int:id>", methods=["POST"])
+@login_required
+def set_ownership(id):
+    """Owned or not (ROADMAP 8B.3), for every media type.
+
+    owned=1: "I own it now" (you bought what you'd read, watched or listened
+    to); it goes on the shelf, with your review and history already on it.
+    owned=0: "I don't own this" (added by mistake as owned). Either way it's
+    no longer removed: removal is for copies that left, not for these.
+    Owner or admin.
+    """
+    owned = 1 if request.form.get('owned') == '1' else 0
+    conn = get_db()
+    book = conn.execute("SELECT title, added_by, media_type FROM books WHERE id = ?", (id,)).fetchone()
+    if not book or not (current_user.is_admin or book['added_by'] == current_user.id):
+        flash("You can't change that.", "error")
+        return redirect(url_for('base.index'))
+    conn.execute("UPDATE books SET owned = ?, removed_at = NULL, removed_note = NULL WHERE id = ?",
+                 (owned, id))
+    conn.commit()
+    m = media.media_labels(book['media_type'])
+    where = 'in your library' if book['media_type'] == media.BOOK else f"on your {m['shelf']}"
+    if owned:
+        flash(f"'{book['title']}' is {where} now.", "success")
+    else:
+        flash(f"'{book['title']}' is marked not owned, so it isn't {where}. "
+              f"Choose Show: Not owned in the filters to see it.", "success")
+    return redirect(url_for(media.item_endpoint(book['media_type']), id=id))
+
+
 @books_blueprint.route("/delete/<int:id>", methods=["POST"])
 @login_required
 def delete_book(id):
@@ -773,21 +822,28 @@ def search():
 
     # Search only books from current user or their library members
     placeholders = ','.join(['?' for _ in library_member_ids])
+    match_sql = "LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?"
+    search_like = f"%{search_term}%"
+    match_params = [search_like, search_like, search_like]
     query = f'''
         SELECT b.* FROM library_books b
         WHERE b.added_by IN ({placeholders})
-        AND (LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?)
+        AND ({match_sql})
     '''
-    search_like = f"%{search_term}%"
-    params = library_member_ids + [search_like, search_like, search_like]
+    params = library_member_ids + match_params
 
     # Removed (deaccessioned) books are hidden unless asked for
-    query += removed_filter(request.args.get('show_removed'))
+    query += shelf_filter(request.args)
 
     # Apply filters if they exist (simplified)
     if request.args.get('genre'):
         query += " AND LOWER(b.genre) = LOWER(?)"
         params.append(request.args.get('genre'))
+
+    # Book / Audiobook (8B.2)
+    fmt_sql, fmt_params = format_filter(request.args.get('format'))
+    query += fmt_sql
+    params.extend(fmt_params)
 
     if request.args.get('read_status'):
         query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
@@ -831,7 +887,9 @@ def search():
             'title': book['title'],
             'author': book['author'],
             'cover_image_url': book['cover_image_url'],
-            'removed': book['removed_at'] is not None
+            'removed': book['removed_at'] is not None,
+            'not_owned': not book['owned'],
+            'format': book['format'],
         } for book in books]
 
         return jsonify({
@@ -844,7 +902,14 @@ def search():
     # Get filter options for the template
     filter_options = get_filter_options(library_member_ids)
 
+    # "Not on your shelf, but you read it" (8B.3): only on the default Show
+    off_shelf = None
+    if search_term and not show_choice(request.args):
+        off_shelf = off_shelf_matches(conn, 'library_books', library_member_ids,
+                                      match_sql, match_params, current_user.id)
+
     return render_template("search.html",
+                         off_shelf=off_shelf,
                          books=books,
                          filter_options=filter_options,
                          sort_by=sort_by,

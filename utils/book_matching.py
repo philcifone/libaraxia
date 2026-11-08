@@ -108,7 +108,7 @@ def own_book_for_wishlist(conn, user_id, isbn):
     if not keys:
         return None, None
     rows = conn.execute('''
-        SELECT b.id, b.isbn, b.removed_at,
+        SELECT b.id, b.isbn, b.removed_at, b.owned,
                EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?) AS wished
         FROM books b WHERE b.added_by = ? AND b.media_type = 'book'
           AND b.isbn IS NOT NULL AND b.isbn != ''
@@ -117,6 +117,6 @@ def own_book_for_wishlist(conn, user_id, isbn):
         if set(_isbn_keys(row['isbn'])) & set(keys):
             if row['wished']:
                 return row['id'], 'wishlist'
-            if row['removed_at'] is None:
+            if row['owned'] and row['removed_at'] is None:
                 return row['id'], 'library'
     return None, None

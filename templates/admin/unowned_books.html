@@ -1,15 +1,12 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 
 {% block title %}Unowned Books - Admin{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
-        <a href="{{ url_for('admin.settings') }}"
-           class="inline-flex items-center text-content-secondary hover:text-accent transition-colors mb-6">
-            <span class="mr-2">←</span>
-            <span>Back to Admin Settings</span>
-        </a>
+        {{ crumbs([('Admin Settings', url_for('admin.settings'))], 'Unowned Books') }}
 
         <div class="mb-8">
             <h1 class="text-3xl font-display text-content-primary mb-2">Unowned Books</h1>

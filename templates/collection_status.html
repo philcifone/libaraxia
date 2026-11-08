@@ -1,37 +1,28 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 
-{% block title %}{% if is_custom %}{{ collection.name }} Collection{% elif status %}{{ status.capitalize() }}{% else %}Bookshelf{% endif %}{% endblock %}
+{% block title %}{% if is_custom %}{{ collection.name }}{% else %}{{ status_labels[status] }}{% endif %} - libaraxia{% endblock %}
 {% block body_class %}bg-primary-bg min-h-screen{% endblock %}
 
 {% block content %}
     <main class="container mx-auto px-4 pt-20">
+        {% set shelf_name = collection.name if is_custom else status_labels[status] %}
+        {% if is_own_profile %}
+        {{ crumbs([('Collections', url_for('collections.view_collections', type=media_type))], shelf_name) }}
+        {% else %}
+        {{ crumbs([(target_username, url_for('user.profile', username=target_username))], shelf_name) }}
+        {% endif %}
         <!-- Header Section -->
         <div class="flex flex-col items-center space-y-6 mb-8">
             <h1 class="text-4xl font-display text-content-primary">
                 {% if is_custom %}
-                    {{ collection.name }} Collection
+                    {{ collection.name }}
+                {% elif is_own_profile %}
+                    {{ shelf_name }}
                 {% else %}
-                    {% if is_own_profile %}
-                        Your {{ status.capitalize() }} Shelf
-                    {% else %}
-                        {{ target_username.capitalize() }}'s {{ status.capitalize() }} Shelf
-                    {% endif %}
+                    {{ target_username }}: {{ shelf_name }}
                 {% endif %}
             </h1>
-
-            {% if is_own_profile %}
-                <a href="{{ url_for('collections.view_collections') }}"
-                   class="flex items-center space-x-2 text-content-secondary hover:text-accent transition-colors duration-200">
-                    <span class="text-xl">←</span>
-                    <span>Back to Bookshelves</span>
-                </a>
-            {% else %}
-                <a href="{{ url_for('user.profile', username=target_username) }}"
-                   class="flex items-center space-x-2 text-content-secondary hover:text-accent transition-colors duration-200">
-                    <span class="text-xl">←</span>
-                    <span>Back to {{ target_username.capitalize() }}'s Profile</span>
-                </a>
-            {% endif %}
         </div>
 
             {% include '_book_grid.html' %}
@@ -40,7 +31,7 @@
             <div class="col-span-full py-16 text-center">
                 <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto card">
                     <p class="text-content-secondary text-lg italic">
-                        No books in this collection yet.
+                        Nothing on this shelf yet.
                     </p>
                 </div>
             </div>

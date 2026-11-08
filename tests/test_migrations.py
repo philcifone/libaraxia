@@ -93,7 +93,10 @@ def wind_back_to_023(conn):
         CREATE VIEW library_videos AS SELECT b.* FROM books b
         WHERE b.media_type = 'video' AND b.added_by IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = b.added_by);
-        DELETE FROM schema_migrations WHERE name = '024_add_records.sql';
+        -- 024 rebuilds books and 025 adds books.owned; the rebuilt books
+        -- above has neither, so both run again. Later migrations on other
+        -- tables (026: users) stay applied.
+        DELETE FROM schema_migrations WHERE name IN ('024_add_records.sql', '025_owned.sql');
     """)
 
 

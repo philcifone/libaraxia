@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import page_heading %}
 
 {% block title %}Activity Feed - Libaraxia{% endblock %}
 {% block body_class %}bg-primary text-content-primary p-6{% endblock %}
@@ -7,10 +8,7 @@
     <!-- Main Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
         <!-- Page Header -->
-        <div class="mb-8 text-center">
-            <h1 class="text-4xl font-display font-bold text-content-primary mb-2">Activity Feed</h1>
-            <p class="text-content-secondary">What are other users doing?</p>
-        </div>
+        {{ page_heading('feed', 'Activity Feed', 'What your friends are reading, watching and listening to', class='mb-8') }}
 
         <!-- Activity Feed -->
         <div class="space-y-6">
@@ -38,11 +36,11 @@
                         <div class="flex gap-4">
                             <!-- Book Cover -->
                             <div class="flex-shrink-0">
-                                <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}">
+                                <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}" class="block">
                                     {% if activity.cover_image_url %}
                                         <img src="{{ url_for('static', filename=activity.cover_image_url) }}"
                                              alt="{{ activity.title }}"
-                                             class="w-24 h-36 object-cover rounded-lg shadow-md">
+                                             class="feed-cover rounded-lg shadow-md">
                                     {% else %}
                                         {% with title=activity.title, size='sm', box='w-24 h-36 rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                                     {% endif %}

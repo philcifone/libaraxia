@@ -626,6 +626,93 @@ video {
   --outline-edge: rgb(var(--rule-strong));
 }
 
+/* ---- Accent colours (8B.5, Profile -> Appearance; both styles, see Classic below).
+       Each sets a light shade (Gruvbox faded, darkened for yellow) and a dark
+       one (Gruvbox bright), with hovers; the House palette below reads them
+       through var(..., green). The same values colour the picker's swatches
+       ([data-swatch]). Contrast (WCAG): every shade is >= 4.5:1 behind its
+       --on-accent text; as text on --surface, all >= 4.5 except light green
+       (4.16, the original) and dark red (4.29). ---- */
+
+:root[data-accent="aqua"],   [data-swatch="aqua"]   {
+  --acc-l: 66 123 88;
+  --acc-l-hover: 53 98 70;
+  --acc-d: 104 157 106;
+  --acc-d-hover: 142 192 124;
+}
+
+:root[data-accent="blue"],   [data-swatch="blue"]   {
+  --acc-l: 7 102 120;
+  --acc-l-hover: 6 82 96;
+  --acc-d: 131 165 152;
+  --acc-d-hover: 162 188 178;
+}
+
+:root[data-accent="purple"], [data-swatch="purple"] {
+  --acc-l: 143 63 113;
+  --acc-l-hover: 114 50 90;
+  --acc-d: 211 134 155;
+  --acc-d-hover: 222 164 180;
+}
+
+:root[data-accent="orange"], [data-swatch="orange"] {
+  --acc-l: 175 58 3;
+  --acc-l-hover: 140 46 2;
+  --acc-d: 254 128 25;
+  --acc-d-hover: 254 160 82;
+}
+
+:root[data-accent="red"],    [data-swatch="red"]    {
+  --acc-l: 157 0 6;
+  --acc-l-hover: 126 0 5;
+  --acc-d: 251 73 52;
+  --acc-d-hover: 252 118 103;
+}
+
+:root[data-accent="yellow"], [data-swatch="yellow"] {
+  --acc-l: 143 91 14;
+  --acc-l-hover: 114 73 11;
+  --acc-d: 215 153 33;
+  --acc-d-hover: 250 189 47;
+}
+
+[data-swatch="green"] {
+  --acc-l: 121 116 14;
+  --acc-d: 152 151 26;
+}
+
+.accent-swatch {
+  background: rgb(var(--acc-l, 121 116 14));
+}
+
+.accent-opt[aria-pressed="true"] {
+  outline: 2px solid rgb(var(--ink));
+  outline-offset: 1px;
+}
+
+:root[data-mode="dark"] .accent-swatch {
+  background: rgb(var(--acc-d, 152 151 26));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) .accent-swatch {
+    background: rgb(var(--acc-d, 152 151 26));
+  }
+}
+
+/* Classic (OG) takes the same choice but only the light shades, in both
+       modes: its buttons have white text, which Gruvbox's standard and
+       bright colours can't carry at 4.5:1 (yellow 2.5, green 3.1). Green
+       there is Classic's own #4f7d19, as before. */
+
+:root[data-style="classic"] [data-swatch="green"] {
+  --acc-l: 79 125 25;
+}
+
+:root[data-style="classic"] .accent-swatch {
+  background: rgb(var(--acc-l, 79 125 25));
+}
+
 /* ---- House palette (Gruvbox). Light is the default for any style-less page. ---- */
 
 :root {
@@ -640,11 +727,11 @@ video {
   /* #d5c4a1 */
   --rule-strong: 60 56 54;
   /* #3c3836 */
-  --accent: 121 116 14;
-  /* #79740e */
+  --accent: var(--acc-l, 121 116 14);
+  /* #79740e, or the chosen accent */
   --chart-bar: var(--accent);
   /* chart bars; own token so a theme can lift it to 3:1 */
-  --accent-hover: 95 91 11;
+  --accent-hover: var(--acc-l-hover, 95 91 11);
   /* #5f5b0b */
   --on-accent: 251 248 241;
   /* #fbf8f1 */
@@ -689,9 +776,9 @@ video {
     /* #504945 */
     --rule-strong: 124 111 100;
     /* #7c6f64 */
-    --accent: 152 151 26;
-    /* #98971a */
-    --accent-hover: 184 187 38;
+    --accent: var(--acc-d, 152 151 26);
+    /* #98971a, or the chosen accent */
+    --accent-hover: var(--acc-d-hover, 184 187 38);
     /* #b8bb26 */
     --on-accent: 29 32 33;
     /* #1d2021 */
@@ -736,9 +823,9 @@ video {
   /* #504945 */
   --rule-strong: 124 111 100;
   /* #7c6f64 */
-  --accent: 152 151 26;
-  /* #98971a */
-  --accent-hover: 184 187 38;
+  --accent: var(--acc-d, 152 151 26);
+  /* #98971a, or the chosen accent */
+  --accent-hover: var(--acc-d-hover, 184 187 38);
   /* #b8bb26 */
   --on-accent: 29 32 33;
   /* #1d2021 */
@@ -785,9 +872,9 @@ video {
   /* #d1d5db */
   --rule-strong: 156 163 175;
   /* #9ca3af */
-  --accent: 79 125 25;
-  /* #4f7d19 */
-  --accent-hover: 63 102 20;
+  --accent: var(--acc-l, 79 125 25);
+  /* #4f7d19, or the chosen accent */
+  --accent-hover: var(--acc-l-hover, 63 102 20);
   /* #3f6614 */
   --on-accent: 255 255 255;
   /* #ffffff */
@@ -821,8 +908,8 @@ video {
 
 @media (prefers-color-scheme: dark) {
   :root[data-style="classic"]:not([data-mode="light"]) {
-    --chart-bar: 106 159 42;
-    /* #6a9f2a: the accent is under 3:1 on these greys */
+    --chart-bar: var(--acc-d, 106 159 42);
+    /* #6a9f2a, or the accent's bright shade: the accent is under 3:1 on these greys */
     color-scheme: dark;
     --paper: 66 66 66;
     /* #424242 */
@@ -834,9 +921,9 @@ video {
     /* #4b5563 */
     --rule-strong: 75 85 99;
     /* #4b5563 */
-    --accent: 79 125 25;
-    /* #4f7d19 */
-    --accent-hover: 106 152 57;
+    --accent: var(--acc-l, 79 125 25);
+    /* #4f7d19, or the chosen accent */
+    --accent-hover: var(--acc-l-hover, 106 152 57);
     /* #6a9839 */
     --on-accent: 255 255 255;
     /* #ffffff */
@@ -870,8 +957,8 @@ video {
 }
 
 :root[data-style="classic"][data-mode="dark"] {
-  --chart-bar: 106 159 42;
-  /* #6a9f2a: the accent is under 3:1 on these greys */
+  --chart-bar: var(--acc-d, 106 159 42);
+  /* #6a9f2a, or the accent's bright shade: the accent is under 3:1 on these greys */
   color-scheme: dark;
   --paper: 66 66 66;
   /* #424242 */
@@ -883,9 +970,9 @@ video {
   /* #4b5563 */
   --rule-strong: 75 85 99;
   /* #4b5563 */
-  --accent: 79 125 25;
-  /* #4f7d19 */
-  --accent-hover: 106 152 57;
+  --accent: var(--acc-l, 79 125 25);
+  /* #4f7d19, or the chosen accent */
+  --accent-hover: var(--acc-l-hover, 106 152 57);
   /* #6a9839 */
   --on-accent: 255 255 255;
   /* #ffffff */
@@ -1256,6 +1343,58 @@ textarea {
 .shelf-row > * {
   flex: none;
   scroll-snap-align: start;
+}
+
+/* Activity feed covers (8B.7): the picture's own shape, never cropped.
+       Only maximums, so the browser scales it to fit inside 6rem x 10rem
+       keeping its proportions: a book fills the width, a square album is
+       6rem square, a tall VHS box is 10rem high and narrower. The box is
+       the image, so the rounded corners and shadow hug it. (Stored covers
+       are usually bigger than this; a smaller one shows at its own size.) */
+
+.feed-cover {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 6rem;
+  max-height: 10rem;
+}
+
+/* Breadcrumbs (_icons.html crumbs, 8B.8): a quiet uppercase trail above
+       the page, LIBRARY / DUNE / REVIEW. Links are muted until hovered; the
+       current page is plain text, cut with an ellipsis when it's long. */
+
+.crumbs {
+  font-size: .8125rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgb(var(--muted));
+}
+
+.crumb-link {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: .25em;
+  text-decoration-thickness: 2px;
+  transition: color .15s ease;
+}
+
+.crumb-link:hover,
+    .crumb-link:focus-visible {
+  color: rgb(var(--accent));
+  text-decoration-line: underline;
+}
+
+.crumb-sep {
+  opacity: .5;
+}
+
+.crumb-here {
+  color: rgb(var(--ink));
+  max-width: min(32ch, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Controls shown on hover (edit pencils, delete buttons). Phones have no
@@ -1988,6 +2127,10 @@ img.book-cover-img:not([data-loaded]) {
   height: 0.5rem;
 }
 
+.h-20 {
+  height: 5rem;
+}
+
 .h-24 {
   height: 6rem;
 }
@@ -2022,10 +2165,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .h-5 {
   height: 1.25rem;
-}
-
-.h-56 {
-  height: 14rem;
 }
 
 .h-6 {
@@ -2204,6 +2343,10 @@ img.book-cover-img:not([data-loaded]) {
   max-width: 300px;
 }
 
+.max-w-\[8rem\] {
+  max-width: 8rem;
+}
+
 .max-w-lg {
   max-width: 32rem;
 }
@@ -2234,6 +2377,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .flex-grow {
   flex-grow: 1;
+}
+
+.basis-full {
+  flex-basis: 100%;
 }
 
 .-translate-x-full {
@@ -2402,6 +2549,11 @@ img.book-cover-img:not([data-loaded]) {
   gap: 2rem;
 }
 
+.gap-x-2 {
+  -moz-column-gap: 0.5rem;
+       column-gap: 0.5rem;
+}
+
 .gap-x-3 {
   -moz-column-gap: 0.75rem;
        column-gap: 0.75rem;
@@ -2564,6 +2716,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .border-l {
   border-left-width: 1px;
+}
+
+.border-l-4 {
+  border-left-width: 4px;
 }
 
 .border-r {
@@ -2860,11 +3016,6 @@ img.book-cover-img:not([data-loaded]) {
   padding-bottom: 0.625rem;
 }
 
-.py-20 {
-  padding-top: 5rem;
-  padding-bottom: 5rem;
-}
-
 .py-3 {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
@@ -2919,6 +3070,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .pb-8 {
   padding-bottom: 2rem;
+}
+
+.pl-3 {
+  padding-left: 0.75rem;
 }
 
 .pl-4 {
@@ -3964,6 +4119,10 @@ dialog::backdrop {
     flex: none;
   }
 
+  .sm\:basis-0 {
+    flex-basis: 0px;
+  }
+
   .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3976,8 +4135,16 @@ dialog::backdrop {
     flex-direction: row;
   }
 
+  .sm\:flex-nowrap {
+    flex-wrap: nowrap;
+  }
+
   .sm\:gap-2 {
     gap: 0.5rem;
+  }
+
+  .sm\:gap-3 {
+    gap: 0.75rem;
   }
 
   .sm\:gap-4 {
@@ -4120,10 +4287,6 @@ dialog::backdrop {
 }
 
 @media (min-width: 1280px) {
-  .xl\:grid-cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .xl\:grid-cols-5 {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }

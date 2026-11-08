@@ -14,7 +14,7 @@
   The CSRF token is in <meta name="csrf-token"> on every page, so JS never
   needs a hidden input to find it (see getCSRFToken in static/common.js).
 #}
-<html lang="en" class="{% block html_class %}{% endblock %}" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}">
+<html lang="en" class="{% block html_class %}{% endblock %}" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}" data-accent="{{ theme_accent }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

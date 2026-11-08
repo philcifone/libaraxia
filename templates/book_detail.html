@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
 
 {% block title %}{{ book['title'] }} - Details{% endblock %}
 {# Shared by books and videos: `m` holds the wording for this media type
@@ -8,31 +9,13 @@
 {% block content %}
     <!-- Main Content Container -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
-        <!-- Back Navigation (context-aware) -->
+        {# Where you came from: a friend's wishlist, yours, or the section #}
         {% if wishlist_owner and wishlist_owner_entry %}
-        <a href="{{ url_for('wishlist.view_user_wishlist', username=wishlist_owner) }}"
-           class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
-            <span class="mr-2">←</span>
-            <span>Back to {{ wishlist_owner.capitalize() }}'s Wishlist</span>
-        </a>
+        {{ crumbs([(wishlist_owner ~ "'s Wishlist", url_for('wishlist.view_user_wishlist', username=wishlist_owner))], book['title']) }}
         {% elif in_wishlist %}
-        <a href="{{ url_for('wishlist.view_wishlist') }}"
-           class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
-            <span class="mr-2">←</span>
-            <span>Back to Wishlist</span>
-        </a>
-        {% elif m.type != 'book' %}
-        <a href="{{ url_for(m.bp ~ '.index') }}"
-           class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
-            <span class="mr-2">←</span>
-            <span>Back to {{ m.section }}</span>
-        </a>
+        {{ crumbs([('Wishlist', url_for('wishlist.view_wishlist'))], book['title']) }}
         {% else %}
-        <a href="{{ url_for('base.index') }}"
-           class="inline-flex items-center mb-6 text-content-secondary hover:text-accent transition-colors">
-            <span class="mr-2">←</span>
-            <span>Back to Catalog</span>
-        </a>
+        {{ crumbs([(m.section, url_for(m.home))], book['title']) }}
         {% endif %}
 
         <!-- Main Book Content Section -->
@@ -87,10 +70,13 @@
                                 ('Genre', book['genre'])
                             ] %}
                             {% else %}
+                            {# 8B.2: a plain book has no stored format; an audiobook's
+                               page count is its print edition's #}
                             {% set details = [
+                                ('Format', book['format'] or 'Book'),
                                 ('Publisher', book['publisher']),
                                 ('Publication Year', book['publish_year']),
-                                ('Page Count', book['page_count']|string + ' pages'),
+                                ('Print Pages' if book['format'] == 'Audiobook' else 'Page Count', book['page_count']|string + ' pages'),
                                 ('ISBN', book['isbn']),
                                 ('Genre', book['genre'])
                             ] %}
@@ -128,7 +114,13 @@
                         </div>
                     </div>
 
-                    {% if book['removed_at'] %}
+                    {% if not book['owned'] %}
+                    <!-- Read / watched / listened to, never owned (8B.3) -->
+                    <div class="bg-primary rounded-lg p-4 border-2 border-accent text-sm text-content-primary">
+                        <strong>Not owned.</strong>
+                        <span class="text-content-secondary">This {{ m.noun }} is here for {{ 'your' if book['added_by'] == current_user.id else 'its' }} review and {{ m.history|lower }}; it isn't {{ 'in the library' if m.type == 'book' else 'on the ' ~ m.shelf }}.</span>
+                    </div>
+                    {% elif book['removed_at'] %}
                     <!-- Deaccessioned -->
                     <div class="bg-primary rounded-lg p-4 border border-card text-sm text-content-primary">
                         <strong>Removed from the {{ m.shelf }}</strong> on {{ book['removed_at'][:10] }}{% if book['removed_note'] %} ({{ book['removed_note'] }}){% endif %}.
@@ -153,34 +145,8 @@
                             </div>
                         </div>
 
-                        <!-- Buy Links (book shops: books only) -->
-                        {% if m.type == 'book' %}
-                        <div class="mb-4">
-                            <p class="text-sm text-content-secondary mb-2">Purchase this book:</p>
-                            <div class="grid grid-cols-2 gap-3">
-                                <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-on-accent text-sm rounded-lg flex items-center justify-center gap-2 font-medium btn"
-                                   title="Search on ThriftBooks">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                    </svg>
-                                    ThriftBooks
-                                </a>
-                                <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-on-accent text-sm rounded-lg flex items-center justify-center gap-2 font-medium btn"
-                                   title="Search on Bookshop.org">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                    </svg>
-                                    Bookshop.org
-                                </a>
-                            </div>
-                        </div>
-                        {% endif %}
+                        <!-- Buy links: book shops, eBay for movies, Discogs for music -->
+                        {% with lead='Purchase this ' ~ m.noun ~ ':' %}{% include '_buy_links.html' %}{% endwith %}
                     </div>
 
                     {% elif in_wishlist %}
@@ -199,34 +165,8 @@
                             </div>
                         </div>
 
-                        <!-- Buy Links (book shops: books only) -->
-                        {% if m.type == 'book' %}
-                        <div class="mb-4">
-                            <p class="text-sm text-content-secondary mb-2">Buy this book:</p>
-                            <div class="grid grid-cols-2 gap-3">
-                                <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-on-accent text-sm rounded-lg flex items-center justify-center gap-2 font-medium btn"
-                                   title="Search on ThriftBooks">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                    </svg>
-                                    ThriftBooks
-                                </a>
-                                <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="px-4 py-3 bg-green-600 hover:bg-green-700 text-on-accent text-sm rounded-lg flex items-center justify-center gap-2 font-medium btn"
-                                   title="Search on Bookshop.org">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                    </svg>
-                                    Bookshop.org
-                                </a>
-                            </div>
-                        </div>
-                        {% endif %}
+                        <!-- Buy links: book shops, eBay for movies, Discogs for music -->
+                        {% with lead='Buy this ' ~ m.noun ~ ':' %}{% include '_buy_links.html' %}{% endwith %}
 
                         <div class="flex flex-col sm:flex-row gap-3">
                             <form action="/wishlist/move_to_library/{{ book.id }}" method="POST" class="flex-1">
@@ -261,7 +201,16 @@
                             </svg>
                             Edit {{ m.Noun }}
                         </a>
-                        {% if book['removed_at'] %}
+                        {% if not book['owned'] %}
+                        <form action="{{ url_for('books.set_ownership', id=book['id']) }}" method="POST" class="flex">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="owned" value="1">
+                            <button type="submit"
+                                    class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary text-sm rounded-lg hover:bg-primary-hover btn btn-outline">
+                                I Own It Now
+                            </button>
+                        </form>
+                        {% elif book['removed_at'] %}
                         <form action="{{ url_for('books.restore_book', id=book['id']) }}" method="POST" class="flex">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit"
@@ -277,7 +226,7 @@
                         {% endif %}
                     </div>
 
-                    {% if not book['removed_at'] and not in_wishlist %}
+                    {% if book['owned'] and not book['removed_at'] and not in_wishlist %}
                     <form id="remove-book-panel" action="{{ url_for('books.remove_book', id=book['id']) }}" method="POST"
                           class="hidden mt-4 p-4 bg-primary border border-card rounded-lg space-y-3">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -287,6 +236,14 @@
                                class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                         <button type="submit" class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
                             Remove from {{ m.section }}
+                        </button>
+                    </form>
+                    {# A mistake at add time, not a removal: never had it #}
+                    <form action="{{ url_for('books.set_ownership', id=book['id']) }}" method="POST" class="mt-2 text-center">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="owned" value="0">
+                        <button type="submit" class="text-xs text-content-secondary underline hover:text-accent">
+                            Never owned it? Mark it not owned
                         </button>
                     </form>
                     {% endif %}
@@ -385,6 +342,9 @@
                 <div class="space-y-6">
                     <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="space-y-4">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        {# A shelf of this item's section (8C); back here afterwards #}
+                        <input type="hidden" name="media_type" value="{{ m.type }}"/>
+                        <input type="hidden" name="next" value="item"/>
                     <label for="create-collection" class="block text-sm font-medium text-content-secondary">Create Collection</label>
                         <div class="flex flex-col sm:flex-row gap-4">
                             <input type="text"

@@ -47,3 +47,6 @@ python3 manage.py migrate             # back up, then apply pending (asks first)
 - `021_household_invites.sql` - Adds `household_invites` (joining a household needs the invitee's consent, see `utils/households.py`). Gives ownerless households to their longest-standing member and dissolves one-person households.
 - `022_cover_jobs.sql` - Adds `cover_jobs` (background cover fetching, `utils/cover_jobs.py`).
 - `023_add_videos.sql` - Videos (Phase 8): `books.media_type` ('book'/'video'), `format`, `barcode` (EAN-13), `catalog_number`, `runtime_minutes`, appended; rebuilds `collections` so its status CHECK allows 'watched' and 'want to watch'; `library_books` becomes books only and `library_videos` is added. See `utils/media.py`.
+- `025_owned.sql` - Adds `books.owned` (0 = read/watched/listened to but never owned, ROADMAP 8B.3). Rows stored as "removed from wishlist; not owned" become not owned instead of removed.
+- `026_accent.sql` - Adds `users.accent` (Profile → Appearance accent colour, ROADMAP 8B.5; House style only).
+- `027_shelf_types.sql` - Custom shelves get a `media_type` (Books / Movies / Music tabs on Collections, ROADMAP 8C); names unique per section. Rebuilds `user_collections`; a shelf holding only movies or only albums becomes that section's, every other shelf a Books one.

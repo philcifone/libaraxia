@@ -296,7 +296,7 @@ def test_filter_options_per_section(db, people):
         row = db.execute('SELECT * FROM users WHERE id = ?', (alice,)).fetchone()
         login_user(User(row['id'], row['username'], row['email'], row['password'], row['is_admin']))
         books = get_filter_options([alice])
-        assert books['read_statuses'] == ['read'] and books['tags'] == [] and 'formats' not in books
+        assert books['read_statuses'] == ['read'] and books['tags'] == [] and not books.get('formats')   # no audiobooks yet
         movies = get_filter_options([alice], media.VIDEO)
         assert movies['read_statuses'] == ['watched'] and movies['tags'] == ['shark']
         assert movies['genres'] == ['Horror'] and movies['formats'] == ['VHS']
@@ -705,7 +705,7 @@ def test_wishlist_add_page_for_each_type(client, people):
     page = client.get('/wishlist/add?type=video&format=DVD').get_data(as_text=True)
     assert 'Add a Movie to your Wishlist</h1>' in page and 'id="notes"' in page
     assert 'action="/wishlist/add"' in page and '<option value="DVD" selected' in page
-    assert 'Add to Wishlist' in page and 'Back to Wishlist' in page
+    assert 'Add to Wishlist' in page and 'class="crumb-link">Wishlist<' in page
     book = client.get('/wishlist/add?type=book').get_data(as_text=True)
     assert 'Add a Book to your Wishlist</h1>' in book and 'id="notes"' in book
     # a movie barcode found on the wishlist's Add Book goes to its Add Movie
@@ -758,7 +758,7 @@ def test_removing_a_watched_wishlist_movie_keeps_it_as_watched_not_owned(client,
     db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'watched')", (alice, movie))
     db.commit()
     client.post(f'/wishlist/remove/{movie}')
-    assert scalar(db, 'SELECT removed_at IS NOT NULL FROM books WHERE id = ?', movie) == 1
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', movie) == 1   # not owned, not removed (8B.3)
     assert scalar(db, """SELECT COUNT(*) FROM collection_books cb JOIN user_collections uc USING (collection_id)
                          WHERE uc.name = 'Watched but not owned' AND cb.book_id = ?""", movie) == 1
 

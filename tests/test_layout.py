@@ -441,3 +441,79 @@ def test_search_row_sits_under_the_tabs(client, people):
     assert 'search-form-container' in search and 'pt-20' in search
     wishlist = client.get('/wishlist/view').get_data(as_text=True)
     assert 'id="search-toggle"' not in wishlist
+
+
+def test_accent_colour_is_saved_and_on_every_page(client, db, people):
+    """8B.5: Profile -> Appearance -> Accent. Saved per user, put on <html
+    data-accent>, House style only (the picker hides under Classic)."""
+    login(client, 'bob')
+    assert 'data-accent="green"' in client.get('/base/index').get_data(as_text=True)
+    page = client.get('/user/bob').get_data(as_text=True)
+    assert 'data-accent-picker' in page and page.count('data-kind="accent"') == 7
+    r = client.post('/user/update_theme', json={'accent': 'blue'})
+    assert r.status_code == 200 and r.get_json()['accent'] == 'blue'
+    assert db.execute('SELECT accent FROM users WHERE id = ?', (people['bob'],)).fetchone()[0] == 'blue'
+    assert 'data-accent="blue"' in client.get('/base/index').get_data(as_text=True)
+    # Style and mode are left alone; nonsense is refused
+    assert db.execute('SELECT theme_style, color_mode FROM users WHERE id = ?',
+                      (people['bob'],)).fetchone()[:] == ('house', 'system')
+    assert client.post('/user/update_theme', json={'accent': 'chartreuse'}).status_code == 400
+
+
+def test_every_accent_has_css():
+    """Each models.ACCENTS key has its shades in styles.css (green is the fallback)."""
+    import os
+    from models import ACCENTS
+    css = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'styles.css')).read()
+    for key in ACCENTS:
+        assert f'[data-swatch="{key}"]' in css, key
+        if key != 'green':
+            assert f':root[data-accent="{key}"]' in css, key
+
+
+def test_pages_share_the_heading_card(client, db, people):
+    """8B.6: Feed, Notifications, Wishlist, Collections and Admin open with
+    the same icon-and-name card as the grids (page_heading)."""
+    login(client, 'alice')                                      # admin
+    for url, name in [('/feed/activity', 'Activity Feed'), ('/friends/notifications_page', 'Notifications'),
+                      ('/wishlist/view', 'Wishlist'), ('/collections/collections', 'Collections'),
+                      ('/admin/settings', 'Admin Settings')]:
+        page = client.get(url, follow_redirects=True).get_data(as_text=True)
+        h1 = re.search(r'<h1 class="flex items-center justify-center gap-3[^"]*">(.*?)</h1>', page, re.S)
+        assert h1 and '<svg' in h1.group(1) and name in h1.group(1), url
+
+
+def test_no_back_to_catalog_links():
+    """8B.8: breadcrumbs (_icons.html crumbs) replaced the back links."""
+    for path in pathlib.Path('templates').rglob('*.html'):
+        text = path.read_text()
+        assert 'Back to Catalog' not in text and '<span class="mr-2">←</span>' not in text, path
+
+
+def test_item_page_crumbs_follow_the_section(client, db, people):
+    book = add_book(db, people['alice'], title='Dune')
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert '<a href="/base/index" class="crumb-link">Library</a>' in page
+    assert '<li aria-current="page" class="crumb-here">Dune</li>' in page
+
+
+def test_style_names_and_classic_accents(client, db, people):
+    """Styles show as Negative Earth / OG (keys unchanged), and Classic takes
+    the accent too, through its own --acc-l shades."""
+    login(client, 'alice')
+    page = client.get('/user/alice').get_data(as_text=True)
+    assert 'Negative Earth' in page and '>OG<' in page.replace('\n', '').replace(' ', '')
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '[data-accent-picker] { display: none; }' not in css
+    classic = css[css.index('/* ---- Classic palette.'):]
+    assert classic.count('--accent: var(--acc-l, 79 125 25)') == 3
+
+
+def test_tmdb_logo_with_the_notice(client, db, people, monkeypatch):
+    monkeypatch.setenv('TMDB_API_KEY', 'not-a-real-key')
+    login(client, 'alice')
+    page = client.get('/videos/add').get_data(as_text=True)
+    assert 'src="/static/logos/tmdb.svg"' in page and 'not endorsed or certified by TMDB' in page
+    svg = pathlib.Path('static/logos/tmdb.svg').read_text()
+    assert '<script' not in svg.lower()

@@ -47,7 +47,7 @@ def test_record_labels_and_formats():
     m = media.media_labels(media.RECORD)
     assert (m['Noun'], m['creator'], m['publisher'], m['length'], m['section']) == \
         ('Album', 'Artist', 'Label', 'Length', 'Music')
-    assert m['statuses'] == ('listened', 'want to listen') and not m['has_barcode']
+    assert m['statuses'] == ('listened', 'want to listen') and m['has_barcode']   # since 8B.12
     assert [media.format_label(f) for f in media.FORMATS[media.RECORD]] == \
         ['LP', 'EP', '7" single', '10"', '12" single', 'CD', 'Cassette']
     assert media.item_endpoint(media.RECORD, 'edit') == 'records.edit_record'
@@ -77,22 +77,24 @@ def test_add_vinyl_by_hand(client, db, people):
     assert row['added_by'] == people['alice']
 
 
-def test_unknown_format_falls_back_to_lp_and_barcode_is_ignored(client, db, people):
+def test_unknown_format_falls_back_to_lp_and_barcode_is_kept(client, db, people):
     login(client, 'alice')
     client.post('/records/add', data=form(format='VHS', barcode='012345678905'))
     row = db.execute("SELECT format, barcode FROM books WHERE title = 'Blue'").fetchone()
-    assert tuple(row) == ('LP', None)
+    assert tuple(row) == ('LP', '0012345678905')        # stored as EAN-13, like movies
 
 
-def test_add_vinyl_page_is_search_only(client, people):
+def test_add_album_page_has_search_barcode_and_scan(client, people):
     login(client, 'alice')
     page = client.get('/records/add').get_data(as_text=True)
     assert 'Add an Album</h1>' in page and 'data-type="record"' in page
     assert 'id="search-input"' in page and 'Artist and title...' in page
-    # no barcode anywhere: no code or scan tab, no scanner scripts, no field
-    assert 'data-method="code"' not in page and 'data-method="scan"' not in page
-    assert 'quagga' not in page and 'scanner.js' not in page
-    assert 'name="barcode"' not in page and 'name="isbn"' not in page
+    # Barcodes since 8B.12: code and scan tabs, the scanner, a barcode field
+    assert 'data-method="code"' in page and 'data-method="scan"' in page
+    assert 'scanner.js' in page and 'name="barcode"' in page and 'name="isbn"' not in page
+    assert 'back of the sleeve' in page
+    # The no-JS barcode box is a GET to the add page, like Add Movie's
+    assert '<input type="hidden" name="type" value="record">' in page
     assert 'id="catalog_number"' in page and 'Tracklist and notes' in page
     assert '<option value="7in"' in page and '7&#34; single' in page
     assert 'MusicBrainz' in page
@@ -138,7 +140,7 @@ def test_detail_page_shows_record_fields(client, db, people):
     record = add_record(db, people['alice'])
     login(client, 'alice')
     page = client.get(f'/records/{record}').get_data(as_text=True)
-    for text in ('Label', 'Reprise', 'Cat. No.', 'MS 2038', 'Length', 'Back to Music',
+    for text in ('Label', 'Reprise', 'Cat. No.', 'MS 2038', 'Length', 'class="crumb-link">Music<',
                  'About this Album', 'whitespace-pre-line', 'Listen Status'):
         assert text in page, text
     assert 'Purchase this book' not in page
@@ -326,17 +328,24 @@ def test_removing_a_listened_wishlist_record_keeps_it(client, db, people):
     db.commit()
     login(client, 'alice')
     client.post(f'/wishlist/remove/{record}')
-    assert scalar(db, 'SELECT removed_at IS NOT NULL FROM books WHERE id = ?', record) == 1
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', record) == 1   # not owned, not removed (8B.3)
     assert scalar(db, """SELECT COUNT(*) FROM collection_books cb JOIN user_collections uc USING (collection_id)
                          WHERE uc.name = 'Listened to but not owned' AND cb.book_id = ?""", record) == 1
 
 
 # --- MusicBrainz -----------------------------------------------------------------
 
-def test_build_query_needs_every_word_and_vinyl():
+def test_build_query_needs_every_word_and_a_physical_format():
     q = music_lookup.build_query('joni  mitchell blue')
     assert q.startswith('(release:joni OR artist:joni) AND (release:mitchell OR artist:mitchell) AND ')
-    assert 'format:("Vinyl" OR "12\\" Vinyl" OR "10\\" Vinyl" OR "7\\" Vinyl")' in q
+    # No choice: vinyl, CD and cassette, never digital
+    assert 'format:("Vinyl" OR "12\\" Vinyl" OR "10\\" Vinyl" OR "7\\" Vinyl" OR "CD" OR ' in q
+    assert '"Cassette")' in q and 'Digital' not in q
+    assert music_lookup.build_query('blue', 'vinyl').endswith(
+        'format:("Vinyl" OR "12\\" Vinyl" OR "10\\" Vinyl" OR "7\\" Vinyl")')
+    assert music_lookup.build_query('blue', 'cassette').endswith('format:("Cassette")')
+    cd = music_lookup.build_query('blue', 'cd')
+    assert '"CD"' in cd and '"Enhanced CD"' in cd and 'Vinyl' not in cd
     # Lucene syntax in what was typed is escaped, not obeyed
     assert '(release:AC\\/DC OR artist:AC\\/DC)' in music_lookup.build_query('AC/DC')
     assert 'release:a\\:b' in music_lookup.build_query('a:b')
@@ -352,10 +361,17 @@ def test_build_query_needs_every_word_and_vinyl():
     (['10" Vinyl'], 'Album', '10in'),
     (['12" Vinyl'], 'EP', 'EP'),
     (['7" Vinyl'], 'EP', 'EP'),
+    (['CD'], 'Album', 'CD'),
+    (['CD', 'CD'], 'Album', 'CD'),
+    (['Enhanced CD'], 'Single', 'CD'),
+    (['CD'], 'EP', 'CD'),                   # an EP on CD is a CD: the format is the object
+    (['Cassette'], 'Album', 'Cassette'),
+    (['Hybrid SACD (CD layer)', 'Hybrid SACD (SACD layer, 2 channels)'], 'Album', 'CD'),
+    (['12" Vinyl', 'CD'], 'Album', 'LP'),   # a bonus CD doesn't make the set a CD
 ])
-def test_vinyl_format(formats, kind, expected):
+def test_album_format(formats, kind, expected):
     release = {'media': [{'format': f} for f in formats], 'release-group': {'primary-type': kind}}
-    assert music_lookup.vinyl_format(release) == expected
+    assert music_lookup.album_format(release) == expected
 
 
 RELEASE = {
@@ -423,7 +439,9 @@ def test_search_route_lists_pressings(client, people, fake_mb):
         'id': MBID, 'title': 'Blue', 'artist': 'Joni Mitchell', 'year': 1971, 'country': 'US',
         'label': 'Reprise Records', 'catalog_number': 'MS 2038', 'format': 'LP', 'format_label': 'LP',
         'thumb': f'https://coverartarchive.org/release-group/{GROUP}/front-250',
+        'source': 'musicbrainz',
     }]
+    assert data['source'] == 'musicbrainz'      # no DISCOGS_TOKEN in tests
     url, headers = calls[0]
     assert url.startswith('https://musicbrainz.org/ws/2/release/?') and 'fmt=json' in url
     assert headers['User-Agent'].startswith('Libaraxia/1.0 ( ') and headers['User-Agent'].endswith(' )')
@@ -431,6 +449,21 @@ def test_search_route_lists_pressings(client, people, fake_mb):
     client.get('/records/search?q=joni blue')
     assert len(calls) == 1
     assert client.get('/records/search?q=j').get_json()['results'] == []
+
+
+def test_search_route_narrows_by_format(client, people, fake_mb):
+    from urllib.parse import parse_qs, urlsplit
+    calls, _, _ = fake_mb
+    login(client, 'alice')
+    client.get('/records/search?q=joni blue&format=cassette')
+    client.get('/records/search?q=joni blue&format=CD')
+    client.get('/records/search?q=joni blue&format=8track')    # unknown: all formats
+    queries = [parse_qs(urlsplit(url).query)['query'][0] for url, _ in calls]
+    assert queries[0].endswith('format:("Cassette")')
+    assert '"CD"' in queries[1] and 'Vinyl' not in queries[1]
+    assert 'Vinyl' in queries[2] and '"CD"' in queries[2] and 'Cassette' in queries[2]
+    # Each format is its own cache entry
+    assert len(calls) == 3
 
 
 def test_lookup_route_fills_the_form(client, people, fake_mb):
@@ -496,3 +529,27 @@ def test_session_form_titles_are_worded_per_type(client, db, people):
         assert 'data-add-title="Add New Listening Session"' in page, url
         assert 'data-edit-title="Edit Listening Session"' in page, url
         assert 'New Reading Session' not in page, url
+
+
+def test_data_export_has_type_and_format(app, db, people):
+    """Every file of the ZIP says which section a row is from (8B.4)."""
+    import csv
+    import zipfile
+    from utils.export import data_zip
+    alice = people['alice']
+    rid = add_record(db, alice)
+    db.execute("INSERT INTO read_data (user_id, book_id, rating, comment) VALUES (?, ?, 5, 'great')",
+               (alice, rid))
+    db.execute("INSERT INTO reading_sessions (user_id, book_id, date_started) VALUES (?, ?, '2026-01-01')",
+               (alice, rid))
+    db.commit()
+    with app.app_context():
+        from utils.database import get_db
+        z = zipfile.ZipFile(io.BytesIO(data_zip(get_db(), alice)))
+    for name in ('reviews.csv', 'reading_sessions.csv'):
+        rows = list(csv.reader(io.StringIO(z.read(name).decode())))
+        assert rows[0][-2:] == ['Type', 'Format'], name
+        assert rows[1][-2:] == ['record', 'LP'], name
+    for name in ('shelves.csv', 'wishlist.csv'):
+        header = next(csv.reader(io.StringIO(z.read(name).decode())))
+        assert header[-2:] == ['Type', 'Format'], name

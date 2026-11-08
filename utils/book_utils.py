@@ -627,7 +627,8 @@ def _fetch_image(url: str) -> Optional[Image.Image]:
 # coverartarchive.org: record sleeves in the Add Vinyl results (Phase 8.7);
 # it redirects to archive.org, every hop checked by _get_public
 THUMBNAIL_HOSTS = {'books.google.com', 'books.googleusercontent.com', 'covers.openlibrary.org',
-                   'image.tmdb.org', 'coverartarchive.org'}
+                   'image.tmdb.org', 'coverartarchive.org',
+                   'i.discogs.com'}     # Discogs search thumbnails (utils/discogs_lookup.py)
 THUMBNAIL_SIZE = (256, 384)
 
 
@@ -712,19 +713,71 @@ def download_and_save_cover(url: str, fallback_urls: Optional[list] = None) -> O
 
 # ------------------------------------------------------------ library filters
 
-def removed_filter(value, alias='b'):
-    """SQL fragment for the "removed books" filter on library pages.
+# The "Show" choice on library pages (?show=), ROADMAP 8B.3. Ownership and
+# removal are separate facts: `owned = 0` is something you read, watched or
+# listened to but never had; `removed_at` is a copy you had that left.
+SHOW_CHOICES = (
+    ('', 'On the shelf'),
+    ('not_owned', 'Not owned'),
+    ('removed', 'Removed'),
+    ('all', 'Everything'),
+)
 
-    `value` is the `show_removed` request argument:
-      ''/None   -> only books on the shelf (the default)
-      'include' -> shelf and removed books together ('1' too, from old links)
-      'only'    -> only removed (deaccessioned) books
-    """
-    if value == 'only':
+
+def show_choice(args):
+    """The page's Show choice from its request args. Old links used
+    ?show_removed=include|1|only; they still work."""
+    value = args.get('show') or ''
+    if value in dict(SHOW_CHOICES):
+        if value or not args.get('show_removed'):
+            return value
+    legacy = args.get('show_removed') or ''
+    return {'include': 'all', '1': 'all', 'only': 'removed'}.get(legacy, '')
+
+
+def on_shelf(alias='b'):
+    """SQL condition: owned and not removed, i.e. on its owner's shelf. Every
+    owned count and every "do I have this" view uses it."""
+    return f"{alias}.owned = 1 AND {alias}.removed_at IS NULL"
+
+
+def shelf_filter(args, alias='b'):
+    """SQL fragment (' AND ...') for a library page's Show choice; `args` is
+    request.args (or any mapping). The default is what's on the shelf, so
+    nothing you don't own shows up unless you ask for it."""
+    choice = show_choice(args)
+    if choice == 'not_owned':
+        return f" AND {alias}.owned = 0"
+    if choice == 'removed':
         return f" AND {alias}.removed_at IS NOT NULL"
-    if value in ('include', '1'):
+    if choice == 'all':
         return ""
-    return f" AND {alias}.removed_at IS NULL"
+    return f" AND {on_shelf(alias)}"
+
+
+def off_shelf_matches(conn, view, owner_ids, match_sql, match_params, viewer_id, limit=5):
+    """The search hint (ROADMAP 8B.3): items that match a search but are
+    hidden because they aren't on the shelf (not owned, or removed). For
+    the bookstore question "do I have this?": the results answer "no", the
+    hint adds "but you read it". Returns {'count', 'rows'} or None if there
+    are none. Rows carry the viewer's status for the item and its owner.
+
+    `view` is one of our view names (never request input); `match_sql` is
+    the page's own search condition on alias b, with `match_params`."""
+    marks = ','.join('?' * len(owner_ids))
+    where = f"FROM {view} b WHERE b.added_by IN ({marks}) AND NOT ({on_shelf()}) AND ({match_sql})"
+    params = [*owner_ids, *match_params]
+    count = conn.execute(f"SELECT COUNT(*) {where}", params).fetchone()[0]
+    if not count:
+        return None
+    rows = conn.execute(f"""
+        SELECT b.id, b.title, b.media_type, b.owned, b.removed_at, b.added_by,
+               (SELECT username FROM users WHERE id = b.added_by) AS owner,
+               (SELECT status FROM collections c WHERE c.book_id = b.id AND c.user_id = ?) AS status
+        {where}
+        ORDER BY b.owned, b.title COLLATE NOCASE LIMIT ?
+    """, [viewer_id, *params, limit]).fetchall()
+    return {'count': count, 'rows': [dict(r) for r in rows]}
 
 
 def get_filter_options(owner_ids, media_type='book'):
@@ -769,13 +822,28 @@ def get_filter_options(owner_ids, media_type='book'):
         'tags': [r[0] for r in tags],
     }
     if media.FORMATS.get(media_type):
+        # A book with no format is a plain Book (media.book_format)
+        blank = "'Book'" if media_type == media.BOOK else 'NULL'
         formats = conn.execute(f"""
-            SELECT DISTINCT format FROM {view}
-            WHERE added_by IN ({placeholders}) AND format IS NOT NULL AND format != ''
+            SELECT DISTINCT COALESCE(NULLIF(format, ''), {blank}) FROM {view}
+            WHERE added_by IN ({placeholders})
         """, owner_ids).fetchall()
         in_use = {r[0] for r in formats}
         options['formats'] = [f for f in media.FORMATS[media_type] if f in in_use]
+        # Books: no Format filter until there's an audiobook to tell apart
+        if media_type == media.BOOK and len(options['formats']) < 2:
+            options['formats'] = []
     return options
+
+
+def format_filter(fmt, alias='b'):
+    """(SQL fragment, params) for a library page's ?format=. 'Book' also
+    matches books with no format, which is every plain book."""
+    if not fmt:
+        return '', []
+    if fmt == 'Book':
+        return f" AND ({alias}.format IS NULL OR {alias}.format IN ('', 'Book'))", []
+    return f" AND {alias}.format = ?", [fmt]
 
 
 # ------------------------------------------------------------ duplicate check
@@ -809,7 +877,7 @@ def find_duplicates(conn, user_id, title, author='', isbn=''):
     candidates = conn.execute(f"""
         WITH shelf AS (SELECT id FROM library_books WHERE added_by IN ({placeholders})),
              wished AS (SELECT book_id AS id FROM wishlist WHERE user_id = ?)
-        SELECT b.id, b.title, b.author, b.isbn, b.removed_at,
+        SELECT b.id, b.title, b.author, b.isbn, b.removed_at, b.owned,
                b.id IN (SELECT id FROM shelf) AS in_library,
                b.id IN (SELECT id FROM wished) AS in_wishlist
         FROM books b
@@ -834,6 +902,8 @@ def find_duplicates(conn, user_id, title, author='', isbn=''):
                 'isbn': book['isbn'],
                 'in_library': bool(book['in_library']),
                 'removed': book['removed_at'] is not None,
+                # Read but never owned: buying it is "I own it now" on its page
+                'not_owned': not book['owned'],
                 'in_wishlist': bool(book['in_wishlist']),
                 'match_reason': reasons,
             })

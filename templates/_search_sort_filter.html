@@ -142,17 +142,19 @@
                     </div>
                 </div>
 
-                <!-- Deaccessioned books (given away, sold, lost) -->
-                {% set show_removed = request.args.get('show_removed', '') %}
+                <!-- Show (8B.3): what's on the shelf by default; not owned (read,
+                     watched, listened to but never had) and removed (had it, it
+                     left) only when asked for, and badged on the cards -->
+                {% set show = show_choice(request.args) %}
                 <div class="space-y-2 md:w-1/2 lg:w-1/4">
-                    <label for="show_removed" class="block text-sm font-medium text-content-secondary">Removed {{ m.plural if m else 'books' }}</label>
-                    <select name="show_removed" id="show_removed"
+                    <label for="show" class="block text-sm font-medium text-content-secondary">Show</label>
+                    <select name="show" id="show"
                             data-change="updateActiveFilters"
                             class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                    focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                        <option value="">On the shelf only</option>
-                        <option value="include" {% if show_removed in ('include', '1') %}selected{% endif %}>Include removed</option>
-                        <option value="only" {% if show_removed == 'only' %}selected{% endif %}>Removed only</option>
+                        {% for value, label in SHOW_CHOICES %}
+                        <option value="{{ value }}" {% if show == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
