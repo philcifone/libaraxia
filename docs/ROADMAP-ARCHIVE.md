@@ -1,7 +1,7 @@
 # Roadmap archive
 
-Completed phases of [ROADMAP.md](../ROADMAP.md), moved here on 2026-11-08 so the
-live roadmap stays short. Kept verbatim, with their original numbers: code
+Completed phases of [ROADMAP.md](../ROADMAP.md), moved here on 2026-11-08
+(11 to 13b on 2026-11-09) so the live roadmap stays short. Kept verbatim, with their original numbers: code
 comments and commit messages cite them ("ROADMAP 7.2b", "8B.3", "10.1"), so
 grep here for those. Items that were still open when the phase was archived
 are marked as moved; they live in ROADMAP.md now.
@@ -26,6 +26,10 @@ are marked as moved; they live in ROADMAP.md now.
 | 8F ✅ | [Cover quality](#phase-8f-cover-quality) | Popular books still get poor covers from Google | The right, large cover for popular books without a manual search |
 | 9 | [Bulk edit and granular import](#phase-9-bulk-edit-and-granular-import) | A full GUI feature of its own; after 8F | Select many items and change them at once; pick Goodreads rows to import and where they go |
 | 10 (done) | [More styles](#phase-10-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
+| 11 ✅ | [Shelves: one home for every section](#phase-11-shelves-one-home-for-every-section) | Changes the navigation and grids that 12-14 build on | One Shelves entry for every section; friends on their own page |
+| 12 ✅ | [Profile and stats](#phase-12-profile-and-stats) | Uses 11's section switch | Same stats for every type, goal under the bio, Appearance its own card |
+| 13 ✅ | [Reviews section](#phase-13-reviews-section) | Reviews and not-owned items already existed (8B.3) | Every review two taps from the sidebar |
+| 13b ✅ | [Do I have this? across all three types](#phase-13b-do-i-have-this-across-all-three-types) | "Not here" assumed a book | Online candidates of the right type, add form filled in |
 
 Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 8B → 8C → 8D → 8E → 8F → 9 is the part that matters. More styles (now Phase 10) was parked for a moment on 2026-11-08 (it was Phase 9 until bulk edit took that number), then pulled forward the same day and finished (Shelf, Outrun, font choice).
 
@@ -803,6 +807,132 @@ Built 2026-11-08 (Phil pulled it forward). `data-style="outrun"`, a shape block 
 - [x] *(Moved to ROADMAP, Parked)* Animations: none yet; any added must respect `prefers-reduced-motion`.
 
 **Done when:** each style renders every page in its modes at phone and desktop widths with a clean sweep; Shelf shows books on shelves and VHS in the rack.
+
+---
+
+## Phase 11: Shelves, one home for every section
+
+From Phil, 2026-11-08: the sidebar is getting full, and Library, Movies and Music are practically the same page.
+
+### 11.0 "Unread" instead of "Untracked", and honest filter pills 🟢
+Done 2026-11-08.
+- [x] No status reads as what it means for something you own: **Unread** / **Unwatched** / **Not listened to** (`media.NO_STATUS_LABEL`, `media_labels()['no_status']`) instead of *Untracked*, in the item page's status menu and the export. Wording only: no status is still no row (the menu's value stays `untracked`, which clears it).
+- [x] **"Did Not Finish" filter showed unread books** (Phil, on prod). Nothing sets DNF in bulk (the old importer only set read / currently reading / want to read, the current one only from DNF-named shelves), and the filter is an exact match. The cause: the panel only filters on **Apply**, but picking a status already added its pill to "Active filters" and bumped the funnel's count, so the page looked filtered while the grid still showed everything. Now the pills and count show the filters the page was loaded with (`appliedFilters`, `renderAppliedFilters` in `script.js`), and a pending change shows on the button instead ("Apply 1 change", `filtersChanged`, `countFilterChanges`). Checked in a browser: pick DNF, no pill, "Apply 1 change"; apply, one book and its pill.
+- [x] On the way: the Library's status filter listed raw values ("did not finish"); it uses the labels now (`STATUS_LABELS` template global).
+- If prod ever shows DNF rows Phil didn't set, check where they came from first: `sqlite3 library.db "select date(created_at), count(*) from collections where status = 'did not finish' group by 1"`.
+
+### 11.1 Shelves page 🟠
+Done 2026-11-08.
+- [x] One sidebar entry **Shelves** in place of Library, Movies and Music (`base.shelves`, `/base/shelves`).
+- [x] Every grid page starts with `shelf_header()` (`templates/_shelves.html`): scope tabs **Mine | Household | Friends'**, the heading (**Shelves**, Household Shelves, Friends' Shelves, *name*'s Shelves), then the **Books | Movies | Music** switch, then search and the grid. The switch keeps the scope: Household → Movies is the household's movies, a friend's books link to that friend's movies and music (`section_switch()` on `friend_library.html`, under the friend's card).
+- [x] Routes are unchanged (`/base/index`, `/videos/`, `/records/` and their shared and friends' pages); `shelf_url(type, scope, username)` (app.py) builds the links from `media.SHELF_ENDPOINTS`. `/base/shelves` redirects to the section you used last: every Shelves page sets an HttpOnly `shelf_section` cookie (`remember_shelf_section` in app.py); books the first time or for a bad value. `_media_tabs.html` and the per-section headings are gone.
+- [x] The floating `+` on each grid still adds to that section.
+- [x] Tests: `test_shelves_one_entry_and_section_switch`.
+
+### 11.2 "Shelves" means where things stand; collections are collections 🟠
+Done 2026-11-08.
+- [x] **Shelf** = what you own and where it stands: the Shelves pages, "on your shelf" (owned, not removed), the Shelf style.
+- [x] **Collection** everywhere else in the UI: the Collections page ("Custom Collections", "New book collection", "No book collections yet"), the delete confirmation, the profile's rows ("Collections"), flashes ("You already have a collection called ..."), account removal's summary, and the data export (`collections.csv`, column `Collection`; was `shelves.csv`). Code keeps `user_collections` and `_shelf_rows.html`. Goodreads' own "shelves" keep their name on the import page (they're Goodreads').
+
+### 11.3 Friends: a page of people, not a shelf tab 🟠
+Done 2026-11-08 (Phil: put Notifications with its count under "Welcome").
+- [x] **Sidebar: Friends** (`friends.index`, `/friends/`, `templates/friends.html`): a card per friend (avatar, name, "4 books · 0 movies · 0 albums", each count opening that section of their shelves; the name opens their books) and a link to their profile. A line links to Notifications when friend requests wait. **Find friends** moved here from the profile (`static/friends.js`, out of `user.js`); the profile's Friends block keeps its avatars and links here.
+- [x] **Shelves scope tabs are Mine | Household.** `base.friends_libraries`, `videos.friends` and `records.friends` redirect to `/friends/`; their templates are gone; `media.SHELF_ENDPOINTS` has no `friends`.
+- [x] **A friend's shelves:** crumbs Friends / *name*, "*name*'s Shelves", the section switch (`shelf_header(type, 'friend', username)`), then the grid. The sidebar marks Friends there, not Shelves.
+- [x] **Notifications** left the nav list: a link under "Welcome, *name*!" with the number waiting (friend requests, household invites, unread; `utils/notifications.unread_counts`, also behind `friends.notification_count`).
+- [x] 2026-11-08: the friend's **book** page is the regular grid now (`base.library_page`, shared with your Library and the household's): search, filters, sort, list view. Phil: filters and sorts apply to the entries in view, so on a friend's shelf (books, movies, music) status, rating and tag filters, the date read and rating sorts, and list view's columns are **the friend's**; your own and the household's stay yours. The page names them ("Search carol's 136 books", "carol's rating") and links their profile and wishlist.
+- Access unchanged: friends only (`is_friends_with`).
+
+### 11.4 More sort options 🟢
+Done 2026-11-08 (Phil asked for sort by date read, and others).
+- [x] One helper, `utils/sorting.py` (`choice`, `order_by`), for every grid: Library, Household, search, Movies, Music, friends' movies and music, and the collection pages (which showed the menu but ignored it; their default stays "Date added here", newest first). The menu (`_view_bar.html`) is built from `sorting.BY_TYPE` (template global `SORT_OPTIONS`), so it can't offer what the route refuses.
+- [x] New: **Date read / watched / listened to** (your latest finished session), **Your rating**, **Pages** (books; audiobooks and unknown counts last), alongside Title, Author/Director/Artist, Year, Date added and Length. Always in the menu, not only with the Read filter on.
+- [x] Every order puts empty values last either way (`NULLS LAST`), then ties by title and id, so infinite scroll never repeats or skips. Title and author sort case-insensitively everywhere now (the book pages didn't).
+- [x] Date read and rating are the viewer's own, also on household and friends' pages. Tests: `tests/test_sorting.py`.
+
+### 11.5 Sidebar after 11 and 13 🟢
+- [x] 2026-11-08: on a short screen (`max-height: 760px`, styles.css "Sidebar on a short screen") the avatar shrinks and link rows tighten, so the 8 entries, Mode and Log out fit a 375x667 phone, and "Do I Have This?" stays on one line.
+- [x] 2026-11-09, with Reviews (Phase 13): measured at 375x667, Reviews made an admin's Log out end 33px below the fold. Phil's fix: icons instead of entries: Notifications (bell, with the waiting count) at the end of the welcome line, then under it Admin Settings (gear, admins only) and a Light/Dark toggle (sun/moon; `data-mode-toggle` in `sidebar.js`, the icon follows the mode in effect in `styles.css` "Sidebar icon row", hidden in Outrun). Notifications, Admin and the Mode buttons left the nav. Nav is now Feed, Shelves, Reviews, Friends, Do I Have This?, Wishlist, Collections, Profile, then Log out, which ends at 595px for everyone. "Follow system" stays at Profile → Appearance.
+
+**Done when:** one Shelves entry reaches all three sections for you and your household; friends are people on their own page, each opening their shelves; no page says "shelf" for a collection.
+
+---
+
+## Phase 12: Profile and stats
+
+From Phil, 2026-11-08. The profile page (`templates/user.html`, `blueprints/user.py`) has grown section by section; make it hang together.
+
+### 12.1 Stats: the same tabs for every type 🟠
+Done 2026-11-08.
+- [x] Two levels: **Overview | Insights** on top, then **Books | Movies | Music** (only the types the user has; books always). `templates/_profile_stats.html`; all panels are in the page and `showStats()` in `user.js` shows one (`hidden`, so screen readers agree). The Library tab is gone; its numbers are in Overview.
+- [x] One function for every type, `utils/stats.py` `type_stats(conn, user, kind)` (replaces `calculate_user_stats`, `calculate_library_stats`, `calculate_media_stats`). Overview: owned, finished, finished this year, want to, pages or hours finished and on the shelf, share of the shelf finished, average rating, reviews, creators on the shelf, not owned (when any), longest on the shelf, most common genre, the per-month chart (`stats.by_month`, any type now) and formats. Insights: top genres and creators (of what you finished), your ratings 5 to 1 as bars, collections, the shelf by decade.
+- [x] **"See the books"** like the other two, on both levels; on a friend's profile it opens their shelves.
+- [x] **All media** (a fourth choice, or the top of Overview): done in 12.2 (the All tab).
+
+### 12.2 More stats across all media 🟢
+Done 2026-11-08 (Phil: compact, UI forward).
+- [x] An **All** tab, first in the type switch when there's more than one type (`stats.all_stats`). Overview: owned, finished, finished this year, average rating (each with its split by type), time spent (pages read, hours watched, hours listened to), and **Year by year**.
+- [x] **Year by year** (`stats.year_by_year`): a row per year, newest first, the counts by type as text and a bar split by type on one scale, the reading goal as a tick ("goal 30, met"). Past years' goals live here now. A run of empty years is one row. With books only it sits on the Books tab.
+- [x] Insights: creators you return to (with their types), top genres, ratings 5 to 1, firsts (logging since, oldest on the shelf, added this year).
+- Not done, if wanted later: month-by-month across types, collection growth per month.
+
+### 12.3 Reading goal under the bio 🟢
+Done 2026-11-08.
+- [x] **Goals per year** (migration 029, `reading_goals (user_id, year, goal)`): the old `users.reading_goal` became this year's row (the column stays, unused). Setting the goal sets this year's row; 0 clears it; past years are never touched (`user.update_reading_goal`).
+- [x] **Under the bio** (`templates/_reading_goal.html`): "2026 goal: 12 of 30 books", a thin bar, "Change goal" (a `<details>` with the number field, no script). No goal: "Set a reading goal for 2026" on your own profile; friends see the goal and past years, or nothing.
+- [x] **Past years** moved to the stats card's Year by year (12.2, Phil); under the bio is this year's goal only.
+- [x] **What counts:** books with a session finished in that year, each once per year (a re-read counts in each year). A book marked Read with no date counts nowhere, so **marking Read / Watched / Listened now opens the review page with the session form open and today as the finished date** (`?finished=1`; an open session is finished instead of adding one; nothing is offered if one already finished today). Save keeps it; clear the date for an old read.
+- [x] Export: `reading_goals.csv` (year, goal); `profile.csv` lost its Reading Goal column.
+- Books only, as before; goals for movies and music can come later.
+
+### 12.4 Appearance: its own card, and no System button 🟢
+Done 2026-11-08.
+- [x] Appearance (Style, Mode, Font, Accent) left Settings for its own card under the profile header: a `<details class="appearance-card">`, closed by default.
+- [x] **Mode: Light | Dark.** `system` stays the stored default; while following it, the button for the mode in effect shows pressed and changes with the device (`syncModeButtons` in `sidebar.js`). Choosing one stores it, and a **Follow system** link (`_follow_system.html`) appears to go back; CSS hides it while following. The link is on Profile → Appearance only (Phil); the sidebar has just Light | Dark. No migration.
+
+**Done when:** every type's stats look alike and link to their grid, the goal and appearance no longer take a card each in the middle of the page, and Mode is two buttons.
+
+---
+
+## Phase 13: Reviews section
+
+From Phil, 2026-11-08: reviews and not-owned items already exist (`read_data`, 8B.3), so give reviews their own visible entry. Done 2026-11-09.
+- [x] **Sidebar: Reviews** (`/reviews/`, `blueprints/reviews.py`, queries in `utils/reviews.py`), after Shelves. Heading, then the Books | Movies | Music switch (`section_switch(..., urls=)` in `_shelves.html`, the Reviews variant of `shelf_url`). Each tab has three rows (`_shelf_rows.html`, which gained stars and a name under each cover, "See all" and an empty line):
+  - **Your reviews**, newest first, stars under each cover. read_data has no timestamp, so "newest" is the latest finished date of your sessions on it, then the order reviews were first written (rowid). Marking something finished already dates it today (12.3).
+  - **Friends' reviews** (`models.friend_ids`, new: friends only, never household-only members), stars and the friend's name.
+  - **Finished, not reviewed yet** (done status, no `read_data` row).
+  - **"See all"** (`/reviews/all/<mine|friends|unreviewed>?type=`): review cards with the review text (Read more), "Edit review" or "Write a review". `?by=<friend>` narrows Friends' to one friend (404 unless friends).
+- [x] **Floating [+ Review]**: Book | Movie | Album → `/reviews/find?type=&q=`, a plain GET search over the section's view (your shelf, your not-owned and removed items, your household's; never wishlist entries, friends' or strangers' rows), yours first. A result opens `read.rate_review`. Nothing found (or "Not the one?"): **Add it as not owned** opens that type's add page with `?not_owned=1&then=review&title=<search>` (`reviews.then_review_values`): "I don't own this" ticked, the title filled in, and saving lands on the review page.
+- [x] Reuse: the review form stays `read.rate_review`; opened from Reviews (`?from=reviews`) its crumb is Reviews and saving returns there. The profile's recent reviews use the same query (which also fixed a re-read book being listed once per session) and have **View all →** to Reviews.
+- [x] Tests: `tests/test_reviews.py` (access: stranger and household-only member; each type's rows; newest first; See all and `?by=`; the find scope; the not-owned path for all three types; the profile list). `/reviews/all/<which>` is in `test_every_page_loads`. Media add pages now keep "I don't own this" across a refused submit too.
+
+**Done when:** every review you or a friend wrote is two taps from the sidebar, and reviewing something you don't own is one flow.
+
+---
+
+## Phase 13b: Do I have this? across all three types
+
+From Phil, 2026-11-09: "I searched Orville Peck Pony and it thought I was talking about a book", and the item you scanned or searched for should fill in the add form when you press "Add to wishlist", for whichever media type it is.
+
+**What happens today (reviewed 2026-11-09):** the local check (`utils/have.py`) already searches books, movies and music. The problem is the "Not here" step: for a typed title, `have.add_links` always offers *book* links (Add to wishlist / Add to library), and carries neither the title nor a type. For a non-ISBN barcode it offers four buttons (movie or album, wishlist or shelf) and you pick, though the code is carried. Nothing is looked up online until you reach the add page.
+
+- [x] 🟠 **Online lookup on "Not here", across all three sources.** Ask Google Books / Open Library, TMDb and Discogs (MusicBrainz as backup) in parallel, through the existing lookup modules and SSRF guard. Load it with a fetch after the page renders (`have.js`), so the local answer stays instant and a slow source can't hold it up. Only on "Not here", never on a hit.
+- [x] 🟠 **"Most likely" ranking.** Score each candidate on how well its title and creator cover the words searched (folded with `search.fold`). "orville peck pony" fits artist + title on a Discogs release far better than any book title. Show the best candidate as the headline with its type badge, then the rest grouped by type, so a wrong guess is one tap from right. Start with a plain, explainable heuristic (word coverage, exact-title bonus, creator match), not a model.
+- [x] 🟠 **Barcodes:** a non-ISBN code asks TMDb/UPCitemdb and Discogs at once and picks whichever recognises it, instead of the four-button choice. Keep the choice as the fallback when neither or both answer.
+- [x] 🟠 **"Add to wishlist" fills the form.** Each candidate links to its type's wishlist add page with the source id (`?isbn=`, TMDb id, `?discogs=` / `?mbid=`, or the barcode). The add page looks that up on load (`add_item.js` already auto-looks-up a carried code: extend it to the other ids), so the form arrives filled in. A text search with no candidates still carries `?title=`.
+- [x] Tests: ranking on fixed fixtures (the Orville Peck case), each type's add link carrying its id, no network on a local hit, and the add page pre-fill per id.
+
+**Worth knowing before starting:**
+- Cost: up to three outside calls per "Not here". MusicBrainz is 1 request/s per process and Discogs about 60/min; the lookup modules already throttle and cache (6 h). Fine for one person in a shop, and the "only on Not here" rule keeps it that way.
+- Calculated risk: the ranking will sometimes guess wrong (a book and an album with the same name). Showing all three groups, only ordered, is what makes that acceptable.
+- Not in scope: auto-adding anything. A lookup only pre-fills; you still press Add.
+
+**Done 2026-11-09:** `utils/have_online.py` (sources in a thread pool, 5 s deadline for all, ranking `score_text` + `rank`), route `have.online` (`/have/online?q=`, 60/hour per user), `have.js` renders the candidates. Add pages take `?tmdb_id=` (Movies), `?discogs=` / `?mbid=` (Music) as `data-lookup-url`, and `?title=` / `?author=` (`media.add_prefill`). The by-hand links now come per type with the title carried. Tests: `tests/test_have_online.py`.
+- Decided on the way: a barcode both sources recognise shows both (the exact-code match first: Discogs/MusicBrainz scores above UPCitemdb + TMDb, which only matched a product name). UPCitemdb products filed under music aren't offered as movies (`upcitemdb` now returns `category`).
+- Known limit: an exact title that is a book, a film and an album ("purple rain") ties, and the tie goes to the first source (books). All three groups show, so the right one is a scroll away. A possible later bonus: candidates whose creator other results name in their titles.
+- Dev machine note: its IPv6 default route refuses connections, so the first request to Google / TMDb after idle spends ~1 s per IPv6 address before IPv4, past the deadline. Those sources are then "slow" once and fine after. Prod may not have this.
+
+**Done when:** a search or scan that isn't in the house shows the most likely match first, of the right type, and "Add to wishlist" opens that type's form already filled in.
 
 ---
 

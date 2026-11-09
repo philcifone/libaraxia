@@ -7,7 +7,8 @@
    Names: library (Lucide "library"), disc (Lucide "disc-3", the vinyl
    icon), vhs (a VHS cassette: shell, two reels, the tape between; Lucide
    has no VHS icon), dvd (a disc with a hole), audiobook (Lucide
-   "book-headphones"), and the sidebar's: bell, feed, bookmark (wishlist),
+   "book-headphones"), turntable, disc-2 and cassette-tape (Lucide, the
+   LP, CD and Cassette badges on the Music grid), and the sidebar's: bell, feed, bookmark (wishlist),
    collections, user, settings; scan (Lucide scan-barcode, Do I have this?), star (Reviews), sun and moon (the sidebar's mode toggle), house (the Shelves heading's household toggle). Stroke icons in currentColor,
    24x24, hidden from screen readers: the caller supplies the words. #}
 {% macro icon(name, class='w-5 h-5') -%}
@@ -30,6 +31,24 @@
 {%- elif name == 'dvd' %}
     <circle cx="12" cy="12" r="9"/>
     <circle cx="12" cy="12" r="2.5"/>
+{%- elif name == 'turntable' %}
+    {# Lucide "turntable" (LP) #}
+    <path d="M10 12.01h.01"/>
+    <path d="M18 8v4a8 8 0 0 1-1.07 4"/>
+    <circle cx="10" cy="12" r="4"/>
+    <rect x="2" y="4" width="20" height="16" rx="2"/>
+{%- elif name == 'disc-2' %}
+    {# Lucide "disc-2" (CD) #}
+    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 12h.01"/>
+{%- elif name == 'cassette-tape' %}
+    {# Lucide "cassette-tape" (Cassette) #}
+    <rect width="20" height="16" x="2" y="4" rx="2"/>
+    <circle cx="8" cy="10" r="2"/>
+    <path d="M8 12h8"/>
+    <circle cx="16" cy="10" r="2"/>
+    <path d="m6 20 .7-2.9A1.4 1.4 0 0 1 8.1 16h7.8a1.4 1.4 0 0 1 1.4 1l.7 3"/>
 {%- elif name == 'bell' %}
     <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
 {%- elif name == 'feed' %}

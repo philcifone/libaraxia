@@ -1,8 +1,8 @@
 {# The format badge in a cover's top-right corner: an icon for VHS / DVD /
-   Audiobook (_format_icon.html), the format's name otherwise (LP, 7" single,
-   CD, ...). A plain book has no badge. Needs `book` (a books row). #}
+   Audiobook / LP / CD / Cassette (_format_icon.html), the format's name
+   otherwise (EP, 7" single, ...). A plain book has no badge. Needs `book` (a books row). #}
 {% if book['format'] and (book['media_type'] != 'book' or book['format'] == 'Audiobook') %}
-{% set has_icon = book['format'] in ('VHS', 'DVD', 'Audiobook') %}
+{% set has_icon = book['format'] in ('VHS', 'DVD', 'Audiobook', 'LP', 'CD', 'Cassette') %}
 <span class="absolute top-2 right-2 z-10 {{ 'p-1' if has_icon else 'px-2 py-0.5' }} flex items-center text-xs font-mono font-bold bg-primary-bg text-content-primary border border-card rounded-pill"
       title="{{ book['format']|format_label }}">{% with fmt=book['format'] %}{% include '_format_icon.html' %}{% endwith %}</span>
 {% endif %}

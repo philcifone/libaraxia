@@ -1,10 +1,12 @@
 {# A format as an icon (the grid badge): a cassette for VHS (the
-   "Cartridge"), a disc for DVD, a book with headphones for an audiobook.
-   Any other format (LP, CD, ...) falls back to its name. Needs `fmt` (the stored value). The
-   name stays available to screen readers and as a hover tooltip. #}
+   "Cartridge"), a disc for DVD, a book with headphones for an audiobook,
+   a turntable for LP, a CD for CD, a cassette tape for Cassette. Other
+   formats (EP, 7" single, 10", 12" single) keep their name: the size is
+   the information. Needs `fmt` (the stored value). The name stays
+   available to screen readers and as a hover tooltip. #}
 {% set label = fmt|format_label %}
 {% from '_icons.html' import icon %}
-{% if fmt == 'VHS' %}{{ icon('vhs') }}<span class="sr-only">{{ label }}</span>
-{% elif fmt == 'DVD' %}{{ icon('dvd') }}<span class="sr-only">{{ label }}</span>
-{% elif fmt == 'Audiobook' %}{{ icon('audiobook') }}<span class="sr-only">{{ label }}</span>
+{% set icon_for = {'VHS': 'vhs', 'DVD': 'dvd', 'Audiobook': 'audiobook',
+                   'LP': 'turntable', 'CD': 'disc-2', 'Cassette': 'cassette-tape'} %}
+{% if fmt in icon_for %}{{ icon(icon_for[fmt]) }}<span class="sr-only">{{ label }}</span>
 {% else %}{{ label }}{% endif %}

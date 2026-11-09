@@ -171,6 +171,21 @@ def test_grid_tabs_and_search(client, db, people):
     assert 'href="/records/add"' in page and 'href="/wishlist/add?type=record"' in page
 
 
+def test_format_badges_use_icons_for_lp_cd_and_cassette(client, db, people):
+    # LP, CD and Cassette get a Lucide icon (turntable, disc-2, cassette-tape)
+    # with the name kept for screen readers; vinyl sizes stay as text
+    add_record(db, people['alice'], title='Blue', fmt='LP')
+    add_record(db, people['alice'], title='Court and Spark', catno='7E-1001', fmt='CD')
+    add_record(db, people['alice'], title='Hissing', catno='7E-1051', fmt='Cassette')
+    login(client, 'alice')
+    page = client.get('/records/').get_data(as_text=True)
+    assert 'M18 8v4a8 8 0 0 1-1.07 4' in page          # turntable
+    assert '<circle cx="12" cy="12" r="4"/>' in page   # disc-2
+    assert 'M8 12h8' in page                           # cassette-tape
+    for name in ('LP', 'CD', 'Cassette'):
+        assert f'<span class="sr-only">{name}</span>' in page
+
+
 def test_household_and_friends_see_records(client, db, people):
     add_record(db, people['alice'])
     login(client, 'bob')

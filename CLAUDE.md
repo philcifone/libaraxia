@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Open work, known bugs and security follow-ups live in [ROADMAP.md](ROADMAP.md)**, as numbered phases worked through in order. Check it before starting a task and tick items off when they're done. Finished phases (0–8F, 10) are in [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md) under their original numbers, which code comments cite ("ROADMAP 7.2b"): grep there, don't read it whole. The archive fork is out of scope (ROADMAP, Not planned); [FORK-SPEC.md](FORK-SPEC.md) keeps its plan and the original VHS design notes.
+**Open work, known bugs and security follow-ups live in [ROADMAP.md](ROADMAP.md)**, as numbered phases worked through in order. Check it before starting a task and tick items off when they're done. Finished phases (0–8F, 10, 11–13b) are in [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md) under their original numbers, which code comments cite ("ROADMAP 7.2b"): grep there, don't read it whole. The archive fork is out of scope (ROADMAP, Not planned); [FORK-SPEC.md](FORK-SPEC.md) keeps its plan and the original VHS design notes.
 
 ## Project Overview
 
