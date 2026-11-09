@@ -55,29 +55,25 @@ function syncModeButtons() {
 document.addEventListener('DOMContentLoaded', syncModeButtons);
 darkQuery.addEventListener('change', syncModeButtons);
 
-// Any [data-theme-picker] group of .theme-opt buttons (Profile -> Appearance,
-// the sidebar's Mode shortcut). Applies instantly by setting data-style /
-// data-mode on <html>, then saves; reverts if the save fails. Every picker on
-// the page is kept in step.
-document.addEventListener('click', async event => {
-    const btn = event.target.closest('[data-theme-picker] .theme-opt');
-    if (!btn) return;
-    const kind = btn.dataset.kind;              // 'style', 'mode', 'accent' or 'font'
+// Apply an appearance setting instantly (data-style / data-mode / ... on
+// <html>), then save it; revert if the save fails. Every picker on the page
+// is kept in step.
+async function setAppearance(kind, value) {     // kind: 'style', 'mode', 'accent' or 'font'
     const root = document.documentElement;
     const previous = root.dataset[kind];
     const press = value => kind === 'mode' ? syncModeButtons()
         : document.querySelectorAll(`.theme-opt[data-kind="${kind}"]`)
             .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
 
-    if (btn.dataset.value === previous) return;
-    root.dataset[kind] = btn.dataset.value;
-    press(btn.dataset.value);
+    if (value === previous) return;
+    root.dataset[kind] = value;
+    press(value);
 
     try {
         const response = await fetch('/user/update_theme', {
             method: 'POST',
             headers: getCSRFHeaders(),
-            body: JSON.stringify({ [kind]: btn.dataset.value })
+            body: JSON.stringify({ [kind]: value })
         });
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.message);
@@ -86,4 +82,19 @@ document.addEventListener('click', async event => {
         press(previous);
         showFlashMessage('error', 'Could not save appearance settings.');
     }
+}
+
+// Any [data-theme-picker] group of .theme-opt buttons (Profile -> Appearance)
+document.addEventListener('click', event => {
+    const btn = event.target.closest('[data-theme-picker] .theme-opt');
+    if (btn) setAppearance(btn.dataset.kind, btn.dataset.value);
+});
+
+// The sidebar's sun/moon: the other mode from the one in effect (while
+// following the system, the device's), stored as a choice like the buttons
+document.addEventListener('click', event => {
+    if (!event.target.closest('[data-mode-toggle]')) return;
+    const mode = document.documentElement.dataset.mode;
+    const effective = mode === 'system' ? (darkQuery.matches ? 'dark' : 'light') : mode;
+    setAppearance('mode', effective === 'dark' ? 'light' : 'dark');
 });

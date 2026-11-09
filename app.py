@@ -28,6 +28,7 @@ from blueprints.friends import friends_blueprint
 from blueprints.covers import covers_blueprint
 from blueprints.videos import videos_blueprint
 from blueprints.records import records_blueprint
+from blueprints.reviews import reviews_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT
 from utils.rate_limiting import limiter
@@ -207,6 +208,7 @@ def create_app():
     app.register_blueprint(covers_blueprint, url_prefix='/covers')
     app.register_blueprint(videos_blueprint, url_prefix='/videos')
     app.register_blueprint(records_blueprint, url_prefix='/records')
+    app.register_blueprint(reviews_blueprint, url_prefix='/reviews')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media
@@ -228,12 +230,16 @@ def create_app():
     app.add_template_global(show_choice, 'show_choice')
 
     def url_with(**changes):
-        """This page's URL with some query args changed (None drops one);
-        repeated args such as tags[] are kept."""
+        """This page's URL with some query args changed (None or an empty
+        list drops one; a list sets a repeated arg, as ?member= on the
+        household pages); other repeated args such as tags[] are kept."""
         args = request.args.to_dict(flat=False)
         for key, value in changes.items():
             args.pop(key, None)
-            if value is not None:
+            if isinstance(value, (list, tuple)):
+                if value:
+                    args[key] = list(value)
+            elif value is not None:
                 args[key] = [value]
         return url_for(request.endpoint, **(request.view_args or {}), **args)
     app.add_template_global(url_with, 'url_with')

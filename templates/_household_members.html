@@ -1,0 +1,41 @@
+{# Who shares the household's shelves, as centred name boxes right under the
+   Shelves heading (Books, Movies and Music, Household; Phil, 2026-11-09):
+   "Everyone", then each other member with their avatar. Chips toggle: each
+   one on adds that member's items to yours (?member=, repeated;
+   utils/households.member_choice), so you pick who's on the shelf. Turning
+   the last one off, or "Everyone", shows the whole household. One member
+   alone is their profile. Links keep the search, filters and sort
+   (url_with). They wrap into more centred rows as members join.
+   No household yet: one line on how to start one.
+
+   Needs: household_members (rows: id, username, avatar_url), member_filter
+   (the chosen ids, a list) #}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
+    {% if household_members %}
+    {# Worded by section: books, movies or music (the Library page has no m) #}
+    {% set kind = m.type if m is defined and m else 'book' %}
+    <p id="member-row-label" class="text-sm text-content-secondary text-center mb-2">Your shared {{ SECTION_NAMES[kind]|lower }} with</p>
+    <nav class="member-row" aria-label="Whose items" aria-describedby="member-row-label">
+        <a href="{{ url_with(member=[], page=None) }}" class="member-chip card-link {{ 'is-on' if not member_filter }}"
+           {% if not member_filter %}aria-current="true"{% endif %}>Everyone</a>
+        {% for member in household_members %}
+        {% set on = member.id in member_filter %}
+        {% set toggled = member_filter|reject('equalto', member.id)|list if on else member_filter + [member.id] %}
+        <a href="{{ url_with(member=toggled, page=None) }}" class="member-chip card-link {{ 'is-on' if on }}"
+           title="{{ 'Take out' if on else 'Add' }} {{ member.username }}'s"
+           {% if on %}aria-current="true"{% endif %}>
+            {% if member.avatar_url %}
+            <img src="{{ url_for('static', filename=member.avatar_url) }}" alt="" class="w-6 h-6 rounded-full object-cover">
+            {% else %}
+            <span class="w-6 h-6 rounded-full bg-accent text-on-accent text-xs font-bold flex items-center justify-center" aria-hidden="true">{{ member.username[0].upper() }}</span>
+            {% endif %}
+            {{ member.username }}
+        </a>
+        {% endfor %}
+    </nav>
+    {% else %}
+    <p class="text-sm text-content-secondary">
+        You're not sharing a library with anyone yet. To share one, open a friend's profile and invite them to your household.
+    </p>
+    {% endif %}
+</div>

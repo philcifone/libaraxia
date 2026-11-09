@@ -94,7 +94,7 @@ def test_every_page_loads(app, client, db, people):
 
     filled = {
         'id': book, 'book_id': book, 'collection_id': shelf, 'user_id': bob,
-        'username': 'carol', 'status': 'read',
+        'username': 'carol', 'status': 'read', 'which': 'mine',
     }
     checked = []
     for rule in app.url_map.iter_rules():

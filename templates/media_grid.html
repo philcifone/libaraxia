@@ -22,7 +22,11 @@
     {% include '_add_fab.html' %}
 
     {% from '_shelves.html' import shelf_header %}
+    {% if tab == 'shared' %}
+    {% call shelf_header(m.type, tab) %}{% include '_household_members.html' %}{% endcall %}
+    {% else %}
     {{ shelf_header(m.type, tab, owner.username if tab == 'friend' else None) }}
+    {% endif %}
 
     {% set whose = owner.username ~ "'s" if tab == 'friend' else 'your' %}
     {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}

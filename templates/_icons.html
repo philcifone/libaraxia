@@ -8,7 +8,7 @@
    icon), vhs (a VHS cassette: shell, two reels, the tape between; Lucide
    has no VHS icon), dvd (a disc with a hole), audiobook (Lucide
    "book-headphones"), and the sidebar's: bell, feed, bookmark (wishlist),
-   collections, user, settings; scan (Lucide scan-barcode, Do I have this?). Stroke icons in currentColor,
+   collections, user, settings; scan (Lucide scan-barcode, Do I have this?), star (Reviews), sun and moon (the sidebar's mode toggle), house (the Shelves heading's household toggle). Stroke icons in currentColor,
    24x24, hidden from screen readers: the caller supplies the words. #}
 {% macro icon(name, class='w-5 h-5') -%}
 <svg class="{{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -51,6 +51,20 @@
     <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
 {%- elif name == 'scan' %}
     <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"/>
+{%- elif name == 'star' %}
+    {# Lucide "star" (Reviews, ROADMAP 13) #}
+    <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+{%- elif name == 'house' %}
+    {# Lucide "house" (the Shelves heading's Mine / Household toggle) #}
+    <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+    <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+{%- elif name == 'sun' %}
+    {# Lucide "sun" #}
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+{%- elif name == 'moon' %}
+    {# Lucide "moon" #}
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
 {%- elif name == 'audiobook' %}
     {# Lucide "book-headphones" #}
     <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>
@@ -65,12 +79,22 @@
    side in the middle, the same on the grids (section_heading) and on Feed,
    Notifications, Wishlist, Collections and Admin. `subtitle` is an optional
    line under it. The caller spaces it (mb-6 or the grid wrapper below). #}
-{% macro page_heading(icon_name, name, subtitle=none, class='mb-6') -%}
-<div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ class }}">
-    <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center">
+{# toggle: an outlined icon button pinned to the card's left edge, so it
+   stays put whatever the title's length, {url, icon, on, label}: grey when
+   off, the accent when on (the Shelves heading's Mine / Household,
+   _shelves.html). The title keeps equal padding both sides to stay centred. #}
+{# sr_prefix: words before the name for screen readers only ("Household"
+   on the household's Shelves, where the lit toggle says it visually) #}
+{% macro page_heading(icon_name, name, subtitle=none, class='mb-6', toggle=none, sr_prefix=none) -%}
+<div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ 'relative' if toggle }} {{ class }}">
+    {% if toggle %}
+    <a href="{{ toggle.url }}" title="{{ toggle.label }}" aria-label="{{ toggle.label }}"
+       class="heading-toggle absolute left-3 top-1/2 -translate-y-1/2 p-1.5 border-2 rounded-lg {{ 'is-on' if toggle.on }}">{{ icon(toggle.icon, 'w-6 h-6') }}</a>
+    {% endif %}
+    <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center {{ 'px-12' if toggle }}">
         <span class="text-accent shrink-0">{{ icon(icon_name, 'w-8 h-8') }}</span>
         {# page-title: Outrun sets it in its title font and gradient #}
-        <span class="page-title min-w-0">{{ name }}</span>
+        <span class="page-title min-w-0">{% if sr_prefix %}<span class="sr-only">{{ sr_prefix }} </span>{% endif %}{{ name }}</span>
     </h1>
     {% if subtitle %}<p class="mt-1 text-sm text-content-secondary text-center">{{ subtitle }}</p>{% endif %}
 </div>

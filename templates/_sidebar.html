@@ -42,18 +42,35 @@
                     {{ current_user.username[0].upper() }}
                 </div>
             {% endif %}
-            <h2 class="text-xl text-content-primary">
-                Welcome, {{ current_user.username.capitalize() }}!
-            </h2>
-            {# Notifications live here, under the welcome, with what's waiting
-               (requests, invites, unread) as a count (Phil, 2026-11-08) #}
+            {# Notifications rides on the welcome line; Admin Settings (admins)
+               and the Light/Dark toggle sit under it (Phil, 2026-11-09, to save
+               sidebar height). The toggle shows the moon in light mode and the
+               sun in dark (sidebar.js; styles.css "Sidebar icon row"). Mode's
+               full choice, with "Follow system", is at Profile -> Appearance. #}
             {% set waiting = notification_count() %}
-            <a href="{{ url_for('friends.notifications_page') }}"
-               class="mt-2 inline-flex items-center gap-2 text-sm {{ 'text-accent font-semibold' if request.endpoint == 'friends.notifications_page' else 'text-content-secondary' }} hover:text-accent transition-colors">
-                {{ icon('bell', class='w-4 h-4') }}
-                Notifications
-                {% if waiting %}<span class="min-w-[1.25rem] px-1.5 bg-accent text-on-accent text-xs leading-5 text-center rounded-pill">{{ waiting }}<span class="sr-only"> waiting</span></span>{% endif %}
-            </a>
+            <h2 class="text-xl text-content-primary flex items-center justify-center gap-1">
+                <span class="min-w-0">Welcome, {{ current_user.username.capitalize() }}!</span>
+                <a href="{{ url_for('friends.notifications_page') }}" title="Notifications"
+                   aria-label="Notifications{% if waiting %}, {{ waiting }} waiting{% endif %}"
+                   class="sidebar-icon relative shrink-0 {{ 'is-active' if request.endpoint == 'friends.notifications_page' }}">
+                    {{ icon('bell') }}
+                    {% if waiting %}<span class="absolute -top-1 -right-1 min-w-[1.25rem] px-1 bg-accent text-on-accent text-xs leading-5 text-center rounded-pill" aria-hidden="true">{{ waiting }}</span>{% endif %}
+                </a>
+            </h2>
+            <div class="sidebar-icons mt-1 flex items-center justify-center gap-3">
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.settings') }}" title="Admin Settings" aria-label="Admin Settings"
+                   class="sidebar-icon {{ 'is-active' if request.path.startswith('/admin') }}">
+                    {{ icon('settings') }}
+                </a>
+                {% endif %}
+                {# data-mode-picker: hidden in Outrun, which is dark only #}
+                <button type="button" class="sidebar-icon" data-mode-toggle data-mode-picker
+                        title="Light or dark mode" aria-label="Switch between light and dark mode">
+                    <span class="mode-icon-moon">{{ icon('moon') }}</span>
+                    <span class="mode-icon-sun">{{ icon('sun') }}</span>
+                </button>
+            </div>
         </div>
 
         <!-- Navigation -->
@@ -75,6 +92,14 @@
                       hover:bg-accent/10 transition-colors">
                 {{ icon('library') }}
                 Shelves
+            </a>
+
+            {# Reviews (ROADMAP 13): yours, friends' and what's waiting for one #}
+            <a href="{{ url_for('reviews.index') }}"
+               class="nav-link {% if request.path.startswith('/reviews') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      hover:bg-accent/10 transition-colors">
+                {{ icon('star') }}
+                Reviews
             </a>
 
             <a href="{{ url_for('friends.index') }}"
@@ -112,31 +137,7 @@
                 Profile
             </a>
 
-            <!-- Admin Settings (Admin Only) -->
-            {% if current_user.is_admin %}
             <div class="my-2 border-t border-content-primary/10"></div>
-            <a href="/admin/settings"
-               class="nav-link {% if request.path.startswith('/admin') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent-hover
-                      hover:bg-accent/10 transition-colors">
-                {{ icon('settings') }}
-                Admin Settings
-            </a>
-            {% endif %}
-
-            <!-- Mode shortcut: the same setting as Profile -> Appearance (static/sidebar.js) -->
-            <div class="mt-auto px-4 pt-4 pb-2" data-theme-picker data-mode-picker>
-                <p class="label text-xs pb-1 mb-2">Mode</p>
-                <div class="flex" role="group" aria-label="Colour mode">
-                    {% for key, name in mode_choices.items() %}
-                    <button type="button"
-                            class="theme-opt flex-1 px-2 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
-                            data-kind="mode" data-value="{{ key }}"
-                            aria-pressed="{{ 'true' if key == theme_mode else 'false' }}">
-                        {{ name }}
-                    </button>
-                    {% endfor %}
-                </div>
-            </div>
 
             <!-- Logout at the bottom: a POST form, so a link or image elsewhere can't log you out -->
             <form method="POST" action="{{ url_for('auth.logout') }}">

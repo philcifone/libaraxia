@@ -14,7 +14,8 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 10 | More styles: Shelf (with the movie rack), Outrun, font choice | Done 2026-11-08, [archive](docs/ROADMAP-ARCHIVE.md#phase-10-more-styles) |
 | 11 | [Shelves: one home for every section](#phase-11-shelves-one-home-for-every-section) | Next |
 | 12 | [Profile and stats](#phase-12-profile-and-stats) | After 11: stats use its section switch |
-| 13 | [Reviews section](#phase-13-reviews-section) | After 11: reuses its section switch |
+| 13 | [Reviews section](#phase-13-reviews-section) | Done 2026-11-09 |
+| 13b | [Do I have this? across all three types](#phase-13b-do-i-have-this-across-all-three-types) | Next: after 13 |
 | 14 | [Bulk edit and granular import](#phase-14-bulk-edit-and-granular-import) | After 11: select mode lives on the new grids. Was Phase 9 |
 | 15 | [Portfolio: README, showcase site, demo](#phase-15-portfolio-readme-showcase-site-demo) | Last: screenshots of the finished app |
 
@@ -77,7 +78,7 @@ Done 2026-11-08 (Phil asked for sort by date read, and others).
 
 ### 11.5 Sidebar after 11 and 13 🟢
 - [x] 2026-11-08: on a short screen (`max-height: 760px`, styles.css "Sidebar on a short screen") the avatar shrinks and link rows tighten, so the 8 entries, Mode and Log out fit a 375x667 phone, and "Do I Have This?" stays on one line.
-- [ ] When Reviews arrives (Phase 13): Feed, Shelves, **Reviews**, Friends, Do I Have This?, Wishlist, Collections, Profile, Admin (9). That's one row more than fits at 667px; the nav list scrolls (flex-1, overflow-y-auto) and Mode and Log out stay pinned below it, so check that still reads well, or fold Mode into Profile → Appearance (12.4).
+- [x] 2026-11-09, with Reviews (Phase 13): measured at 375x667, Reviews made an admin's Log out end 33px below the fold. Phil's fix: icons instead of entries: Notifications (bell, with the waiting count) at the end of the welcome line, then under it Admin Settings (gear, admins only) and a Light/Dark toggle (sun/moon; `data-mode-toggle` in `sidebar.js`, the icon follows the mode in effect in `styles.css` "Sidebar icon row", hidden in Outrun). Notifications, Admin and the Mode buttons left the nav. Nav is now Feed, Shelves, Reviews, Friends, Do I Have This?, Wishlist, Collections, Profile, then Log out, which ends at 595px for everyone. "Follow system" stays at Profile → Appearance.
 
 **Done when:** one Shelves entry reaches all three sections for you and your household; friends are people on their own page, each opening their shelves; no page says "shelf" for a collection.
 
@@ -121,17 +122,38 @@ Done 2026-11-08.
 
 ## Phase 13: Reviews section
 
-From Phil, 2026-11-08: reviews and not-owned items already exist (`read_data`, 8B.3), so give reviews their own visible entry.
-- [ ] **Sidebar: Reviews** (`/reviews/`, a new blueprint). Heading, then the Books | Movies | Music switch from 11.1 (`section_switch()` in `_shelves.html`; its links will need a Reviews variant of `shelf_url`). Each tab is laid out like Collections (side-scrolling rows of covers, `_shelf_rows.html`), one row each:
-  - **Your reviews** (rating and review, newest first; stars under each cover);
-  - **Friends' reviews** (friends only, as the profile and feed; household members who aren't friends don't see each other's reviews, see the access model in CLAUDE.md);
-  - **Finished, not reviewed yet** (status read / watched / listened with no `read_data` row): the prompt to write one.
-  - Each row has "See all", a grid of that list.
-- [ ] **Floating [+ Review]** (`_add_fab.html`): Book | Movie | Album. Picking one opens a search over that type: your shelf, your not-owned items and your household's (`book_matching` rules: never strangers' rows). A result goes to its review page (`read.rate_review`). Nothing found: "Add it as not owned" opens the add page for that type with *Owned* unticked, and saving lands on the review page.
-- [ ] Reuse, don't duplicate: the review form stays `read.rate_review`; the profile's reviews link here.
-- [ ] Tests: access (a stranger's or household-only member's review never shows), each type's rows, the not-owned path.
+From Phil, 2026-11-08: reviews and not-owned items already exist (`read_data`, 8B.3), so give reviews their own visible entry. Done 2026-11-09.
+- [x] **Sidebar: Reviews** (`/reviews/`, `blueprints/reviews.py`, queries in `utils/reviews.py`), after Shelves. Heading, then the Books | Movies | Music switch (`section_switch(..., urls=)` in `_shelves.html`, the Reviews variant of `shelf_url`). Each tab has three rows (`_shelf_rows.html`, which gained stars and a name under each cover, "See all" and an empty line):
+  - **Your reviews**, newest first, stars under each cover. read_data has no timestamp, so "newest" is the latest finished date of your sessions on it, then the order reviews were first written (rowid). Marking something finished already dates it today (12.3).
+  - **Friends' reviews** (`models.friend_ids`, new: friends only, never household-only members), stars and the friend's name.
+  - **Finished, not reviewed yet** (done status, no `read_data` row).
+  - **"See all"** (`/reviews/all/<mine|friends|unreviewed>?type=`): review cards with the review text (Read more), "Edit review" or "Write a review". `?by=<friend>` narrows Friends' to one friend (404 unless friends).
+- [x] **Floating [+ Review]**: Book | Movie | Album → `/reviews/find?type=&q=`, a plain GET search over the section's view (your shelf, your not-owned and removed items, your household's; never wishlist entries, friends' or strangers' rows), yours first. A result opens `read.rate_review`. Nothing found (or "Not the one?"): **Add it as not owned** opens that type's add page with `?not_owned=1&then=review&title=<search>` (`reviews.then_review_values`): "I don't own this" ticked, the title filled in, and saving lands on the review page.
+- [x] Reuse: the review form stays `read.rate_review`; opened from Reviews (`?from=reviews`) its crumb is Reviews and saving returns there. The profile's recent reviews use the same query (which also fixed a re-read book being listed once per session) and have **View all →** to Reviews.
+- [x] Tests: `tests/test_reviews.py` (access: stranger and household-only member; each type's rows; newest first; See all and `?by=`; the find scope; the not-owned path for all three types; the profile list). `/reviews/all/<which>` is in `test_every_page_loads`. Media add pages now keep "I don't own this" across a refused submit too.
 
 **Done when:** every review you or a friend wrote is two taps from the sidebar, and reviewing something you don't own is one flow.
+
+---
+
+## Phase 13b: Do I have this? across all three types
+
+From Phil, 2026-11-09: "I searched Orville Peck Pony and it thought I was talking about a book", and the item you scanned or searched for should fill in the add form when you press "Add to wishlist", for whichever media type it is.
+
+**What happens today (reviewed 2026-11-09):** the local check (`utils/have.py`) already searches books, movies and music. The problem is the "Not here" step: for a typed title, `have.add_links` always offers *book* links (Add to wishlist / Add to library), and carries neither the title nor a type. For a non-ISBN barcode it offers four buttons (movie or album, wishlist or shelf) and you pick, though the code is carried. Nothing is looked up online until you reach the add page.
+
+- [ ] 🟠 **Online lookup on "Not here", across all three sources.** Ask Google Books / Open Library, TMDb and Discogs (MusicBrainz as backup) in parallel, through the existing lookup modules and SSRF guard. Load it with a fetch after the page renders (`have.js`), so the local answer stays instant and a slow source can't hold it up. Only on "Not here", never on a hit.
+- [ ] 🟠 **"Most likely" ranking.** Score each candidate on how well its title and creator cover the words searched (folded with `search.fold`). "orville peck pony" fits artist + title on a Discogs release far better than any book title. Show the best candidate as the headline with its type badge, then the rest grouped by type, so a wrong guess is one tap from right. Start with a plain, explainable heuristic (word coverage, exact-title bonus, creator match), not a model.
+- [ ] 🟠 **Barcodes:** a non-ISBN code asks TMDb/UPCitemdb and Discogs at once and picks whichever recognises it, instead of the four-button choice. Keep the choice as the fallback when neither or both answer.
+- [ ] 🟠 **"Add to wishlist" fills the form.** Each candidate links to its type's wishlist add page with the source id (`?isbn=`, TMDb id, `?discogs=` / `?mbid=`, or the barcode). The add page looks that up on load (`add_item.js` already auto-looks-up a carried code: extend it to the other ids), so the form arrives filled in. A text search with no candidates still carries `?title=`.
+- [ ] Tests: ranking on fixed fixtures (the Orville Peck case), each type's add link carrying its id, no network on a local hit, and the add page pre-fill per id.
+
+**Worth knowing before starting:**
+- Cost: up to three outside calls per "Not here". MusicBrainz is 1 request/s per process and Discogs about 60/min; the lookup modules already throttle and cache (6 h). Fine for one person in a shop, and the "only on Not here" rule keeps it that way.
+- Calculated risk: the ranking will sometimes guess wrong (a book and an album with the same name). Showing all three groups, only ordered, is what makes that acceptable.
+- Not in scope: auto-adding anything. A lookup only pre-fills; you still press Add.
+
+**Done when:** a search or scan that isn't in the house shows the most likely match first, of the right type, and "Add to wishlist" opens that type's form already filled in.
 
 ---
 

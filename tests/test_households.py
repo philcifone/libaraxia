@@ -3,7 +3,7 @@
 
 people: alice (admin, household owner) + bob (member); carol is alice's friend.
 """
-from conftest import add_user, login, make_friends, scalar
+from conftest import add_book, add_user, login, make_friends, scalar
 
 
 def role(db, user_id):
@@ -119,3 +119,56 @@ def test_profile_shows_the_right_household_button(client, db, people):
     login(client, 'bob')
     page = client.get('/user/alice').get_data(as_text=True)
     assert 'Leave Household' in page and 'Remove from Household' not in page
+
+
+def test_member_row_on_every_household_page(client, db, people):
+    """Household Books, Movies and Music share one member row (Phil,
+    2026-11-09): Everyone, then each other member; a chip shows that
+    member's items and yours together, and chips toggle so several can be
+    on. Someone outside the household is ignored."""
+    from test_records import add_record
+    from test_videos import add_video
+    alice, bob, carol = people['alice'], people['bob'], people['carol']
+    dave = add_user(db, 'dave')                    # a third household member
+    db.execute("INSERT INTO library_members (library_id, user_id, role) VALUES (?, ?, 'member')", (alice, dave))
+    db.commit()
+    add_book(db, dave, 'Daves Book'); add_video(db, dave, 'Daves Film'); add_record(db, dave, 'Daves Album')
+    add_book(db, alice, 'Alices Book'); add_book(db, bob, 'Bobs Book')
+    add_video(db, alice, 'Alices Film'); add_video(db, bob, 'Bobs Film')
+    add_record(db, alice, 'Alices Album'); add_record(db, bob, 'Bobs Album')
+    add_video(db, carol, 'Carols Film')            # a friend, not household
+    login(client, 'alice')
+    for url, mine, bobs, daves in (('/base/shared-library', 'Alices Book', 'Bobs Book', 'Daves Book'),
+                                   ('/videos/shared', 'Alices Film', 'Bobs Film', 'Daves Film'),
+                                   ('/records/shared', 'Alices Album', 'Bobs Album', 'Daves Album')):
+        html = client.get(url).get_data(as_text=True)
+        row = html[html.index('aria-label="Whose items"'):]
+        row = row[:row.index('</nav>')]
+        assert 'Everyone' in row and 'bob' in row and 'carol' not in row and '>alice' not in row
+        assert mine in html and bobs in html and daves in html
+        # bob's chip: bob's and yours together, not dave's
+        with_bob = client.get(f'{url}?member={bob}').get_data(as_text=True)
+        assert bobs in with_bob and mine in with_bob and daves not in with_bob
+        # chips toggle: with bob on, dave's chip adds dave and bob's takes bob out
+        assert f'{url}?member={bob}&amp;member={dave}' in with_bob
+        assert f'href="{url}" class="member-chip card-link is-on"' in with_bob
+        both = client.get(f'{url}?member={bob}&member={dave}').get_data(as_text=True)
+        assert bobs in both and daves in both and mine in both
+        # carol isn't in the household: her id shows everyone's, never hers
+        not_member = client.get(f'{url}?member={carol}').get_data(as_text=True)
+        assert 'class="member-chip card-link is-on"' in not_member.split('Everyone')[0][-200:]   # Everyone stays on
+        assert mine in not_member and 'Carols Film' not in not_member
+
+
+def test_member_row_without_a_household(client, db, people):
+    login(client, 'carol')
+    html = client.get('/videos/shared').get_data(as_text=True)
+    assert "You're not sharing a library with anyone yet" in html
+    assert 'aria-label="Whose items"' not in html
+
+
+def test_member_row_label_per_section(client, db, people):
+    login(client, 'alice')
+    for url, word in (('/base/shared-library', 'books'), ('/videos/shared', 'movies'), ('/records/shared', 'music')):
+        html = client.get(url).get_data(as_text=True)
+        assert f'Your shared {word} with</p>' in html

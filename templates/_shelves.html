@@ -1,6 +1,6 @@
 {# The Shelves pages' header (ROADMAP 11.1): Library, Movies and Music are
    one place, "Shelves", in the sidebar. Every grid page starts with
-   shelf_header(): the scope tabs (Mine / Household / Friends'), the heading,
+   shelf_header(): the heading, whose house icon toggles Mine / Household,
    then the Books | Movies | Music switch. The switch keeps the scope, so
    Household -> Movies is the household's movies, and on a friend's shelf
    it's that friend's movies. URLs come from shelf_url() (app.py) and
@@ -12,29 +12,15 @@
    username: the friend, for scope 'friend' #}
 {% from '_icons.html' import page_heading, crumbs %}
 
-{% macro scope_tabs(section, scope) -%}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
-    <div class="bg-secondary rounded-xl overflow-hidden card">
-        <nav class="flex items-stretch" aria-label="Whose shelves">
-            {% for key, label in [('mine', 'Mine'), ('shared', 'Household')] %}
-            {% set active = scope == key %}
-            <a href="{{ shelf_url(section, key) }}" class="tab {% if active %}tab-active{% endif %}"
-               {% if active %}aria-current="page"{% endif %}>
-                <span class="text-center">{{ label }}</span>
-            </a>
-            {% endfor %}
-        </nav>
-    </div>
-</div>
-{%- endmacro %}
-
-{# wrap=False: just the card, for a page that already sets the width #}
-{% macro section_switch(section, scope, username=None, class='pb-4', wrap=True) -%}
+{# wrap=False: just the card, for a page that already sets the width.
+   urls: {type: url} for a page that isn't a shelf (Reviews, ROADMAP 13);
+   without it the links come from shelf_url() and keep the scope. #}
+{% macro section_switch(section, scope=None, username=None, class='pb-4', wrap=True, urls=None) -%}
 <div class="{{ 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' if wrap }} {{ class }}">
     <div class="bg-secondary rounded-xl overflow-hidden card">
         <nav class="flex items-stretch" aria-label="Section">
             {% for key, label in SECTION_NAMES.items() %}
-            <a href="{{ shelf_url(key, scope, username) }}" class="tab {% if section == key %}tab-active{% endif %}"
+            <a href="{{ urls[key] if urls else shelf_url(key, scope, username) }}" class="tab {% if section == key %}tab-active{% endif %}"
                {% if section == key %}aria-current="page"{% endif %}>
                 <span class="text-center">{{ label }}</span>
             </a>
@@ -51,13 +37,25 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
     {{ crumbs([('Friends', url_for('friends.index'))], username, class='mb-4') }}
 </div>
-{% else %}
-{{ scope_tabs(section, scope) }}
 {% endif %}
-{% set names = {'mine': 'Shelves', 'shared': 'Household Shelves',
+{# The household's are "Shelves" too: "Household Shelves" wraps on a phone
+   (any style, measured at 375px), and the lit house says it (Phil,
+   2026-11-09). Screen readers still hear "Household". #}
+{% set names = {'mine': 'Shelves', 'shared': 'Shelves',
                 'friend': (username ~ "'s Shelves") if username else 'Shelves'} %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-4">
-    {{ page_heading('library', names[scope], class='') }}
+{# Mine / Household is the house icon in the heading (Phil, 2026-11-09):
+   grey on your shelves, accent on the household's; a tap goes to the other #}
+{% set household = scope == 'shared' %}
+{% set toggle = none if scope == 'friend' else {
+     'url': shelf_url(section, 'mine' if household else 'shared'),
+     'icon': 'house', 'on': household,
+     'label': 'Showing the household: show only mine' if household else 'Show the household'} %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {{ 'pt-2' if scope == 'friend' else 'pt-20' }} pb-4">
+    {{ page_heading('library', names[scope], class='', toggle=toggle,
+                    sr_prefix='Household' if household else none) }}
 </div>
+{# Called with {% call shelf_header(...) %}: what the call wraps goes right
+   under the heading (the household's "Shared Library with ..." box) #}
+{% if caller %}{{ caller() }}{% endif %}
 {{ section_switch(section, scope, username) }}
 {%- endmacro %}

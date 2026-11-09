@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
+{% from '_shelves.html' import section_switch %}
+{# [+ Review] -> Book | Movie | Album lands here (reviews.find, ROADMAP 13):
+   a plain GET search (no script) over what you may review: your shelf, your
+   not-owned and removed items, and your household's shelf, never anyone
+   else's (utils/reviews.find). A result opens its review page. Nothing
+   found: "Add it as not owned" opens the add page with "I don't own this"
+   ticked and ?then=review, so saving lands on the review page. #}
+
+{% block title %}Review {{ m.a }} {{ m.noun }} - libaraxia{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% block content %}
+    <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+        {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], 'Review ' ~ m.a ~ ' ' ~ m.noun) }}
+        {{ section_switch(media_type, urls=section_urls, wrap=False, class='mb-6') }}
+
+        <form method="GET" action="{{ url_for('reviews.find') }}" role="search"
+              class="bg-secondary rounded-lg p-4 card flex gap-2 sm:gap-4 mb-2">
+            <input type="hidden" name="type" value="{{ media_type }}">
+            <input type="search" name="q" value="{{ term }}" aria-label="Search your {{ m.plural }}"
+                   placeholder="{{ m.title_search_placeholder }}" {% if not term %}autofocus{% endif %}
+                   class="flex-1 min-w-0 bg-primary text-content-primary rounded-lg px-4 py-3 border border-rule-strong focus:outline-none focus:ring-2 focus:ring-accent">
+            <button type="submit" class="shrink-0 px-4 sm:px-6 py-3 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Search</button>
+        </form>
+        <p class="text-xs text-content-secondary mb-6">
+            Searches your {{ m.plural }} (owned or not) and your household's, not online catalogues.
+        </p>
+
+        {% if term %}
+            {% if results %}
+            <ul class="space-y-3" aria-label="Results">
+                {% for r in results %}
+                <li>
+                    <a href="{{ url_for('read.rate_review', book_id=r.id, from='reviews') }}"
+                       class="flex items-center gap-4 bg-secondary rounded-lg p-3 card card-link">
+                        {% if r.cover_image_url %}
+                        <img src="{{ url_for('static', filename=r.cover_image_url) }}" alt="" loading="lazy"
+                             class="w-12 max-h-20 object-contain rounded shrink-0">
+                        {% else %}
+                        {% with title=none, size='sm', box='w-12 h-16 shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                        {% endif %}
+                        <span class="flex-1 min-w-0">
+                            <span class="block text-content-primary font-semibold truncate">{{ r.title }}</span>
+                            {% if r.author %}<span class="block text-sm text-content-secondary truncate">{{ r.author }}</span>{% endif %}
+                            <span class="block text-xs text-content-secondary">
+                                {%- if r.added_by == current_user.id %}Yours{% else %}{{ r.owner }}'s (household){% endif -%}
+                                {%- if r.format %}, {{ r.format|format_label }}{% endif -%}
+                                {%- if not r.owned %}, not owned{% elif r.removed_at %}, removed{% endif -%}
+                            </span>
+                        </span>
+                        <span class="shrink-0 text-sm text-accent font-semibold">{{ 'Edit review' if r.reviewed else 'Review' }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if results|length >= limit %}
+            <p class="mt-3 text-xs text-content-secondary">Showing the first {{ limit }}: add a word to narrow it down.</p>
+            {% endif %}
+            <p class="mt-6 text-sm text-content-secondary text-center">
+                Not the one? <a href="{{ add_url }}" class="underline hover:text-accent">Add it as not owned</a> and review it.
+            </p>
+            {% else %}
+            <div class="bg-secondary rounded-lg p-6 card text-center space-y-4">
+                <p class="text-content-primary">No {{ m.noun }} matching "{{ term }}" in your {{ m.plural }} or your household's.</p>
+                <a href="{{ add_url }}" class="inline-block bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 rounded-lg btn">Add it as not owned</a>
+                <p class="text-xs text-content-secondary">For something you {{ m.verb_past }} but don't have: it stays off your shelf, and saving takes you to its review.</p>
+            </div>
+            {% endif %}
+        {% endif %}
+    </main>
+{% endblock %}

@@ -164,6 +164,16 @@ def shares_library_with(user_id, other_user_id):
     return other_user_id in library_members
 
 
+def friend_ids(conn, user_id):
+    """The user's friends (not themselves, not household members who aren't
+    also friends). Friendships are stored with user_id_1 < user_id_2, so
+    look both ways."""
+    return sorted(r['other'] for r in conn.execute('''
+        SELECT CASE WHEN user_id_1 = ? THEN user_id_2 ELSE user_id_1 END AS other
+        FROM friendships WHERE user_id_1 = ? OR user_id_2 = ?
+    ''', (user_id, user_id, user_id)))
+
+
 def circle_ids(conn, user_id):
     """The user's circle: themselves, their household members and their friends.
 
@@ -176,11 +186,7 @@ def circle_ids(conn, user_id):
         JOIN library_members me ON me.library_id = m.library_id
         WHERE me.user_id = ?
     ''', (user_id,)))
-    # friendships are stored with user_id_1 < user_id_2, so look both ways
-    ids.update(r['other'] for r in conn.execute('''
-        SELECT CASE WHEN user_id_1 = ? THEN user_id_2 ELSE user_id_1 END AS other
-        FROM friendships WHERE user_id_1 = ? OR user_id_2 = ?
-    ''', (user_id, user_id, user_id)))
+    ids.update(friend_ids(conn, user_id))
     return sorted(ids)
 
 

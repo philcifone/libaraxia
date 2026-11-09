@@ -28,10 +28,10 @@
         <form method="GET" action="{{ search_action or url_for('books.search') }}" class="col-span-3"
               role="search" data-submit="showLoading" data-loading="Searching...">
             {% if search_action %}
-            {# Searching a section page keeps its sort and view #}
-            {% for key in ('sort_by', 'sort_order', 'view') %}{% if request.args.get(key) %}
-            <input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">
-            {% endif %}{% endfor %}
+            {# Searching a section page keeps its sort, view and household members #}
+            {% for key in ('sort_by', 'sort_order', 'view', 'member') %}{% for value in request.args.getlist(key) %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endfor %}{% endfor %}
             {% endif %}
             <div class="relative h-full">
                 <input type="text"
@@ -83,7 +83,9 @@
             <form id="filter-form" method="GET" action="{{ request.path }}" class="p-4 space-y-4">
                 {% for key in request.args %}
                 {% if key in ('search_term', 'member', 'sort_by', 'sort_order', 'view') %}
-                <input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">
+                {% for value in request.args.getlist(key) %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
                 {% endif %}
                 {% endfor %}
 

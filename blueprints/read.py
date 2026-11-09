@@ -98,6 +98,9 @@ def rate_review(book_id):
         flash("Your rating and review have been saved!", 'success')
         kind = media.media_type_of(conn.execute('SELECT media_type FROM books WHERE id = ?',
                                                 (book_id,)).fetchone())
+        # Opened from the Reviews section (?from=reviews, ROADMAP 13): back there
+        if request.form.get('from') == 'reviews':
+            return redirect(url_for('reviews.index', type=kind))
         if kind != media.BOOK:
             return redirect(url_for(media.item_endpoint(kind), id=book_id))
         return redirect(url_for('base.index', collection_type='read'))
@@ -155,6 +158,8 @@ def rate_review(book_id):
         sessions=sessions,
         prefill=prefill,
         m=media.media_labels(media.media_type_of(book)),
+        # Reached from the Reviews section: its crumb, and saving goes back there
+        from_reviews=request.args.get('from') == 'reviews',
     )
 
 

@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, request, Blueprint, jsonify, abort, flash
 from flask_login import login_required, current_user
 from utils.database import get_db
-from utils import media, search, sorting
+from utils import households, media, search, sorting
 from datetime import datetime
 from models import get_library_members, is_friends_with
 from utils.book_utils import get_filter_options, shelf_filter, format_filter, card_json
@@ -103,23 +103,12 @@ def index():
 @base_blueprint.route("/shared-library")
 @login_required
 def shared_library():
-    """The household's books (everyone in your library group), or one
-    member's with ?member= (and yours)"""
-    all_members = get_library_members(current_user.id)
-    member_filter = request.args.get("member", type=int)
-    owner_ids = all_members
-    if member_filter in all_members:
-        owner_ids = list({member_filter, current_user.id})
-    else:
-        member_filter = None
-
-    shared_members = []
-    if all_members:
-        marks = ','.join('?' * len(all_members))
-        shared_members = get_db().execute(
-            f'SELECT id, username, avatar_url FROM users WHERE id IN ({marks})', all_members).fetchall()
+    """The household's books (everyone in your library group), or chosen
+    members' and yours with ?member= (utils/households.member_choice)."""
+    others, owner_ids, member_filter = households.member_choice(
+        get_db(), current_user.id, request.args.getlist("member", type=int))
     return library_page("shared_library.html", owner_ids, current_user.id,
-                        shared_members=shared_members, member_filter=member_filter)
+                        household_members=others, member_filter=member_filter)
 
 
 @base_blueprint.route("/friends-libraries")

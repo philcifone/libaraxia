@@ -4,7 +4,13 @@
    wishlist; the rows come from utils/shelves.py.
 
    shelves:     [{label, url, count, covers: [{cover_image_url, title}],
-                  delete_url? (custom shelves: a delete button beside it)}]
+                  delete_url? (custom shelves: a delete button beside it),
+                  more? (words before the count, e.g. "See all": Reviews),
+                  empty? (a line shown when there are no covers)}]
+                A cover with `stars` set gets its `rating` as stars under it
+                (none: "No rating"), and `by` a name under that (Reviews,
+                ROADMAP 13). Those are a <figure> in the row, not a bare img.
+                `named`: a missing cover's placeholder shows the title.
    shelf_cols:  'grid-cols-1 md:grid-cols-2' (default) or 'grid-cols-1'
    cover_h:     cover height class, default 'h-20'; widths follow the image,
                 so an album is square and a VHS box tall #}
@@ -15,17 +21,36 @@
         <a href="{{ shelf.url }}"
            class="flex-1 min-w-0 bg-primary hover:bg-primary-hover p-4 rounded-lg transition-colors">
             <div class="flex items-center justify-between gap-3 {% if shelf.covers %}mb-3{% endif %}">
-                <span class="text-content-primary text-lg truncate">{{ shelf.label }}</span>
-                <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm shrink-0">{{ shelf.count }}</span>
+                {# With "See all" beside it a long name would be cut on a phone: let it wrap #}
+                <span class="text-content-primary text-lg {{ 'min-w-0' if shelf.more else 'truncate' }}">{{ shelf.label }}</span>
+                <span class="flex items-center gap-3 shrink-0">
+                    {% if shelf.more %}<span class="text-sm text-content-secondary underline">{{ shelf.more }}</span>{% endif %}
+                    <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm">{{ shelf.count }}</span>
+                </span>
             </div>
+            {% if not shelf.covers and shelf.empty %}
+            <p class="mt-2 text-sm text-content-secondary italic">{{ shelf.empty }}</p>
+            {% endif %}
             {% if shelf.covers %}
             <div class="shelf-row items-end">
                 {% for c in shelf.covers %}
+                    {% set labelled = c.stars or c.by %}
+                    {% if labelled %}<figure class="shelf-figure flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
                     {% if c.cover_image_url %}
                     <img src="{{ url_for('static', filename=c.cover_image_url) }}" alt="{{ c.title }}"
                          loading="lazy" class="{{ cover_h }} w-auto max-w-[8rem] rounded shadow-sm">
                     {% else %}
-                    {% with title=none, size='sm', box='w-14 ' ~ cover_h ~ ' shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=(c.title if c.named else none), size='sm', box='w-14 ' ~ cover_h ~ ' shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% endif %}
+                    {% if labelled %}
+                    <figcaption class="text-xs leading-tight text-center w-full">
+                        {% if c.stars %}
+                            {% if c.rating %}<span class="block whitespace-nowrap"><span class="text-yellow-400" aria-hidden="true">{{ '★' * (c.rating|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - c.rating|int) }}</span><span class="sr-only">Rated {{ c.rating|int }} of 5</span></span>
+                            {% else %}<span class="block text-content-secondary italic">No rating</span>{% endif %}
+                        {% endif %}
+                        {% if c.by %}<span class="block truncate text-content-secondary">{{ c.by }}</span>{% endif %}
+                    </figcaption>
+                    </figure>
                     {% endif %}
                 {% endfor %}
             </div>

@@ -144,3 +144,21 @@ def test_027_types_existing_shelves(template_db, tmp_path):
     assert rows == [(1, 'Sci-fi', 'book'), (2, 'Noir', 'video'), (3, 'Folk', 'record'),
                     (4, 'Mixed', 'book'), (5, 'Empty', 'book')]
     assert entries == 5 and violations == []
+
+
+def test_house_icon_toggles_mine_and_household(client, db, people):
+    """Mine / Household is a house icon in the Shelves heading (Phil,
+    2026-11-09): grey on yours, lit on the household's, linking to the other.
+    A friend's shelves have none."""
+    login(client, 'alice')
+    for url, other, on in (('/base/index', '/base/shared-library', False),
+                           ('/videos/shared', '/videos/', True)):
+        html = client.get(url).get_data(as_text=True)
+        heading = html[html.index('page-heading'):]
+        heading = heading[:heading.index('</h1>')]
+        assert f'href="{other}"' in heading
+        assert ('rounded-lg is-on' in heading) == on
+        # One visible title, "Shelves"; screen readers hear "Household" too
+        assert ('<span class="sr-only">Household </span>Shelves' in heading) == on
+    friend = client.get('/base/library/carol').get_data(as_text=True)
+    assert 'heading-toggle' not in friend

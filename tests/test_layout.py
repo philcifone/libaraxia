@@ -183,9 +183,14 @@ def test_sidebar_has_the_mode_shortcut(client, db, people):
     db.commit()
     login(client, 'bob')
     html = client.get('/base/index').get_data(as_text=True)
-    picker = html[html.index('data-theme-picker'):html.index('auth/logout')]
-    assert 'data-value="dark"\n                            aria-pressed="true"' in picker
-    assert picker.count('class="theme-opt') == 2
+    # Since 2026-11-09 one sun/moon toggle under the welcome (sidebar.js picks
+    # the other mode; styles.css shows the moon in light mode, the sun in dark)
+    head = html[html.index('Welcome,'):html.index('<!-- Navigation -->')]
+    assert 'data-mode-toggle data-mode-picker' in head
+    assert 'mode-icon-moon' in head and 'mode-icon-sun' in head
+    css = (ROOT / 'static/styles.css').read_text()
+    assert ':root[data-mode="dark"] .mode-icon-sun { display: inline; }' in css
+    assert "closest('[data-mode-toggle]')" in (ROOT / 'static/sidebar.js').read_text()
     r = client.post('/user/update_theme', json={'mode': 'light'})
     assert r.status_code == 200 and r.get_json()['success']
     assert db.execute('SELECT color_mode FROM users WHERE id = ?', (people['bob'],)).fetchone()[0] == 'light'
@@ -812,9 +817,16 @@ def test_friends_page_and_notifications_under_the_welcome(client, db, people):
     login(client, 'carol')
     page = client.get('/friends/').get_data(as_text=True)
     head = page[page.index('Welcome,'):page.index('<!-- Navigation -->')]
-    assert 'Notifications' in head and '>1<span class="sr-only"> waiting' in head
+    assert 'aria-label="Notifications, 1 waiting"' in head
+    assert 'href="/admin/settings"' not in head          # carol isn't an admin
     nav = page[page.index('<!-- Navigation -->'):]
-    assert 'notifications_page' not in nav[:nav.index('</nav>')]
+    nav = nav[:nav.index('</nav>')]
+    assert 'notifications' not in nav and 'Admin Settings' not in nav
+    # An admin gets the gear there instead of a nav entry
+    login(client, 'alice')
+    page = client.get('/friends/').get_data(as_text=True)
+    head = page[page.index('Welcome,'):page.index('<!-- Navigation -->')]
+    assert 'href="/admin/settings"' in head
 
 
 def test_shelf_coverless_titles_break_between_words():
@@ -871,9 +883,9 @@ def test_appearance_card_and_two_mode_buttons(client, db, people):
     assert '<details class="appearance-card bg-secondary rounded-xl card">' in page     # closed
     modes = re.findall(r'data-kind="mode" data-value="(\w+)"', card)
     assert sorted(modes) == ['dark', 'light', 'system'] and 'class="theme-opt follow-system' in card
-    # The sidebar's shortcut: Light | Dark only
-    sidebar = page[page.index('data-mode-picker'):page.index('auth/logout')]
-    assert sorted(re.findall(r'data-kind="mode" data-value="(\w+)"', sidebar)) == ['dark', 'light']
+    # The sidebar's shortcut is the sun/moon toggle (test_sidebar_has_the_mode_shortcut)
+    sidebar = page[page.index('Welcome,'):page.index('auth/logout')]
+    assert 'data-mode-toggle' in sidebar and 'data-kind="mode"' not in sidebar
     css = (ROOT / 'static/styles.css').read_text()
     assert ':root[data-mode="system"] .follow-system { display: none; }' in css
     js = (ROOT / 'static/sidebar.js').read_text()

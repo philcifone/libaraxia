@@ -28,6 +28,7 @@ from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
 from utils import media, sorting
+from utils.reviews import then_review_values
 from utils.search import match as search_match   # this module has a route called search
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
@@ -120,6 +121,10 @@ def add_book():
         ))
         conn.commit()
 
+        if request.form.get("then") == "review":
+            # From Reviews' "Add it as not owned" (ROADMAP 13): on to the review
+            flash(f"Book added{'' if owned else ' as not owned'}. Now your review.", "success")
+            return redirect(url_for("read.rate_review", book_id=cursor.lastrowid, **{"from": "reviews"}))
         if not owned:
             # The library won't show it, so go to its page, where the review is
             flash("Book added as not owned, so it isn't in your library. Rate and review it here.", "success")
@@ -158,6 +163,9 @@ def render_add_book(destination="shelf", values=None, duplicates=(), status=200)
             flash("Book not found. Please enter details manually.", "error")
 
     values = book_details or {}
+    if request.method == "GET":
+        # From Reviews' "Add it as not owned" (ROADMAP 13)
+        values.update(then_review_values(request.args))
     # Preview: the cover the lookup saved, else its remote thumbnail (proxied)
     cover_url = None
     if values.get("local_cover_url"):

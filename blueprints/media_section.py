@@ -24,7 +24,8 @@ from flask import (Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from models import can_view_book, get_library_members, is_friends_with
-from utils import media, search, sorting
+from utils import households, media, search, sorting
+from utils.reviews import then_review_values
 from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
@@ -220,6 +221,10 @@ class Section:
             errors.append('A title is needed.')
         # Keep what was typed when the barcode didn't validate, so it can be fixed
         values['barcode_input'] = raw_barcode
+        # Kept across a re-shown form too: "I don't own this", and where
+        # saving goes next (then=review: the review page, ROADMAP 13)
+        values['not_owned'] = bool(form.get('not_owned'))
+        values['then'] = 'review' if form.get('then') == 'review' else ''
         # A cover saved by the lookup, kept across a re-shown form
         cover = form.get('existing_cover_url')
         values['existing_cover_url'] = cover if is_safe_upload_path(cover) else ''
@@ -308,8 +313,11 @@ def make_blueprint(section: Section) -> Blueprint:
 
     @login_required
     def shared():
-        """Your household's (everyone in your library group, you included)."""
-        return grid_page(get_library_members(current_user.id), 'shared')
+        """Your household's (everyone in your library group, you included),
+        or chosen members' and yours with ?member= (utils/households.member_choice)."""
+        others, owner_ids, member_filter = households.member_choice(
+            get_db(), current_user.id, request.args.getlist('member', type=int))
+        return grid_page(owner_ids, 'shared', household_members=others, member_filter=member_filter)
 
     @login_required
     def friends():
@@ -351,7 +359,9 @@ def make_blueprint(section: Section) -> Blueprint:
             barcode = (media.normalize_barcode(request.args.get('barcode')) or ''
                        if section.has_barcode else '')
             values = {'format': section.pick_format(request.args.get('format')),
-                      'barcode_input': barcode}
+                      'barcode_input': barcode,
+                      # From Reviews' "Add it as not owned" (ROADMAP 13)
+                      **then_review_values(request.args)}
             dups = (section.find_duplicates(conn, current_user.id, barcode=barcode)
                     if barcode else [])
             return section.add_page(values, dups)
@@ -372,6 +382,9 @@ def make_blueprint(section: Section) -> Blueprint:
         owned = not request.form.get('not_owned')
         new_id = section.insert(conn, values, cover, current_user.id, owned=owned)
         conn.commit()
+        if values['then'] == 'review':
+            flash(f"'{values['title']}' added{'' if owned else ' as not owned'}. Now your review.", 'success')
+            return redirect(url_for('read.rate_review', book_id=new_id, **{'from': 'reviews'}))
         if owned:
             flash(f"'{values['title']}' added to your {section.m['plural']}.", 'success')
         else:

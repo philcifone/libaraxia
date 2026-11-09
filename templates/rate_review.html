@@ -9,7 +9,11 @@
 {% block content %}
     <main class="max-w-6xl mx-auto px-4 pt-20 pb-12">
         <!-- Back Navigation -->
+        {% if from_reviews %}
+        {{ crumbs([('Reviews', url_for('reviews.index', type=m.type)), (book.title, item_url(book))], 'Review', class='mb-8') }}
+        {% else %}
         {{ crumbs([(m.section, url_for(m.home)), (book.title, item_url(book))], 'Review', class='mb-8') }}
+        {% endif %}
 
         <!-- Book Header -->
         <div class="text-center mb-12">
@@ -36,6 +40,7 @@
 
                 <form method="post" class="space-y-8" id="review-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    {% if from_reviews %}<input type="hidden" name="from" value="reviews">{% endif %}
                     <input type="hidden" name="session_id" id="session_id" value=""/>
 
                     <!-- Reading Sessions Section -->

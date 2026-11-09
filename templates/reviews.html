@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import page_heading %}
+{% from '_shelves.html' import section_switch %}
+{# Reviews (reviews.index, ROADMAP 13): the Books | Movies | Music switch,
+   then three rows laid out like Collections (_shelf_rows.html, built in
+   utils/reviews.py): your reviews, friends' reviews, and what you finished
+   but haven't reviewed. Each row opens its "See all" grid. The floating
+   [+ Review] opens the search for something to review (reviews.find). #}
+
+{% block title %}Reviews - libaraxia{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% block content %}
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
+        {{ page_heading('star', 'Reviews', class='mb-4') }}
+        {{ section_switch(media_type, urls=section_urls, wrap=False, class='mb-8') }}
+
+        <section class="bg-secondary rounded-lg p-4 sm:p-8 card">
+            {% with shelf_cols='grid-cols-1', cover_h='h-28' %}{% include '_shelf_rows.html' %}{% endwith %}
+        </section>
+    </main>
+
+    {% with fab_label='Review something' %}{% include '_add_fab.html' %}{% endwith %}
+{% endblock %}

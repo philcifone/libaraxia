@@ -6,7 +6,7 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
-from utils import media, shelves
+from utils import media, reviews, shelves
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
@@ -126,26 +126,13 @@ def profile(username):
             'they_are_in_one': households.membership(conn, user['id']) is not None,
         }
 
-    # Get recent reviews/ratings for the user
+    # Recent reviews, the same list and order as the Reviews section's
+    # (utils/reviews.py), which "View all" opens. One row per review: the old
+    # query joined every reading session and listed a re-read book twice.
     recent_reviews = []
     if are_friends:
-        reviews_query = """
-            SELECT
-                r.book_id,
-                r.rating,
-                r.comment,
-                b.title,
-                b.author,
-                b.cover_image_url,
-                rs.date_completed
-            FROM read_data r
-            JOIN books b ON r.book_id = b.id
-            LEFT JOIN reading_sessions rs ON r.user_id = rs.user_id AND r.book_id = rs.book_id
-            WHERE r.user_id = ? AND b.media_type = 'book'
-            ORDER BY rs.date_completed DESC, r.rowid DESC
-            LIMIT 5
-        """
-        recent_reviews = [dict(row) for row in conn.execute(reviews_query, (user['id'],)).fetchall()]
+        recent_reviews = [dict(r, book_id=r['id'], date_completed=r['finished'])
+                          for r in reviews.reviews_by(conn, [user['id']], media.BOOK, limit=5)]
 
     return render_template(
         'user.html',

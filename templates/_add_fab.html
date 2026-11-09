@@ -6,6 +6,8 @@
          {% include '_add_fab.html' %}
      {% endwith %}
 
+   `fab_label` names the button for screen readers (default "Add").
+
    z-30: above the page, below the sidebar (z-40) and top bar (z-50). The
    container is click-through: the hidden menu above the button still takes up
    space, and without this it swallowed clicks on whatever was underneath.
@@ -21,7 +23,7 @@
     <button id="fab-toggle"
             class="pointer-events-auto w-14 h-14 flex items-center justify-center bg-accent hover:bg-accent-hover
                    text-on-accent rounded-pill fab"
-            type="button" aria-label="Add" aria-haspopup="true" aria-expanded="false" aria-controls="fab-menu">
+            type="button" aria-label="{{ fab_label or 'Add' }}" aria-haspopup="true" aria-expanded="false" aria-controls="fab-menu">
         <svg id="fab-icon" class="w-7 h-7 transition-transform duration-200" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true">
             <path d="M12 4v16M4 12h16"/>

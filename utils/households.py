@@ -151,3 +151,27 @@ def remove(conn, actor_id, target_id):
             raise HouseholdError('Only the owner of the household can remove people.')
     if not leave(conn, target_id):
         raise HouseholdError('Not in a household.')
+
+
+def member_choice(conn, user_id, requested=()):
+    """The household pages' member row (Books, Movies and Music, Household).
+
+    Returns (others, owner_ids, chosen): the other members as rows (id,
+    username, avatar_url) for the chips, whose items to show, and the chosen
+    members' ids (a list, empty for everyone). `requested` is the ?member=
+    values (any number, Phil 2026-11-09): those members' items and yours
+    together, as one shelf (one member alone is their profile's job). Ids
+    of people outside your household are ignored; none left means everyone.
+    """
+    from models import get_library_members
+    everyone = get_library_members(user_id)
+    marks = ','.join('?' * len(everyone))
+    others = conn.execute(f'''
+        SELECT id, username, avatar_url FROM users
+        WHERE id IN ({marks}) AND id != ? ORDER BY username COLLATE NOCASE
+    ''', (*everyone, user_id)).fetchall()
+    ids = {o['id'] for o in others}
+    chosen = sorted({r for r in requested if r in ids})
+    if chosen:
+        return others, [user_id, *chosen], chosen
+    return others, everyone, []

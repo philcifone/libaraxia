@@ -452,6 +452,9 @@
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Recent Reviews{% else %}{{ user['username'] }}'s Recent Reviews{% endif %}
                 </h2>
+                {# The Reviews section has them all (ROADMAP 13) #}
+                <a href="{{ url_for('reviews.see_all', which='mine') if is_own_profile else url_for('reviews.see_all', which='friends', by=user['username']) }}"
+                   class="text-accent hover:text-accent-hover transition-colors text-sm">View all →</a>
             </div>
 
             <!-- Reviews List -->

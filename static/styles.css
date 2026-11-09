@@ -1657,7 +1657,9 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     background-attachment: local;
 }
 :root[data-style="shelf"] .shelf-row > img,
-:root[data-style="shelf"] .shelf-row > .no-cover {
+:root[data-style="shelf"] .shelf-row > .no-cover,
+:root[data-style="shelf"] .shelf-row > .shelf-figure > img,
+:root[data-style="shelf"] .shelf-row > .shelf-figure > .no-cover {
     border-radius: 1px;
     box-shadow: none;
     filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35));
@@ -1827,7 +1829,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 }
 
 /* ---- Sidebar on a short screen (ROADMAP 11.5) ----
-   Ten entries plus the welcome, mode picker and Log out are taller than a
+   The entries plus the welcome and Log out are taller than a
    small phone (667px); the nav scrolls, but Admin and Log out shouldn't
    hide below the fold. Height is what runs out, so this keys on height:
    a smaller avatar, tighter link rows. Unlayered, so it beats the
@@ -1838,8 +1840,56 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     #sidebar .sidebar-head h2 { font-size: 1.05rem; }
     #sidebar > div { padding-top: .75rem; padding-bottom: .75rem; }
     #sidebar .nav-link { padding: .4rem .75rem; }     /* .75rem: "Do I Have This?" on one line */
-    #sidebar [data-mode-picker] { padding-top: .5rem; }
     #sidebar form button { padding-top: .5rem; padding-bottom: .5rem; }
+}
+
+/* ---- Sidebar icon row (Phil, 2026-11-09) ----
+   Notifications, Admin and the Light/Dark toggle as icons under the welcome.
+   The toggle shows the moon in light mode and the sun in dark, from the mode
+   in effect: data-mode, or the device's while following the system. */
+.sidebar-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: .5rem;
+    color: rgb(var(--ink-2));
+    transition: color .15s;
+}
+.sidebar-icon:hover, .sidebar-icon.is-active { color: rgb(var(--accent-text)); }
+.mode-icon-sun { display: none; }
+:root[data-mode="dark"] .mode-icon-sun { display: inline; }
+:root[data-mode="dark"] .mode-icon-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+    :root[data-mode="system"] .mode-icon-sun { display: inline; }
+    :root[data-mode="system"] .mode-icon-moon { display: none; }
+}
+
+/* The household's member row (_household_members.html): name boxes,
+   centred, that wrap into more centred rows as members join (Phil,
+   2026-11-09). Each is a .card-link, so the border, shadow and press
+   follow the style; the chosen ones are filled with the accent. */
+.member-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .75rem; }
+.member-chip {
+    display: inline-flex; align-items: center; gap: .4rem; flex: none;
+    padding: .35rem .85rem .35rem .45rem;
+    border-radius: var(--r-pill);       /* square in House, round in OG and Shelf */
+    font-size: .875rem;
+    color: rgb(var(--ink));
+    background: rgb(var(--surface));
+}
+.member-chip:first-child { padding-left: .85rem; }    /* Everyone: no avatar */
+.member-chip.is-on { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+
+/* A page heading's toggle (Shelves: Mine / Household): an outlined button.
+   Off: grey outline and icon, an unpressed button. On: lit in the accent,
+   outline and icon. The corners come from the style (rounded-lg). */
+.heading-toggle {
+    color: rgb(var(--faint));
+    border-color: rgb(var(--faint));
+    transition: color .15s, border-color .15s;
+}
+.heading-toggle:hover { color: rgb(var(--ink-2)); border-color: rgb(var(--ink-2)); }
+.heading-toggle.is-on, .heading-toggle.is-on:hover {
+    color: rgb(var(--accent-text));
+    border-color: rgb(var(--accent-text));
 }
 
 /* ---- Mode: Light | Dark, and "Follow system" (ROADMAP 12.4) ----

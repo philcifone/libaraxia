@@ -167,6 +167,8 @@
               class="grid md:grid-cols-2 gap-6">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="media_type" value="{{ m.type }}">
+            {# From Reviews' "Add it as not owned": saving opens the review page #}
+            {% if values.then == 'review' %}<input type="hidden" name="then" value="review">{% endif %}
             {% if values.source %}
             <div class="text-sm text-content-secondary italic md:col-span-2">Data source: {{ values.source }}</div>
             {% endif %}
