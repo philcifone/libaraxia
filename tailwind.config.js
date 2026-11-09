@@ -70,7 +70,7 @@ module.exports = {
       },
       fontFamily: {
         primary: 'var(--font-body)',
-        display: ['"Young Serif"', 'serif'],
+        display: 'var(--font-display)',   // Young Serif; Audiowide in Outrun
       },
     },
   },

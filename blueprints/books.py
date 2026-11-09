@@ -4,15 +4,19 @@ from flask_login import login_required, current_user
 from typing import Optional, Dict, Any
 from utils.database import get_db
 from utils.book_utils import (
+    card_json,
     get_filter_options,
     shelf_filter,
     show_choice,
     off_shelf_matches,
+    wishlist_matches,
     format_filter,
     find_duplicates,
     fetch_book_details_from_isbn,
     process_image,
-    download_and_save_cover,
+    google_cover_candidates,
+    fetch_cover_by_isbn_direct,
+    save_best_cover,
     search_google_books,
     cover_search_steps,
     thumbnail_jpeg,
@@ -24,6 +28,7 @@ from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
 from utils import media
+from utils.search import match as search_match   # this module has a route called search
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -303,13 +308,16 @@ def select_search_result():
         #    current_app.logger.warning("No ISBN provided in book selection")
         #    return jsonify({"success": False, "error": "No ISBN provided"})
 
-        # Download and save cover image first
-        local_cover_url = None
-        if thumbnail_url:
-            current_app.logger.info(f"Attempting to download cover from: {thumbnail_url}")
-            local_cover_url = download_and_save_cover(thumbnail_url)
-            if not local_cover_url:
-                current_app.logger.warning("Failed to download cover image")
+        # Download and save the cover first. The result's thumbnail is Google's
+        # 128 px one, so try the large size of the same cover, then Open
+        # Library by ISBN, and keep the best (ROADMAP 8F). Every URL goes
+        # through the SSRF guard in _fetch_image.
+        candidates = google_cover_candidates(thumbnail_url) if thumbnail_url else []
+        if isbn:
+            candidates += fetch_cover_by_isbn_direct(isbn)
+        local_cover_url = save_best_cover(candidates) if candidates else None
+        if candidates and not local_cover_url:
+            current_app.logger.warning("Failed to download cover image")
 
         # Sanitize page_count: convert to integer or default to 0 if invalid
         page_count_raw = original_data.get("pageCount", 0)
@@ -391,7 +399,8 @@ def fetch_cover():
             # 2. Download each (through the SSRF guard) and send it as it lands
             for i, (url, source) in enumerate(candidates):
                 yield line(type="step", phase="download", label=source, done=i, total=len(candidates))
-                local = download_and_save_cover(url)
+                # A Google link becomes its large size, then the 128 px one (8F)
+                local = save_best_cover(google_cover_candidates(url))
                 if local:
                     count += 1
                     yield line(type="cover", url=local, source=source)
@@ -823,9 +832,10 @@ def search():
 
     # Search only books from current user or their library members
     placeholders = ','.join(['?' for _ in library_member_ids])
-    match_sql = "LOWER(b.title) LIKE LOWER(?) OR LOWER(b.author) LIKE LOWER(?) OR CAST(b.publish_year AS TEXT) LIKE ?"
-    search_like = f"%{search_term}%"
-    match_params = [search_like, search_like, search_like]
+    # Every word, accents and punctuation ignored, in any of these or your
+    # tags on the book (utils/search.py, ROADMAP 7.2b)
+    match_sql, match_params = search_match(
+        search_term, ['title', 'subtitle', 'author', 'isbn', 'publish_year'], viewer_id=current_user.id)
     query = f'''
         SELECT b.* FROM library_books b
         WHERE b.added_by IN ({placeholders})
@@ -883,15 +893,7 @@ def search():
 
     # Handle AJAX requests for infinite scroll
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        books_data = [{
-            'id': book['id'],
-            'title': book['title'],
-            'author': book['author'],
-            'cover_image_url': book['cover_image_url'],
-            'removed': book['removed_at'] is not None,
-            'not_owned': not book['owned'],
-            'format': book['format'],
-        } for book in books]
+        books_data = card_json(conn, current_user.id, books)   # list view's columns too
 
         return jsonify({
             'books': books_data,
@@ -908,9 +910,12 @@ def search():
     if search_term and not show_choice(request.args):
         off_shelf = off_shelf_matches(conn, 'library_books', library_member_ids,
                                       match_sql, match_params, current_user.id)
+    # ...and "it's on your wishlist" (7.2b)
+    on_wishlist = wishlist_matches(conn, current_user.id, media.BOOK, match_sql, match_params) if search_term else None
 
     return render_template("search.html",
                          off_shelf=off_shelf,
+                         on_wishlist=on_wishlist,
                          books=books,
                          filter_options=filter_options,
                          sort_by=sort_by,

@@ -368,10 +368,8 @@ class InfiniteScroll {
     }
 
     createBookCard(book) {
-        // Check current view mode
-        const currentView = localStorage.getItem('libraryView') || 'grid';
-        const container = document.getElementById('book-container');
-        const isListView = container && container.className.includes('flex-col');
+        // The same markup as _book_grid.html in either view: list view is CSS
+        // on the container's data-view (styles.css, "List view").
         // Not-owned and removed items only appear when Show asks for them,
         // and are marked so they can't pass for something on the shelf
         const removedBadge = book.not_owned
@@ -388,63 +386,43 @@ class InfiniteScroll {
                    <span class="sr-only">Audiobook</span></span>`
             : '';
 
-        if (isListView || currentView === 'list') {
-            // List view card
-            const coverImage = book.cover_image_url
-                ? `<img src="/static/${this.escapeHtml(book.cover_image_url)}"
-                        alt="${this.escapeHtml(book.title)}"
-                        class="book-cover-img object-cover w-full h-full" />`
-                : noCoverHtml(book.title, book.author, { size: 'sm' });
+        const coverImage = book.cover_image_url   // cover-box: as _book_grid.html
+            ? `<span class="cover-box"><img src="/static/${this.escapeHtml(book.cover_image_url)}"
+                    alt="${this.escapeHtml(book.title)}"
+                    class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>`
+            : noCoverHtml(book.title, book.author);
 
-            return `
-                <div class="book-item">
-                    <a href="/books/book/${book.id}"
-                       class="book-link flex gap-4 bg-secondary-bg rounded-lg overflow-hidden hover:bg-secondary-bg/80 p-4 card-link">
-                        <div class="book-cover relative flex-shrink-0 w-24 h-32 overflow-hidden rounded">
-                            ${removedBadge}
-                            ${formatBadge}
-                            ${coverImage}
-                        </div>
-                        <div class="book-info flex-1 flex flex-col justify-center">
-                            <h3 class="book-title text-xl font-semibold mb-2 text-white">
-                                ${this.escapeHtml(book.title)}
-                            </h3>
-                            <p class="book-author text-content-secondary italic">
-                                by ${this.escapeHtml(book.author)}
-                            </p>
-                        </div>
-                    </a>
-                </div>
-            `;
-        } else {
-            // Grid view card
-            const coverImage = book.cover_image_url
-                ? `<img src="/static/${this.escapeHtml(book.cover_image_url)}"
-                        alt="${this.escapeHtml(book.title)}"
-                        class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />`
-                : noCoverHtml(book.title, book.author);
+        // List view's columns: year, your status, your rating (card_json)
+        const rating = Number(book.rating) || 0;
+        const stars = rating
+            ? `<span class="text-yellow-400" aria-hidden="true">${'★'.repeat(rating)}</span><span class="text-content-tertiary" aria-hidden="true">${'☆'.repeat(5 - rating)}</span><span class="sr-only">Rated ${rating} of 5</span>`
+            : '';
 
-            return `
-                <div class="book-item group">
-                    <a href="/books/book/${book.id}"
-                       class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
-                        <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
-                            ${removedBadge}
-                            ${formatBadge}
-                            ${coverImage}
-                        </div>
-                        <div class="book-info p-3 sm:p-4">
-                            <h3 class="book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white">
-                                ${this.escapeHtml(book.title)}
-                            </h3>
-                            <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
-                                by ${this.escapeHtml(book.author)}
-                            </p>
-                        </div>
-                    </a>
-                </div>
-            `;
-        }
+        return `
+            <div class="book-item group">
+                <a href="/books/book/${encodeURIComponent(book.id)}"
+                   class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
+                    <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
+                        ${removedBadge}
+                        ${formatBadge}
+                        ${coverImage}
+                    </div>
+                    <div class="book-info p-3 sm:p-4">
+                        <h3 class="book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white">
+                            ${this.escapeHtml(book.title)}
+                        </h3>
+                        <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
+                            ${book.author ? 'by ' + this.escapeHtml(book.author) : '&nbsp;'}
+                        </p>
+                    </div>
+                    <div class="book-meta">
+                        <span class="book-year">${this.escapeHtml(book.year || '')}</span>
+                        <span class="book-status">${this.escapeHtml(book.status || '')}</span>
+                        <span class="book-rating">${stars}</span>
+                    </div>
+                </a>
+            </div>
+        `;
     }
 
     escapeHtml(text) {
@@ -490,91 +468,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // LIBRARY VIEW TOGGLE (GRID/LIST)
 // ============================================================================
 
-// Switch between grid and list views
+// Switch between grid and list views. The cards are the same markup in both;
+// list view is CSS keyed on the container's data-view (styles.css, "List
+// view"). The container keeps .grid only in grid view: the grid columns and
+// the Shelf style's bookcase hang off it.
 function switchView(viewType) {
     const container = document.getElementById('book-container');
-    const gridBtn = document.getElementById('grid-view-btn');
-    const listBtn = document.getElementById('list-view-btn');
-
     if (!container) return;
-
-    if (viewType === 'grid') {
-        // Grid view - set container to grid layout
-        container.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6';
-
-        // Update each book item for grid view
-        document.querySelectorAll('.book-item').forEach(item => {
-            item.className = 'book-item group';
-        });
-
-        document.querySelectorAll('.book-link').forEach(link => {
-            link.className = 'book-link block bg-secondary-bg rounded-lg overflow-hidden card-link';
-        });
-
-        document.querySelectorAll('.book-cover').forEach(cover => {
-            cover.className = 'book-cover relative w-full h-64 overflow-hidden bg-primary';   // relative: the Removed badge
-        });
-
-        document.querySelectorAll('.book-cover-img').forEach(img => {
-            img.className = 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200';
-        });
-
-        document.querySelectorAll('.book-info').forEach(info => {
-            info.className = 'book-info p-3 sm:p-4';
-        });
-
-        document.querySelectorAll('.book-title').forEach(title => {
-            title.className = 'book-title text-base leading-snug font-semibold line-clamp-2 min-h-[2.75em] mb-2 text-white';
-        });
-
-        document.querySelectorAll('.book-author').forEach(author => {
-            author.className = 'book-author text-content-secondary text-xs sm:text-sm italic truncate';
-        });
-
-        // Update button states
-        gridBtn?.setAttribute('aria-pressed', 'true');
-        listBtn?.setAttribute('aria-pressed', 'false');
-
-    } else {
-        // List view - set container to flex layout
-        container.className = 'flex flex-col gap-4';
-
-        // Update each book item for list view
-        document.querySelectorAll('.book-item').forEach(item => {
-            item.className = 'book-item';
-        });
-
-        document.querySelectorAll('.book-link').forEach(link => {
-            link.className = 'book-link flex gap-4 bg-secondary-bg rounded-lg overflow-hidden hover:bg-secondary-bg/80 p-4 card-link';
-        });
-
-        document.querySelectorAll('.book-cover').forEach(cover => {
-            cover.className = 'book-cover relative flex-shrink-0 w-24 h-32 overflow-hidden rounded';
-        });
-
-        document.querySelectorAll('.book-cover-img').forEach(img => {
-            img.className = 'book-cover-img object-cover w-full h-full';
-        });
-
-        document.querySelectorAll('.book-info').forEach(info => {
-            info.className = 'book-info flex-1 flex flex-col justify-center';
-        });
-
-        document.querySelectorAll('.book-title').forEach(title => {
-            title.className = 'book-title text-xl font-semibold mb-2 text-white';
-        });
-
-        document.querySelectorAll('.book-author').forEach(author => {
-            author.className = 'book-author text-content-secondary italic';
-        });
-
-        // Update button states
-        listBtn?.setAttribute('aria-pressed', 'true');
-        gridBtn?.setAttribute('aria-pressed', 'false');
-    }
-
-    // Save preference to localStorage
-    localStorage.setItem('libraryView', viewType);
+    const list = viewType === 'list';
+    container.dataset.view = list ? 'list' : 'grid';
+    container.classList.toggle('grid', !list);
+    document.getElementById('grid-view-btn')?.setAttribute('aria-pressed', String(!list));
+    document.getElementById('list-view-btn')?.setAttribute('aria-pressed', String(list));
+    try { localStorage.setItem('libraryView', list ? 'list' : 'grid'); } catch { /* storage blocked */ }
 }
 
 // Initialize view preference on page load

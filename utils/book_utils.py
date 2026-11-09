@@ -12,7 +12,7 @@ import uuid
 from typing import Optional, Dict, Any, List, Iterable
 from utils.database import get_db
 from flask_login import current_user
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, parse_qs, quote
 from utils.image_utils import is_safe_upload_path
 from models import get_library_members
 
@@ -117,19 +117,44 @@ def _google_volumes(query: str, max_results: int = 10) -> Optional[List[dict]]:
         return None
     return data.get("items", [])
 
+# Google's cover image for a volume is books/content?id=<id>&...&img=1, and
+# the size is in the query (ROADMAP 8F, checked 2026-11-08):
+#   zoom=1 (what the API hands out)   128 px wide, for every volume
+#   no zoom                           its "image not available" banner
+#                                     (2500x400) unless Google has a scan
+#   fife=w800-h1200                   800x1200 when Google has a scan,
+#                                     else the same banner
+# So: ask for fife first, then the links as given. The banner is refused by
+# placeholder_reason (a strip), and save_best_cover keeps the largest real
+# image, so a book Google hasn't scanned falls through to Open Library.
+GOOGLE_COVER_HOSTS = {'books.google.com', 'books.googleusercontent.com'}
+GOOGLE_COVER = 'https://books.google.com/books/content?id={}&printsec=frontcover&img=1&{}'
+
+
+def _google_link(url: str) -> str:
+    """A Google imageLinks URL over https, without the page-curl effect."""
+    return url.replace('http:', 'https:', 1).replace('&edge=curl', '')
+
+
+def google_cover_candidates(url: str) -> List[str]:
+    """Cover URLs to try for a Google Books cover link, best first: the
+    800x1200 version, then the 128 px one every volume has. Built from the
+    volume id, so any of Google's links for a volume gives the same pair.
+    Any other URL is returned as it is."""
+    parsed = urlparse(url or '')
+    volume_id = parse_qs(parsed.query).get('id', [''])[0]
+    if parsed.hostname not in GOOGLE_COVER_HOSTS or not volume_id:
+        return [url] if url else []
+    volume_id = quote(volume_id, safe='')
+    return [GOOGLE_COVER.format(volume_id, 'fife=w800-h1200'), GOOGLE_COVER.format(volume_id, 'zoom=1')]
+
+
 def _google_cover_urls(volume_info: dict) -> List[str]:
-    """All Google cover URLs for a volume, largest first."""
-    urls = []
-    image_links = volume_info.get("imageLinks", {})
-    for size in ["extraLarge", "large", "medium", "small", "thumbnail", "smallThumbnail"]:
-        url = image_links.get(size)
-        if url:
-            url = (url.replace('http:', 'https:')
-                      .split('&zoom=')[0]
-                      .split('&edge=')[0])
-            if url not in urls:
-                urls.append(url)
-    return urls
+    """Google cover URLs for a volume, best first (see above)."""
+    links = volume_info.get("imageLinks", {})
+    link = next((links[size] for size in ("thumbnail", "smallThumbnail", "small", "medium", "large", "extraLarge")
+                 if links.get(size)), None)
+    return google_cover_candidates(_google_link(link)) if link else []
 
 def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any]]:
     """Search for books by title/author and return Google-Books-shaped results.
@@ -144,7 +169,8 @@ def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any
     processed_items = []
     for item in items[:max_results]:
         volume_info = item.get("volumeInfo", {})
-        cover_urls = _google_cover_urls(volume_info)
+        links = volume_info.get("imageLinks", {})
+        thumb = _google_link(links.get("thumbnail") or links.get("smallThumbnail") or "") or None
 
         isbn = next((
             identifier.get("identifier")
@@ -163,7 +189,10 @@ def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any
                 "pageCount": volume_info.get("pageCount", 0),
                 "categories": volume_info.get("categories", []),
                 "industryIdentifiers": [{"type": "ISBN_13", "identifier": isbn}] if isbn else [],
-                "imageLinks": {"thumbnail": cover_urls[0]} if cover_urls else {}
+                # The plain thumbnail (zoom=1, every volume has one): shown in
+                # the results; picking one asks for the large size too
+                # (books.select_search_result, google_cover_candidates)
+                "imageLinks": {"thumbnail": thumb} if thumb else {}
             }
         })
 
@@ -699,17 +728,6 @@ def save_best_cover(urls: Iterable[str]) -> Optional[str]:
     current_app.logger.info(f"Saved {best.width}x{best.height} cover at: {relative_path}")
     return relative_path
 
-def download_and_save_cover(url: str, fallback_urls: Optional[list] = None) -> Optional[str]:
-    """Download and save a cover image, trying fallback URLs if the primary fails.
-
-    Returns:
-        Relative path to saved image or None if all attempts fail
-    """
-    if not url:
-        current_app.logger.debug("No URL provided for cover download")
-        return None
-    return save_best_cover([url] + (fallback_urls or []))
-
 
 # ------------------------------------------------------------ library filters
 
@@ -777,6 +795,66 @@ def off_shelf_matches(conn, view, owner_ids, match_sql, match_params, viewer_id,
         {where}
         ORDER BY b.owned, b.title COLLATE NOCASE LIMIT ?
     """, [viewer_id, *params, limit]).fetchall()
+    return {'count': count, 'rows': [dict(r) for r in rows]}
+
+
+def viewer_marks(conn, viewer_id, book_ids):
+    """The viewer's own status and rating for each of `book_ids`, for list
+    view's columns (ROADMAP 7.2b): {book_id: {'status', 'rating'}}, only
+    for items that have either. One query per page of items."""
+    book_ids = [i for i in book_ids if i is not None]
+    if not book_ids:
+        return {}
+    marks = ','.join('?' * len(book_ids))
+    rows = conn.execute(f"""
+        SELECT b.id,
+               (SELECT status FROM collections c WHERE c.book_id = b.id AND c.user_id = ?) AS status,
+               (SELECT rating FROM read_data r WHERE r.book_id = b.id AND r.user_id = ?) AS rating
+        FROM books b WHERE b.id IN ({marks})
+    """, [viewer_id, viewer_id, *book_ids]).fetchall()
+    return {r['id']: {'status': r['status'], 'rating': r['rating']}
+            for r in rows if r['status'] or r['rating']}
+
+
+def card_json(conn, viewer_id, books):
+    """Grid items as JSON for infinite scroll (script.js createBookCard),
+    with what list view shows: year, format, and the viewer's status
+    (as its label) and rating."""
+    from utils import media
+    marks = viewer_marks(conn, viewer_id, [b['id'] for b in books])
+    out = []
+    for b in books:
+        mark = marks.get(b['id'], {})
+        status = mark.get('status')
+        out.append({
+            'id': b['id'],
+            'title': b['title'],
+            'author': b['author'],
+            'cover_image_url': b['cover_image_url'],
+            'removed': b['removed_at'] is not None,
+            'not_owned': not b['owned'],
+            'format': b['format'],
+            'year': b['publish_year'],
+            'status': media.STATUS_LABELS.get(status, status) if status else None,
+            'rating': mark.get('rating'),
+        })
+    return out
+
+
+def wishlist_matches(conn, viewer_id, media_type, match_sql, match_params, limit=5):
+    """The search hint's second half (ROADMAP 7.2b): the viewer's own wishlist
+    entries of `media_type` that match a grid search. The grids never list
+    wishlist entries (they aren't owned), so without this a search for
+    something you want says nothing at all. Returns {'count', 'rows'} or
+    None. `match_sql` is the page's own condition on alias b."""
+    where = (f"FROM wishlist w JOIN books b ON b.id = w.book_id"
+             f" WHERE w.user_id = ? AND b.media_type = ? AND ({match_sql})")
+    params = [viewer_id, media_type, *match_params]
+    count = conn.execute(f"SELECT COUNT(*) {where}", params).fetchone()[0]
+    if not count:
+        return None
+    rows = conn.execute(f"SELECT b.id, b.title, b.media_type {where} ORDER BY b.title COLLATE NOCASE LIMIT ?",
+                        [*params, limit]).fetchall()
     return {'count': count, 'rows': [dict(r) for r in rows]}
 
 

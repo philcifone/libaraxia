@@ -24,8 +24,8 @@ from flask import (Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from models import can_view_book, get_library_members, is_friends_with
-from utils import media
-from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches,
+from utils import media, search
+from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
 from utils.image_utils import delete_image_file, is_safe_upload_path
@@ -75,12 +75,21 @@ class Section:
 
     # ---------------------------------------------------------- queries
     @staticmethod
-    def search_match(term):
-        """The search box's condition on alias b, and its parameters."""
-        like = f'%{term}%'
-        return ("b.title LIKE ? OR b.author LIKE ? OR b.publisher LIKE ?"
-                " OR b.barcode LIKE ? OR b.catalog_number LIKE ? OR CAST(b.publish_year AS TEXT) LIKE ?",
-                [like] * 6)
+    def search_match(term, viewer_id):
+        """The search box's condition on alias b, and its parameters: every
+        word, accents and punctuation ignored, in any of these columns or the
+        viewer's tags on the item (utils/search.py, ROADMAP 7.2b)."""
+        return search.match(term, ['title', 'subtitle', 'author', 'publisher', 'barcode',
+                                   'catalog_number', 'publish_year'], viewer_id=viewer_id)
+
+    def on_wishlist(self, conn, args, viewer_id):
+        """The viewer's wishlist entries of this type that match the search
+        (book_utils.wishlist_matches), or None."""
+        term = (args.get('search_term') or '').strip()
+        if not term:
+            return None
+        match_sql, match_params = self.search_match(term, viewer_id)
+        return wishlist_matches(conn, viewer_id, self.media_type, match_sql, match_params)
 
     def off_shelf(self, conn, owner_ids, args, viewer_id):
         """The search hint's matches (book_utils.off_shelf_matches), only
@@ -88,7 +97,7 @@ class Section:
         term = (args.get('search_term') or '').strip()
         if not term or show_choice(args):
             return None
-        match_sql, match_params = self.search_match(term)
+        match_sql, match_params = self.search_match(term, viewer_id)
         return off_shelf_matches(conn, self.view, owner_ids, match_sql, match_params, viewer_id)
 
     def filtered(self, conn, owner_ids, args, viewer_id):
@@ -106,7 +115,7 @@ class Section:
 
         term = (args.get('search_term') or '').strip()
         if term:
-            match_sql, match_params = self.search_match(term)
+            match_sql, match_params = self.search_match(term, viewer_id)
             sql += f" AND ({match_sql})"
             params += match_params
         if args.get('genre'):
@@ -286,6 +295,8 @@ def make_blueprint(section: Section) -> Blueprint:
             # Friends' grids show only their shelf, so no hint there
             off_shelf=None if tab == 'friend' else section.off_shelf(
                 conn, owner_ids, request.args, current_user.id),
+            on_wishlist=None if tab == 'friend' else section.on_wishlist(
+                conn, request.args, current_user.id),
             **extra)
 
     # ------------------------------------------------------ grids

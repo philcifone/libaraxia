@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener('click', async event => {
     const btn = event.target.closest('[data-theme-picker] .theme-opt');
     if (!btn) return;
-    const kind = btn.dataset.kind;              // 'style' or 'mode'
+    const kind = btn.dataset.kind;              // 'style', 'mode', 'accent' or 'font'
     const root = document.documentElement;
     const previous = root.dataset[kind];
     const press = value => document.querySelectorAll(`.theme-opt[data-kind="${kind}"]`)

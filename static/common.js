@@ -339,7 +339,8 @@ function noCoverHtml(title, author, { size = 'md', box = 'w-full h-full' } = {})
     const titleHtml = title ? `<span class="no-cover-title">${escapeHtml(title)}</span>` : '';
     const authorHtml = title && author && size !== 'sm'
         ? `<span class="no-cover-author">${escapeHtml(author)}</span>` : '';
-    return `<div class="no-cover no-cover-${size} ${box}" aria-hidden="true">${titleHtml}${authorHtml}</div>`;
+    const long = title && title.length > 30 ? ' no-cover-long' : '';   // as _no_cover.html
+    return `<div class="no-cover no-cover-${size}${long} ${box}" aria-hidden="true">${titleHtml}${authorHtml}</div>`;
 }
 
 // --- Read more ---------------------------------------------------------------

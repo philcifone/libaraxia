@@ -5,9 +5,11 @@
      {% with title=book.title, author=book.author, size='md', box='w-full h-full' %}
          {% include '_no_cover.html' %}
      {% endwith %}
-   size: lg | md | sm (sm shows the title only). box: sizing classes. #}
+   size: lg | md | sm (sm shows the title only). box: sizing classes.
+   no-cover-long marks a long title, so a small cover can drop the author
+   (the Shelf movie case does). #}
 {%- set size = size or 'md' -%}
-<div class="no-cover no-cover-{{ size }} {{ box or 'w-full h-full' }}" aria-hidden="true">
+<div class="no-cover no-cover-{{ size }}{% if title and title|length > 30 %} no-cover-long{% endif %} {{ box or 'w-full h-full' }}" aria-hidden="true">
     {%- if title %}
     <span class="no-cover-title">{{ title }}</span>
     {%- if author and size != 'sm' %}

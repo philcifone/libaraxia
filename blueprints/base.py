@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from utils.database import get_db
 from datetime import datetime
 from models import get_library_members, is_friends_with
-from utils.book_utils import get_filter_options, shelf_filter, format_filter
+from utils.book_utils import get_filter_options, shelf_filter, format_filter, card_json
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
 
@@ -93,15 +93,7 @@ def index():
 
     # Handle AJAX requests for infinite scroll
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        books_data = [{
-            'id': book['id'],
-            'title': book['title'],
-            'author': book['author'],
-            'cover_image_url': book['cover_image_url'],
-            'removed': book['removed_at'] is not None,
-            'not_owned': not book['owned'],
-            'format': book['format'],
-        } for book in books]
+        books_data = card_json(conn, current_user.id, books)   # list view's columns too
 
         return jsonify({
             'books': books_data,
@@ -213,15 +205,7 @@ def shared_library():
 
     # Handle AJAX requests
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        books_data = [{
-            'id': book['id'],
-            'title': book['title'],
-            'author': book['author'],
-            'cover_image_url': book['cover_image_url'],
-            'removed': book['removed_at'] is not None,
-            'not_owned': not book['owned'],
-            'format': book['format'],
-        } for book in books]
+        books_data = card_json(conn, current_user.id, books)   # list view's columns too
 
         return jsonify({
             'books': books_data,

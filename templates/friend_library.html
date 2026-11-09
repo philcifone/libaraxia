@@ -72,16 +72,16 @@
     <!-- Books Grid -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {% if books %}
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             <div class="book-item group">
                 <a href="{{ url_for('books.show_book', id=book.id) }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
-                    <div class="book-cover w-full h-64 overflow-hidden bg-primary">
+                    <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                         {% if book.cover_image_url %}
-                        <img src="{{ url_for('static', filename=book.cover_image_url) }}"
+                        <span class="cover-box"><img src="{{ url_for('static', filename=book.cover_image_url) }}"
                              alt="{{ book.title }}"
-                             class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
+                             class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>
                         {% else %}
                         {% with title=book.title, author=book.author, size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}

@@ -29,7 +29,7 @@ from blueprints.covers import covers_blueprint
 from blueprints.videos import videos_blueprint
 from blueprints.records import records_blueprint
 from config import DevelopmentConfig, ProductionConfig
-from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT
+from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT
 from utils.rate_limiting import limiter
 
 def create_app():
@@ -147,6 +147,7 @@ def create_app():
                 theme_style=user_dict.get('theme_style'),
                 theme_mode=user_dict.get('color_mode'),
                 accent=user_dict.get('accent'),
+                font=user_dict.get('font'),
             )
         return None
 
@@ -222,6 +223,15 @@ def create_app():
     app.add_template_global(url_with, 'url_with')
     app.add_template_global(lambda row: media.media_labels(media.media_type_of(row)), 'labels_for')
 
+    # List view's status and rating columns (_book_grid.html, ROADMAP 7.2b):
+    # the viewer's own, for a page of items in one query
+    def viewer_marks(rows):
+        from utils.book_utils import viewer_marks as marks_for
+        if not _current_user.is_authenticated:
+            return {}
+        return marks_for(get_db(), _current_user.id, [row['id'] for row in rows])
+    app.add_template_global(viewer_marks, 'viewer_marks')
+
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)
 
@@ -236,6 +246,8 @@ def create_app():
             'theme_styles': THEME_STYLES,
             'theme_accent': user.accent if signed_in else DEFAULT_ACCENT,
             'theme_accents': ACCENTS,
+            'theme_font': user.font if signed_in else DEFAULT_FONT,
+            'theme_fonts': FONTS,
             'theme_modes': THEME_MODES,
         }
 

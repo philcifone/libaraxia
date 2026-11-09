@@ -14,7 +14,7 @@
   The CSRF token is in <meta name="csrf-token"> on every page, so JS never
   needs a hidden input to find it (see getCSRFToken in static/common.js).
 #}
-<html lang="en" class="{% block html_class %}{% endblock %}" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}" data-accent="{{ theme_accent }}">
+<html lang="en" class="{% block html_class %}{% endblock %}" data-style="{{ theme_style }}" data-mode="{{ theme_mode }}" data-accent="{{ theme_accent }}" data-font="{{ theme_font }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -23,6 +23,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
     {# Not deferred: inline page scripts may call its helpers while the page parses. #}
     <script src="{{ url_for('static', filename='common.js') }}"></script>
+    {# Shelf style: tap a cover once for its title, twice to open (touch screens),
+       and the Movies video-store rack. Not deferred: it sets data-rack on
+       <html> before the first paint, so the rack doesn't flash in. #}
+    <script src="{{ url_for('static', filename='shelf.js') }}"></script>
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}bg-primary min-h-screen{% endblock %}">

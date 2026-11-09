@@ -3,7 +3,7 @@
 The phased plan for Libaraxia: every open action item, security follow-up and bug found so far, in the order to work through them. This is the **single list of open work**. Tick items (`[x]`) as they land, and move a finished phase to [Done](#done) with a date.
 
 - Assembled **2026-11-02** from the old `ACTION_ITEMS.md` (security audit of 2026-10-28), [FORK-SPEC.md](FORK-SPEC.md) (2026-11-01), and a screenshot/data pass on 2026-11-02 against an anonymised copy of `library.db`.
-- **Phases 0–10 are all core Libaraxia work** and don't depend on the fork. The archive fork is parked as Phase 11, a future idea. [FORK-SPEC.md](FORK-SPEC.md) holds the fork plan, and also the original VHS design notes (Phase 8).
+- **Phases 0–10 are all core Libaraxia work.** The archive fork is out of scope (see Not planned); [FORK-SPEC.md](FORK-SPEC.md) keeps its plan for the record, and the original VHS design notes (Phase 8).
 - Items marked 🆕 are new findings from 2026-11-02.
 
 Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
@@ -25,12 +25,11 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 8C ✅ | [Collections refresh](#phase-8c-collections-refresh) | Collections are still books-only | Status shelves and custom shelves per section (Books / Movies / Music), page heading, side-scrolling rows reused on the profile |
 | 8D ✅ | [Profile wishlist](#phase-8d-profile-wishlist) | Follows 8C's rows | The profile's wishlist is a side-scrolling row per section instead of one grid |
 | 8E ✅ | [Do I have this?](#phase-8e-do-i-have-this) | The bookstore case, once every type had barcodes and ownership was a real flag | Scan or type in a shop: own it / household's / wishlist / read but not owned / not here, with your status and rating |
-| 8F | [Cover quality](#phase-8f-cover-quality) | Popular books still get poor covers from Google | The right, large cover for popular books without a manual search |
+| 8F ✅ | [Cover quality](#phase-8f-cover-quality) | Popular books still get poor covers from Google | The right, large cover for popular books without a manual search |
 | 9 | [Bulk edit and granular import](#phase-9-bulk-edit-and-granular-import) | A full GUI feature of its own; after 8F | Select many items and change them at once; pick Goodreads rows to import and where they go |
-| 10 (parked) | [More styles](#phase-10-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
-| 11 | [Fork (parked)](#phase-11-the-archive-fork-parked) | Not planned yet; listed so the idea isn't lost | n/a |
+| 10 (done) | [More styles](#phase-10-more-styles) | Built on the 7.1 component classes; the Shelf style's video-store rack needs VHS (Phase 8) | Shelf (iBooks-style, with a VHS rack) and Outrun as Appearance choices |
 
-Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 8B → 8C → 8D → 8E → 8F → 9 is the part that matters. More styles (now Phase 10) and the fork (now Phase 11) are parked (Phil, 2026-11-08); they were 9 and 10 until bulk edit took Phase 9.
+Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 8B → 8C → 8D → 8E → 8F → 9 is the part that matters. More styles (now Phase 10) was parked for a moment on 2026-11-08 (it was Phase 9 until bulk edit took that number), then pulled forward the same day and finished (Shelf, Outrun, font choice).
 
 **Why the refresh can go first without the `base.html` refactor:** the templates already use *semantic* Tailwind names: `text-content-secondary` ×319, `text-content-primary` ×222, `bg-primary` ×118, `bg-accent`/`text-accent` ×212, `font-display` ×40, plus Tailwind's default `white`, `gray-600/700`, `red`, `yellow`, `green`, `blue` and `shadow-*`. Re-pointing those names in `tailwind.config.js` recolours, re-fonts and squares off nearly every page **without editing templates**. Hand edits are limited to the shared partials, a find-and-replace adding borders to cards, and the text colour on coloured buttons. Per-page cleanup waits for Phase 7, when there's one layout to edit.
 
@@ -134,9 +133,9 @@ A few small bug fixes ride along (0.6). They fix how existing elements behave; t
   - rate/review, collections, profile
   - wishlist, feed, notifications
   - admin, login/register, Goodreads import
-- [ ] Retake the README screenshots in both themes, from an **anonymised copy** of the DB (rename other users, clear their emails/bios/avatars/review text), never the live one. *(Deferred 2026-11-02: Phil will retake them after Phase 8, once the app is fully presentable.)*
+- [ ] Retake the README screenshots in both themes, from an **anonymised copy** of the DB (rename other users, clear their emails/bios/avatars/review text), never the live one, and bring the README up to date. *(Deferred 2026-11-02 to after Phase 8; postponed again 2026-11-08 (Phil): after Phase 9 is complete.)*
 
-**Status 2026-11-02:** landed on branch `phase-0-design-refresh` (commit `35c2b13`). Headless screenshots of every page in light + dark looked right. Phil's phone pass is done (2026-11-02). Still open: the `no-cover.png` / long-text checks; the README screenshots are deferred to after Phase 8. Deviations from the token table, made for contrast: light `accent-hover` is `#5f5b0b` (`#98971a` under light text is 2.9:1) and dark `red-strong` is `#fb4934` (`#cc241d` under dark text is 3.0:1). Phone tab labels shorten to "Shared" / "Friends'" so they fit on one line.
+**Status 2026-11-02:** landed on branch `phase-0-design-refresh` (commit `35c2b13`). Headless screenshots of every page in light + dark looked right. Phil's phone pass is done (2026-11-02). Still open: the `no-cover.png` / long-text checks; the README screenshots are deferred to after Phase 9. Deviations from the token table, made for contrast: light `accent-hover` is `#5f5b0b` (`#98971a` under light text is 2.9:1) and dark `red-strong` is `#fb4934` (`#cc241d` under dark text is 3.0:1). Phone tab labels shorten to "Shared" / "Friends'" so they fit on one line.
 
 **Done when:**
 - Every page renders in both themes with Courier Prime + Young Serif, square corners, strong 1px borders and no soft shadows.
@@ -511,11 +510,11 @@ Found by a headless sweep: every GET page × House/Classic × light/dark × 390/
   - The household and decline buttons (`bg-orange-600`, `bg-gray-600 text-white`) were missed by the `.btn` pass; they're now `.btn` / `.btn-outline`, and the lint tests cover orange and gray fills.
   - The book page's tag chips were hard-coded light gray (a bright chip in dark mode) and their remove button had no label and no focus outline. Now themed and labelled.
 
-### 7.2b Search, sort and list view (from Phil, 2026-11-05; layout done, the rest deferred)
+### 7.2b Search, sort and list view (from Phil, 2026-11-05; layout done 2026-11-05, the rest 2026-11-08)
 
 Go over the whole search/sort/filter bar (`_search_sort_filter.html`, `script.js`) and the grid/list toggle, and make them friendlier. What they do today, found while answering "which search do I use in a bookstore?":
 
-- [ ] **Two searches that look alike but aren't.** (Partly settled 2026-11-08: there's no header search any more, the shelf search hints at off-shelf matches (8B.3), and Do I have this? (8E) covers wishlist, household and ISBN/barcode. What's left: wishlist entries in the grid search, and making Add's Google search look different from the library search.)
+- [x] **Two searches that look alike but aren't.** (Partly settled 2026-11-08: there's no header search any more, the shelf search hints at off-shelf matches (8B.3), and Do I have this? (8E) covers wishlist, household and ISBN/barcode.) Finished 2026-11-08: a grid search now also hints at matching **wishlist** entries ("On your wishlist: ...", `book_utils.wishlist_matches`, in `_off_shelf_hint.html`; the grids never list them), the grid boxes say whose they search ("Search your books: title, author, ISBN, tag..."), and Add's search says it "searches online catalogues to fill in the form, not your library" with a link to Do I Have This?. No merged "find": Do I Have This? already is that page.
   - The header magnifier (`/books/search`) searches your and your household's shelf by title, author or year (substring). It **hides removed books** unless the Removed filter says otherwise, so "Read but not owned" and given-away books don't show. It doesn't search your **wishlist** or by **ISBN**.
   - Add Book's search queries **Google Books**, not your library.
   - Make the difference obvious, or merge them into one "find" that also covers wishlist and removed books, with results labelled *On your shelf* / *Household's* / *Removed* / *On wishlist*.
@@ -528,8 +527,11 @@ Go over the whole search/sort/filter bar (`_search_sort_filter.html`, `script.js
   - Fixed on the way: sorting always went to `/base/index` with only the sort fields, so it dropped your filters and threw you out of the shared library or search. Sort and filter forms now submit to the page they're on and carry the other parameters. *Clear filters* removes only filter parameters (it used to drop the search term too). The direction reads *Oldest/Newest first* for Year and Date added instead of A–Z. The GET forms no longer carry the CSRF token (it ended up in URLs, history and logs).
   - The two-searches merge and the "Do I have this?" lookup are deferred; the lookup builds on the Phase 8 scanner fixes.
   - Also decide whether sort applies instantly (it does today) and filters need *Apply* (they do today), which is inconsistent.
-- [ ] **List view** is the grid restyled by `switchView` swapping class strings in JS (`script.js`). Make it a real layout (CSS class on the container, columns for author/year/status/rating), so it can show more than the grid and doesn't drift from `_book_grid.html`.
-- [ ] Search matching is a plain `LIKE '%term%'`: no accent/punctuation folding (the duplicate check's `_normalise` already does that), no subtitle, no tags. Consider the same normalisation, and SQLite FTS5 if it ever needs ranking.
+  - **Decided 2026-11-08: keep it.** Sort is one choice, so applying it at once is what you expect; the filter panel sets several fields together (status, rating, tags, Show), and applying each click would reload the page under you. A common pattern, not an inconsistency worth a change.
+- [x] **List view** is the grid restyled by `switchView` swapping class strings in JS (`script.js`). Make it a real layout (CSS class on the container, columns for author/year/status/rating), so it can show more than the grid and doesn't drift from `_book_grid.html`.
+  - **Done 2026-11-08:** one card markup for both views (`_book_grid.html`, and `createBookCard` builds the same); `switchView` only sets `data-view` on `#book-container` and drops `.grid` in list view. List view is CSS (styles.css, "List view"): columns cover | title, author | year | your status | your rating from `md` up, and a meta line under the title on phones. Status and rating are the viewer's own (`book_utils.viewer_marks`, a template global; `card_json` for infinite scroll, shared by the three routes that had their own copy). A friend's library has no list view (no switch there).
+- [x] Search matching is a plain `LIKE '%term%'`: no accent/punctuation folding (the duplicate check's `_normalise` already does that), no subtitle, no tags. Consider the same normalisation, and SQLite FTS5 if it ever needs ranking.
+  - **Done 2026-11-08:** `utils/search.py`. `fold()` (lowercase, accents and everything but letters and digits dropped) is an SQL function on every connection; `match()` needs **every word** of the search somewhere, in any order, across the columns or your tags on the item. Library: title, subtitle, author, ISBN, year. Movies and Music: title, subtitle, artist/director, label/studio, barcode, cat. no., year. Do I Have This?'s text search too. "les miserables", "catch 22" and "harari lessons" now find their books. FTS5 stays the step up if it's ever slow.
 
 ### 7.3 Quick wins and accessibility
 - [x] Replace `alert()` / `confirm()` with the toast and a small styled confirm modal (built from `.card` / `.btn`).
@@ -673,7 +675,7 @@ From Phil, 2026-11-08, after using Phase 8. Ship Phase 8 first and let it run fo
 - [x] `music_lookup.build_query` asks for CD and Cassette as well as the vinyl formats (MusicBrainz matches `format` as whole values, so the CD variants are listed: CD, Enhanced CD, HDCD, SHM-CD, Blu-spec CD, Copy Control CD, Hybrid SACD (CD layer), SACD, CD-R), and `vinyl_format()` became `album_format()`, which also returns `CD` / `Cassette` (an EP on CD is a CD; vinyl with a bonus CD stays vinyl). Search results already show the format per row.
 - [x] A format choice on the Search tab (Any format / Vinyl / CD / Cassette, `?format=` on `/records/search`; each is its own cache entry), so a CD search doesn't list twenty vinyl pressings.
 
-**Status 2026-11-08:** done. Checked live: a CD search for *Blue* lists the HDCD pressings. A cassette search for it found none, unconfirmed whether that's the data or the query (MusicBrainz started answering 503 before a second album could be tried); try a cassette search on the live page. Tests: `test_build_query_needs_every_word_and_a_physical_format`, `test_album_format`, `test_search_route_narrows_by_format`.
+**Status 2026-11-08:** done. Checked live: a CD search for *Blue* lists the HDCD pressings. A cassette search for it found none, unconfirmed whether that's the data or the query (MusicBrainz started answering 503 before a second album could be tried); try a cassette search on the live page. **Resolved:** cassettes come through with Discogs (8B.5, confirmed by Phil 2026-11-08). Tests: `test_build_query_needs_every_word_and_a_physical_format`, `test_album_format`, `test_search_route_narrows_by_format`.
 
 ### 8B.2 Book formats: Book / Audiobook
 - [x] A format for books: `Book` or `Audiobook`, a select on the book form (Add and Edit). A plain book is stored as NULL (`media.book_format`), so every existing book reads as Book with no migration. The Format filter appears on the Library pages once there's an audiobook (`format_filter`: Book also matches NULL).
@@ -720,7 +722,7 @@ Phil's idea: a movie watched on TV, an audiobook from a library, still worth a r
 - [x] Pages in the sidebar (profile, notifications, collections, admin settings) lost their back link. Tests: `test_no_back_to_catalog_links`, `test_item_page_crumbs_follow_the_section`.
 
 ### 8B.9 More styles parked
-- [x] More styles (Shelf, Outrun; Phase 9 then, Phase 10 since 2026-11-08) parked in favour of 8B.5.
+- [x] More styles (Shelf, Outrun; Phase 9 then, Phase 10 since 2026-11-08) parked in favour of 8B.5. Unparked later that day and built (Phase 10).
 
 ### 8B.10 Discogs for Add Album (Phil, 2026-11-08)
 MusicBrainz kept answering 503 (busy on their side, not our rate: a handful of searches seconds apart).
@@ -771,10 +773,12 @@ From Phil, 2026-11-08 (was a 7.2b item). The bookstore and record-store check.
 
 ## Phase 8F: Cover quality
 
-From Phil, 2026-11-08: popular, legitimate books (with the Google Books API key) still sometimes get a poor cover.
-- [ ] Reproduce with a few real cases from Phil (title + ISBN + what came back), logging each candidate's size (`save_best_cover` already logs at debug).
-- [ ] First lead, not yet verified: Google's **search** results usually carry only `thumbnail` / `smallThumbnail`; the large sizes come from the volume endpoint (`/volumes/<id>`). `_google_cover_urls` also strips `&zoom=`, which leaves Google's default, about 128 px wide. Try the volume endpoint and a larger `zoom` (or `fife=w800`), with the placeholder check (3.2) since Google answers some of those with "image not available".
-- [ ] Then the order of sources per case: Open Library `-L` by ISBN is often better for older books, Google for newer ones. Keep the "Find a better cover" stream as the manual fallback.
+From Phil, 2026-11-08: popular, legitimate books (with the Google Books API key) still sometimes get a poor cover. Done 2026-11-08.
+- [x] Reproduced from the dev library (every saved cover measured) and live lookups: 33 "covers" were blank 500x80 strips and one Google "image not available", all saved in October before the 3.2 placeholder check. Today's code refuses both, but then Google gave nothing at all.
+- [x] Cause: `_google_cover_urls` stripped `&zoom=`, and Google answers a zoom-less cover URL with its "image not available" banner (2500x400) for any book it hasn't scanned. Measured on `books/content?id=...&img=1`: `zoom=1` is 128 px for every volume, `fife=w800-h1200` is 800x1200 when Google has a scan (else the banner), `zoom=0` the full 1800x2700. The volume endpoint's large/extraLarge are the same URLs, so no extra API call is needed.
+- [x] `book_utils.google_cover_candidates`: any Google link for a volume becomes [800x1200, 128 px]; `save_best_cover` keeps the largest real one, and the banner is refused as a strip, so an unscanned book falls through to Open Library by ISBN (300-465 px wide). Live: Atomic Habits saves from the 800x1200 scan, Literary Machines from Open Library at 465x500 (it was a blank strip).
+- [x] Add Book's search: picking a result used to download only that one Google URL, with no fallback. It now tries the large size, the thumbnail, then Open Library by ISBN (`select_search_result`). Search-result thumbnails keep `zoom=1` (`add_item.js` stripped it, so unscanned books showed no thumbnail). "Find a better cover" expands each Google link the same way. `download_and_save_cover` is gone (unused).
+- [ ] **Prod, Phil:** Admin -> placeholder covers -> clear them, then fetch missing covers, if the October strips are there too (they're in the dev copy).
 
 ## Phase 9: Bulk edit and granular import
 
@@ -793,47 +797,43 @@ From Phil, 2026-11-08. Its own phase: a whole selection-and-actions UI, not a tw
 
 ## Phase 10: More styles
 
-**Parked** (Phil, 2026-11-08): the accent colour picker (8B.5) comes first; pick this up later.
+10.1 Shelf (with the movie rack), 10.2 Outrun and 10.3 font choice were built 2026-11-08, after the accent picker (8B.5).
 
 From Phil, 2026-11-05. New choices next to House and Classic under Profile → Appearance. They come after Phase 8 because the Shelf style's video-store rack needs VHS records. Each style is a shape block and palettes in `styles.css` (as today), plus a scoped `[data-style=…]` stylesheet for structure, built on the 7.1 component classes. Do one style at a time, with the same headless sweep as 7.0.
 
 ### 10.1 Shelf (iBooks-style skeuomorphic) 🟢
-Reference: `docs/skeuomorphic-inspo.jpg` (local only, git-ignored): the 2010 iPad iBooks shelf.
-- [ ] Wood-grain page and shelves. Light mode = maple, dark = walnut. Texture as a small tiling image (self-made or CC0, in `static/`), or a CSS gradient approximation if that looks good enough.
-- [ ] **Library grid as shelves:** covers only (title/author on hover/focus and in list view), fixed row height so a shelf ledge runs under each row (a per-card ledge that bridges the gaps), soft drop shadow on covers.
-- [ ] Embossed toolbar and buttons (gradient, inset highlight), system sans with a light text shadow.
-- [ ] **Video-store rack for VHS** (Shelf only; in House and Classic the Videos grid looks like the book grid): tapes spine-out in a rack, navy and marquee yellow, ticket-stub labels. Generic, no Blockbuster or other branding. Needs Phase 8. Candidate for the tape/sleeve cover: the parked film frame, `docs/parked/film-frame.css`.
-- [ ] Forms, profile and admin pages stay plain-but-themed (wood frame, paper panels); only the library views go full skeuomorphic.
+Built 2026-11-08: a light pass (skeleton first), then fleshed out across the app. Phil: no wood grain, the flat two-tone ledge line is the look. `data-style="shelf"`: a soft shape block, its own neutrals (parchment and maple in light, walnut in dark; House's accents and status colours, contrast checked), and two blocks at the end of `styles.css` (the bookcase, then the rest of the app).
+- [x] **Library grid as shelves** (`.shelf-grid.grid`: every section's grid, search, shared and a friend's library; grid view only): covers only, title and author on hover/focus and in list view, one repeating gradient on the container draws the ledges (`--cover-h` / `--ledge` / `--shelf-gap`, whole px so they don't drift), 3 shorter columns on phones, badges hang off the ledge as shelf tags.
+- [x] The motif everywhere else: wooden top bar with cream lettering (`--shelf-bar`, 4.9:1), a wooden edge on the sidebar drawer, a ledge under page headings, cover rows (`.shelf-row`: Collections, profile shelves and wishlist) stand on a ledge that scrolls with them, the item page's cover on its own short ledge (`.cover-stand`).
+- [x] Gently raised buttons (light top edge, soft shadow), soft 1px form fields instead of House's 2px ink outline.
+- [x] ~~Wood-grain texture~~: dropped (Phil, 2026-11-08). The `--shelf-*` colours are the wood.
+- [x] **Covers as boxes** (Phil, 2026-11-08): every Shelf grid cover is a 3D box seen from a little above: top and right side as shaded faces, no outlines (the rack keeps its black line) (skewed pseudo-elements on `.cover-box`, the `<img>` wrapper, `display: contents` outside the bookcase; a coverless item's `.no-cover` is the box, shaped 2:3 or square). Pages-coloured faces for books, grey for movies and music, thinner for records (`--box-depth`, `--box-top`, `--box-side`). Books and albums lift on hover, movies don't.
+- [x] **Movie rack, an easter egg** (Phil, 2026-11-08): off by default; the egg button next to grid/list on the Movies grid (Shelf only) toggles `<html data-rack="store">`, remembered per browser (`static/shelf.js`, loaded without `defer` so it applies before the first paint). Every rack rule is scoped to it.
+- [x] **Movie rack** (Phil, 2026-11-08): the Movies grids (`[data-media="video"]`) reskin the bookcase as a video-store wall: all white (frame `--shelf-frame`, back and shelves; dimmer in dark), and the label as a barcode sticker in VT323. Light and dark. Generic, no store branding. Music keeps the wooden bookcase.
+  - Every movie stands in the same white case (the `.book-cover` itself, 5:8): thin black outline, a blue and a yellow stripe down the spine (touching, the left 15% of the case), the poster inset with a margin (contained, never cropped). No poster: title and director printed on the case, title only past 30 characters (`no-cover-long`, set by `_no_cover.html` and `noCoverHtml()`). No hover lift: only the label shows. The case is drawn as a box: right side and top as outlined faces going up and right, Negative Earth's hard shadow flipped vertically (`::before`/`::after` skewed 45 degrees, `--case-depth`).
+- [x] Titles on touch screens (`static/shelf.js`, only where `(hover: none)`): the first tap on a cover shows its label (`.peek`), a second tap on the same cover within 5 s opens it; tapping elsewhere or waiting puts it away. Mouse and keyboard unchanged.
+- [x] The label (every Shelf grid) shows the whole title and author, unclamped: it grows upward over the cover, and is only as wide as it needs to be: at least the column, at most a bit wider (half again on phones, anchored on the outer edge for the side columns).
+
+### 10.3 Font choice
+- [x] Profile -> Appearance -> Font (`users.font`, migration 028, `data-font`): Theme (each style's own fonts), Baskerville (Libre Baskerville), Garamond (EB Garamond, with `font-size-adjust` for its small x-height), Literata (made for e-books), Jost (Futura-like). Each sets body, headings and page titles in every style. OFL, self-hosted in `static/fonts/`.
 
 ### 10.2 Outrun (80s neon) 🟢
-- [ ] **Dark only:** the Mode setting is ignored (documented on the Appearance picker).
-- [ ] Perspective neon grid behind the page (fixed pseudo-element, CSS gradients + `perspective`; no images, no literal scenery).
-- [ ] Purple → orange gradient on the top bar and headings; glow (`text-shadow` / `box-shadow`) on headings, accents and focus only, never on body text.
-- [ ] Angled card and button corners via `clip-path` (boxy 80s car livery), with contrasting stripes on buttons. `clip-path` also clips borders and focus outlines, so draw those inside the shape.
-- [ ] An OFL display font for headings (e.g. Audiowide or Orbitron) in `static/fonts/`; body text stays readable (Courier Prime or a plain sans).
-- [ ] Contrast check: text on the gradient and neon fills passes 4.5:1; animations respect `prefers-reduced-motion`.
+Built 2026-11-08 (Phil pulled it forward). `data-style="outrun"`, a shape block and one palette in `styles.css`, plus an effects block at the end of the components layer.
+- [x] **Dark only:** an `html:root[data-style="outrun"]` palette outranks the House dark blocks, so Mode is ignored; the Mode pickers (`data-mode-picker`) hide and the Appearance picker says why (`data-outrun-note`).
+- [x] Perspective neon grid behind the page (`body::after`, CSS gradients + `perspective`, masked to fade out) over a fixed sky gradient (`body::before`). No images.
+- [x] Pink-to-orange gradient on the top bar border, the site title and page titles; glow on headings, accents, cards and focus only, never on body text.
+- [x] **Every accent has a neon shade** (`--acc-n` per swatch; green 57 255 140, aqua, blue, purple, orange, red = hot pink, yellow). Text on the dark fills is 5:1 or better; red was lightened because the first hot pink was 4.3:1 on the hover fill.
+- [x] OFL fonts in `static/fonts/` (Fontsource 5.3.0, OFL.txt beside each): **Audiowide** for headings and page titles (`--font-display`, `--font-title`), **VT323** for body (`--font-body`; `size-adjust: 125%` in its `@font-face`). Monoton and Exo 2 were tried first and dropped (Phil). The Font choice (10.3) doesn't apply to Outrun; its picker hides there.
+- [ ] Angled card and button corners via `clip-path`: **deferred** (Phil, 2026-11-08). `clip-path` also clips borders and focus outlines, so draw those inside the shape if it's picked up.
+- [ ] Animations: none yet; any added must respect `prefers-reduced-motion`.
 
 **Done when:** each style renders every page in its modes at phone and desktop widths with a clean sweep; Shelf shows books on shelves and VHS in the rack.
 
 ---
 
-## Phase 11: The archive fork (parked)
-
-**Not planned yet.** It's listed so the idea isn't lost; nothing in Phases 0–10 depends on it. The plan is in [FORK-SPEC.md](FORK-SPEC.md). In short:
-1. Tag `v2.0.0` and create the fork repo with an `upstream` remote.
-2. Turn off the social layer by config and rebrand.
-3. Archival data model: accessioning, condition, provenance, locations, audit log.
-4. Exports, labels and BagIt backups.
-
-If it's picked up, start with fork prep in core Libaraxia:
-- [ ] Resolve the open decisions in [FORK-SPEC §9](FORK-SPEC.md#9-open-decisions): name, users, accession format, theme default, …
-- [ ] **Feature flags** (`FEATURES` in config, `{% if features.social %}` in templates) and a **plugin hook** in `create_app()` ([FORK-SPEC §3.2–3.3](FORK-SPEC.md#32-feature-flags)). Libaraxia ships with everything on.
-- [ ] Migration naming for two streams: upstream `NNN_name.sql`, fork `A_NNN_name.sql`, one shared ledger.
-
----
-
 ## Not planned
 
+- **The archive fork** ([FORK-SPEC.md](FORK-SPEC.md)): out of scope (Phil, 2026-11-08). It was Phase 11, parked; the spec stays for the record.
 - **Docker** is reference-only, since prod runs gunicorn directly. If it's ever revived:
   - move off `python:3.11-slim-bullseye` (Debian 11 is EOL)
   - add a non-root `USER`

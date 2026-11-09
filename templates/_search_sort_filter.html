@@ -27,7 +27,7 @@
                        id="search_term"
                        aria-label="Search {{ 'these ' ~ m.plural if m else 'your library' }}"
                        name="search_term"
-                       placeholder="{{ m.search_placeholder if m else 'Search by title, author, year...' }}"
+                       placeholder="{{ m.search_placeholder if m else 'Search your books: title, author, ISBN, tag...' }}"
                        value="{{ request.args.get('search_term', '') }}"
                        class="w-full h-full pl-4 pr-10 py-2.5 bg-secondary-bg border border-rule-strong rounded-lg
                               focus:ring-2 focus:ring-accent focus:border-transparent

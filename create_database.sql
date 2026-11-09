@@ -26,7 +26,8 @@ CREATE TABLE users (
     bio TEXT,
     theme_style TEXT NOT NULL DEFAULT 'house',
     color_mode TEXT NOT NULL DEFAULT 'system',
-    accent TEXT NOT NULL DEFAULT 'green'    -- models.ACCENTS (migration 026)
+    accent TEXT NOT NULL DEFAULT 'green',   -- models.ACCENTS (migration 026)
+    font TEXT NOT NULL DEFAULT 'theme'      -- models.FONTS (migration 028)
 );
 
 CREATE TABLE email_verification_tokens (
@@ -378,4 +379,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('024_add_records.sql'),
     ('025_owned.sql'),
     ('026_accent.sql'),
-    ('027_shelf_types.sql');
+    ('027_shelf_types.sql'),
+    ('028_font.sql');

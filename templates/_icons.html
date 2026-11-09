@@ -60,10 +60,11 @@
    Notifications, Wishlist, Collections and Admin. `subtitle` is an optional
    line under it. The caller spaces it (mb-6 or the grid wrapper below). #}
 {% macro page_heading(icon_name, name, subtitle=none, class='mb-6') -%}
-<div class="bg-secondary rounded-xl card px-4 py-3 {{ class }}">
+<div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ class }}">
     <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center">
         <span class="text-accent shrink-0">{{ icon(icon_name, 'w-8 h-8') }}</span>
-        <span class="min-w-0">{{ name }}</span>
+        {# page-title: Outrun sets it in its title font and gradient #}
+        <span class="page-title min-w-0">{{ name }}</span>
     </h1>
     {% if subtitle %}<p class="mt-1 text-sm text-content-secondary text-center">{{ subtitle }}</p>{% endif %}
 </div>

@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from utils import search
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -22,6 +23,9 @@ def get_db_connection():
     # SQLite only enforces foreign keys (and their ON DELETE rules) when each
     # connection asks for it. Needs migrations 014/015 (manage.py migrate).
     conn.execute('PRAGMA foreign_keys = ON')
+    # fold(): accent- and punctuation-free matching for the search boxes
+    # (utils/search.py)
+    search.register(conn)
     return conn
 
 

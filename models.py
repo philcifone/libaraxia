@@ -17,7 +17,7 @@ def is_valid_username(username):
 # To add a style, add its CSS blocks there and its key + label here.
 # Keys are stored in users.theme_style and used in CSS; the names are what
 # the Appearance picker shows (renamed 2026-11-08, Phil).
-THEME_STYLES = {'house': 'Negative Earth', 'classic': 'OG'}
+THEME_STYLES = {'house': 'Negative Earth', 'classic': 'OG', 'outrun': 'Outrun', 'shelf': 'Shelf'}
 THEME_MODES = {'system': 'System', 'light': 'Light', 'dark': 'Dark'}
 DEFAULT_THEME_STYLE = 'house'
 DEFAULT_THEME_MODE = 'system'
@@ -26,11 +26,16 @@ DEFAULT_THEME_MODE = 'system'
 ACCENTS = {'green': 'Green', 'aqua': 'Aqua', 'blue': 'Blue', 'purple': 'Purple',
            'orange': 'Orange', 'red': 'Red', 'yellow': 'Yellow'}
 DEFAULT_ACCENT = 'green'
+# Font choice (users.font, data-font; styles.css "Font choice"). 'theme'
+# keeps the style's own fonts; the others set body and headings alike.
+FONTS = {'theme': 'Theme', 'baskerville': 'Baskerville', 'garamond': 'Garamond',
+         'literata': 'Literata', 'jost': 'Jost'}
+DEFAULT_FONT = 'theme'
 
 
 class User(UserMixin):
     def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None, email_verified=True, bio=None,
-                 theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE, accent=DEFAULT_ACCENT):
+                 theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE, accent=DEFAULT_ACCENT, font=DEFAULT_FONT):
         self.id = id
         self.username = username
         self.email = email
@@ -42,6 +47,7 @@ class User(UserMixin):
         self.theme_style = theme_style if theme_style in THEME_STYLES else DEFAULT_THEME_STYLE
         self.theme_mode = theme_mode if theme_mode in THEME_MODES else DEFAULT_THEME_MODE
         self.accent = accent if accent in ACCENTS else DEFAULT_ACCENT
+        self.font = font if font in FONTS else DEFAULT_FONT
 
     def get_id(self):
         return str(self.id)

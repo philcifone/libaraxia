@@ -128,8 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const v = item.volumeInfo || item;
                 const ids = v.industryIdentifiers || [];
                 const isbn = (ids.find(i => i.type === 'ISBN_13') || ids.find(i => i.type === 'ISBN_10') || {}).identifier || '';
+                // As given (zoom=1, 128 px): without the zoom Google answers its
+                // "image not available" banner for any book it hasn't scanned
                 const thumb = v.imageLinks && v.imageLinks.thumbnail
-                    ? v.imageLinks.thumbnail.replace('http:', 'https:').replace('&zoom=1', '').replace('&edge=curl', '')
+                    ? v.imageLinks.thumbnail.replace('http:', 'https:').replace('&edge=curl', '')
                     : null;
                 const year = v.publishedDate ? v.publishedDate.split('-')[0] : '';
                 const authors = v.authors ? v.authors.join(', ') : '';

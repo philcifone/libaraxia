@@ -47,10 +47,98 @@
     font-display: swap;
     src: url('/static/fonts/young-serif/young-serif-latin.woff2') format('woff2');
 }
+/* Outrun's fonts (Phil, 2026-11-08; OFL, from Fontsource 5.3.0): Audiowide
+   for headings and page titles, VT323 (a terminal pixel face) for body text.
+   Only downloaded when the Outrun style is in use. VT323's letters are small
+   for their size; size-adjust scales this face alone (not the headings, as
+   font-size-adjust on the page would). */
+@font-face {
+    font-family: 'Audiowide';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/audiowide/audiowide-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'VT323';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    size-adjust: 125%;
+    src: url('/static/fonts/vt323/vt323-latin-400-normal.woff2') format('woff2');
+}
+
+/* Font choices (Profile -> Appearance -> Font, data-font on <html>). All OFL,
+   from Fontsource 5.3.0, licence beside each. */
+@font-face {
+    font-family: 'Libre Baskerville';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/libre-baskerville/libre-baskerville-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Libre Baskerville';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/static/fonts/libre-baskerville/libre-baskerville-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Libre Baskerville';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/libre-baskerville/libre-baskerville-latin-400-italic.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'EB Garamond Variable';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/static/fonts/eb-garamond/eb-garamond-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+    font-family: 'EB Garamond Variable';
+    font-style: italic;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/static/fonts/eb-garamond/eb-garamond-latin-wght-italic.woff2') format('woff2-variations');
+}
+@font-face {
+    font-family: 'Literata Variable';
+    font-style: normal;
+    font-weight: 200 900;
+    font-display: swap;
+    src: url('/static/fonts/literata/literata-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+    font-family: 'Literata Variable';
+    font-style: italic;
+    font-weight: 200 900;
+    font-display: swap;
+    src: url('/static/fonts/literata/literata-latin-wght-italic.woff2') format('woff2-variations');
+}
+@font-face {
+    font-family: 'Jost Variable';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/static/fonts/jost/jost-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+    font-family: 'Jost Variable';
+    font-style: italic;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/static/fonts/jost/jost-latin-wght-italic.woff2') format('woff2-variations');
+}
 
 /* ---------- Themes ----------
    Two independent settings on <html>, saved per user (Profile → Appearance):
      data-style = house (Gruvbox, square, bold lines) | classic (the original look)
+                | outrun (80s neon, dark only: the Mode setting is ignored)
+                | shelf (iBooks-style bookcase; House colours for now)
      data-mode  = system (follow the OS) | light | dark
    Colours are RGB channels so Tailwind alpha modifiers (bg-accent/20) work.
    To add a style: add a shape block and a light + dark palette below, then add
@@ -59,6 +147,8 @@
     /* ---- Shape and type per style ---- */
     :root {
         --font-body: "Courier Prime", "Courier New", monospace;
+        --font-display: "Young Serif", serif;      /* headings (font-display) */
+        --font-title: var(--font-display);         /* page titles (page_heading) */
         --r-sm: 0; --r: 0; --r-md: 0; --r-lg: 0; --r-xl: 0; --r-2xl: 0; --r-3xl: 0; --r-pill: 0;
         --sh-sm: none; --sh: none; --sh-md: none; --sh-lg: none; --sh-xl: none; --sh-2xl: none; --sh-inner: none;
         --sh-hard: 4px 4px 0 rgb(var(--accent));
@@ -107,6 +197,113 @@
         --bw-outline: 1px;
         --outline-edge: rgb(var(--rule-strong));
     }
+    /* Outrun: square, glowing outlines instead of offset shadows. Its fonts
+       are part of the look: the Font choice doesn't apply here. */
+    :root[data-style="outrun"] {
+        --font-body: "VT323", ui-monospace, monospace;
+        --font-display: "Audiowide", system-ui, sans-serif;
+        --font-title: var(--font-display);
+        --r-sm: 0; --r: 0; --r-md: 0; --r-lg: 0; --r-xl: 0; --r-2xl: 0; --r-3xl: 0; --r-pill: 0;
+        --sh-sm: none; --sh: none; --sh-md: none; --sh-lg: none; --sh-xl: none; --sh-2xl: none; --sh-inner: none;
+        --sh-hard: 0 0 16px rgb(var(--accent) / .7);
+        --card-border: rgb(var(--accent) / .8);
+        --bw-card: 2px;
+        --bw-btn: 2px;
+        --card-edge: rgb(var(--accent) / .85);
+        --card-edge-nested: rgb(var(--rule-strong) / .6);
+        --sh-card: 0 0 10px rgb(var(--accent) / .45), inset 0 0 10px rgb(var(--accent) / .12);
+        --sh-card-hover: 0 0 18px rgb(var(--accent) / .75), inset 0 0 12px rgb(var(--accent) / .2);
+        --card-press: translateY(-2px);
+        --sh-btn: 0 0 10px rgb(var(--accent) / .6);
+        --sh-btn-hover: 0 0 18px rgb(var(--accent) / .9);
+        --btn-press: none;
+        --bw-outline: 2px;
+        --outline-edge: rgb(var(--accent) / .85);
+    }
+
+    /* Shelf (ROADMAP 10.1, light pass): soft and rounded like the iBooks
+       shelf, on the House (Gruvbox) palette for now. The bookcase itself is
+       at the end of this file; its colours are the --shelf-* tokens, flat
+       placeholders until the wood goes in. */
+    :root[data-style="shelf"] {
+        --font-body: "Outfit Variable", system-ui, sans-serif;
+        --r-sm: .125rem; --r: .25rem; --r-md: .375rem; --r-lg: .5rem; --r-xl: .75rem; --r-2xl: 1rem; --r-3xl: 1.5rem; --r-pill: 9999px;
+        --sh-sm: 0 1px 2px 0 rgb(0 0 0 / .08);
+        --sh: 0 1px 3px 0 rgb(0 0 0 / .14), 0 1px 2px -1px rgb(0 0 0 / .14);
+        --sh-md: 0 4px 6px -1px rgb(0 0 0 / .14), 0 2px 4px -2px rgb(0 0 0 / .14);
+        --sh-lg: 0 10px 15px -3px rgb(0 0 0 / .16), 0 4px 6px -4px rgb(0 0 0 / .16);
+        --sh-xl: 0 20px 25px -5px rgb(0 0 0 / .16), 0 8px 10px -6px rgb(0 0 0 / .16);
+        --sh-2xl: 0 25px 50px -12px rgb(0 0 0 / .3);
+        --sh-inner: inset 0 2px 4px 0 rgb(0 0 0 / .08);
+        --sh-hard: var(--sh-lg);
+        --card-border: rgb(var(--rule));
+        --bw-card: 1px;
+        --bw-btn: 1px;
+        --card-edge: rgb(var(--rule));
+        --card-edge-nested: rgb(var(--rule));
+        --sh-card: var(--sh-md);
+        --sh-card-hover: var(--sh-lg);
+        --card-press: translateY(-2px);
+        --sh-btn: var(--sh-sm);
+        --sh-btn-hover: var(--sh);
+        --btn-press: none;
+        --bw-outline: 1px;
+        --outline-edge: rgb(var(--rule-strong));
+
+        /* Bookcase: back panel, shelf top face, shelf front edge and frame */
+        --shelf-back: 226 211 180;
+        --shelf-top: 201 166 118;
+        --shelf-front: 158 115 66;
+        --shelf-bar: 140 100 56;    /* the top bar: darker, so cream text is 4.9:1 */
+        --shelf-label: 253 246 230; /* cream text on wood */
+    }
+    :root[data-style="shelf"][data-mode="dark"] {
+        --shelf-back: 46 36 28;
+        --shelf-top: 118 84 54;
+        --shelf-front: 80 54 34;
+        --shelf-bar: 62 42 27;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root[data-style="shelf"]:not([data-mode="light"]) {
+            --shelf-back: 46 36 28;
+            --shelf-top: 118 84 54;
+            --shelf-front: 80 54 34;
+            --shelf-bar: 62 42 27;
+        }
+    }
+
+    /* ---- Font choice (Profile -> Appearance -> Font; users.font, data-font).
+       "theme" (no block) keeps the style's own fonts. A choice sets body,
+       headings and page titles alike, in every style but Outrun (its fonts
+       are fixed; the picker hides there); it comes after the style blocks. ---- */
+    :root[data-font="baskerville"]:not([data-style="outrun"]) {
+        --font-body: "Libre Baskerville", Georgia, serif;
+        --font-display: "Libre Baskerville", Georgia, serif;
+        --font-title: var(--font-display);
+    }
+    /* Garamond's small x-height reads a size smaller than the rest at the
+       same font-size; font-size-adjust scales it to match. */
+    :root[data-font="garamond"]:not([data-style="outrun"]) {
+        --font-body: "EB Garamond Variable", Garamond, Georgia, serif;
+        --font-display: "EB Garamond Variable", Garamond, Georgia, serif;
+        --font-title: var(--font-display);
+        font-size-adjust: .44;   /* about Literata's size; .5 overshot */
+    }
+    :root[data-font="literata"]:not([data-style="outrun"]) {
+        --font-body: "Literata Variable", Georgia, serif;
+        --font-display: "Literata Variable", Georgia, serif;
+        --font-title: var(--font-display);
+    }
+    :root[data-font="jost"]:not([data-style="outrun"]) {
+        --font-body: "Jost Variable", "Futura", system-ui, sans-serif;
+        --font-display: "Jost Variable", "Futura", system-ui, sans-serif;
+        --font-title: var(--font-display);
+    }
+    /* The picker shows each option in its own font */
+    .font-opt[data-value="baskerville"] { font-family: "Libre Baskerville", Georgia, serif; }
+    .font-opt[data-value="garamond"]    { font-family: "EB Garamond Variable", Garamond, serif; font-size-adjust: .44; }
+    .font-opt[data-value="literata"]    { font-family: "Literata Variable", Georgia, serif; }
+    .font-opt[data-value="jost"]        { font-family: "Jost Variable", system-ui, sans-serif; }
 
     /* ---- Accent colours (8B.5, Profile -> Appearance; both styles, see Classic below).
        Each sets a light shade (Gruvbox faded, darkened for yellow) and a dark
@@ -116,13 +313,13 @@
        Contrast (WCAG): every shade is >= 4.5:1 behind its
        --on-accent text; as text on --surface, all >= 4.5 except light green
        (4.16, the original) and dark red (4.29). ---- */
-    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; --acc-t: 142 192 124; --acc-t-hover: 176 211 163; }
-    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; --acc-t: 162 188 178; --acc-t-hover: 190 208 201; }
-    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; --acc-t: 222 164 180; --acc-t-hover: 232 191 202; }
-    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; --acc-t: 254 160 82; --acc-t-hover: 254 188 134; }
-    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; --acc-t: 253 148 136; --acc-t-hover: 254 180 172; }
-    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; --acc-t: 250 189 47; --acc-t-hover: 252 209 109; }
-    [data-swatch="green"] { --acc-l: 121 116 14; --acc-d: 152 151 26; }
+    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; --acc-t: 142 192 124; --acc-t-hover: 176 211 163; --acc-n: 5 217 232; }
+    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; --acc-t: 162 188 178; --acc-t-hover: 190 208 201; --acc-n: 92 148 255; }
+    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; --acc-t: 222 164 180; --acc-t-hover: 232 191 202; --acc-n: 190 110 255; }
+    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; --acc-t: 254 160 82; --acc-t-hover: 254 188 134; --acc-n: 255 158 0; }
+    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; --acc-t: 253 148 136; --acc-t-hover: 254 180 172; --acc-n: 255 56 120; }
+    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; --acc-t: 250 189 47; --acc-t-hover: 252 209 109; --acc-n: 255 230 0; }
+    [data-swatch="green"] { --acc-l: 121 116 14; --acc-d: 152 151 26; --acc-n: 57 255 140; }
 
     /* Accent as text (text-accent, tailwind.config.js textColor). The same
        colour as the accent everywhere except OG dark, whose greys need the
@@ -141,6 +338,10 @@
        there is Classic's own #4f7d19, as before. */
     :root[data-style="classic"] [data-swatch="green"] { --acc-l: 79 125 25; }
     :root[data-style="classic"] .accent-swatch { background: rgb(var(--acc-l, 79 125 25)); }
+    /* Outrun: every accent has a neon shade (--acc-n); green is neon mint,
+       red the classic Outrun hot pink. All >= 5:1 as text on the darks and
+       behind the dark --on-accent text. */
+    :root[data-style="outrun"] .accent-swatch { background: rgb(var(--acc-n, 57 255 140)); }
 
     /* ---- House palette (Gruvbox). Light is the default for any style-less page. ---- */
 
@@ -310,6 +511,85 @@
         --black: 0 0 0;             /* #000000 */
     }
 
+    /* ---- Outrun palette: dark only. html:root beats both House dark blocks
+       and the light default, so data-mode never changes it. Night sky
+       purples; the accent is the chosen neon. ---- */
+    html:root[data-style="outrun"] {
+        color-scheme: dark;
+        --paper: 13 2 33;           /* #0d0221 */
+        --surface: 26 11 59;        /* #1a0b3b */
+        --fill: 45 22 84;           /* #2d1654 */
+        --rule: 70 45 120;          /* #462d78 */
+        --rule-strong: 150 120 210; /* #9678d2 */
+        --accent: var(--acc-n, 57 255 140);         /* #39ff8c, or the chosen neon */
+        --accent-hover: var(--acc-n, 57 255 140);   /* hover glows brighter instead */
+        --accent-text: var(--acc-n, 57 255 140);
+        --accent-text-hover: var(--acc-n, 57 255 140);
+        --chart-bar: var(--accent);
+        --on-accent: 13 2 33;       /* #0d0221 */
+        --ink: 244 236 255;         /* #f4ecff */
+        --ink-2: 214 200 240;       /* #d6c8f0 */
+        --muted: 184 166 217;       /* #b8a6d9 */
+        --faint: 150 135 185;       /* #9687b9 */
+        --red: 255 56 120;          /* #ff3878 */
+        --red-strong: 255 56 120;
+        --yellow: 255 230 0;        /* #ffe600 */
+        --green: 57 255 140;        /* #39ff8c */
+        --blue: 92 148 255;         /* #5c94ff */
+        --blue-strong: 92 148 255;
+        --orange: 255 158 0;        /* #ff9e00 */
+        --purple: 190 110 255;      /* #be6eff */
+        --black: 0 0 0;
+        /* The fixed parts of the look, whatever the accent */
+        --neon-pink: 255 42 109;    /* #ff2a6d */
+        --neon-cyan: 5 217 232;     /* #05d9e8 */
+        --neon-orange: 255 158 0;   /* #ff9e00 */
+    }
+
+    /* ---- Shelf palette: parchment and maple in light, walnut in dark. The
+       neutrals only; the accents and status colours are House's (the accent
+       shades read the same on these, checked: >= 4.5:1 as text on surface,
+       except light green 4.6/4.1 on paper as in House). One class more
+       specific than House's blocks. ---- */
+    :root[data-style="shelf"] {
+        --paper: 244 236 221;       /* #f4ecdd */
+        --surface: 252 248 240;     /* #fcf8f0 */
+        --fill: 233 221 198;        /* #e9ddc6 */
+        --rule: 214 197 166;        /* #d6c5a6 */
+        --rule-strong: 150 120 86;  /* #967856 */
+        --on-accent: 252 248 240;
+        --ink: 43 33 24;            /* #2b2118 */
+        --ink-2: 72 56 41;          /* #483829 */
+        --muted: 98 80 62;          /* #62503e */
+        --faint: 118 100 80;        /* #766450 */
+    }
+    @media (prefers-color-scheme: dark) {
+        :root[data-style="shelf"]:not([data-mode="light"]) {
+            --paper: 31 24 19;          /* #1f1813 */
+            --surface: 45 35 28;        /* #2d231c */
+            --fill: 64 50 39;           /* #403227 */
+            --rule: 82 64 50;           /* #524032 */
+            --rule-strong: 140 112 84;  /* #8c7054 */
+            --on-accent: 31 24 19;
+            --ink: 242 231 212;         /* #f2e7d4 */
+            --ink-2: 222 207 186;       /* #decfba */
+            --muted: 184 166 144;       /* #b8a690 */
+            --faint: 160 143 122;       /* #a08f7a */
+        }
+    }
+    :root[data-style="shelf"][data-mode="dark"] {
+        --paper: 31 24 19;
+        --surface: 45 35 28;
+        --fill: 64 50 39;
+        --rule: 82 64 50;
+        --rule-strong: 140 112 84;
+        --on-accent: 31 24 19;
+        --ink: 242 231 212;
+        --ink-2: 222 207 186;
+        --muted: 184 166 144;
+        --faint: 160 143 122;
+    }
+
     html {
         background-color: rgb(var(--paper));
     }
@@ -352,7 +632,7 @@
     /* House: form controls get the same 2px ink outline as cards (no shadow).
        Scoped to the style and specific enough to beat the templates'
        `border border-rule-strong` utilities. */
-    :root:not([data-style="classic"]) :is(
+    :root:not([data-style="classic"]):not([data-style="shelf"]) :is(
         input[type="text"], input[type="email"], input[type="password"], input[type="search"],
         input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
         select, textarea,
@@ -625,6 +905,9 @@
         -webkit-line-clamp: 2;
         overflow: hidden;
     }
+    /* The wrapper round a grid cover's <img> (_book_grid.html): no box of
+       its own, except in the Shelf style's bookcase (the 3D box). */
+    .cover-box { display: contents; }
     .no-cover-lg .no-cover-title { font-size: 1.5rem; }
     .no-cover-lg .no-cover-author { font-size: .9rem; }
     .no-cover-sm { padding: .5rem .35rem .5rem .6rem; border-left-width: 4px; }
@@ -654,6 +937,9 @@
     .view-toggle-btn { color: rgb(var(--ink-2)); background: rgb(var(--paper)); }
     .view-toggle-btn:hover { color: rgb(var(--accent-text)); }
     .view-toggle-btn[aria-pressed="true"] { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+    /* The egg (video-store rack, static/shelf.js) only exists in the Shelf style */
+    .rack-toggle { display: none; }
+    :root[data-style="shelf"] .rack-toggle { display: block; }
 
     /* ---- Reading chart (profile → Overview) ----
        Plain HTML bars, one per month; height comes from --h on each bar.
@@ -772,6 +1058,94 @@
     .measure {
         max-width: 66ch;
     }
+
+    /* ---- Outrun effects (ROADMAP 10.2). No clip-path corners (Phil,
+       2026-11-08): they'd clip the outlines and focus rings. ---- */
+
+    /* The sky and the grid sit behind everything, fixed. html and body are
+       made see-through for it; cards keep their own fills. */
+    :root[data-style="outrun"],
+    :root[data-style="outrun"] body {
+        background: transparent;
+    }
+    :root[data-style="outrun"] body::before,
+    :root[data-style="outrun"] body::after {
+        content: "";
+        position: fixed;
+        z-index: -1;
+        pointer-events: none;
+    }
+    :root[data-style="outrun"] body::before {           /* sky: night to sunset */
+        inset: 0;
+        background: linear-gradient(180deg, #0d0221 0%, #1d0640 45%, #3a0b52 75%, #5a1252 100%);
+    }
+    :root[data-style="outrun"] body::after {            /* the grid, in perspective */
+        left: -50%;
+        right: -50%;
+        bottom: -10vh;
+        height: 45vh;
+        background-image:
+            linear-gradient(rgb(var(--neon-cyan) / .5) 2px, transparent 2px),
+            linear-gradient(90deg, rgb(var(--neon-cyan) / .5) 2px, transparent 2px);
+        background-size: 64px 44px;
+        transform: perspective(320px) rotateX(62deg);
+        transform-origin: top;
+        opacity: .35;
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 35%);
+        mask-image: linear-gradient(to bottom, transparent, #000 35%);
+    }
+
+    /* Top bar: a sunset stripe along the bottom; the site name in gradient */
+    :root[data-style="outrun"] .topbar {
+        border-bottom: 2px solid transparent;
+        border-image: linear-gradient(90deg, rgb(var(--neon-pink)), rgb(var(--neon-orange))) 1;
+        box-shadow: 0 2px 14px rgb(var(--neon-pink) / .45);
+    }
+    :root[data-style="outrun"] .gradient-text,
+    :root[data-style="outrun"] .site-title {
+        background: linear-gradient(90deg, rgb(var(--neon-pink)), rgb(var(--neon-orange)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 0 6px rgb(var(--neon-pink) / .6));
+    }
+
+    /* Page titles: neon tube lettering in the sunset gradient */
+    :root[data-style="outrun"] .page-title {
+        font-family: var(--font-title);
+        font-weight: 400;
+        letter-spacing: .02em;
+        background: linear-gradient(90deg, rgb(var(--neon-pink)), rgb(var(--neon-orange)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 0 6px rgb(var(--neon-pink) / .7));
+    }
+    :root[data-style="outrun"] .page-heading {
+        border-color: rgb(var(--neon-pink));
+        box-shadow: 0 0 12px rgb(var(--neon-pink) / .6), inset 0 0 12px rgb(var(--neon-pink) / .25);
+    }
+
+    /* Glow on headings, accents and focus only, never on body text */
+    :root[data-style="outrun"] h2.font-display,
+    :root[data-style="outrun"] h3.font-display {
+        text-shadow: 0 0 10px rgb(var(--neon-cyan) / .55);
+    }
+    :root[data-style="outrun"] .text-accent {
+        text-shadow: 0 0 8px rgb(var(--accent) / .55);
+    }
+    :root[data-style="outrun"] a:focus-visible,
+    :root[data-style="outrun"] button:focus-visible,
+    :root[data-style="outrun"] input:focus-visible,
+    :root[data-style="outrun"] select:focus-visible,
+    :root[data-style="outrun"] textarea:focus-visible {
+        box-shadow: 0 0 0 2px rgb(var(--paper)), 0 0 12px 3px rgb(var(--accent) / .8);
+    }
+
+    /* Dark only: the Mode pickers have nothing to do, so they say so */
+    :root[data-style="outrun"] :is([data-mode-picker], [data-font-picker]) { display: none; }
+    [data-outrun-note] { display: none; }
+    :root[data-style="outrun"] [data-outrun-note] { display: block; }
 }
 
 @layer utilities {
@@ -881,3 +1255,548 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     pointer-events: none;
 }
 .scanner-box-hit { border-color: #b8bb26; }
+
+
+/* ---- List view (ROADMAP 7.2b) ----
+   The grid's own cards laid out as rows, so the two views can't drift apart:
+   #book-container[data-view="list"] (script.js switchView) and the cards
+   from _book_grid.html / createBookCard. Unlayered, so it beats the Tailwind
+   utilities the grid cards carry (h-64, line-clamp-2, truncate, ...).
+   Phone: cover, then title and author, with year, status and rating on a
+   line under them. From md up: columns (cover | title, author | year |
+   status | rating). The extra columns are .book-meta, hidden in grid view. */
+.book-meta { display: none; }
+#book-container[data-view="list"] {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+[data-view="list"] .book-link {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    column-gap: 1rem;
+    align-items: center;
+    padding: .75rem;
+}
+[data-view="list"] .book-cover {
+    width: 4.5rem;
+    height: 6.75rem;
+    grid-row: span 2;
+}
+[data-view="list"] .book-cover-img { object-fit: cover; }
+[data-view="list"] .book-info { padding: 0; align-self: end; }
+[data-view="list"] .book-title {
+    font-size: 1rem;
+    min-height: 0;
+    margin-bottom: .15rem;
+}
+[data-view="list"] .book-author { white-space: normal; }
+[data-view="list"] .book-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .15rem .9rem;
+    align-self: start;
+    padding-top: .25rem;
+    font-size: .8rem;
+    color: rgb(var(--muted));
+}
+[data-view="list"] .book-meta > span:empty { display: none; }
+@media (min-width: 768px) {
+    [data-view="list"] .book-link {
+        grid-template-columns: 4.5rem minmax(0, 1fr) 4rem 10rem 6rem;
+    }
+    [data-view="list"] .book-cover { grid-row: auto; }
+    [data-view="list"] .book-info { align-self: center; }
+    [data-view="list"] .book-meta { display: contents; font-size: .875rem; }
+    [data-view="list"] .book-meta > span { color: rgb(var(--muted)); font-size: .875rem; }
+    [data-view="list"] .book-meta > span:empty { display: block; }   /* keep its column */
+}
+
+/* ---- Shelf: the library grid as a bookcase (ROADMAP 10.1, light pass) ----
+   Grid view only (.shelf-grid.grid: the library grids and a friend's
+   library; list view keeps its text rows).
+   Covers only, standing on a ledge; title and author show on hover/focus
+   (and are always there for screen readers). Every row is the same height,
+   so the ledges are one repeating gradient on the container: they run the
+   full width even under a half-empty last row, and rows added by infinite
+   scroll get theirs for free. One row = cover + ledge + gap (--shelf-pitch);
+   whole px on purpose, so 30 rows down the ledges haven't drifted. Movies
+   and music use the same shelf with their front covers. */
+:root[data-style="shelf"] .shelf-grid.grid {
+    --cover-h: 256px;
+    --ledge-top: 10px;          /* the shelf's top face */
+    --ledge-front: 12px;        /* its front edge */
+    --ledge: calc(var(--ledge-top) + var(--ledge-front));
+    --shelf-gap: 44px;
+    --shelf-pitch: calc(var(--cover-h) + var(--ledge) + var(--shelf-gap));
+    row-gap: var(--shelf-gap);
+    column-gap: 1.5rem;
+    padding: 24px 1.25rem 0;
+    border: 12px solid rgb(var(--shelf-frame, var(--shelf-front)));
+    border-bottom-width: 0;     /* the last ledge is the bottom */
+    background-color: rgb(var(--shelf-back));
+    background-image: repeating-linear-gradient(to bottom,
+        transparent 0 var(--cover-h),
+        rgb(var(--shelf-top)) var(--cover-h) calc(var(--cover-h) + var(--ledge-top)),
+        rgb(var(--shelf-front)) calc(var(--cover-h) + var(--ledge-top)) calc(var(--cover-h) + var(--ledge)),
+        rgb(0 0 0 / .28) calc(var(--cover-h) + var(--ledge)),          /* shadow under it */
+        transparent calc(var(--cover-h) + var(--ledge) + 14px) var(--shelf-pitch));
+    background-position: 0 24px;    /* the padding-top */
+    box-shadow: inset 0 0 28px rgb(0 0 0 / .22), var(--sh-lg);
+}
+/* Phone: three shorter books per shelf instead of two tall ones with
+   empty space above them */
+@media (max-width: 767px) {
+    :root[data-style="shelf"] .shelf-grid.grid {
+        --cover-h: 148px;       /* a 2:3 cover at a third of a phone's width */
+        --ledge-top: 8px;
+        --ledge-front: 10px;
+        --shelf-gap: 22px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        column-gap: .75rem;
+        padding: 20px .75rem 0;
+        background-position: 0 20px;
+        border-width: 8px;
+        border-bottom-width: 0;
+    }
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-item {
+    padding-bottom: var(--ledge);   /* room for the ledge */
+}
+/* Badges (format, Not owned / Removed) hang off the ledge's front edge like
+   shelf tags, so they sit under their item whatever the cover's shape. */
+:root[data-style="shelf"] .shelf-grid.grid .book-cover > span.absolute {
+    top: auto;
+    bottom: calc(-1 * var(--ledge) + 1px);
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-link {
+    position: relative;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+    transform: none;
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-cover {
+    height: var(--cover-h);
+    aspect-ratio: auto;         /* records too: they stand on the same shelf */
+    background: transparent;
+    overflow: visible;
+}
+/* Every cover is a box seen from a little above (Phil, 2026-11-08): its
+   top and right side drawn as faces going up and right (Negative Earth's
+   hard offset shadow, flipped vertically). Each face is a plain rectangle
+   skewed 45 degrees from the edge it shares with the front: skewY lifts the
+   right side by its own width, skewX shifts the top right by its height,
+   so the two meet at the far corner. No outlines (Phil: the shading is
+   enough; the video-store rack keeps its black line). Both faces sit under
+   the badges and the label. They are pages for a book, the case's edge for
+   movies and music (--box-top, --box-side), and thinner for a record.
+   The picture needs a box of its own size for that, so the image is wrapped
+   in .cover-box (display: contents everywhere but here); a coverless item's
+   .no-cover is the box itself, shaped like the item. */
+:root[data-style="shelf"] .shelf-grid.grid {
+    --box-depth: 7px;
+    --box-top: 226 224 218;         /* the top of the pages, in shade */
+    --box-side: 196 193 186;        /* the fore-edge, darker */
+}
+:root[data-style="shelf"] .shelf-grid.grid:is([data-media="video"], [data-media="record"]) {
+    --box-top: 218 219 222;
+    --box-side: 184 186 191;
+}
+:root[data-style="shelf"] .shelf-grid.grid[data-media="record"] { --box-depth: 4px; }
+@media (max-width: 767px) {
+    :root[data-style="shelf"] .shelf-grid.grid { --box-depth: 5px; }
+    :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] { --box-depth: 3px; }
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-cover {
+    display: flex;
+    align-items: flex-end;          /* stands on the shelf */
+    justify-content: center;
+}
+:root[data-style="shelf"] .shelf-grid.grid .cover-box {
+    display: block;
+    max-width: 100%;
+}
+:root[data-style="shelf"] .shelf-grid.grid .cover-box > .book-cover-img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: var(--cover-h);
+}
+:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover) {
+    position: relative;
+    border: 0;
+    border-radius: 0;
+    transition: transform .15s ease;
+}
+/* No cover: a book-shaped binding (square for a record) with the accent
+   spine, standing on the shelf like the rest */
+:root[data-style="shelf"] .shelf-grid.grid .no-cover {
+    width: auto;
+    height: var(--cover-h);
+    aspect-ratio: 2 / 3;
+    max-width: 100%;
+    overflow: visible;              /* the faces; title and author clamp themselves */
+    box-shadow: inset 6px 0 0 rgb(var(--accent));
+}
+:root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .no-cover { aspect-ratio: 1; }
+:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::before,
+:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    transform-origin: 0 100%;       /* bottom-left: the edge on the front */
+}
+:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::before {   /* right side */
+    top: 0;
+    left: 100%;
+    width: var(--box-depth);
+    height: 100%;
+    background: rgb(var(--box-side));
+    transform: skewY(-45deg);
+}
+:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::after {    /* top */
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    height: var(--box-depth);
+    background: rgb(var(--box-top));
+    transform: skewX(-45deg);
+}
+/* Hover/focus: a book or album lifts a little and its label shows (movies
+   stay put, Phil's call: only the label) */
+:root[data-style="shelf"] .shelf-grid.grid:not([data-media="video"]) :is(.book-link:hover, .book-link:focus-visible, .book-link.peek) :is(.cover-box, .no-cover) {
+    transform: translateY(-6px);
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-info {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    z-index: 20;
+    padding: .5rem .6rem;
+    background: rgb(var(--surface) / .94);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-md);
+    opacity: 0;
+    transition: opacity .15s ease;
+    pointer-events: none;
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-link:hover .book-info,
+:root[data-style="shelf"] .shelf-grid.grid .book-link:focus-visible .book-info,
+:root[data-style="shelf"] .shelf-grid.grid .book-link.peek .book-info {   /* .peek: first tap on a phone (shelf.js) */
+    opacity: 1;
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-title {
+    color: rgb(var(--ink));
+    min-height: 0;
+    margin-bottom: .15rem;
+    font-size: .875rem;
+}
+/* The label is where the whole title shows (the cover only has room for a
+   picture), so it isn't clamped: it grows upward over the cover, and past
+   it if need be. It's only as wide as it needs to be: at least the column,
+   at most a little wider (width: max-content between the two), centred on
+   the book. Only the title sets that width: the author line has
+   contain: inline-size (no width of its own to offer), so it wraps instead
+   of widening the label. */
+:root[data-style="shelf"] .shelf-grid.grid .book-info {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: max-content;
+    min-width: 100%;
+    max-width: calc(100% + 1rem);
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-title {
+    display: block;
+    -webkit-line-clamp: none;
+    overflow: visible;
+}
+:root[data-style="shelf"] .shelf-grid.grid .book-author {
+    white-space: normal;
+    overflow: visible;
+    contain: inline-size;
+}
+/* Phone: three narrow columns, so a long label may be up to half again as
+   wide as its book: centred for the middle column, anchored on the outside
+   edge for the left and right ones, so it never leaves the bookcase. */
+@media (max-width: 767px) {
+    :root[data-style="shelf"] .shelf-grid.grid .book-info { max-width: 150%; }
+    :root[data-style="shelf"] .shelf-grid.grid .book-item:nth-child(3n+1) .book-info { left: 0; transform: none; }
+    :root[data-style="shelf"] .shelf-grid.grid .book-item:nth-child(3n) .book-info { left: auto; right: 0; transform: none; }
+    :root[data-style="shelf"] .shelf-grid.grid .book-title { font-size: .8rem; }
+    :root[data-style="shelf"] .shelf-grid.grid .book-author { font-size: .7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    :root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover),
+    :root[data-style="shelf"] .shelf-grid.grid .book-info { transition: none; }
+}
+
+/* ---- Shelf: the rest of the app (ROADMAP 10.1) ----
+   One idea carried everywhere: wood is a flat colour and a ledge is a thick
+   two-tone line (top face, front edge) with a soft shadow under it. Paper
+   panels sit on parchment; buttons are gently raised. No textures. */
+
+/* The ledge as a reusable background: bottom-anchored, --ledge tall */
+:root[data-style="shelf"] {
+    --ledge-paint: linear-gradient(to bottom,
+        rgb(var(--shelf-top)) 0 45%,
+        rgb(var(--shelf-front)) 45% 100%);
+}
+
+/* Top bar: a wooden header with cream lettering */
+:root[data-style="shelf"] .topbar {
+    background-color: rgb(var(--shelf-bar));
+    border-bottom: 0;
+    box-shadow: inset 0 -3px 0 rgb(0 0 0 / .18), 0 3px 8px rgb(0 0 0 / .25);
+}
+:root[data-style="shelf"] .topbar .site-title { color: rgb(var(--shelf-label)); }
+:root[data-style="shelf"] .topbar .hamburger-bar { background-color: rgb(var(--shelf-label)); }
+:root[data-style="shelf"] #hamburger:hover { background-color: rgb(255 255 255 / .1); }
+
+/* Sidebar drawer: paper with a wooden edge. No shadow: the closed drawer
+   is only translated off-screen, so a shadow would show along the left edge. */
+:root[data-style="shelf"] #sidebar {
+    border-right: 6px solid rgb(var(--shelf-front));
+}
+
+/* Page titles sit on a ledge */
+:root[data-style="shelf"] .page-heading {
+    border-bottom: 0;
+    padding-bottom: calc(.75rem + 12px);
+    background-image: var(--ledge-paint);
+    background-size: 100% 12px;
+    background-position: bottom;
+    background-repeat: no-repeat;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Buttons: gently raised (a light top edge and a soft shadow), with a
+   translucent edge so every fill colour keeps its own border tone */
+:root[data-style="shelf"] .btn,
+:root[data-style="shelf"] .fab {
+    border-color: rgb(0 0 0 / .22);
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .16), rgb(0 0 0 / .05));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-sm);
+}
+:root[data-style="shelf"] .btn:hover:not(:disabled),
+:root[data-style="shelf"] .btn:active:not(:disabled) {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh);
+}
+:root[data-style="shelf"] .btn:active:not(:disabled) {
+    background-image: linear-gradient(to bottom, rgb(0 0 0 / .06), rgb(255 255 255 / .08));
+}
+:root[data-style="shelf"] .btn-outline { border-color: rgb(var(--rule-strong)); }
+:root[data-style="shelf"] .fab { box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-lg); }
+
+/* Form fields: paper, set slightly into the page */
+:root[data-style="shelf"] :is(
+    input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+    input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
+    select, textarea, #filter-toggle) {
+    border-color: rgb(var(--rule-strong));
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / .08);
+}
+
+/* Rows of cover thumbnails (Collections, profile shelves and wishlist):
+   the covers stand on a ledge that runs the row's whole scroll width
+   (background-attachment: local paints the scrolled content, not the box). */
+:root[data-style="shelf"] .shelf-row {
+    padding-bottom: 10px;
+    background-image: var(--ledge-paint);
+    background-size: 100% 10px;
+    background-position: bottom;
+    background-repeat: no-repeat;
+    background-attachment: local;
+}
+:root[data-style="shelf"] .shelf-row > img,
+:root[data-style="shelf"] .shelf-row > .no-cover {
+    border-radius: 1px;
+    box-shadow: none;
+    filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35));
+}
+
+/* An item's page: the cover stands on its own short ledge */
+:root[data-style="shelf"] .cover-stand {
+    position: relative;
+    padding-bottom: 14px;
+}
+:root[data-style="shelf"] .cover-stand::after {
+    content: "";
+    position: absolute;
+    left: -14px; right: -14px; bottom: 0;
+    height: 14px;
+    background-image: var(--ledge-paint);
+    box-shadow: 0 6px 10px -4px rgb(0 0 0 / .35);
+}
+:root[data-style="shelf"] .cover-stand > img,
+:root[data-style="shelf"] .cover-stand > .no-cover {
+    border-radius: 1px;
+    box-shadow: 4px 6px 12px rgb(0 0 0 / .3);
+}
+
+/* Covers on cards (wishlist) and in the feed: square corners like a book */
+:root[data-style="shelf"] .wishlist-item img { border-radius: 0; }
+
+
+/* ---- Shelf: the movie rack (Movies grids, ROADMAP 10.1) ----
+   An easter egg: off by default, switched on by the egg button next to
+   grid/list on the Movies grid (<html data-rack="store">, static/shelf.js).
+   The same bookcase reskinned as a video-store wall: all white (frame,
+   back and shelves, off-white edges so each part still reads; a dimmer
+   white in dark mode so it doesn't glare), every movie in a white case
+   with a blue and yellow spine, and the label as a barcode sticker in
+   VT323 (Outrun's body face). Generic: no store's name or logo. Music
+   keeps the wooden bookcase. */
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] {
+    --shelf-frame: 252 252 250;
+    --shelf-back: 246 247 248;
+    --shelf-top: 255 255 255;       /* white shelf */
+    --shelf-front: 230 232 235;     /* its off-white front edge */
+}
+:root[data-style="shelf"][data-rack="store"][data-mode="dark"] .shelf-grid.grid[data-media="video"] {
+    --shelf-frame: 222 225 229;
+    --shelf-back: 206 210 215;
+    --shelf-top: 236 238 241;
+    --shelf-front: 190 194 200;
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"][data-rack="store"]:not([data-mode="light"]) .shelf-grid.grid[data-media="video"] {
+        --shelf-frame: 222 225 229;
+        --shelf-back: 206 210 215;
+        --shelf-top: 236 238 241;
+        --shelf-front: 190 194 200;
+    }
+}
+/* Every movie stands in the same white case: a thin black outline, a blue
+   and a yellow stripe down the spine, and the poster inset on it with a margin (never
+   cropped). A movie with no poster shows its title and director on the case
+   instead (just the title when it's long), so coverless boxes still read.
+   The case is the .book-cover itself, a fixed shape, so the rack is even. */
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover {
+    height: var(--cover-h);
+    width: auto;
+    max-width: 100%;
+    aspect-ratio: 5 / 8;
+    margin-inline: auto;
+    /* The stripes are the left 15% of the case; the inset starts past
+       them (case width = --cover-h * 5/8, so 15% of it is known). */
+    padding: 7px 7px 7px calc(var(--cover-h) * 5 / 8 * .15 + 6px);
+    background-color: #fbfbf8;
+    background-image: linear-gradient(90deg,
+        transparent 0 2%, rgb(26 46 112) 2% 8.5%, rgb(236 176 16) 8.5% 15%, transparent 15%);
+    border: 1.5px solid #1b1b1b;
+    border-radius: 0;
+    box-shadow: none;
+    --case-depth: 7px;
+}
+@media (max-width: 767px) {
+    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover {
+        padding: 5px 5px 5px calc(var(--cover-h) * 5 / 8 * .15 + 4px);
+        --case-depth: 5px;
+    }
+}
+/* The case is a box seen from a little above: its right side and top
+   drawn as outlined faces going up and right (Negative Earth's hard offset
+   shadow, flipped vertically), so their edges join the front at the
+   top-left, top-right and bottom-right corners. Each face is a plain
+   rectangle skewed 45 degrees from its inner edge: skewY lifts the right
+   face by its own width, skewX shifts the top right by its height, so the
+   two meet at the far corner. Both sit just outside the front's border
+   (hence the 1.5px), under the badges and the label. */
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::before,
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::after {
+    content: "";
+    position: absolute;
+    box-sizing: border-box;
+    border: 1.5px solid #1b1b1b;
+    pointer-events: none;
+    transform-origin: 0 100%;       /* bottom-left: the edge on the front */
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::before {   /* right side */
+    top: -1.5px;
+    left: calc(100% + 1.5px);
+    width: var(--case-depth);
+    height: calc(100% + 3px);
+    border-left: 0;
+    background: #c9cbd0;
+    transform: skewY(-45deg);
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::after {    /* top */
+    bottom: calc(100% + 1.5px);
+    left: -1.5px;
+    width: calc(100% + 3px);
+    height: var(--case-depth);
+    border-bottom: 0;
+    background: #e6e7ea;
+    transform: skewX(-45deg);
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    filter: none;
+    transform: none !important;     /* the case stays put on hover: only the label shows */
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+    padding: .25rem;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: #1b1b1b;
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-author { color: #444; }
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-long .no-cover-author { display: none; }
+@media (max-width: 767px) {
+    /* the inset is about 60px wide here: smaller type, and words wrap whole
+       (hyphenated if they must) instead of breaking anywhere */
+    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+        padding: .15rem 0;
+        overflow-wrap: normal;
+        hyphens: auto;
+    }
+    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-title { font-size: .68rem; }
+    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-author { font-size: .58rem; }
+}
+/* The label: a white barcode sticker */
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-info {
+    font-family: "VT323", ui-monospace, monospace;
+    background: #fff;
+    border: 1px solid rgb(0 0 0 / .25);
+    border-radius: 0;
+    padding-bottom: 30px;           /* room for the barcode */
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-info::after {
+    content: "";
+    position: absolute;
+    left: .6rem; right: .6rem; bottom: .45rem;
+    height: 18px;
+    background: repeating-linear-gradient(90deg,
+        #111 0 2px, transparent 2px 3px, #111 3px 4px, transparent 4px 6px,
+        #111 6px 9px, transparent 9px 10px, #111 10px 11px, transparent 11px 14px);
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.book-title, .book-author) {
+    color: #111;
+    font-style: normal;
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-title {
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+/* In the rack the case itself is the box, so the cover inside it is flat */
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .cover-box {
+    display: contents;
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::before,
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::after {
+    content: none;
+}
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    aspect-ratio: auto;
+}

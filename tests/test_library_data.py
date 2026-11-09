@@ -362,8 +362,10 @@ def test_find_a_better_cover_streams_progress_and_covers(client, db, people, mon
         ('Goodreads', broken),
         ('Google Books', lambda: [('https://a.test/1.jpg', 'Google Books'), ('https://b.test/3.jpg', 'Google Books')]),
     ])
-    monkeypatch.setattr(books_bp, 'download_and_save_cover',
-                        lambda url: None if url.endswith('2.jpg') else 'uploads/' + url.rsplit('/', 1)[1])
+    # Each URL is downloaded as its own candidate list (a Google link would
+    # become two sizes, google_cover_candidates; these aren't Google's)
+    monkeypatch.setattr(books_bp, 'save_best_cover',
+                        lambda urls: None if urls[0].endswith('2.jpg') else 'uploads/' + urls[0].rsplit('/', 1)[1])
     login(client, 'alice')
     r = client.post('/books/fetch_cover', json={'title': 'Dune', 'author': 'Herbert'})
     assert r.mimetype == 'application/x-ndjson'
@@ -430,3 +432,39 @@ def test_find_a_better_cover_on_add_book_and_for_owners(client, db, people, monk
     r = client.post('/books/fetch_cover', json={'title': 'Dune'})
     assert r.status_code == 200
     assert json.loads(r.get_data(as_text=True).splitlines()[-1])['type'] == 'done'
+
+
+# --- Cover quality (ROADMAP 8F) ---------------------------------------------
+
+def test_google_cover_candidates_ask_for_the_large_size_first():
+    """Any Google cover link for a volume becomes the same pair: 800x1200
+    (fife), then the 128 px zoom=1 every volume has. Never the zoom-less
+    URL: that's Google's "image not available" banner for unscanned books."""
+    from utils.book_utils import google_cover_candidates, _google_cover_urls
+    link = 'http://books.google.com/books/content?id=XfFvDwAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api'
+    expected = ['https://books.google.com/books/content?id=XfFvDwAAQBAJ&printsec=frontcover&img=1&fife=w800-h1200',
+                'https://books.google.com/books/content?id=XfFvDwAAQBAJ&printsec=frontcover&img=1&zoom=1']
+    assert google_cover_candidates(link) == expected
+    assert _google_cover_urls({'imageLinks': {'smallThumbnail': link.replace('zoom=1', 'zoom=5'),
+                                              'thumbnail': link}}) == expected
+    assert _google_cover_urls({}) == []
+    # Anything else is left alone
+    ol = 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg?default=false'
+    assert google_cover_candidates(ol) == [ol]
+    assert google_cover_candidates('') == []
+
+
+def test_picking_a_search_result_tries_large_google_then_open_library(client, db, people, monkeypatch):
+    """Add Book's search result only carries Google's 128 px thumbnail.
+    Picking it tries the large size, the thumbnail, then Open Library by
+    ISBN, and saves the best (save_best_cover keeps the largest)."""
+    import blueprints.books as books_bp
+    tried = []
+    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls: tried.extend(urls) or 'uploads/best.jpg')
+    login(client, 'alice')
+    r = client.post('/books/select_search_result', json={'bookData': {
+        'title': 'Atomic Habits', 'isbn': '9780735211292',
+        'thumbnail': 'https://books.google.com/books/content?id=XfFvDwAAQBAJ&printsec=frontcover&img=1&zoom=1'}})
+    assert r.get_json()['book_details']['local_cover_url'] == 'uploads/best.jpg'
+    assert tried[0].endswith('&fife=w800-h1200') and tried[1].endswith('&zoom=1')
+    assert any('covers.openlibrary.org/b/isbn/9780735211292' in u for u in tried[2:])

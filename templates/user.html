@@ -304,7 +304,7 @@
                             ('style', 'Style', theme_styles, theme_style),
                             ('mode', 'Mode', theme_modes, theme_mode)
                         ] %}
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3"{% if kind == 'mode' %} data-mode-picker{% endif %}>
                             <span class="text-sm text-content-secondary w-12">{{ label }}</span>
                             <div class="flex" role="group" aria-label="{{ label }}">
                                 {% for key, name in options.items() %}
@@ -318,6 +318,21 @@
                             </div>
                         </div>
                         {% endfor %}
+                        <p data-outrun-note class="text-sm text-content-secondary">Outrun is always dark and has its own fonts, so Mode and Font are hidden.</p>
+                        {# Font: each option in its own face (.font-opt in styles.css); Theme = the style's own #}
+                        <div class="flex items-center gap-3" data-font-picker>
+                            <span class="text-sm text-content-secondary w-12">Font</span>
+                            <div class="flex flex-wrap" role="group" aria-label="Font">
+                                {% for key, name in theme_fonts.items() %}
+                                <button type="button"
+                                        class="theme-opt font-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
+                                        data-kind="font" data-value="{{ key }}"
+                                        aria-pressed="{{ 'true' if key == theme_font else 'false' }}">
+                                    {{ name }}
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
                         {# Accent (8B.5): both styles; Classic shows each swatch's dark shade (styles.css) #}
                         <div class="flex items-center gap-3" data-accent-picker>
                             <span class="text-sm text-content-secondary w-12">Accent</span>

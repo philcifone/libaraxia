@@ -1,7 +1,9 @@
 {# The search hint (ROADMAP 8B.3): matches hidden because they aren't on
    the shelf, so a search at a bookstore still says "you read this" without
    ever listing it among the results. `off_shelf` from
-   book_utils.off_shelf_matches: {count, rows}. #}
+   book_utils.off_shelf_matches: {count, rows}. `on_wishlist` (7.2b), from
+   book_utils.wishlist_matches: your wishlist entries that match, which the
+   grid never lists. #}
 {% if off_shelf %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
     <p class="text-sm text-content-secondary border-l-4 border-accent pl-3 py-1">
@@ -16,6 +18,19 @@
         {%- endfor %}
         {%- if off_shelf.count > off_shelf.rows|length %} and {{ off_shelf.count - off_shelf.rows|length }} more{% endif %}.
         <a href="{{ url_with(show='all', show_removed=none, page=none) }}" class="text-accent hover:text-accent-hover underline whitespace-nowrap">Show {{ 'it' if off_shelf.count == 1 else 'them' }}</a>
+    </p>
+</div>
+{% endif %}
+{% if on_wishlist %}
+{% set tab = {'book': 'books', 'video': 'movies', 'record': 'music'}[on_wishlist.rows[0].media_type] %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+    <p class="text-sm text-content-secondary border-l-4 border-accent pl-3 py-1">
+        <span class="font-semibold text-content-primary">On your wishlist:</span>
+        {% for row in on_wishlist.rows -%}
+            <a href="{{ item_url(row) }}" class="underline hover:text-accent">{{ row.title }}</a>{{ ', ' if not loop.last }}
+        {%- endfor %}
+        {%- if on_wishlist.count > on_wishlist.rows|length %} and {{ on_wishlist.count - on_wishlist.rows|length }} more{% endif %}.
+        <a href="{{ url_for('wishlist.view_wishlist', show=tab) }}" class="text-accent hover:text-accent-hover underline whitespace-nowrap">Open the wishlist</a>
     </p>
 </div>
 {% endif %}

@@ -4,9 +4,14 @@
          data-has-more="{{ has_more | default(false) | lower }}"
          data-total-count="{{ total_count | default(0) }}">
         {% include '_view_bar.html' %}
-        {# data-media: record covers are square (styles.css) #}
-        <div id="book-container" data-media="{{ m.type if m else 'book' }}" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        {# data-media: record covers are square (styles.css); shelf-grid: the Shelf style's bookcase.
+           data-view: grid or list, set by switchView (script.js) from the saved
+           choice; list view is CSS on the same markup (styles.css, "List view").
+           Its extra columns are .book-meta below, hidden in grid view. #}
+        {% set marks = viewer_marks(books) %}
+        <div id="book-container" data-media="{{ m.type if m else 'book' }}" data-view="grid" class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
+            {% set mark = marks.get(book.id, {}) %}
             <div class="book-item group">
                 <a href="{{ item_url(book) }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
@@ -19,9 +24,11 @@
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
                         {% endif %}
                         {% if book.cover_image_url %}
-                        <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
+                        {# cover-box: the Shelf style draws the cover as a 3D box on it;
+                           display: contents (no box at all) everywhere else #}
+                        <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                              alt="{{ book['title'] }}"
-                             class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" />
+                             class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>
                         {% else %}
                         {% with title=book['title'], author=book['author'], size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
@@ -34,6 +41,12 @@
                         <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
                             {% if book['author'] %}{{ m.by if m else 'by' }} {{ book['author'] }}{% else %}&nbsp;{% endif %}
                         </p>
+                    </div>
+                    {# List view only: year, your status, your rating #}
+                    <div class="book-meta">
+                        <span class="book-year">{{ book.publish_year or '' }}</span>
+                        <span class="book-status">{{ labels_for(book).status_labels[mark.status] if mark.status else '' }}</span>
+                        <span class="book-rating">{% if mark.rating %}<span class="text-yellow-400" aria-hidden="true">{{ '★' * (mark.rating|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - mark.rating|int) }}</span><span class="sr-only">Rated {{ mark.rating|int }} of 5</span>{% endif %}</span>
                     </div>
                 </a>
             </div>

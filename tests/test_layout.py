@@ -7,7 +7,7 @@ import re
 from html.parser import HTMLParser
 from unittest import mock
 
-from conftest import add_book, login
+from conftest import add_book, login, scalar
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -531,3 +531,148 @@ def test_og_dark_accent_text_is_readable():
     built = pathlib.Path('static/css/output.css').read_text()
     assert 'color: rgb(var(--accent-text) / var(--tw-text-opacity, 1))' in built
     assert not re.search(r'(?<![-\w])color: rgb\(var\(--accent\)\);', css)   # borders may keep it
+
+
+def test_outrun_style_is_dark_only_with_neon_accents(client, db, people):
+    """Outrun: selectable, dark only with fixed fonts (Mode and Font pickers
+    marked so the CSS hides them, with a note), a neon shade for every
+    accent, self-hosted OFL fonts."""
+    login(client, 'alice')
+    r = client.post('/user/update_theme', json={'style': 'outrun'})
+    assert r.status_code == 200
+    page = client.get('/user/alice').get_data(as_text=True)
+    assert 'data-style="outrun"' in page
+    assert page.count('data-mode-picker') == 2          # sidebar + Appearance
+    assert 'data-outrun-note' in page and 'data-font-picker' in page
+
+    css = pathlib.Path('static/styles.css').read_text()
+    assert 'html:root[data-style="outrun"]' in css      # outranks House dark blocks
+    # Outrun's fonts are fixed: no font choice applies, Mode and Font pickers hide
+    for key in ('baskerville', 'garamond', 'literata', 'jost'):
+        assert f':root[data-font="{key}"]:not([data-style="outrun"])' in css
+    assert ':root[data-style="outrun"] :is([data-mode-picker], [data-font-picker])' in css
+    assert 'monoton' not in css.lower() and 'exo 2' not in css.lower()
+    for name in ('aqua', 'blue', 'purple', 'orange', 'red', 'yellow'):
+        rule = re.search(r'\[data-swatch="' + name + r'"\]\s*\{([^}]*)\}', css).group(1)
+        assert '--acc-n:' in rule, name
+    for font, file in (('audiowide', 'audiowide-latin-400-normal.woff2'),
+                       ('vt323', 'vt323-latin-400-normal.woff2')):
+        d = pathlib.Path('static/fonts') / font
+        assert (d / file).is_file() and (d / 'OFL.txt').is_file(), font
+
+
+def test_shelf_style_bookcase(client, db, people):
+    """Shelf (10.1 light pass): selectable in both modes, and the bookcase's
+    ledge gradient uses the same numbers as the rows it sits under."""
+    login(client, 'alice')
+    assert client.post('/user/update_theme', json={'style': 'shelf', 'mode': 'dark'}).status_code == 200
+    page = client.get('/base/index').get_data(as_text=True)
+    assert 'data-style="shelf"' in page and 'data-mode="dark"' in page
+
+    css = pathlib.Path('static/styles.css').read_text()
+    case = css[css.index('/* ---- Shelf: the library grid as a bookcase'):]
+    assert 'row-gap: var(--shelf-gap)' in case
+    assert '--shelf-pitch: calc(var(--cover-h) + var(--ledge) + var(--shelf-gap))' in case
+    assert 'padding-bottom: var(--ledge)' in case
+    assert 'height: var(--cover-h)' in case
+    # every shelf token has a dark value too
+    assert css.count('--shelf-front: 80 54 34;') == 2
+
+
+def test_font_choice_saved_and_on_the_page(client, db, people):
+    """Font (Profile -> Appearance): saved per user, on <html data-font>,
+    each choice has a CSS block and self-hosted OFL files; unknown is refused."""
+    login(client, 'alice')
+    page = client.get('/user/alice').get_data(as_text=True)
+    assert 'data-font="theme"' in page and 'data-kind="font"' in page
+    assert client.post('/user/update_theme', json={'font': 'comic-sans'}).status_code == 400
+    assert client.post('/user/update_theme', json={'font': 'garamond'}).status_code == 200
+    assert scalar(db, "SELECT font FROM users WHERE username = 'alice'") == 'garamond'
+    assert 'data-font="garamond"' in client.get('/base/index').get_data(as_text=True)
+
+    from models import FONTS
+    css = pathlib.Path('static/styles.css').read_text()
+    for key in FONTS:
+        if key != 'theme':
+            assert f':root[data-font="{key}"]' in css and f'.font-opt[data-value="{key}"]' in css, key
+    for font in ('libre-baskerville', 'eb-garamond', 'literata', 'jost'):
+        d = pathlib.Path('static/fonts') / font
+        assert any(d.glob('*.woff2')) and (d / 'OFL.txt').is_file(), font
+        assert f"/static/fonts/{font}/" in css, font
+
+
+def test_shelf_style_reaches_every_cover_grid():
+    """Shelf: the bookcase is a class, kept when the view switches, and on a
+    friend's library too; House's heavy form outline leaves Shelf alone."""
+    for path in ('templates/_book_grid.html', 'templates/friend_library.html'):
+        assert 'shelf-grid grid' in pathlib.Path(path).read_text(), path
+    js = pathlib.Path('static/script.js').read_text()
+    # switchView keeps shelf-grid and only drops .grid in list view
+    assert "container.classList.toggle('grid', !list)" in js
+    assert 'cover-stand' in pathlib.Path('templates/book_detail.html').read_text()
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root:not([data-style="classic"]):not([data-style="shelf"]) :is(' in css
+    assert '#book-container.grid' not in css
+
+
+def test_shelf_tap_to_peek_and_movie_rack(client, db, people):
+    """Shelf: shelf.js is on every page (first tap shows a cover's label on
+    touch screens, a second tap within 5 s opens it), .peek shows the label,
+    and the Movies grid is reskinned as a rack with a barcode sticker."""
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    assert "static/shelf.js" in page
+    js = pathlib.Path('static/shelf.js').read_text()
+    assert "(hover: none)" in js and 'PEEK_MS = 5000' in js and "dataset.style !== 'shelf'" in js
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '.shelf-grid.grid .book-link.peek .book-info' in css
+    rack = css[css.index('/* ---- Shelf: the movie rack'):]
+    assert '.shelf-grid.grid[data-media="video"]' in rack and '"VT323"' in rack
+    assert '--shelf-frame' in rack
+    # Every movie stands in the white case; a long title drops the director
+    assert 'aspect-ratio: 5 / 8' in rack and '.no-cover-long .no-cover-author { display: none; }' in rack
+    assert 'no-cover-long' in pathlib.Path('templates/_no_cover.html').read_text()
+    assert 'no-cover-long' in pathlib.Path('static/common.js').read_text()
+    # The label shows the whole title, unclamped
+    assert '-webkit-line-clamp: none;' in css
+
+
+def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
+    """Shelf: every grid cover is wrapped in .cover-box (a 3D box in the
+    bookcase, display: contents elsewhere). The movie rack is opt-in: the egg
+    button is on the Movies grid only, and every rack rule needs
+    data-rack="store", which shelf.js sets before the first paint."""
+    alice = people['alice']
+    for media_type, fmt in (('video', 'VHS'), ('record', 'LP')):
+        db.execute("INSERT INTO books (title, author, added_by, media_type, format) VALUES ('Heat', 'Mann', ?, ?, ?)",
+                   (alice, media_type, fmt))
+    add_book(db, alice, title='A Book')
+    db.commit()
+    login(client, 'alice')
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '.cover-box { display: contents; }' in css
+    for path in ('templates/_book_grid.html', 'templates/friend_library.html', 'static/script.js'):
+        assert '<span class="cover-box"><img' in pathlib.Path(path).read_text(), path
+    # The egg: Movies only
+    assert 'data-click="toggleRack"' in client.get('/videos/').get_data(as_text=True)
+    assert 'data-click="toggleRack"' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-click="toggleRack"' not in client.get('/records/').get_data(as_text=True)
+    # Every rule in the rack section is scoped to the toggle
+    rack = css[css.index('/* ---- Shelf: the movie rack'):]
+    selectors = [line for line in rack.splitlines() if line.lstrip().startswith(':root')]
+    assert selectors and all('[data-rack="store"]' in line for line in selectors)
+    # shelf.js runs in <head> without defer, so the rack doesn't flash in
+    page = client.get('/videos/').get_data(as_text=True)
+    tag = page[page.index('static/shelf.js') - 60:page.index('static/shelf.js') + 40]
+    assert 'defer' not in tag
+    js = pathlib.Path('static/shelf.js').read_text()
+    assert "root.dataset.rack = 'store'" in js and 'toggleRack' in js
+
+
+def test_no_cover_marks_long_titles(client, db, people):
+    """_no_cover.html adds no-cover-long past 30 characters."""
+    from flask import render_template_string
+    with client.application.test_request_context():
+        short = render_template_string("{% with title='Stalker', author='A' %}{% include '_no_cover.html' %}{% endwith %}")
+        long = render_template_string("{% with title='The Good, the Bad and the Ugly!', author='A' %}{% include '_no_cover.html' %}{% endwith %}")
+    assert 'no-cover-long' not in short and 'no-cover-long' in long

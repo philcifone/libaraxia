@@ -1,9 +1,9 @@
 {% from '_icons.html' import icon %}
 <!-- Fixed Header -->
-<div class="fixed top-0 left-0 w-full h-16 bg-secondary z-50 px-4 flex items-center justify-between border-b border-card">
+<div class="topbar fixed top-0 left-0 w-full h-16 bg-secondary z-50 px-4 flex items-center justify-between border-b border-card">
     <!-- Site Title -->
     <h1>
-        <a href="/base/index" class="text-2xl font-display text-content-primary font-semibold tracking-wide">
+        <a href="/base/index" class="site-title text-2xl font-display text-content-primary font-semibold tracking-wide">
             L I B A R A X I A
         </a>
     </h1>
@@ -122,7 +122,7 @@
             {% endif %}
 
             <!-- Mode shortcut: the same setting as Profile -> Appearance (static/sidebar.js) -->
-            <div class="mt-auto px-4 pt-4 pb-2" data-theme-picker>
+            <div class="mt-auto px-4 pt-4 pb-2" data-theme-picker data-mode-picker>
                 <p class="label text-xs pb-1 mb-2">Mode</p>
                 <div class="flex" role="group" aria-label="Colour mode">
                     {% for key, name in theme_modes.items() %}

@@ -83,6 +83,12 @@
                 {% endif %}
                 <button type="submit" class="shrink-0 px-4 sm:px-6 py-3 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Search</button>
             </form>
+            {# Not the grid's search box (7.2b): this one looks things up online
+               to fill the form. Say so, and point at the shelf check. #}
+            <p class="px-4 -mt-2 pb-3 text-xs text-content-secondary">
+                Searches online catalogues to fill in the form, not your library.
+                To check your shelf, use <a href="{{ url_for('have.check') }}" class="underline hover:text-accent">Do I Have This?</a>
+            </p>
             <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pb-4"></div>
             {% else %}
             <p class="p-4 text-sm text-content-secondary">Title search needs a free TMDb API key (<code>TMDB_API_KEY</code> in <code>.env</code>). The barcode lookup and the scanner work without it.</p>

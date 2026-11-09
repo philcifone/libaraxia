@@ -19,7 +19,7 @@ items, your household's and things you have data on, never the whole
 import re
 
 from models import get_library_members
-from utils import media
+from utils import media, search
 from utils.book_utils import isbn_variants, normalize_isbn
 
 MAX_RESULTS = 20
@@ -84,8 +84,9 @@ def find(conn, user_id, q):
     elif kind == 'barcode':
         match_sql, match_params = "b.barcode = ?", [value]
     else:
-        like = f'%{value}%'
-        match_sql, match_params = "(b.title LIKE ? OR b.author LIKE ?)", [like, like]
+        # Every word, accents and punctuation ignored (utils/search.py)
+        match_sql, match_params = search.match(value, ['title', 'subtitle', 'author'])
+        match_sql = f"({match_sql})"
 
     rows = conn.execute(f"""
         SELECT b.id, b.title, b.author, b.media_type, b.format, b.cover_image_url,
