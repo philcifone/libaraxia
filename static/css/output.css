@@ -2269,10 +2269,6 @@ img.book-cover-img:not([data-loaded]) {
   left: 0.5rem;
 }
 
-.left-3 {
-  left: 0.75rem;
-}
-
 .right-0 {
   right: 0px;
 }
@@ -3388,10 +3384,6 @@ img.book-cover-img:not([data-loaded]) {
   padding: 0.25rem;
 }
 
-.p-1\.5 {
-  padding: 0.375rem;
-}
-
 .p-12 {
   padding: 3rem;
 }
@@ -3423,11 +3415,6 @@ img.book-cover-img:not([data-loaded]) {
 .px-1 {
   padding-left: 0.25rem;
   padding-right: 0.25rem;
-}
-
-.px-12 {
-  padding-left: 3rem;
-  padding-right: 3rem;
 }
 
 .px-2 {
@@ -3906,6 +3893,10 @@ img.book-cover-img:not([data-loaded]) {
 .outline-none {
   outline: 2px solid transparent;
   outline-offset: 2px;
+}
+
+.outline {
+  outline-style: solid;
 }
 
 .ring {
@@ -5293,20 +5284,29 @@ dialog::backdrop {
    Off: grey outline and icon, an unpressed button. On: lit in the accent,
    outline and icon. The corners come from the style (rounded-lg). */
 
-.heading-toggle {
-  color: rgb(var(--faint));
-  border-color: rgb(var(--faint));
-  transition: color .15s, border-color .15s;
+/* The Shelves heading's icon is the Mine / Household toggle (_icons.html
+   page_heading, library-house): the books keep the accent, the house
+   outline round them is grey until the household is showing. */
+
+/* Off: the faint grey taken 20% toward black (Phil, 2026-11-09), darker in
+   every style and mode without a token of its own. */
+
+.heading-toggle .house-outline {
+  stroke: color-mix(in srgb, rgb(var(--faint)) 80%, black);
+  transition: stroke .15s;
 }
 
-.heading-toggle:hover {
-  color: rgb(var(--ink-2));
-  border-color: rgb(var(--ink-2));
+.heading-toggle:hover .house-outline {
+  stroke: rgb(var(--ink-2));
 }
 
-.heading-toggle.is-on, .heading-toggle.is-on:hover {
-  color: rgb(var(--accent-text));
-  border-color: rgb(var(--accent-text));
+.heading-toggle.is-on .house-outline {
+  stroke: currentColor;
+}
+
+.heading-toggle:focus-visible {
+  outline: 2px solid rgb(var(--accent-text));
+  outline-offset: 2px;
 }
 
 /* ---- Mode: Light | Dark, and "Follow system" (ROADMAP 12.4) ----

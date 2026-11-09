@@ -43,12 +43,13 @@
    2026-11-09). Screen readers still hear "Household". #}
 {% set names = {'mine': 'Shelves', 'shared': 'Shelves',
                 'friend': (username ~ "'s Shelves") if username else 'Shelves'} %}
-{# Mine / Household is the house icon in the heading (Phil, 2026-11-09):
-   grey on your shelves, accent on the household's; a tap goes to the other #}
+{# Mine / Household is the heading's icon itself (Phil, 2026-11-09): the
+   books in a house outline, grey on your shelves, accent on the household's;
+   a tap goes to the other #}
 {% set household = scope == 'shared' %}
 {% set toggle = none if scope == 'friend' else {
      'url': shelf_url(section, 'mine' if household else 'shared'),
-     'icon': 'house', 'on': household,
+     'icon': 'library-house', 'on': household,
      'label': 'Showing the household: show only mine' if household else 'Show the household'} %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {{ 'pt-2' if scope == 'friend' else 'pt-20' }} pb-4">
     {{ page_heading('library', names[scope], class='', toggle=toggle,

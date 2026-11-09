@@ -147,8 +147,9 @@ def test_027_types_existing_shelves(template_db, tmp_path):
 
 
 def test_house_icon_toggles_mine_and_household(client, db, people):
-    """Mine / Household is a house icon in the Shelves heading (Phil,
-    2026-11-09): grey on yours, lit on the household's, linking to the other.
+    """Mine / Household is the Shelves heading's icon (Phil, 2026-11-09):
+    books in a house outline, grey on yours, lit on the household's, linking
+    to the other.
     A friend's shelves have none."""
     login(client, 'alice')
     for url, other, on in (('/base/index', '/base/shared-library', False),
@@ -157,7 +158,8 @@ def test_house_icon_toggles_mine_and_household(client, db, people):
         heading = html[html.index('page-heading'):]
         heading = heading[:heading.index('</h1>')]
         assert f'href="{other}"' in heading
-        assert ('rounded-lg is-on' in heading) == on
+        assert 'house-outline' in heading
+        assert ('heading-toggle text-accent shrink-0 is-on' in heading) == on
         # One visible title, "Shelves"; screen readers hear "Household" too
         assert ('<span class="sr-only">Household </span>Shelves' in heading) == on
     friend = client.get('/base/library/carol').get_data(as_text=True)
