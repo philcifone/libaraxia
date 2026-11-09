@@ -679,3 +679,19 @@ def test_no_cover_marks_long_titles(client, db, people):
         short = render_template_string("{% with title='Stalker', author='A' %}{% include '_no_cover.html' %}{% endwith %}")
         long = render_template_string("{% with title='The Good, the Bad and the Ugly!', author='A' %}{% include '_no_cover.html' %}{% endwith %}")
     assert 'no-cover-long' not in short and 'no-cover-long' in long
+
+
+def test_search_box_carries_the_count_and_one_row_view_bar(client, db, people):
+    """The search box says how many items there are ("Search your 2 books");
+    searched or filtered, it doesn't, and the view bar shows the matches."""
+    from conftest import add_book
+    alice = people['alice']
+    add_book(db, alice, title='One')
+    add_book(db, alice, title='Two')
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    assert 'placeholder="Search your 2 books"' in page
+    assert 'class="shrink-0 text-sm text-content-secondary"' not in page
+    page = client.get('/base/index?show=all').get_data(as_text=True)
+    assert 'placeholder="Search your books"' in page
+    assert re.search(r'shrink-0 text-sm text-content-secondary">\s*2 books', page)

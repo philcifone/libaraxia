@@ -1,6 +1,7 @@
-{# View bar above the book grid (7.2b): the book count, sort and the
-   grid/list switch, always visible. Search and filters stay in the header
-   dropdown (_search_sort_filter.html).
+{# View bar above the book grid (7.2b): sort and the grid/list switch on one
+   row. The item count is in the search box's placeholder
+   (_search_sort_filter.html); it shows here only when the list is searched
+   or filtered (is_narrowed), as the number of matches.
 
    The sort form submits to the page it's on (library, shared library or
    search) and carries every other query parameter along, so sorting keeps
@@ -18,14 +19,17 @@
 {% set asc_label, desc_label = order_labels.get(sort_by, order_labels['title']) %}
 {# `m` (utils/media.py) is set on the Movies and Vinyls pages: "movies", "Director". #}
 {% set noun = m.noun if m else 'book' %}
-{# Phone: count and the switch on one row, sort full-width below (order-last).
-   From sm up it's one line: count on the left, sort and switch on the right. #}
-<div class="view-bar flex flex-wrap items-center gap-3 mb-6">
-    <p class="mr-auto text-sm text-content-secondary">
-        {{ total_count|default(books|length) }} {{ noun }}{{ '' if total_count|default(books|length) == 1 else 's' }}
+{% set count = total_count|default(books|length) %}
+{# One row everywhere: the match count (when narrowed) on the left, sort and
+   the switch on the right. On a phone the selects share what's left. #}
+<div class="view-bar flex items-center gap-2 sm:gap-3 mb-6">
+    {% if is_narrowed(request.args) %}
+    <p class="shrink-0 text-sm text-content-secondary">
+        {{ count }} {{ noun }}{{ '' if count == 1 else 's' }}
     </p>
+    {% endif %}
 
-        <form method="GET" action="{{ request.path }}" id="sort-form" class="order-last sm:order-none w-full sm:w-auto flex items-center gap-2">
+        <form method="GET" action="{{ request.path }}" id="sort-form" class="flex-1 min-w-0 flex items-center justify-end gap-2">
             {% for key in request.args %}
             {% if key not in ('sort_by', 'sort_order', 'page', 'csrf_token') %}
             {% for value in request.args.getlist(key) %}
@@ -33,7 +37,7 @@
             {% endfor %}
             {% endif %}
             {% endfor %}
-            <label for="sort_by" class="text-sm text-content-secondary">Sort</label>
+            <label for="sort_by" class="sr-only sm:not-sr-only text-sm text-content-secondary">Sort</label>
             <select name="sort_by" id="sort_by" data-change="submitSortForm"
                     class="flex-1 sm:flex-none min-w-0 bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-2 py-1.5 text-sm
                            focus:ring-2 focus:ring-accent focus:border-transparent">
@@ -55,7 +59,7 @@
         </form>
 
         {# script.js switchView() sets aria-pressed and remembers the choice. #}
-        <div class="flex border border-rule-strong rounded-lg overflow-hidden" role="group" aria-label="View">
+        <div class="shrink-0 flex border border-rule-strong rounded-lg overflow-hidden" role="group" aria-label="View">
             <button type="button" id="grid-view-btn" data-click="switchView" data-view="grid"
                     class="view-toggle-btn px-2.5 py-1.5" aria-pressed="true" aria-label="Grid view">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">

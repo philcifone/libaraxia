@@ -207,7 +207,8 @@ def create_app():
     app.add_template_global(item_url, 'item_url')
     app.add_template_global(media.buy_links, 'buy_links')
     # The library pages' Show choice (8B.3): on the shelf / not owned / removed / everything
-    from utils.book_utils import SHOW_CHOICES, show_choice
+    from utils.book_utils import SHOW_CHOICES, show_choice, is_narrowed
+    app.add_template_global(is_narrowed, 'is_narrowed')
     app.add_template_global(SHOW_CHOICES, 'SHOW_CHOICES')
     app.add_template_global(show_choice, 'show_choice')
 

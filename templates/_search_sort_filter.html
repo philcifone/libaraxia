@@ -8,8 +8,17 @@
    Shared by every section. The Library leaves the options out: search goes
    to books.search. Movies and Vinyls pass `m` (media_labels) and
    `search_action` (the grid page itself), so search and filters stay on
-   that page; their filter_options add `formats`. `top_padding` is for a
+   that page; their filter_options add `formats`. The box's placeholder
+   carries the item count ("Search your 136 books", Phil) unless the list
+   is already searched or filtered (is_narrowed); then the view bar shows
+   the count instead. `top_padding` is for a
    page without tabs above it (search results), to clear the fixed header. #}
+{% set plural = m.plural if m else 'books' %}
+{% if total_count is defined and not is_narrowed(request.args) %}
+{% set placeholder = 'Search your %d %s'|format(total_count, plural if total_count != 1 else (m.noun if m else 'book')) %}
+{% else %}
+{% set placeholder = 'Search your ' ~ plural %}
+{% endif %}
 <div class="search-form-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 {{ 'pt-20' if top_padding }}">
   <div class="relative z-30">
     <div class="grid grid-cols-4 gap-2">
@@ -27,7 +36,8 @@
                        id="search_term"
                        aria-label="Search {{ 'these ' ~ m.plural if m else 'your library' }}"
                        name="search_term"
-                       placeholder="{{ m.search_placeholder if m else 'Search your books: title, author, ISBN, tag...' }}"
+                       placeholder="{{ placeholder }}"
+                       title="{{ m.search_hint if m else 'Title, author, ISBN or tag' }}"
                        value="{{ request.args.get('search_term', '') }}"
                        class="w-full h-full pl-4 pr-10 py-2.5 bg-secondary-bg border border-rule-strong rounded-lg
                               focus:ring-2 focus:ring-accent focus:border-transparent
