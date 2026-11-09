@@ -4,12 +4,24 @@ from flask import abort, current_app, Blueprint, request, redirect, url_for, fla
 from utils.database import get_db
 from flask_login import login_required, current_user
 from models import can_view_book
-from utils import media, shelves
+from utils import media, shelves, sorting
 
 collections_blueprint = Blueprint('collections', __name__, template_folder='templates')
 
 # The Collections page's tabs (?type=), in order: Books, Movies, Music
 TABS = (media.BOOK, media.VIDEO, media.RECORD)
+
+
+def collection_order(added_column, media_type):
+    """A collection page's order: newest in it first ('collected', the sort
+    menu's "Date added here"), or any of the grid sorts (utils/sorting.py).
+    Returns (sort_by, sort_order, ' ORDER BY ...', params)."""
+    if request.args.get('sort_by', 'collected') == 'collected':
+        order = 'asc' if request.args.get('sort_order') == 'asc' else 'desc'
+        # added_column is one of ours, never request input
+        return 'collected', order, f' ORDER BY {added_column} {order.upper()}, b.id', []
+    sort_by, sort_order = sorting.choice(request.args, media_type)
+    return (sort_by, sort_order, *sorting.order_by(sort_by, sort_order, current_user.id))
 
 
 def _tab(value):
@@ -61,7 +73,7 @@ def create_custom_collection():
         flash('Collection created successfully!', 'success')
     except sqlite3.IntegrityError:
         conn.rollback()
-        flash(f'You already have a shelf called "{name}" here.', 'error')
+        flash(f'You already have a collection called "{name}" here.', 'error')
     except Exception:
         conn.rollback()
         current_app.logger.exception('Error creating collection')
@@ -150,18 +162,19 @@ def view_custom_collection(collection_id):
         flash('Collection not found.', 'error')
         return redirect(url_for('collections.view_collections'))
     
-    # Get books in collection
+    # Get books in collection: most recently added first, or the sort menu's choice
+    sort_by, sort_order, order_sql, order_params = collection_order('cb.added_at', collection['media_type'])
     books = conn.execute('''
         SELECT b.*
         FROM books b
         JOIN collection_books cb ON b.id = cb.book_id
         WHERE cb.collection_id = ?
-        ORDER BY cb.added_at DESC
-    ''', (collection_id,)).fetchall()
+    ''' + order_sql, (collection_id, *order_params)).fetchall()
 
     return render_template('collection_status.html',
                          media_type=collection['media_type'],
                          m=media.media_labels(collection['media_type']),
+                         sort_by=sort_by, sort_order=sort_order, collected_sort=True,
                          status_labels=media.STATUS_LABELS,
                          collection=collection,
                          books=books,
@@ -222,7 +235,8 @@ def add_to_status_collection():
         flash('Collection updated successfully!', 'success')
         
         if status == media.DONE_STATUS[media_type]:   # 'read' / 'watched'
-            return redirect(url_for('read.rate_review', book_id=book_id))
+            # finished=1: the review page offers today as the finished date (12.3)
+            return redirect(url_for('read.rate_review', book_id=book_id, finished=1))
             
     except Exception as e:
         current_app.logger.exception('Error updating collection')
@@ -254,7 +268,7 @@ def view_by_status(status):
 
         # Only allow viewing if they are friends
         if friendship_status not in ('self', 'friends'):
-            flash('You must be friends to view this shelf!', 'warning')
+            flash('You must be friends to view this collection!', 'warning')
             return redirect(url_for('user.profile', username=username))
 
     # Status names are per type (media.STATUSES), so the status says which
@@ -262,17 +276,20 @@ def view_by_status(status):
     media_type = next((t for t in TABS if media.is_valid_status(t, status)), None)
     if media_type is None:
         abort(404)
+    # Most recently set first, or the sort menu's choice ("Date read" and
+    # "Your rating" are the viewer's, as on every grid)
+    sort_by, sort_order, order_sql, order_params = collection_order('c.updated_at', media_type)
     books = conn.execute('''
         SELECT b.*
         FROM collections c
         JOIN books b ON c.book_id = b.id
         WHERE c.user_id = ? AND c.status = ? AND b.media_type = ?
-        ORDER BY c.updated_at DESC
-    ''', (target_user_id, status, media_type)).fetchall()
+    ''' + order_sql, (target_user_id, status, media_type, *order_params)).fetchall()
 
     return render_template('collection_status.html',
                          media_type=media_type,
                          m=media.media_labels(media_type),
+                         sort_by=sort_by, sort_order=sort_order, collected_sort=True,
                          status_labels=media.STATUS_LABELS,
                          status=status,
                          books=books,

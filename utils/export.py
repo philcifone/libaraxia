@@ -8,6 +8,8 @@ import io
 import zipfile
 from datetime import datetime
 
+from utils.media import NO_STATUS_LABEL
+
 
 def _csv(header, rows):
     out = io.StringIO()
@@ -66,7 +68,7 @@ def library_rows(conn, user_id):
         r['id'], r['title'], r['subtitle'], r['author'], r['publisher'], r['publish_year'], r['isbn'],
         r['page_count'], r['genre'], r['owner'] or '', 'yes' if r['own'] else 'no',
         r['removed_at'] or '', r['removed_note'] or '',
-        r['status'] or 'Untracked', r['status_added'], r['started'], r['completed'], r['reads'] or 0,
+        r['status'] or NO_STATUS_LABEL.get(r['media_type'], 'Unread'), r['status_added'], r['started'], r['completed'], r['reads'] or 0,
         r['rating'], r['comment'], r['tags'], r['shelves'],
         r['media_type'], r['format'] or '', r['barcode'] or '', r['catalog_number'] or '',
         r['runtime_minutes'] or '',
@@ -79,7 +81,7 @@ def library_csv(conn, user_id):
 
 def data_zip(conn, user_id):
     """Everything of one user's, as a ZIP of CSVs. Returns bytes."""
-    user = conn.execute('SELECT username, email, bio, reading_goal FROM users WHERE id = ?',
+    user = conn.execute('SELECT username, email, bio FROM users WHERE id = ?',
                         (user_id,)).fetchone()
     files = {
         'library.csv': library_csv(conn, user_id),
@@ -100,8 +102,8 @@ def data_zip(conn, user_id):
                 WHERE r.user_id = ? AND (r.rating IS NOT NULL OR r.comment IS NOT NULL)
                 ORDER BY LOWER(b.title)
             ''', (user_id,)).fetchall()),
-        'shelves.csv': _csv(
-            ['Shelf', 'Book ID', 'Title', 'Author', 'Added'] + TYPE_COLUMNS,
+        'collections.csv': _csv(
+            ['Collection', 'Book ID', 'Title', 'Author', 'Added'] + TYPE_COLUMNS,
             conn.execute('''
                 SELECT uc.name, b.id, b.title, b.author, cb.added_at,
                        b.media_type, COALESCE(b.format, '')
@@ -119,9 +121,14 @@ def data_zip(conn, user_id):
                 WHERE w.user_id = ? ORDER BY w.added_at
             ''', (user_id,)).fetchall()),
         'profile.csv': _csv(
-            ['Username', 'Email', 'Bio', 'Reading Goal', 'Exported At'],
-            [[user['username'], user['email'], user['bio'], user['reading_goal'],
+            ['Username', 'Email', 'Bio', 'Exported At'],
+            [[user['username'], user['email'], user['bio'],
               datetime.now().isoformat(timespec='seconds')]] if user else []),
+        # One row per year with a goal (ROADMAP 12.3)
+        'reading_goals.csv': _csv(
+            ['Year', 'Goal'],
+            conn.execute('SELECT year, goal FROM reading_goals WHERE user_id = ? ORDER BY year',
+                         (user_id,)).fetchall()),
     }
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:

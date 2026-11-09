@@ -1,0 +1,10 @@
+{# Mode is Light | Dark (ROADMAP 12.4). The stored default, 'system', follows
+   the device: then the button for the mode in effect shows pressed
+   (sidebar.js syncModeButtons). Once you pick one, this link goes back to
+   following the system. It hides itself while following (styles.css,
+   :root[data-mode="system"] .follow-system), so it's never a dead end and
+   never clutter. Same click handler as the buttons (a .theme-opt).
+   Profile -> Appearance only; the sidebar's Mode shortcut is just the two
+   buttons (Phil). #}
+<button type="button" class="theme-opt follow-system text-xs text-accent hover:text-accent-hover underline whitespace-nowrap"
+        data-kind="mode" data-value="system">Follow system</button>

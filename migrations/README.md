@@ -50,3 +50,5 @@ python3 manage.py migrate             # back up, then apply pending (asks first)
 - `025_owned.sql` - Adds `books.owned` (0 = read/watched/listened to but never owned, ROADMAP 8B.3). Rows stored as "removed from wishlist; not owned" become not owned instead of removed.
 - `026_accent.sql` - Adds `users.accent` (Profile → Appearance accent colour, ROADMAP 8B.5; House style only).
 - `027_shelf_types.sql` - Custom shelves get a `media_type` (Books / Movies / Music tabs on Collections, ROADMAP 8C); names unique per section. Rebuilds `user_collections`; a shelf holding only movies or only albums becomes that section's, every other shelf a Books one.
+- `028_font.sql` - Adds `users.font` (Profile → Appearance → Font).
+- `029_reading_goals.sql` - Reading goals per year (`reading_goals`, ROADMAP 12.3); the existing `users.reading_goal` becomes this year's row and the column is left unused.

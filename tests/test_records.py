@@ -176,7 +176,7 @@ def test_household_and_friends_see_records(client, db, people):
     login(client, 'bob')
     assert 'Blue' in client.get('/records/shared').get_data(as_text=True)
     login(client, 'carol')
-    friends = client.get('/records/friends').get_data(as_text=True)
+    friends = client.get('/friends/').get_data(as_text=True)   # the Friends page (11.3)
     assert 'alice' in friends and '1 album' in friends
     assert 'Blue' in client.get('/records/user/alice').get_data(as_text=True)
 
@@ -225,24 +225,25 @@ def test_feed_words_record_activity(client, db, people):
 
 
 def test_record_stats_on_the_profile(client, app, db, people):
-    from blueprints.user import calculate_media_stats, calculate_library_stats
+    from utils.stats import type_stats
     alice = people['alice']
     login(client, 'alice')
-    assert 'tab-records' not in client.get('/user/alice').get_data(as_text=True)
+    assert 'data-stats-kind="record"' not in client.get('/user/alice').get_data(as_text=True)
     record = add_record(db, alice)
     add_book(db, alice, 'Dune')
     db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'listened')", (alice, record))
     db.commit()
     page = client.get('/user/alice').get_data(as_text=True)
-    assert 'tab-records' in page and 'Album Statistics' in page and 'tab-videos' not in page
+    assert 'data-stats-kind="record"' in page and 'data-stats-kind="video"' not in page
+    assert 'Albums owned' in page and 'Hours listened to' in page
     with app.app_context():
         from utils.database import get_db
         conn = get_db()
-        stats = calculate_media_stats(conn, alice, media.RECORD)
-        assert (stats['owned'], stats['done'], stats['hours_done']) == (1, 1, 0.6)
+        stats = type_stats(conn, alice, media.RECORD)
+        assert (stats['owned'], stats['done'], stats['size_done']) == (1, 1, 0.6)
         assert stats['by_format'] == [{'format': 'LP', 'count': 1}]
-        assert calculate_media_stats(conn, alice, media.VIDEO) is None
-        assert calculate_library_stats(conn, alice)['total_books'] == 1
+        assert type_stats(conn, alice, media.VIDEO) is None
+        assert type_stats(conn, alice, media.BOOK)['owned'] == 1
 
 
 # --- records stay out of the other sections ------------------------------------------
@@ -255,7 +256,7 @@ def test_records_stay_out_of_the_library_and_movies(client, db, people):
                 '/base/library/alice', '/videos/', '/videos/shared'):
         assert 'Hejira' not in client.get(url).get_data(as_text=True), url
     login(client, 'carol')
-    assert '1 book' in client.get('/base/friends-libraries').get_data(as_text=True)
+    assert '1 book' in client.get('/friends/').get_data(as_text=True)
     assert 'Hejira' not in client.get('/videos/user/alice').get_data(as_text=True)
 
 
@@ -550,6 +551,6 @@ def test_data_export_has_type_and_format(app, db, people):
         rows = list(csv.reader(io.StringIO(z.read(name).decode())))
         assert rows[0][-2:] == ['Type', 'Format'], name
         assert rows[1][-2:] == ['record', 'LP'], name
-    for name in ('shelves.csv', 'wishlist.csv'):
+    for name in ('collections.csv', 'wishlist.csv'):
         header = next(csv.reader(io.StringIO(z.read(name).decode())))
         assert header[-2:] == ['Type', 'Format'], name

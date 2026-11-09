@@ -129,7 +129,7 @@ def test_data_export_zip(client, db, people):
     r = client.get('/user/export_data')
     assert r.status_code == 200
     z = zipfile.ZipFile(io.BytesIO(r.data))
-    assert {'library.csv', 'reviews.csv', 'reading_sessions.csv', 'shelves.csv', 'wishlist.csv',
+    assert {'library.csv', 'reviews.csv', 'reading_sessions.csv', 'collections.csv', 'wishlist.csv',
             'profile.csv'} <= set(z.namelist())
     assert 'Five stars' in z.read('reviews.csv').decode()
 

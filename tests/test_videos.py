@@ -213,7 +213,8 @@ def test_section_is_called_movies(client, db, people):
     login(client, 'alice')
     assert 'My Movies' in client.get('/videos/').get_data(as_text=True)
     assert 'Household Movies' in client.get('/videos/shared').get_data(as_text=True)
-    assert "Friends' Movies" in client.get('/videos/friends').get_data(as_text=True)
+    # Friends are their own page (11.3); the old tab redirects there
+    assert client.get('/videos/friends').headers['Location'].endswith('/friends/')
     assert 'Video' not in client.get('/videos/add').get_data(as_text=True).replace('lookupVideo', '')
 
 
@@ -321,7 +322,7 @@ def test_household_and_friends_see_videos(client, db, people):
     assert client.get(f'/videos/{video}').status_code == 200
     login(client, 'carol')                   # friend
     assert 'Jaws' in client.get('/videos/user/alice').get_data(as_text=True)
-    assert 'alice' in client.get('/videos/friends').get_data(as_text=True)
+    assert 'alice' in client.get('/friends/').get_data(as_text=True)
     assert client.get(f'/videos/{video}').status_code == 200
 
 
@@ -400,12 +401,12 @@ def test_videos_stay_out_of_the_library(client, db, people):
         page = client.get(url).get_data(as_text=True)
         assert 'Dune' in page and 'Jaws' not in page, url
     login(client, 'carol')
-    page = client.get('/base/friends-libraries').get_data(as_text=True)
+    page = client.get('/friends/').get_data(as_text=True)
     assert '1 book' in page and '2 books' not in page
 
 
 def test_book_stats_ignore_videos(app, db, people):
-    from blueprints.user import calculate_user_stats, calculate_library_stats, calculate_media_stats
+    from utils.stats import type_stats
     alice = people['alice']
     book = add_book(db, alice, 'Dune')
     video = add_video(db, alice)
@@ -419,23 +420,26 @@ def test_book_stats_ignore_videos(app, db, people):
     with app.app_context():
         from utils.database import get_db
         conn = get_db()
-        stats = calculate_user_stats(conn, alice)
-        assert stats['books_read'] == 1 and stats['books_read_this_year'] == 1
+        stats = type_stats(conn, alice, 'book')
+        assert stats['done'] == 1 and stats['done_this_year'] == 1
         assert stats['avg_rating'] == 2
-        assert {r['status'] for r in stats['collection_status']} == {'read'}
+        assert {r['status'] for r in stats['statuses']} == {'read'}
         assert stats['by_month']['total'] == 1
-        assert calculate_library_stats(conn, alice)['total_books'] == 1
-        videos = calculate_media_stats(conn, alice, 'video')
-        assert videos['owned'] == 1 and videos['done'] == 1
-        assert videos['avg_rating'] == 5 and videos['hours_done'] == 2.1
-        assert calculate_media_stats(conn, alice, 'record') is None
+        assert stats['owned'] == 1
+        videos = type_stats(conn, alice, 'video')
+        assert videos['owned'] == 1 and videos['done'] == 1 and videos['done_this_year'] == 1
+        assert videos['avg_rating'] == 5 and videos['size_done'] == 2.1
+        assert videos['by_month']['total'] == 1
+        assert type_stats(conn, alice, 'record') is None
 
 
 def test_profile_shows_video_tab_only_with_videos(client, db, people):
     login(client, 'alice')
-    assert 'tab-videos' not in client.get('/user/alice').get_data(as_text=True)
+    assert 'data-stats-kind="video"' not in client.get('/user/alice').get_data(as_text=True)
     add_video(db, people['alice'])
-    assert 'Movie Statistics' in client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/alice').get_data(as_text=True)
+    assert 'data-stats-kind="video"' in page and 'Movies watched per month' not in page   # nothing watched
+    assert 'See the movies' in page and 'See the books' in page
 
 
 def test_book_features_skip_videos(app, db, people):

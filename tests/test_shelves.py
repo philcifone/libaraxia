@@ -51,7 +51,7 @@ def test_create_shelf_in_a_section(client, db, people):
     client.post('/collections/collections/create', data={'name': 'Favourites', 'media_type': 'book'})
     r = client.post('/collections/collections/create', data={'name': 'Favourites', 'media_type': 'book'},
                     follow_redirects=True)
-    assert 'already have a shelf called' in r.get_data(as_text=True)
+    assert 'already have a collection called' in r.get_data(as_text=True)
     rows = db.execute("SELECT media_type FROM user_collections WHERE user_id = ? ORDER BY media_type",
                       (people['alice'],)).fetchall()
     assert [r[0] for r in rows] == ['book', 'record']

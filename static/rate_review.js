@@ -18,6 +18,15 @@ function openInlineSessionForm(mode, sessionId, dateStarted, dateCompleted) {
     container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// Just marked Read / Watched / Listened: the template asks for the form to
+// open with today as the finished date (data-prefill-*, ROADMAP 12.3)
+(function openPrefilledSession() {
+    const form = document.getElementById('session-form-inline');
+    const p = form && form.dataset;
+    if (!p || !p.prefillMode) return;
+    openInlineSessionForm(p.prefillMode, p.prefillSession || null, p.prefillStarted, p.prefillCompleted);
+})();
+
 registerActions({
     showAddSessionForm: () => openInlineSessionForm('add', null, '', ''),
 

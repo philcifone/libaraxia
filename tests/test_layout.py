@@ -185,7 +185,7 @@ def test_sidebar_has_the_mode_shortcut(client, db, people):
     html = client.get('/base/index').get_data(as_text=True)
     picker = html[html.index('data-theme-picker'):html.index('auth/logout')]
     assert 'data-value="dark"\n                            aria-pressed="true"' in picker
-    assert picker.count('class="theme-opt') == 3
+    assert picker.count('class="theme-opt') == 2
     r = client.post('/user/update_theme', json={'mode': 'light'})
     assert r.status_code == 200 and r.get_json()['success']
     assert db.execute('SELECT color_mode FROM users WHERE id = ?', (people['bob'],)).fetchone()[0] == 'light'
@@ -317,7 +317,7 @@ def test_reading_chart_months(db, people):
     ending now; a quiet year falls back to the twelve months ending at the
     last finished book. Rereads in one month count once."""
     from datetime import datetime
-    from blueprints.user import reading_by_month
+    from utils.stats import by_month as reading_by_month
 
     alice = people['alice']
     assert reading_by_month(db, alice) is None          # nothing finished yet
@@ -332,10 +332,10 @@ def test_reading_chart_months(db, people):
     chart = reading_by_month(db, alice, today=datetime(2026, 4, 15))
     assert len(chart['bars']) == 12
     assert (chart['start'], chart['end']) == ('May 2025', 'April 2026')
-    by_name = {bar['name']: bar['books'] for bar in chart['bars']}
+    by_name = {bar['name']: bar['items'] for bar in chart['bars']}
     assert by_name['November 2025'] == 1 and by_name['March 2026'] == 2
     assert chart['peak'] == 2 and chart['total'] == 3
-    assert [bar['pct'] for bar in chart['bars'] if bar['books']] == [50, 100]
+    assert [bar['pct'] for bar in chart['bars'] if bar['items']] == [50, 100]
 
     # Two years later nothing is in the window: it ends at the last read.
     later = reading_by_month(db, alice, today=datetime(2028, 6, 1))
@@ -349,7 +349,7 @@ def test_reading_chart_on_the_profile(client, db, people):
     db.commit()
     login(client, 'alice')
     page = client.get('/user/alice').get_data(as_text=True)
-    assert 'Books finished per month' in page and page.count('class="chart-col"') == 12
+    assert 'Books read per month' in page and page.count('class="chart-col"') == 12
     assert 'Show as a table' in page
 
 
@@ -604,8 +604,9 @@ def test_font_choice_saved_and_on_the_page(client, db, people):
 def test_shelf_style_reaches_every_cover_grid():
     """Shelf: the bookcase is a class, kept when the view switches, and on a
     friend's library too; House's heavy form outline leaves Shelf alone."""
-    for path in ('templates/_book_grid.html', 'templates/friend_library.html'):
-        assert 'shelf-grid grid' in pathlib.Path(path).read_text(), path
+    assert 'shelf-grid grid' in pathlib.Path('templates/_book_grid.html').read_text()
+    # A friend's library is the same grid since 11.3
+    assert "{% include '_book_grid.html' %}" in pathlib.Path('templates/friend_library.html').read_text()
     js = pathlib.Path('static/script.js').read_text()
     # switchView keeps shelf-grid and only drops .grid in list view
     assert "container.classList.toggle('grid', !list)" in js
@@ -631,7 +632,9 @@ def test_shelf_covers_only_and_movie_rack(client, db, people):
     assert 'clip: rect(0, 0, 0, 0)' in hidden and 'width: 1px' in hidden
     assert '.book-link:focus-visible :is(.cover-box, .no-cover)' in css
     assert '.book-info { opacity' not in css and 'peek' not in css
-    rack = css[css.index('/* ---- Shelf: the movie rack'):]
+    start = css.index('/* ---- Shelf: the movie rack')
+    end = css.find('/* ---- ', start + 1)                 # up to the next section
+    rack = css[start:end if end > 0 else None]
     assert '.shelf-grid.grid[data-media="video"]' in rack
     assert '--shelf-frame' in rack
     # Every movie stands in the white case; a long title drops the director
@@ -654,14 +657,16 @@ def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
     login(client, 'alice')
     css = pathlib.Path('static/styles.css').read_text()
     assert '.cover-box { display: contents; }' in css
-    for path in ('templates/_book_grid.html', 'templates/friend_library.html', 'static/script.js'):
+    for path in ('templates/_book_grid.html', 'static/script.js'):
         assert '<span class="cover-box"><img' in pathlib.Path(path).read_text(), path
     # The egg: Movies only
     assert 'data-click="toggleRack"' in client.get('/videos/').get_data(as_text=True)
     assert 'data-click="toggleRack"' not in client.get('/base/index').get_data(as_text=True)
     assert 'data-click="toggleRack"' not in client.get('/records/').get_data(as_text=True)
     # Every rule in the rack section is scoped to the toggle
-    rack = css[css.index('/* ---- Shelf: the movie rack'):]
+    start = css.index('/* ---- Shelf: the movie rack')
+    end = css.find('/* ---- ', start + 1)                 # up to the next section
+    rack = css[start:end if end > 0 else None]
     selectors = [line for line in rack.splitlines() if line.lstrip().startswith(':root')]
     assert selectors and all('[data-rack="store"]' in line for line in selectors)
     # shelf.js runs in <head> without defer, so the rack doesn't flash in
@@ -695,3 +700,184 @@ def test_search_box_carries_the_count_and_one_row_view_bar(client, db, people):
     page = client.get('/base/index?show=all').get_data(as_text=True)
     assert 'placeholder="Search your books"' in page
     assert re.search(r'shrink-0 text-sm text-content-secondary">\s*2 books', page)
+
+
+def test_filter_pills_show_only_applied_filters(client, db, people):
+    """ROADMAP 11.0: the panel's fields only filter on Apply, so the pills and
+    the funnel's count come from the page as loaded, and a pending change
+    shows on the Apply button instead of as a pill."""
+    js = pathlib.Path('static/script.js').read_text()
+    assert 'function countFilterChanges' in js and 'appliedFilters = readFilterState()' in js
+    assert 'updateActiveFilters' not in js
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    assert 'data-change="filtersChanged"' in page and 'id="apply-filters"' in page
+
+
+def test_no_status_reads_unread(client, db, people):
+    """11.0: no status is "Unread" (Unwatched, Not listened to), not Untracked."""
+    from utils.media import media_labels
+    assert [media_labels(t)['no_status'] for t in ('book', 'video', 'record')] == [
+        'Unread', 'Unwatched', 'Not listened to']
+    book = add_book(db, people['alice'], title='Never opened')
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert '>Unread</option>' in page and 'Untracked' not in page
+
+
+def test_status_filter_options_use_labels(client, db, people):
+    """The Library's status filter shows "Did Not Finish", not the stored value."""
+    book = add_book(db, people['alice'], title='Abandoned')
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'did not finish')",
+               (people['alice'], book))
+    db.commit()
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    assert re.search(r'value="did not finish"[^>]*>\s*Did Not Finish', page)
+
+
+def test_shelves_one_entry_and_section_switch(client, db, people):
+    """ROADMAP 11.1: one Shelves entry in the sidebar; every Shelves page has
+    the Books | Movies | Music switch, which keeps the scope; the sidebar link
+    returns you to the section you used last."""
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    nav = page[page.index('<!-- Navigation -->'):]
+    nav = nav[:nav.index('</nav>')]
+    assert 'href="/base/shelves"' in nav and 'Shelves' in nav
+    assert 'href="/videos/"' not in nav and 'href="/records/"' not in nav   # no separate entries
+    # The switch keeps the scope
+    shared = client.get('/videos/shared').get_data(as_text=True)
+    assert 'href="/base/shared-library"' in shared and 'href="/records/shared"' in shared
+    assert 'href="/videos/friends"' not in shared        # no Friends' tab (11.3)
+    for old in ('/base/friends-libraries', '/videos/friends', '/records/friends'):
+        assert client.get(old).headers['Location'].endswith('/friends/'), old
+    # A friend's books link to the same friend's movies and music
+    friend = client.get('/base/library/carol').get_data(as_text=True)
+    assert 'href="/videos/user/carol"' in friend and 'href="/records/user/carol"' in friend
+    # Last section used: books at first, then whatever you visited
+    client.delete_cookie('shelf_section')
+    assert client.get('/base/shelves').headers['Location'].endswith('/base/index')
+    client.get('/records/')
+    assert client.get('/base/shelves').headers['Location'].endswith('/records/')
+    client.get('/videos/shared')
+    assert client.get('/base/shelves').headers['Location'].endswith('/videos/')
+    # A bad cookie falls back to books
+    client.set_cookie('shelf_section', 'nonsense')
+    assert client.get('/base/shelves').headers['Location'].endswith('/base/index')
+
+
+def test_shelf_records_stand_on_the_shelf():
+    """The square-cover rule for records is keyed on #book-container, which
+    outweighed the Shelf bookcase, so the Music shelf was a cover's width tall
+    and lost its bottom ledge. The Shelf block restates the height at the
+    same weight, after it."""
+    css = pathlib.Path('static/styles.css').read_text()
+    square = css.index('#book-container[data-media="record"] .book-cover {')
+    fix = css.index(':root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] .book-cover {')
+    assert fix > square
+    assert 'height: var(--cover-h);' in css[fix:fix + 200]
+
+
+def test_shelf_album_rows_are_as_tall_as_a_column_is_wide():
+    """A square album is limited by its column's width, so the Music shelf's
+    --cover-h is a column's width (container units on the grid's parent),
+    with the column count per breakpoint, not books' fixed height."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':has(> #book-container.shelf-grid.grid[data-media="record"])' in css
+    assert '--cover-h: round(down, var(--col-w), 1px);' in css
+    for cols in ('--cols: 3;', '--cols: 4;', '--cols: 5;'):
+        assert cols in css
+
+
+def test_friends_page_and_notifications_under_the_welcome(client, db, people):
+    """ROADMAP 11.3: Friends is a sidebar page of people, each opening their
+    shelves (and the count per section); Notifications sits under the
+    welcome with the number waiting."""
+    add_book(db, people['carol'], title='Carols Book')
+    db.execute("INSERT INTO friend_requests (sender_id, receiver_id, status) VALUES (?, ?, 'pending')",
+               (people['bob'], people['carol']))
+    db.commit()
+    login(client, 'alice')
+    page = client.get('/friends/').get_data(as_text=True)
+    assert 'carol' in page and '1 book' in page
+    assert 'href="/base/library/carol"' in page and 'href="/videos/user/carol"' in page
+    assert 'bob' not in page.split('id="your-friends"')[1].split('Find friends')[0]   # household, not a friend
+    assert 'id="friend-search-input"' in page and 'friends.js' in page
+    # A friend's shelves: crumbs back to Friends, no scope tabs
+    shelf = client.get('/base/library/carol').get_data(as_text=True)
+    assert "carol's Shelves" in shelf and 'aria-label="Whose shelves"' not in shelf
+    assert 'href="/friends/"' in shelf
+    # Notifications: under the welcome, with a count when something waits
+    login(client, 'carol')
+    page = client.get('/friends/').get_data(as_text=True)
+    head = page[page.index('Welcome,'):page.index('<!-- Navigation -->')]
+    assert 'Notifications' in head and '>1<span class="sr-only"> waiting' in head
+    nav = page[page.index('<!-- Navigation -->'):]
+    assert 'notifications_page' not in nav[:nav.index('</nav>')]
+
+
+def test_shelf_coverless_titles_break_between_words():
+    """A coverless box on the bookcase prints its title at a size that
+    follows the box (a size container, cqw type), and breaks lines between
+    words: the base .no-cover's overflow-wrap: anywhere split "Fahrenheit"
+    mid-word on a phone. The box's own padding mustn't use cqw (it would
+    resolve against the page)."""
+    css = (ROOT / 'static/styles.css').read_text()
+    start = css.index('The printing on a coverless box')
+    block = css[start:css.index('::before', start)]
+    assert 'container-type: inline-size' in block
+    assert 'overflow-wrap: break-word' in block and 'hyphens: auto' in block
+    assert 'cqw' in block.split('.no-cover-title')[1]
+    padding = [line for line in block.splitlines() if 'padding:' in line]
+    assert padding and not any('cqw' in line for line in padding)
+
+
+def test_profile_stats_same_blocks_for_every_type(client, db, people):
+    """12.1: Overview | Insights on top, Books | Movies | Music under them
+    (only the types the user has), the same blocks per type, and every type
+    links to its grid: yours on your profile, the friend's on theirs."""
+    from test_videos import add_video
+    alice = people['alice']
+    add_book(db, alice, 'Dune', 'Frank Herbert')
+    add_video(db, alice)
+    login(client, 'carol')                               # alice's friend
+    page = client.get('/user/alice').get_data(as_text=True)
+    stats = page[page.index('id="stats"'):]
+    assert stats.count('data-stats-view=') == 2
+    assert 'data-stats-kind="book"' in stats and 'data-stats-kind="video"' in stats
+    assert 'data-stats-kind="record"' not in stats
+    # One overview and one insights panel per type plus All (12.2), which
+    # comes first and is the one shown
+    assert stats.count('data-stats-panel') == 6
+    assert stats.count(' hidden>') == 5
+    assert 'data-stats-kind="all" aria-pressed="true"' in stats
+    assert 'data-kind="all" data-view="overview">' in stats
+    for words in ('Books owned', 'Movies owned', 'Hours watched', 'Pages read', 'Top authors', 'Top directors'):
+        assert words in stats
+    assert 'href="/base/library/alice"' in stats and 'href="/videos/user/alice"' in stats
+    assert 'tab-library' not in page                     # the old Library tab is gone
+
+
+def test_appearance_card_and_two_mode_buttons(client, db, people):
+    """12.4: Appearance is its own collapsible card, not part of Settings, and
+    Mode is Light | Dark plus a "Follow system" link (hidden by CSS while
+    following). 'system' stays the stored default and a valid choice."""
+    login(client, 'alice')
+    page = client.get('/user/alice').get_data(as_text=True)
+    card = page[page.index('<details class="appearance-card'):]
+    card = card[:card.index('</details>')]
+    assert 'id="appearance-settings" data-theme-picker' in card
+    assert '<details class="appearance-card bg-secondary rounded-xl card">' in page     # closed
+    modes = re.findall(r'data-kind="mode" data-value="(\w+)"', card)
+    assert sorted(modes) == ['dark', 'light', 'system'] and 'class="theme-opt follow-system' in card
+    # The sidebar's shortcut: Light | Dark only
+    sidebar = page[page.index('data-mode-picker'):page.index('auth/logout')]
+    assert sorted(re.findall(r'data-kind="mode" data-value="(\w+)"', sidebar)) == ['dark', 'light']
+    css = (ROOT / 'static/styles.css').read_text()
+    assert ':root[data-mode="system"] .follow-system { display: none; }' in css
+    js = (ROOT / 'static/sidebar.js').read_text()
+    assert 'function syncModeButtons' in js and "prefers-color-scheme: dark" in js
+    # Following the system is still a mode you can go back to
+    assert client.post('/user/update_theme', json={'mode': 'dark'}).status_code == 200
+    assert client.post('/user/update_theme', json={'mode': 'system'}).status_code == 200

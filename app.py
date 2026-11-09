@@ -103,6 +103,18 @@ def create_app():
                   else 'Content-Security-Policy')
 
     @app.after_request
+    def remember_shelf_section(response):
+        """The sidebar's Shelves link (base.shelves) returns you to the
+        section you used last: each Shelves page sets this cookie. Only a
+        section name, so no secrets; it never decides access."""
+        kind = media.SHELF_SECTION_OF.get(request.endpoint)
+        if kind and response.status_code == 200:
+            response.set_cookie('shelf_section', kind, max_age=365 * 24 * 3600,
+                                httponly=True, samesite='Lax',
+                                secure=app.config.get('SESSION_COOKIE_SECURE', False))
+        return response
+
+    @app.after_request
     def set_security_headers(response):
         response.headers.setdefault(csp_header, csp)
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
@@ -206,6 +218,9 @@ def create_app():
         return url_for(media.item_endpoint(media.media_type_of(row), action), id=row['id'])
     app.add_template_global(item_url, 'item_url')
     app.add_template_global(media.buy_links, 'buy_links')
+    app.add_template_global(media.STATUS_LABELS, 'STATUS_LABELS')   # status menus and filters on any page
+    from utils.sorting import BY_TYPE as sort_options
+    app.add_template_global(sort_options, 'SORT_OPTIONS')          # the grids' sort menu (_view_bar.html)
     # The library pages' Show choice (8B.3): on the shelf / not owned / removed / everything
     from utils.book_utils import SHOW_CHOICES, show_choice, is_narrowed
     app.add_template_global(is_narrowed, 'is_narrowed')
@@ -222,16 +237,34 @@ def create_app():
                 args[key] = [value]
         return url_for(request.endpoint, **(request.view_args or {}), **args)
     app.add_template_global(url_with, 'url_with')
+
+    def shelf_url(media_type, scope='mine', username=None):
+        """A Shelves page: one section (book/video/record) in one scope
+        (mine, shared, friends, or friend with `username`)."""
+        endpoint = media.SHELF_ENDPOINTS[media_type][scope]
+        return url_for(endpoint, username=username) if scope == 'friend' else url_for(endpoint)
+    app.add_template_global(shelf_url, 'shelf_url')
+    app.add_template_global(media.SECTION_NAMES, 'SECTION_NAMES')
     app.add_template_global(lambda row: media.media_labels(media.media_type_of(row)), 'labels_for')
 
     # List view's status and rating columns (_book_grid.html, ROADMAP 7.2b):
     # the viewer's own, for a page of items in one query
-    def viewer_marks(rows):
+    # (or, on a friend's shelf, the friend's: marks_user, 11.3)
+    def viewer_marks(rows, user_id=None):
         from utils.book_utils import viewer_marks as marks_for
         if not _current_user.is_authenticated:
             return {}
-        return marks_for(get_db(), _current_user.id, [row['id'] for row in rows])
+        return marks_for(get_db(), user_id or _current_user.id, [row['id'] for row in rows])
     app.add_template_global(viewer_marks, 'viewer_marks')
+
+    # The sidebar's count next to Notifications: a function, so it's only
+    # queried on pages that draw the sidebar
+    def notification_count():
+        from utils.notifications import unread_counts
+        if not getattr(_current_user, 'is_authenticated', False):
+            return 0
+        return unread_counts(get_db(), _current_user.id)['count']
+    app.add_template_global(notification_count, 'notification_count')
 
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)
@@ -250,6 +283,8 @@ def create_app():
             'theme_font': user.font if signed_in else DEFAULT_FONT,
             'theme_fonts': FONTS,
             'theme_modes': THEME_MODES,
+            # The Mode buttons (12.4): 'system' is the default, reached by "Follow system"
+            'mode_choices': {k: v for k, v in THEME_MODES.items() if k != 'system'},
         }
 
     @app.context_processor

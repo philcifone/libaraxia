@@ -7,6 +7,7 @@ from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
 from utils import media, shelves
+from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
 from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES, ACCENTS, FONTS
@@ -25,187 +26,6 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def calculate_user_stats(conn, user_id):
-    """Reading statistics for one user.
-
-    "Read" means the book is on the user's Read shelf (collections.status =
-    'read'), so the numbers match the shelves page. Reading counts whoever's
-    copy it was, so these aren't limited to the user's own library; only the
-    read percentage is ("how much of my library have I read").
-    """
-    stats = conn.execute(f'''
-        SELECT
-            COUNT(*) AS books_read,
-            -- An audiobook's page count is the print edition's: not read pages (8B.2)
-            SUM(CASE WHEN b.format = 'Audiobook' THEN 0 ELSE CAST(b.page_count AS INTEGER) END) AS pages_read,
-            (SELECT AVG(r.rating) FROM read_data r
-             WHERE r.user_id = :u AND r.rating IS NOT NULL
-               AND {only(BOOK, 'r.book_id')}) AS avg_rating
-        FROM collections c
-        JOIN books b ON b.id = c.book_id
-        WHERE c.user_id = :u AND c.status = 'read' AND b.media_type = 'book'
-    ''', {'u': user_id}).fetchone()
-    result = dict(stats)
-
-    # Year-to-date reading progress
-    from datetime import datetime
-    current_year = datetime.now().year
-    ytd_query = f'''
-        SELECT COUNT(DISTINCT rs.book_id) as books_read_this_year
-        FROM reading_sessions rs
-        WHERE rs.user_id = ? AND {only(BOOK, 'rs.book_id')}
-        AND rs.date_completed IS NOT NULL
-        AND strftime('%Y', rs.date_completed) = ?
-    '''
-    ytd_stats = conn.execute(ytd_query, [user_id, str(current_year)]).fetchone()
-    result['books_read_this_year'] = ytd_stats['books_read_this_year'] if ytd_stats else 0
-
-    # Read percentage: books on the user's own shelf they've read, out of
-    # the books on their shelf (not the whole database, not wishlist entries,
-    # not books that have left the house)
-    shelf = conn.execute('''
-        SELECT
-            COUNT(*) AS total_books,
-            SUM(EXISTS (SELECT 1 FROM collections c
-                        WHERE c.book_id = b.id AND c.user_id = :u AND c.status = 'read')) AS read_books
-        FROM library_books b
-        WHERE b.added_by = :u AND b.owned = 1 AND b.removed_at IS NULL
-    ''', {'u': user_id}).fetchone()
-    total_books = shelf['total_books'] or 0
-    result['read_percentage'] = (round((shelf['read_books'] or 0) / total_books * 100, 1)
-                                 if total_books else 0)
-
-    # Reading by month (last 12 months)
-    reading_by_month_query = f'''
-        SELECT
-            strftime('%Y-%m', rs.date_completed) as month,
-            COUNT(DISTINCT rs.book_id) as books_count
-        FROM reading_sessions rs
-        WHERE rs.user_id = ? AND {only(BOOK, 'rs.book_id')}
-        AND rs.date_completed IS NOT NULL
-        AND rs.date_completed >= date('now', '-12 months')
-        GROUP BY month
-        ORDER BY month
-    '''
-    result['reading_by_month'] = [dict(row) for row in conn.execute(reading_by_month_query, [user_id]).fetchall()]
-
-    # Top genres
-    top_genres_query = '''
-        SELECT
-            b.genre,
-            COUNT(DISTINCT r.book_id) as count
-        FROM collections r
-        JOIN books b ON r.book_id = b.id
-        WHERE r.user_id = ? AND r.status = 'read' AND b.media_type = 'book'
-          AND b.genre IS NOT NULL AND b.genre != ''
-        GROUP BY b.genre
-        ORDER BY count DESC
-        LIMIT 5
-    '''
-    result['top_genres'] = [dict(row) for row in conn.execute(top_genres_query, [user_id]).fetchall()]
-
-    # Rating distribution
-    rating_dist_query = f'''
-        SELECT
-            r.rating,
-            COUNT(*) as count
-        FROM read_data r
-        WHERE r.user_id = ? AND r.rating IS NOT NULL AND {only(BOOK, 'r.book_id')}
-        GROUP BY r.rating
-        ORDER BY r.rating
-    '''
-    result['rating_distribution'] = [dict(row) for row in conn.execute(rating_dist_query, [user_id]).fetchall()]
-
-    # Collection status breakdown
-    collection_status_query = f'''
-        SELECT
-            c.status,
-            COUNT(DISTINCT c.book_id) as count
-        FROM collections c
-        WHERE c.user_id = ? AND {only(BOOK, 'c.book_id')}
-        GROUP BY c.status
-    '''
-    result['collection_status'] = [dict(row) for row in conn.execute(collection_status_query, [user_id]).fetchall()]
-
-    # Top authors
-    top_authors_query = '''
-        SELECT
-            b.author,
-            COUNT(DISTINCT c.book_id) as books_count,
-            ROUND(AVG(r.rating), 1) as avg_rating
-        FROM collections c
-        JOIN books b ON c.book_id = b.id
-        LEFT JOIN read_data r ON r.user_id = c.user_id AND r.book_id = c.book_id
-        WHERE c.user_id = ? AND c.status = 'read' AND b.media_type = 'book'
-        GROUP BY b.author
-        ORDER BY books_count DESC, avg_rating DESC
-        LIMIT 5
-    '''
-    result['top_authors'] = [dict(row) for row in conn.execute(top_authors_query, [user_id]).fetchall()]
-
-    # Reading streak stats
-    streak_query = f'''
-        SELECT
-            MIN(date_completed) as first_read,
-            MAX(date_completed) as last_read,
-            COUNT(DISTINCT date(date_completed)) as unique_days
-        FROM reading_sessions
-        WHERE user_id = ? AND date_completed IS NOT NULL AND {only(BOOK)}
-    '''
-    streak_stats = conn.execute(streak_query, [user_id]).fetchone()
-    if streak_stats:
-        result.update(dict(streak_stats))
-
-    result['by_month'] = reading_by_month(conn, user_id)
-    return result
-
-def reading_by_month(conn, user_id, today=None):
-    """Books finished per month, for the profile chart: twelve months ending
-    this month. If nothing was finished in that window (say the reading log
-    went quiet), the window ends at the last finished book instead, so the
-    chart still shows something; the template prints the range either way.
-
-    A book finished twice in one month counts once. Returns None when the
-    user has never finished a book.
-    """
-    rows = conn.execute(f"""
-        SELECT strftime('%Y-%m', date_completed) AS month, COUNT(DISTINCT book_id) AS books
-        FROM reading_sessions
-        WHERE user_id = ? AND date_completed IS NOT NULL AND {only(BOOK)}
-          AND strftime('%Y-%m', date_completed) IS NOT NULL
-        GROUP BY month
-    """, (user_id,)).fetchall()
-    counts = {row['month']: row['books'] for row in rows}
-    if not counts:
-        return None
-
-    today = today or datetime.now()
-    end_y, end_m = today.year, today.month
-
-    def window(y, m):
-        """The twelve (year, month) pairs ending at y-m, oldest first."""
-        months = []
-        for _ in range(12):
-            months.append((y, m))
-            y, m = (y, m - 1) if m > 1 else (y - 1, 12)
-        return months[::-1]
-
-    months = window(end_y, end_m)
-    if not any(f'{y:04d}-{m:02d}' in counts for y, m in months):
-        last = max(counts)                       # 'YYYY-MM' sorts as a date
-        months = window(int(last[:4]), int(last[5:]))
-
-    bars = [{'year': y,
-             'label': datetime(y, m, 1).strftime('%b'),
-             'name': datetime(y, m, 1).strftime('%B %Y'),
-             'books': counts.get(f'{y:04d}-{m:02d}', 0)} for y, m in months]
-    peak = max(bar['books'] for bar in bars)
-    for bar in bars:
-        bar['pct'] = round(100 * bar['books'] / peak) if peak else 0
-    return {'bars': bars, 'peak': peak, 'total': sum(bar['books'] for bar in bars),
-            'start': bars[0]['name'], 'end': bars[-1]['name']}
-
 
 @user_blueprint.route('/<username>')
 @login_required
@@ -231,18 +51,21 @@ def profile(username):
     is_own_profile = current_user.id == user['id']
     are_friends = friendship_status in ('self', 'friends')
 
-    # Get user's reading stats (only if friends or own profile)
-    stats = calculate_user_stats(conn, user['id']) if are_friends else None
-
-    # Library stats (only if friends or own profile)
-    library_stats = calculate_library_stats(conn, user['id']) if are_friends else None
-    # Movies and Vinyls tabs: (labels, stats) for each type the user has
-    media_stats = []
+    # Stats (12.1, utils/stats.py): the same numbers for every type, books
+    # always (the reading goal hangs on them), movies and music when the
+    # user has any. A list of (labels, stats), for friends and yourself only.
+    type_stats = []
     if are_friends:
-        for kind in (VIDEO, RECORD):
-            kind_stats = calculate_media_stats(conn, user['id'], kind)
+        for kind in (BOOK, VIDEO, RECORD):
+            kind_stats = stats_for_type(conn, user['id'], kind)
             if kind_stats:
-                media_stats.append((media.media_labels(kind), kind_stats))
+                type_stats.append((media.media_labels(kind), kind_stats))
+    stats = type_stats[0][1] if type_stats else None
+    # The All tab (12.2) and its Year by year, which also holds past years'
+    # reading goals; with books only it shows on the Books tab instead
+    everything = all_stats(conn, user['id'], {m['type']: s for m, s in type_stats}) if type_stats else None
+    # This year's reading goal and past years (12.3), under the bio
+    goals = reading_goals(conn, user['id']) if are_friends else None
 
     # Get pending friend request ID if applicable
     friend_request_id = None
@@ -328,8 +151,9 @@ def profile(username):
         'user.html',
         user=user,
         stats=stats,
-        library_stats=library_stats,
-        media_stats=media_stats,
+        type_stats=type_stats,
+        all_stats=everything,
+        goals=goals,
         current_year=current_year,
         friendship_status=friendship_status,
         is_own_profile=is_own_profile,
@@ -349,30 +173,32 @@ def profile(username):
 @login_required
 @limiter.limit("20 per hour")
 def update_reading_goal():
-    reading_goal = request.form.get('reading_goal')
-
-    if reading_goal is None or reading_goal == '':
-        flash('Please provide a reading goal!', 'danger')
+    """Set this year's reading goal (a reading_goals row, ROADMAP 12.3);
+    0 or empty clears it. Past years' goals are kept as they were."""
+    try:
+        goal = int(request.form.get('reading_goal') or 0)
+    except ValueError:
+        flash('Reading goal must be a whole number.', 'danger')
+        return redirect(url_for('user.profile', username=current_user.username))
+    if goal < 0 or goal > 10000:
+        flash('Reading goal must be between 0 and 10,000.', 'danger')
         return redirect(url_for('user.profile', username=current_user.username))
 
+    year = datetime.now().year
+    conn = get_db()
     try:
-        goal_value = int(reading_goal)
-        if goal_value < 0:
-            flash('Reading goal must be a positive number!', 'danger')
-            return redirect(url_for('user.profile', username=current_user.username))
-
-        conn = get_db()
-        try:
-            conn.execute('UPDATE users SET reading_goal = ? WHERE id = ?', (goal_value, current_user.id))
-            conn.commit()
-            flash('Reading goal updated successfully!', 'success')
-        except Exception as e:
-            conn.rollback()
-            flash('An error occurred while updating your reading goal.', 'danger')
-
-    except ValueError:
-        flash('Reading goal must be a valid number!', 'danger')
-
+        if goal:
+            conn.execute('''INSERT INTO reading_goals (user_id, year, goal) VALUES (?, ?, ?)
+                            ON CONFLICT (user_id, year) DO UPDATE SET goal = excluded.goal''',
+                         (current_user.id, year, goal))
+        else:
+            conn.execute('DELETE FROM reading_goals WHERE user_id = ? AND year = ?', (current_user.id, year))
+        conn.commit()
+        flash(f'{year} reading goal set to {goal}.' if goal else f'{year} reading goal cleared.', 'success')
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Reading goal update failed')
+        flash('An error occurred while updating your reading goal.', 'danger')
     return redirect(url_for('user.profile', username=current_user.username))
 
 @user_blueprint.route('/update_email', methods=['POST'])
@@ -684,80 +510,6 @@ def upload_avatar():
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
-
-def calculate_media_stats(conn, user_id, kind):
-    """Movie or vinyl numbers for the profile's Movies / Vinyls tab, kept
-    apart from the book stats (which are books only). `done` and `want`
-    count the type's statuses (watched / want to watch, listened / want to
-    listen); hours come from runtime_minutes (a record's Length). None when
-    the user has none of this type and hasn't marked or reviewed any, so the
-    tab stays hidden."""
-    view = media.VIEWS[kind]          # our own constants, never user input
-    params = {'u': user_id, 'kind': kind,
-              'done': media.DONE_STATUS[kind], 'want': media.WANT_STATUS[kind]}
-    stats = dict(conn.execute(f'''
-        WITH shelf AS (
-            SELECT * FROM {view} WHERE added_by = :u AND owned = 1 AND removed_at IS NULL
-        ),
-        done AS (
-            SELECT b.* FROM collections c JOIN books b ON b.id = c.book_id
-            WHERE c.user_id = :u AND c.status = :done AND b.media_type = :kind
-        )
-        SELECT
-            (SELECT COUNT(*) FROM shelf) AS owned,
-            (SELECT COUNT(*) FROM done) AS done,
-            (SELECT COUNT(*) FROM collections c
-             WHERE c.user_id = :u AND c.status = :want AND {only(kind, 'c.book_id')}) AS want,
-            (SELECT SUM(runtime_minutes) FROM done) AS minutes_done,
-            (SELECT SUM(runtime_minutes) FROM shelf) AS minutes_owned,
-            (SELECT ROUND(AVG(r.rating), 1) FROM read_data r
-             WHERE r.user_id = :u AND r.rating IS NOT NULL AND {only(kind, 'r.book_id')}) AS avg_rating,
-            (SELECT COUNT(*) FROM read_data r
-             WHERE r.user_id = :u AND (r.rating IS NOT NULL OR r.comment IS NOT NULL)
-               AND {only(kind, 'r.book_id')}) AS reviews
-    ''', params).fetchone())
-    if not (stats['owned'] or stats['done'] or stats['reviews'] or stats['want']):
-        return None
-    stats['by_format'] = [dict(r) for r in conn.execute(f'''
-        SELECT COALESCE(NULLIF(format, ''), 'Unknown') AS format, COUNT(*) AS count
-        FROM {view} WHERE added_by = ? AND owned = 1 AND removed_at IS NULL
-        GROUP BY 1 ORDER BY count DESC, format
-    ''', (user_id,)).fetchall()]
-    stats['hours_done'] = round((stats['minutes_done'] or 0) / 60, 1)
-    stats['hours_owned'] = round((stats['minutes_owned'] or 0) / 60, 1)
-    return stats
-
-
-def calculate_library_stats(conn, user_id):
-    """Statistics about one user's library: the books on their shelf now
-    (owned, not wishlist entries, not removed)."""
-    stats = dict(conn.execute('''
-        WITH shelf AS (
-            SELECT * FROM library_books
-            WHERE added_by = :u AND owned = 1 AND removed_at IS NULL
-        )
-        SELECT
-            (SELECT COUNT(*) FROM shelf) AS total_books,
-            (SELECT SUM(CAST(page_count AS INTEGER)) FROM shelf
-             WHERE format IS NOT 'Audiobook') AS total_pages,
-            (SELECT COUNT(*) FROM shelf s
-             WHERE EXISTS (SELECT 1 FROM collections c
-                           WHERE c.book_id = s.id AND c.user_id = :u AND c.status = 'read')) AS read_books,
-            (SELECT COUNT(DISTINCT LOWER(author)) FROM shelf
-             WHERE author IS NOT NULL AND author != '') AS unique_authors,
-            (SELECT title FROM shelf WHERE format IS NOT 'Audiobook'
-             ORDER BY CAST(page_count AS INTEGER) DESC LIMIT 1) AS longest_book,
-            (SELECT MAX(CAST(page_count AS INTEGER)) FROM shelf
-             WHERE format IS NOT 'Audiobook') AS longest_pages,
-            (SELECT genre FROM shelf
-             WHERE genre IS NOT NULL AND genre != ''
-             GROUP BY LOWER(genre) ORDER BY COUNT(*) DESC LIMIT 1) AS most_common_genre
-    ''', {'u': user_id}).fetchone())
-    if stats['total_books']:
-        stats['read_percentage'] = round((stats['read_books'] / stats['total_books']) * 100)
-        stats['total_pages'] = "{:,}".format(int(stats['total_pages'] or 0))
-        stats['longest_pages'] = "{:,}".format(int(stats['longest_pages'] or 0))
-    return stats
 
 def _export_target():
     """Whose data to export: yourself, or (admins only) ?user_id=N."""

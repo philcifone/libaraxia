@@ -42,6 +42,19 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ---- Appearance: style and mode pickers ------------------------------------
+// Mode is Light | Dark (12.4). Following the system (data-mode="system", the
+// default), the button for the mode in effect shows pressed, and changes
+// with the device; "Follow system" (.follow-system) goes back to that.
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+function syncModeButtons() {
+    const mode = document.documentElement.dataset.mode;
+    const effective = mode === 'system' ? (darkQuery.matches ? 'dark' : 'light') : mode;
+    document.querySelectorAll('.theme-opt[data-kind="mode"]:not(.follow-system)')
+        .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === effective)));
+}
+document.addEventListener('DOMContentLoaded', syncModeButtons);
+darkQuery.addEventListener('change', syncModeButtons);
+
 // Any [data-theme-picker] group of .theme-opt buttons (Profile -> Appearance,
 // the sidebar's Mode shortcut). Applies instantly by setting data-style /
 // data-mode on <html>, then saves; reverts if the save fails. Every picker on
@@ -52,8 +65,9 @@ document.addEventListener('click', async event => {
     const kind = btn.dataset.kind;              // 'style', 'mode', 'accent' or 'font'
     const root = document.documentElement;
     const previous = root.dataset[kind];
-    const press = value => document.querySelectorAll(`.theme-opt[data-kind="${kind}"]`)
-        .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
+    const press = value => kind === 'mode' ? syncModeButtons()
+        : document.querySelectorAll(`.theme-opt[data-kind="${kind}"]`)
+            .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
 
     if (btn.dataset.value === previous) return;
     root.dataset[kind] = btn.dataset.value;

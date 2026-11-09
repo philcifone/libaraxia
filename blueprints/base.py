@@ -1,6 +1,7 @@
-from flask import render_template, redirect, url_for, request, Blueprint, jsonify
+from flask import render_template, redirect, url_for, request, Blueprint, jsonify, abort, flash
 from flask_login import login_required, current_user
 from utils.database import get_db
+from utils import media, search, sorting
 from datetime import datetime
 from models import get_library_members, is_friends_with
 from utils.book_utils import get_filter_options, shelf_filter, format_filter, card_json
@@ -13,325 +14,130 @@ def home():
         return redirect(url_for('base.index'))
     return redirect(url_for('auth.login'))
 
-@base_blueprint.route("/index")
+@base_blueprint.route("/shelves")
 @login_required
-def index():
-    # Get pagination parameters
+def shelves():
+    """The sidebar's Shelves link (ROADMAP 11.1): your shelf in the section
+    you used last (the shelf_section cookie, set by every Shelves page in
+    app.py), books the first time."""
+    kind = request.cookies.get('shelf_section')
+    endpoint = media.SHELF_ENDPOINTS.get(kind, media.SHELF_ENDPOINTS[media.BOOK])['mine']
+    return redirect(url_for(endpoint))
+
+
+def library_page(template, owner_ids, data_user, **extra):
+    """A Library grid (books): the shelves of `owner_ids`, with the search,
+    filters, sort and paging from the query string. Shared by your Library,
+    the household's and a friend's.
+
+    `data_user` is whose statuses, ratings and tags the status / rating /
+    tag filters, the search's tag matching, the sorts by date read and
+    rating, and list view's columns use: the entries in view (Phil,
+    2026-11-08). That's you on your own and the household's shelves, the
+    friend on theirs. Infinite scroll asks the same URL with
+    X-Requested-With and gets JSON."""
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 30, type=int)
-
-    # Get sort parameters with validation
-    sort_by = request.args.get("sort_by", "title")
-    sort_order = request.args.get("sort_order", "asc")
-
-    valid_columns = {"title", "author", "publish_year", "created_at"}
-    valid_orders = {"asc", "desc"}
-
-    if sort_by not in valid_columns:
-        sort_by = "title"
-    if sort_order not in valid_orders:
-        sort_order = "asc"
-
-    # Limit per_page to reasonable values
-    per_page = max(12, min(per_page, 100))
+    per_page = max(12, min(request.args.get("per_page", 30, type=int), 100))
+    # Sort (utils/sorting.py: the menu's choices, unknown ones fall back to title)
+    sort_by, sort_order = sorting.choice(request.args, media.BOOK)
 
     conn = get_db()
-    # "My Library" now shows ONLY books added by current user
-    query = '''
-        SELECT b.* FROM library_books b
-        WHERE b.added_by = ?
-    '''
-    params = [current_user.id]
+    marks = ','.join('?' * len(owner_ids))
+    query = f'SELECT b.* FROM library_books b WHERE b.added_by IN ({marks})'
+    params = list(owner_ids)
 
     # Only what's on the shelf unless Show asks for not-owned or removed ones
     query += shelf_filter(request.args)
 
-    # Apply filters if they exist (simplified - no complex joins unless needed)
+    term = (request.args.get('search_term') or '').strip()
+    if term:
+        match_sql, match_params = search.match(term, ['title', 'subtitle', 'author', 'publisher', 'isbn',
+                                                      'publish_year'], viewer_id=data_user)
+        query += f' AND ({match_sql})'
+        params += match_params
     if request.args.get('genre'):
         query += " AND LOWER(b.genre) = LOWER(?)"
         params.append(request.args.get('genre'))
-
     # Book / Audiobook (8B.2)
     fmt_sql, fmt_params = format_filter(request.args.get('format'))
     query += fmt_sql
     params.extend(fmt_params)
-
     if request.args.get('read_status'):
         query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
-        params.extend([current_user.id, request.args.get('read_status')])
-
-    if request.args.get('rating'):
+        params.extend([data_user, request.args.get('read_status')])
+    rating = request.args.get('rating', type=int)
+    if rating:
         query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
-        params.extend([current_user.id, int(request.args.get('rating'))])
-
-    tags = request.args.getlist('tags[]')
+        params.extend([data_user, rating])
+    tags = [t for t in request.args.getlist('tags[]') if t]
     if tags:
-        # Validate tags exist for this user
-        valid_tags_query = 'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?'
-        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
+        tag_marks = ','.join('?' * len(tags))
+        query += (" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id"
+                  f" AND t.user_id = ? AND t.tag_name IN ({tag_marks}))")
+        params += [data_user, *tags]
 
-        # Filter to only valid tags
-        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
-        if valid_tags_in_request:
-            placeholders = ','.join(['?' for _ in valid_tags_in_request])
-            query += f" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = ? AND t.tag_name IN ({placeholders}))"
-            params.append(current_user.id)
-            params.extend(valid_tags_in_request)
-
-    # Get total count before pagination
-    count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")
-    total_count = conn.execute(count_query, params).fetchone()[0]
-
-    # Add sorting and pagination
-    query += f" ORDER BY b.{sort_by} {sort_order} LIMIT ? OFFSET ?"
+    total_count = conn.execute(query.replace("SELECT b.*", "SELECT COUNT(b.id)", 1), params).fetchone()[0]
+    order_sql, order_params = sorting.order_by(sort_by, sort_order, data_user)
     offset = (page - 1) * per_page
-    params.extend([per_page, offset])
-
-    # Get paginated books
-    books = conn.execute(query, params).fetchall()
+    books = conn.execute(query + order_sql + " LIMIT ? OFFSET ?",
+                         [*params, *order_params, per_page, offset]).fetchall()
     has_more = (offset + len(books)) < total_count
 
-    # Handle AJAX requests for infinite scroll
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        books_data = card_json(conn, current_user.id, books)   # list view's columns too
+        return jsonify({'books': card_json(conn, data_user, books),   # list view's columns too
+                        'total_count': total_count, 'has_more': has_more, 'current_page': page})
 
-        return jsonify({
-            'books': books_data,
-            'total_count': total_count,
-            'has_more': has_more,
-            'current_page': page
-        })
+    return render_template(template, books=books,
+                           filter_options=get_filter_options(owner_ids, data_user=data_user),
+                           sort_by=sort_by, sort_order=sort_order, total_count=total_count,
+                           has_more=has_more, current_page=page, marks_user=data_user, **extra)
 
-    # Get filter options for the template
-    filter_options = get_filter_options([current_user.id])
 
-    return render_template("index.html",
-                         books=books,
-                         filter_options=filter_options,
-                         sort_by=sort_by,
-                         sort_order=sort_order,
-                         total_count=total_count,
-                         has_more=has_more,
-                         current_page=page)
+@base_blueprint.route("/index")
+@login_required
+def index():
+    """Your Library: the books you own"""
+    return library_page("index.html", [current_user.id], current_user.id)
 
 
 @base_blueprint.route("/shared-library")
 @login_required
 def shared_library():
-    """View combined library from all users in your shared library group"""
-    # Get pagination parameters
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 30, type=int)
-    sort_by = request.args.get("sort_by", "title")
-    sort_order = request.args.get("sort_order", "asc")
+    """The household's books (everyone in your library group), or one
+    member's with ?member= (and yours)"""
+    all_members = get_library_members(current_user.id)
     member_filter = request.args.get("member", type=int)
+    owner_ids = all_members
+    if member_filter in all_members:
+        owner_ids = list({member_filter, current_user.id})
+    else:
+        member_filter = None
 
-    valid_columns = {"title", "author", "publish_year", "created_at"}
-    valid_orders = {"asc", "desc"}
-
-    if sort_by not in valid_columns:
-        sort_by = "title"
-    if sort_order not in valid_orders:
-        sort_order = "asc"
-
-    per_page = max(12, min(per_page, 100))
-
-    conn = get_db()
-    # Get all users in shared library (from library_members table)
-    shared_user_ids = get_library_members(current_user.id)
-
-    # If member filter is applied, validate it's in the shared library
-    if member_filter:
-        if member_filter not in shared_user_ids:
-            # Invalid member filter, ignore it
-            member_filter = None
-        else:
-            # Filter to show books from selected member AND current user
-            shared_user_ids = [member_filter, current_user.id]
-            # Remove duplicate if user selected themselves
-            shared_user_ids = list(set(shared_user_ids))
-
-    # Build query to show books from all shared library members (or filtered member)
-    placeholders = ','.join(['?' for _ in shared_user_ids])
-    query = f'''
-        SELECT b.* FROM library_books b
-        WHERE b.added_by IN ({placeholders})
-    '''
-    params = list(shared_user_ids)
-
-    # Only what's on the shelf unless Show asks for not-owned or removed ones
-    query += shelf_filter(request.args)
-
-    # Apply filters
-    if request.args.get('genre'):
-        query += " AND LOWER(b.genre) = LOWER(?)"
-        params.append(request.args.get('genre'))
-
-    # Book / Audiobook (8B.2)
-    fmt_sql, fmt_params = format_filter(request.args.get('format'))
-    query += fmt_sql
-    params.extend(fmt_params)
-
-    if request.args.get('read_status'):
-        query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
-        params.extend([current_user.id, request.args.get('read_status')])
-
-    if request.args.get('rating'):
-        query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
-        params.extend([current_user.id, int(request.args.get('rating'))])
-
-    tags = request.args.getlist('tags[]')
-    if tags:
-        valid_tags_query = 'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?'
-        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
-        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
-        if valid_tags_in_request:
-            placeholders_tags = ','.join(['?' for _ in valid_tags_in_request])
-            query += f" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = ? AND t.tag_name IN ({placeholders_tags}))"
-            params.append(current_user.id)
-            params.extend(valid_tags_in_request)
-
-    # Get total count
-    count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")
-    total_count = conn.execute(count_query, params).fetchone()[0]
-
-    # Add sorting and pagination
-    query += f" ORDER BY b.{sort_by} {sort_order} LIMIT ? OFFSET ?"
-    offset = (page - 1) * per_page
-    params.extend([per_page, offset])
-
-    books = conn.execute(query, params).fetchall()
-    has_more = (offset + len(books)) < total_count
-
-    # Handle AJAX requests
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        books_data = card_json(conn, current_user.id, books)   # list view's columns too
-
-        return jsonify({
-            'books': books_data,
-            'total_count': total_count,
-            'has_more': has_more,
-            'current_page': page
-        })
-
-    # Get shared library members for display (always get all members, not filtered)
-    all_library_members = get_library_members(current_user.id)
     shared_members = []
-    if len(all_library_members) > 0:
-        placeholders_members = ','.join(['?' for _ in all_library_members])
-        shared_members = conn.execute(
-            f'SELECT id, username, avatar_url FROM users WHERE id IN ({placeholders_members})',
-            all_library_members
-        ).fetchall()
-
-    filter_options = get_filter_options(all_library_members)
-
-    return render_template("shared_library.html",
-                         books=books,
-                         filter_options=filter_options,
-                         sort_by=sort_by,
-                         sort_order=sort_order,
-                         total_count=total_count,
-                         has_more=has_more,
-                         current_page=page,
-                         shared_members=shared_members,
-                         member_filter=member_filter)
+    if all_members:
+        marks = ','.join('?' * len(all_members))
+        shared_members = get_db().execute(
+            f'SELECT id, username, avatar_url FROM users WHERE id IN ({marks})', all_members).fetchall()
+    return library_page("shared_library.html", owner_ids, current_user.id,
+                        shared_members=shared_members, member_filter=member_filter)
 
 
 @base_blueprint.route("/friends-libraries")
 @login_required
 def friends_libraries():
-    """View all friends and their library stats"""
-    conn = get_db()
-    # Get all friends with their book counts
-    friends = conn.execute('''
-        SELECT
-            u.id,
-            u.username,
-            u.avatar_url,
-            u.bio,
-            COUNT(DISTINCT b.id) as book_count
-        FROM users u
-        JOIN friendships f ON (
-            (f.user_id_1 = ? AND f.user_id_2 = u.id) OR
-            (f.user_id_2 = ? AND f.user_id_1 = u.id)
-        )
-        LEFT JOIN library_books b ON b.added_by = u.id AND b.owned = 1 AND b.removed_at IS NULL
-        GROUP BY u.id
-        ORDER BY u.username
-    ''', (current_user.id, current_user.id)).fetchall()
-
-    return render_template('friends_libraries.html', friends=friends)
+    """Old Friends' Libraries tab: friends are their own page now (11.3)."""
+    return redirect(url_for('friends.index'))
 
 
 @base_blueprint.route("/library/<username>")
 @login_required
 def friend_library(username):
-    """View a friend's library"""
-    conn = get_db()
-    # Get the friend's user info
-    friend = conn.execute(
-        'SELECT id, username, avatar_url, bio, reading_goal FROM users WHERE username = ?',
-        (username,)
-    ).fetchone()
-
+    """A friend's books (11.3): the same grid as yours, filtered and sorted
+    by their statuses, ratings and tags (library_page's data_user)."""
+    friend = get_db().execute('SELECT id, username FROM users WHERE username = ?', (username,)).fetchone()
     if not friend:
-        from flask import flash, abort
         abort(404)
-
-    # Check if they are friends or if the user is viewing their own library
     if friend['id'] != current_user.id and not is_friends_with(current_user.id, friend['id']):
-        from flask import flash, abort
         flash('You must be friends to view this library', 'warning')
         abort(403)
-
-    # Get shelf filter
-    shelf = request.args.get('shelf')
-
-    # Build query to get friend's books
-    if shelf == 'wishlist':
-        # Show wishlist books
-        query = '''
-            SELECT DISTINCT b.*
-            FROM books b
-            JOIN wishlist w ON b.id = w.book_id
-            WHERE w.user_id = ?
-        '''
-        params = [friend['id']]
-    else:
-        # Show library books (excluding wishlist)
-        query = '''
-            SELECT b.*
-            FROM library_books b
-            WHERE b.added_by = ?
-            AND b.owned = 1 AND b.removed_at IS NULL
-        '''
-        params = [friend['id']]
-
-        # Apply shelf filter if specified
-        if shelf:
-            query += '''
-                AND EXISTS (
-                    SELECT 1 FROM collections c
-                    WHERE c.book_id = b.id
-                    AND c.user_id = ?
-                    AND c.status = ?
-                )
-            '''
-            params.extend([friend['id'], shelf])
-
-    # Note: Privacy filtering will be added in next phase
-    # For now, friends can see all books
-
-    query += ' ORDER BY b.title'
-
-    books = conn.execute(query, params).fetchall()
-    book_count = len(books)
-
-    return render_template('friend_library.html',
-                         friend=friend,
-                         books=books,
-                         book_count=book_count,
-                         shelf=shelf)
-
-
+    return library_page('friend_library.html', [friend['id']], friend['id'], friend=friend)

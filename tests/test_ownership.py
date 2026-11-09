@@ -98,7 +98,7 @@ def test_movie_and_music_grids_hide_not_owned(client, db, people):
 # --- counts and stats ---------------------------------------------------------------
 
 def test_owned_counts_skip_not_owned_but_reading_counts(app, db, people):
-    from blueprints.user import calculate_library_stats, calculate_media_stats
+    from utils.stats import type_stats
     alice = people['alice']
     add_book(db, alice, title='Mine')
     heard = not_owned(db, alice, 'Library audiobook')
@@ -110,12 +110,13 @@ def test_owned_counts_skip_not_owned_but_reading_counts(app, db, people):
     with app.app_context():
         from utils.database import get_db
         conn = get_db()
-        stats = calculate_library_stats(conn, alice)
-        movies = calculate_media_stats(conn, alice, 'video')
-    assert stats['total_books'] == 1
+        books = type_stats(conn, alice, 'book')
+        movies = type_stats(conn, alice, 'video')
+    assert books['owned'] == 1 and books['not_owned'] == 1
     # Watched counts (and its hours); owned doesn't
-    assert (movies['owned'], movies['hours_owned']) == (0, 0)
-    assert (movies['done'], movies['hours_done']) == (1, 2.0)
+    assert (movies['owned'], movies['size_owned']) == (0, 0)
+    assert (movies['done'], movies['size_done']) == (1, 2.0)
+    assert movies['not_owned'] == 1
     # The review and the 'read' status still count as reading
     assert scalar(db, "SELECT COUNT(*) FROM collections WHERE user_id = ? AND status = 'read'", alice) == 1
 
@@ -229,7 +230,7 @@ def test_book_form_saves_audiobook_format(client, db, people):
 
 
 def test_audiobooks_never_count_pages(app, db, people):
-    from blueprints.user import calculate_library_stats, calculate_user_stats
+    from utils.stats import type_stats
     alice = people['alice']
     paper = add_book(db, alice, title='Paper')
     audio = add_book(db, alice, title='Owned audio files')        # owned, say
@@ -241,11 +242,10 @@ def test_audiobooks_never_count_pages(app, db, people):
     with app.app_context():
         from utils.database import get_db
         conn = get_db()
-        library = calculate_library_stats(conn, alice)
-        reading = calculate_user_stats(conn, alice)
-    assert library['total_books'] == 2                       # owned audiobooks are owned
-    assert library['total_pages'] == '300' and library['longest_book'] == 'Paper'
-    assert reading['books_read'] == 2 and reading['pages_read'] == 300
+        s = type_stats(conn, alice, 'book')
+    assert s['owned'] == 2                                   # owned audiobooks are owned
+    assert s['size_owned'] == 300 and s['longest']['title'] == 'Paper'
+    assert s['done'] == 2 and s['size_done'] == 300
 
 
 def test_grid_badges_audiobooks_and_format_filter(client, db, people):

@@ -1,0 +1,348 @@
+{# Profile statistics (ROADMAP 12.1). Two levels: Overview | Insights on top,
+   then Books | Movies | Music (only the types the user has; books always).
+   Every type gets the same blocks, worded by `m` (media.media_labels), from
+   utils/stats.py type_stats(). All panels are in the page; user.js
+   showStats() shows the one matching the section's data-view and data-kind,
+   so switching is instant and works for screen readers (hidden, not just
+   invisible). Without JS the first panel, books' Overview, shows.
+
+   All (12.2, stats.all_stats) comes first when there's more than one type:
+   totals, time spent, Year by year (with past reading goals) and insights
+   across types.
+
+   Expects: type_stats [(m, s)], all_stats, user, is_own_profile. #}
+{% if type_stats %}
+{# All (12.2): first when there's more than one type, and where Year by year
+   lives; with books only, Year by year moves to the Books tab #}
+{% set multi = type_stats|length > 1 %}
+{% set labels = {} %}{% for m, s in type_stats %}{% set _ = labels.update({m.type: m}) %}{% endfor %}
+
+{# "22 books · 3 movies": the nonzero counts of a {type: n} or [(type, n)] #}
+{% macro by_type(pairs) -%}
+{%- set parts = [] -%}
+{%- for kind, n in pairs %}{% if n %}{% set _ = parts.append('{:,}'.format(n) ~ ' ' ~ (labels[kind].noun if n == 1 else labels[kind].plural)) %}{% endif %}{% endfor -%}
+{{ parts|join(' · ') if parts else 'none' }}
+{%- endmacro %}
+
+{# Year by year (12.2/12.3): a row per year, newest first. The text says it
+   all (screen readers read that); the bar under it is split by type on
+   one scale for every year, with the year's reading goal as a tick. #}
+{% macro year_block(years) -%}
+<section class="year-by-year mb-8" aria-label="Year by year">
+    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-3">
+        <h3 class="text-lg font-display text-content-primary">Year by year</h3>
+        {% if multi %}
+        <ul class="flex gap-3 text-xs text-content-secondary" aria-hidden="true">
+            {% for m, s in type_stats %}<li class="flex items-center gap-1"><span class="year-seg inline-block w-3 h-3" data-kind="{{ m.type }}"></span>{{ SECTION_NAMES[m.type] }}</li>{% endfor %}
+            <li class="flex items-center gap-1"><span class="year-goal-key inline-block w-0.5 h-3"></span>Book goal</li>
+        </ul>
+        {% endif %}
+    </div>
+    <ol class="space-y-2.5">
+        {% for y in years %}
+        <li>
+            <div class="flex items-baseline justify-between gap-3 text-sm">
+                <span class="font-semibold text-content-primary">{% if y.since %}{{ y.since }}–{{ y.year }}{% else %}{{ y.year }}{% endif %}</span>
+                <span class="text-right text-content-secondary">
+                    {%- if y.total %}<span class="text-content-primary">{{ by_type(y.counts.items()) }}</span>{% elif y.since %}none{% else %}nothing yet{% endif %}
+                    {%- if y.goal %} · goal {{ y.goal }}{% if (y.counts.get('book') or 0) >= y.goal %}, met{% endif %}{% endif -%}
+                </span>
+            </div>
+            {% if not y.since %}
+            <div class="year-bar mt-1" aria-hidden="true">
+                {% for kind, pct in y.segments %}<span class="year-seg" data-kind="{{ kind }}" style="width: {{ '%.1f'|format(pct) }}%"></span>{% endfor %}
+                {% if y.goal_pct %}<span class="year-goal" style="left: {{ '%.1f'|format(y.goal_pct) }}%"></span>{% endif %}
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+</section>
+{%- endmacro %}
+
+{# Ratings 5 down to 1, a bar each; the numbers are printed too #}
+{% macro rating_bars(s) -%}
+                <div class="bg-primary rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-content-primary mb-3">Your ratings</h3>
+                    {% if s.rated %}
+                    {% set top = s.ratings|max(attribute='count') %}
+                    <ul class="space-y-1.5">
+                        {% for r in s.ratings %}
+                        <li class="flex items-center gap-3 text-sm">
+                            <span class="w-14 shrink-0 text-content-secondary">{{ r.stars }} ★</span>
+                            <span class="flex-1 h-3 bg-secondary border border-rule" aria-hidden="true">
+                                <span class="block h-full bg-accent" style="width: {{ (100 * r.count / top.count)|round|int if top.count else 0 }}%"></span>
+                            </span>
+                            <span class="w-8 text-right text-content-primary">{{ r.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-content-secondary text-sm">No ratings yet.</p>
+                    {% endif %}
+                </div>
+{%- endmacro %}
+
+{% macro tile(label, value, sub=None, wide=False) -%}
+<div class="bg-primary rounded-lg p-3 sm:p-4 {{ 'col-span-2' if wide }}">
+    <dt class="text-sm text-content-secondary mb-1">{{ label }}</dt>
+    <dd class="text-2xl sm:text-3xl font-bold text-content-primary">{{ value }}</dd>
+    {% if sub %}<dd class="mt-1 text-xs text-content-secondary">{{ sub }}</dd>{% endif %}
+</div>
+{%- endmacro %}
+
+<section id="stats" class="bg-secondary rounded-xl overflow-hidden card"
+         data-stats data-view="overview" data-kind="{{ 'all' if multi else type_stats[0][0].type }}" aria-label="Statistics">
+    <div class="flex" role="tablist" aria-label="Statistics view">
+        {% for key, label in [('overview', 'Overview'), ('insights', 'Insights')] %}
+        <button type="button" role="tab" data-click="statsView" data-stats-view="{{ key }}"
+                aria-selected="{{ 'true' if loop.first else 'false' }}"
+                class="tab tab-button {% if loop.first %}active{% endif %}">{{ label }}</button>
+        {% endfor %}
+    </div>
+
+    {% if multi %}
+    <div class="px-4 sm:px-6 pt-5">
+        <div class="bg-primary rounded-xl overflow-hidden card">
+            <div class="flex items-stretch" role="group" aria-label="Section">
+                <button type="button" data-click="statsKind" data-stats-kind="all" aria-pressed="true"
+                        class="tab tab-active">All</button>
+                {% for m, s in type_stats %}
+                <button type="button" data-click="statsKind" data-stats-kind="{{ m.type }}" aria-pressed="false"
+                        class="tab">{{ SECTION_NAMES[m.type] }}</button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="p-4 sm:p-6">
+        {% if multi %}
+        {% set a = all_stats %}
+        {# ---------------- All: Overview ---------------- #}
+        <div data-stats-panel data-kind="all" data-view="overview">
+            <h2 class="mb-6 text-2xl font-display text-content-primary">Everything</h2>
+            <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                {{ tile('Owned', '{:,}'.format(a.owned), by_type(a.owned_by_type)) }}
+                {{ tile('Finished', '{:,}'.format(a.done), by_type(a.done_by_type)) }}
+                {{ tile('Finished this year', a.done_this_year, by_type(a.this_year_by_type)) }}
+                {{ tile('Average rating', (a.avg_rating ~ ' ★') if a.avg_rating else '–', a.reviews ~ ' review' ~ ('' if a.reviews == 1 else 's')) }}
+            </dl>
+            {% if a.time %}
+            <p class="mb-8 bg-primary rounded-lg p-3 sm:p-4 text-content-primary">
+                <span class="text-sm text-content-secondary">Time spent:</span>
+                {% for kind, amount in a.time -%}
+                <span class="whitespace-nowrap"><strong>{{ '{:,}'.format(amount) }}</strong> {{ 'pages read' if kind == 'book' else 'hours ' ~ labels[kind].verb_past }}</span>{{ ' · ' if not loop.last }}
+                {%- endfor %}
+            </p>
+            {% endif %}
+            {% if a.years %}{{ year_block(a.years) }}{% endif %}
+        </div>
+
+        {# ---------------- All: Insights ---------------- #}
+        <div data-stats-panel data-kind="all" data-view="insights" hidden>
+            <h2 class="mb-6 text-2xl font-display text-content-primary">Everything: insights</h2>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="bg-primary rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-content-primary mb-3">Creators you return to</h3>
+                    {% if a.top_creators %}
+                    <ol class="space-y-2">
+                        {% for row in a.top_creators %}
+                        <li class="flex items-baseline gap-3 border-t border-rule pt-2 first:border-0 first:pt-0">
+                            <span class="flex-1 min-w-0 truncate text-content-primary">{{ row.name }}</span>
+                            <span class="text-xs text-content-secondary">{% for k in row.kinds %}{{ SECTION_NAMES[k] }}{{ ', ' if not loop.last }}{% endfor %}</span>
+                            <span class="font-semibold text-accent">{{ row.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}<p class="text-content-secondary text-sm">Nothing finished yet.</p>{% endif %}
+                </div>
+                <div class="bg-primary rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-content-primary mb-3">Top genres</h3>
+                    {% if a.top_genres %}
+                    <ol class="space-y-2">
+                        {% for row in a.top_genres %}
+                        <li class="flex items-baseline gap-3 border-t border-rule pt-2 first:border-0 first:pt-0">
+                            <span class="flex-1 min-w-0 truncate text-content-primary">{{ row.genre }}</span>
+                            <span class="font-semibold text-accent">{{ row.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}<p class="text-content-secondary text-sm">No genres yet.</p>{% endif %}
+                </div>
+                {{ rating_bars(a) }}
+                <div class="bg-primary rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-content-primary mb-3">Firsts</h3>
+                    <dl class="space-y-2 text-sm">
+                        {% if a.logging_since %}<div class="flex justify-between gap-3"><dt class="text-content-secondary">Logging since</dt><dd class="text-content-primary">{{ a.logging_since }}</dd></div>{% endif %}
+                        {% if a.oldest %}<div class="flex justify-between gap-3"><dt class="text-content-secondary shrink-0">Oldest on the shelf</dt><dd class="text-right text-content-primary">{{ a.oldest.title }} ({{ a.oldest.year }})</dd></div>{% endif %}
+                        <div class="flex justify-between gap-3"><dt class="text-content-secondary">Added this year</dt><dd class="text-content-primary">{{ a.added_this_year }}</dd></div>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% for m, s in type_stats %}
+        {% set noun = m.plural|capitalize %}
+        {% set done_label = m.status_labels[m.done_status] %}
+        {% set grid_url = shelf_url(m.type, 'mine') if is_own_profile else shelf_url(m.type, 'friend', user.username) %}
+
+        {# ---------------- Overview ---------------- #}
+        <div data-stats-panel data-kind="{{ m.type }}" data-view="overview" {% if multi or not loop.first %}hidden{% endif %}>
+            <div class="flex flex-wrap items-baseline gap-3 mb-6">
+                <h2 class="mr-auto text-2xl font-display text-content-primary">{{ SECTION_NAMES[m.type] }}</h2>
+                <a href="{{ grid_url }}" class="text-sm text-accent hover:text-accent-hover underline">See the {{ m.plural }}</a>
+            </div>
+
+            {% set size_word = 'Pages' if m.type == 'book' else 'Hours' %}
+            {% set tiles = [
+                (noun ~ ' owned', '{:,}'.format(s.owned)),
+                (done_label, '{:,}'.format(s.done)),
+                (done_label ~ ' this year', s.done_this_year),
+                (m.status_labels[m.want_status], s.want),
+                (size_word ~ ' ' ~ m.verb_past, '{:,}'.format(s.size_done)),
+                (size_word ~ ' on the shelf', '{:,}'.format(s.size_owned)),
+                ('Of the shelf ' ~ m.verb_past, s.done_pct ~ '%'),
+                ('Average rating', (s.avg_rating ~ ' ★') if s.avg_rating else '–'),
+                ('Reviews', s.reviews),
+                (m.creator ~ 's on the shelf', s.creators),
+            ] %}
+            {% if s.not_owned %}{% set tiles = tiles + [('Not owned', s.not_owned)] %}{% endif %}
+            <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                {% for label, value in tiles %}
+                <div class="bg-primary rounded-lg p-3 sm:p-4">
+                    <dt class="text-sm text-content-secondary mb-1">{{ label }}</dt>
+                    <dd class="text-2xl sm:text-3xl font-bold text-content-primary">{{ value }}</dd>
+                </div>
+                {% endfor %}
+            </dl>
+            {% if s.longest or s.top_shelf_genre %}
+            <dl class="grid md:grid-cols-2 gap-3 sm:gap-4 mb-8">
+                {% if s.longest %}
+                <div class="bg-primary rounded-lg p-4">
+                    <dt class="text-sm text-content-secondary mb-1">Longest on the shelf</dt>
+                    <dd class="text-lg font-bold text-content-primary">{{ s.longest.title }}
+                        <span class="block text-sm font-normal text-content-secondary">
+                            {%- if m.type == 'book' %}{{ '{:,}'.format(s.longest.size) }} pages{% else %}{{ s.longest.size }}{% endif -%}
+                        </span></dd>
+                </div>
+                {% endif %}
+                {% if s.top_shelf_genre %}
+                <div class="bg-primary rounded-lg p-4">
+                    <dt class="text-sm text-content-secondary mb-1">Most common genre</dt>
+                    <dd class="text-lg font-bold text-content-primary">{{ s.top_shelf_genre }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+            {% endif %}
+
+            {# Finished per month (stats.by_month). One hue, no legend: the
+               title names the series. Screen readers get the summary on the
+               bars and the table below. #}
+            {% set chart = s.by_month %}
+            {% if chart %}
+            {% set busiest = chart.bars|max(attribute='items') %}
+            <figure class="reading-chart mb-8">
+                <figcaption class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
+                    <span class="text-lg font-display text-content-primary">{{ noun }} {{ m.verb_past }} per month</span>
+                    <span class="text-sm text-content-secondary">{{ chart.start }} – {{ chart.end }} · {{ chart.total }} {{ m.noun if chart.total == 1 else m.plural }}</span>
+                </figcaption>
+                <div class="chart-bars" role="img"
+                     aria-label="Bar chart of {{ m.plural }} {{ m.verb_past }} per month, {{ chart.start }} to {{ chart.end }}: {{ chart.total }} in all, most in {{ busiest.name }} ({{ busiest.items }}).">
+                    {% for bar in chart.bars %}
+                    <div class="chart-col" style="--h: {{ bar.pct }}%">
+                        <div class="chart-fill"></div>
+                        <span class="chart-tip">{{ bar.name }}: {{ bar.items }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="chart-labels" aria-hidden="true">
+                    {% for bar in chart.bars %}<span>{{ bar.label }}</span>{% endfor %}
+                </div>
+                <details class="mt-4 text-sm">
+                    <summary class="cursor-pointer text-content-secondary hover:text-accent">Show as a table</summary>
+                    <table class="mt-2 w-full max-w-xs">
+                        <thead><tr class="text-left text-content-secondary"><th class="font-normal py-1">Month</th><th class="font-normal py-1 text-right">{{ noun }}</th></tr></thead>
+                        <tbody>
+                            {% for bar in chart.bars %}
+                            <tr class="border-t border-rule"><td class="py-1 text-content-primary">{{ bar.name }}</td><td class="py-1 text-right text-content-primary">{{ bar.items }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </details>
+            </figure>
+            {% endif %}
+
+            {% if not multi and m.type == 'book' and all_stats and all_stats.years %}{{ year_block(all_stats.years) }}{% endif %}
+
+            {% if s.by_format %}
+            <h3 class="label text-sm pb-1 mb-3">By format</h3>
+            <ul class="flex flex-wrap gap-3">
+                {% for f in s.by_format %}
+                <li class="px-3 py-1 bg-primary border border-card rounded-pill text-sm text-content-primary font-mono">{{ f.format|format_label }}: {{ f.count }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        {# ---------------- Insights ---------------- #}
+        <div data-stats-panel data-kind="{{ m.type }}" data-view="insights" hidden>
+            <div class="flex flex-wrap items-baseline gap-3 mb-6">
+                <h2 class="mr-auto text-2xl font-display text-content-primary">{{ SECTION_NAMES[m.type] }}: insights</h2>
+                <a href="{{ grid_url }}" class="text-sm text-accent hover:text-accent-hover underline">See the {{ m.plural }}</a>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4">
+                {% for title, items, empty in [
+                    ('Top genres', s.top_genres, 'No genres on what you ' ~ m.verb_past ~ ' yet.'),
+                    ('Top ' ~ m.creator|lower ~ 's', s.top_creators, 'Nothing ' ~ m.verb_past ~ ' yet.'),
+                ] %}
+                <div class="bg-primary rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-content-primary mb-3">{{ title }}</h3>
+                    {% if items %}
+                    <ol class="space-y-2">
+                        {% for row in items %}
+                        <li class="flex items-baseline gap-3 border-t border-rule pt-2 first:border-0 first:pt-0">
+                            <span class="flex-1 min-w-0 truncate text-content-primary">{{ row.genre or row.name }}</span>
+                            {% if row.avg_rating %}<span class="text-sm text-content-secondary">{{ row.avg_rating }} ★</span>{% endif %}
+                            <span class="font-semibold text-accent">{{ row.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="text-content-secondary text-sm">{{ empty }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                {{ rating_bars(s) }}
+
+                <div class="bg-primary rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-content-primary mb-3">Collections</h3>
+                    {% if s.statuses %}
+                    <ul class="flex flex-wrap gap-2">
+                        {% for row in s.statuses %}
+                        <li class="px-3 py-1 border border-rule-strong rounded-pill text-sm text-content-primary">{{ STATUS_LABELS.get(row.status, row.status) }}: {{ row.count }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-content-secondary text-sm">Nothing in a collection yet.</p>
+                    {% endif %}
+                </div>
+
+                {% if s.by_decade %}
+                <div class="bg-primary rounded-lg p-4 md:col-span-2">
+                    <h3 class="text-lg font-semibold text-content-primary mb-3">On the shelf by decade</h3>
+                    <ul class="flex flex-wrap gap-2">
+                        {% for row in s.by_decade %}
+                        <li class="px-3 py-1 border border-rule-strong rounded-pill text-sm text-content-primary font-mono">{{ row.decade }}s: {{ row.count }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}

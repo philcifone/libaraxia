@@ -1,0 +1,52 @@
+{# Reading goal under the bio (ROADMAP 12.3): this year's, one line and a thin
+   bar. Past years are the stats card's Year by year (_profile_stats.html).
+   Goals are per year (reading_goals,
+   utils/stats.py reading_goals()); a year counts books with a session
+   finished in it. Editing is a <details> with the number field, so it needs
+   no script. Your own profile only offers to set one; friends see the goal,
+   or nothing.
+
+   Expects: goals (or None), is_own_profile. #}
+{% set pencil %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>{% endset %}
+
+{% macro goal_form(goals, label) -%}
+<form method="POST" action="{{ url_for('user.update_reading_goal') }}" class="mt-2 flex flex-wrap items-center gap-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="reading_goal" class="text-sm text-content-secondary">Books to read in {{ goals.year }}</label>
+    <input type="number" id="reading_goal" name="reading_goal" min="0" max="10000" inputmode="numeric"
+           value="{{ goals.goal or '' }}" placeholder="30"
+           class="w-24 px-3 py-1 bg-primary border border-rule-strong rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+    <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded btn">{{ label }}</button>
+    {% if goals.goal %}<span class="w-full text-xs text-content-secondary">0 clears it.</span>{% endif %}
+</form>
+{%- endmacro %}
+
+{% if goals and (goals.goal or is_own_profile) %}
+<div class="reading-goal mt-4 max-w-md">
+    {% if goals.goal %}
+    <div class="flex items-center gap-2 text-sm">
+        <p class="text-content-primary">
+            <span class="font-semibold">{{ goals.year }} goal:</span>
+            {{ goals.done }} of {{ goals.goal }} book{{ '' if goals.goal == 1 else 's' }}
+            {%- if goals.done >= goals.goal %} <span class="text-accent">· done</span>{% endif %}
+        </p>
+    </div>
+    <div class="mt-1.5 h-1.5 bg-primary border border-rule overflow-hidden" role="progressbar"
+         aria-label="{{ goals.year }} reading goal" aria-valuemin="0" aria-valuemax="{{ goals.goal }}" aria-valuenow="{{ goals.done }}">
+        <div class="h-full bg-accent" style="width: {{ goals.pct }}%"></div>
+    </div>
+    {% if is_own_profile %}
+    <details class="goal-edit mt-1">
+        <summary class="inline-flex items-center gap-1 cursor-pointer text-xs text-content-secondary hover:text-accent">{{ pencil }} Change goal</summary>
+        {{ goal_form(goals, 'Save') }}
+    </details>
+    {% endif %}
+    {% elif is_own_profile %}
+    <details class="goal-edit">
+        <summary class="cursor-pointer text-sm text-accent hover:text-accent-hover underline">Set a reading goal for {{ goals.year }}</summary>
+        {{ goal_form(goals, 'Set goal') }}
+    </details>
+    {% endif %}
+
+</div>
+{% endif %}

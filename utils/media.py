@@ -92,6 +92,11 @@ STATUS_LABELS = {
     'listened': 'Listened', 'want to listen': 'Want to Listen',
 }
 
+# What no status means, shown where you'd pick one (the item page's menu,
+# the export). The stored value stays "no row"; the menu's value is
+# 'untracked' (collections.add_to_status_collection clears the status).
+NO_STATUS_LABEL = {BOOK: 'Unread', VIDEO: 'Unwatched', RECORD: 'Not listened to'}
+
 # The status that sends you to the review page, and that the feed words as
 # "finished" ("read" / "watched" / "listened to").
 DONE_STATUS = {BOOK: 'read', VIDEO: 'watched', RECORD: 'listened'}
@@ -190,6 +195,21 @@ ITEMS = {BOOK: 'book', VIDEO: 'video', RECORD: 'record'}
 # Each section's own grid (the first crumb on its item pages)
 HOMES = {BOOK: 'base.index', VIDEO: 'videos.index', RECORD: 'records.index'}
 
+# The Shelves pages (ROADMAP 11.1): every section in every scope. One
+# sidebar entry, then a Books | Movies | Music switch that keeps the scope
+# (_shelves.html). 'friend' is one friend's shelf (takes a username); the
+# list of friends is the Friends page (friends.index, ROADMAP 11.3).
+SHELF_ENDPOINTS = {
+    BOOK: {'mine': 'base.index', 'shared': 'base.shared_library', 'friend': 'base.friend_library'},
+    VIDEO: {'mine': 'videos.index', 'shared': 'videos.shared', 'friend': 'videos.user_videos'},
+    RECORD: {'mine': 'records.index', 'shared': 'records.shared', 'friend': 'records.user_records'},
+}
+# The switch's labels, in order
+SECTION_NAMES = {BOOK: 'Books', VIDEO: 'Movies', RECORD: 'Music'}
+# The endpoint -> section map the "last section used" cookie is set from
+SHELF_SECTION_OF = {endpoint: kind for kind, scopes in SHELF_ENDPOINTS.items()
+                    for endpoint in scopes.values()}
+
 # Code (barcode/ISBN) handling per type. Music got barcodes back on
 # 2026-11-08 (ROADMAP 8B.12, Phil) once Discogs could look them up;
 # 2026-11-07 to -08 it had none.
@@ -245,6 +265,7 @@ def media_labels(media_type):
     return {**_LABELS[media_type], 'statuses': STATUSES[media_type],
             'status_labels': STATUS_LABELS, 'done_status': DONE_STATUS[media_type],
             'want_status': WANT_STATUS[media_type],
+            'no_status': NO_STATUS_LABEL[media_type],
             'bp': BLUEPRINTS[media_type], 'item': ITEMS[media_type], 'home': HOMES[media_type],
             'formats': FORMATS.get(media_type, ()),
             'has_barcode': HAS_BARCODE[media_type]}

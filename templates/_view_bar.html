@@ -14,7 +14,24 @@
     'author': ('A–Z', 'Z–A'),
     'publish_year': ('Oldest first', 'Newest first'),
     'created_at': ('Oldest first', 'Newest first'),
+    'collected': ('Oldest first', 'Newest first'),
+    'finished': ('Oldest first', 'Newest first'),
+    'rating': ('Lowest first', 'Highest first'),
+    'page_count': ('Shortest first', 'Longest first'),
     'runtime_minutes': ('Shortest first', 'Longest first'),
+} %}
+{# The options are utils/sorting.py's BY_TYPE for this section (SORT_OPTIONS),
+   worded here. Collection pages add "Date added here" (collected_sort). #}
+{% set sort_type = m.type if m else 'book' %}
+{% set sort_names = {
+    'title': 'Title',
+    'author': m.creator if m else 'Author',
+    'publish_year': 'Year',
+    'created_at': 'Date added',
+    'finished': 'Date ' ~ (m.verb_past if m else 'read'),
+    'rating': (whose|default('your'))|capitalize ~ ' rating' if whose|default('your') == 'your' else whose ~ ' rating',
+    'page_count': 'Pages',
+    'runtime_minutes': m.length if m else 'Length',
 } %}
 {% set asc_label, desc_label = order_labels.get(sort_by, order_labels['title']) %}
 {# `m` (utils/media.py) is set on the Movies and Vinyls pages: "movies", "Director". #}
@@ -41,13 +58,12 @@
             <select name="sort_by" id="sort_by" data-change="submitSortForm"
                     class="flex-1 sm:flex-none min-w-0 bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-2 py-1.5 text-sm
                            focus:ring-2 focus:ring-accent focus:border-transparent">
-                <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
-                <option value="author" {% if sort_by == 'author' %}selected{% endif %}>{{ m.creator if m else 'Author' }}</option>
-                <option value="publish_year" {% if sort_by == 'publish_year' %}selected{% endif %}>Year</option>
-                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date added</option>
-                {% if m and m.type != 'book' %}
-                <option value="runtime_minutes" {% if sort_by == 'runtime_minutes' %}selected{% endif %}>{{ m.length }}</option>
+                {% if collected_sort %}
+                <option value="collected" {% if sort_by == 'collected' %}selected{% endif %}>Date added here</option>
                 {% endif %}
+                {% for key in SORT_OPTIONS[sort_type] %}
+                <option value="{{ key }}" {% if sort_by == key %}selected{% endif %}>{{ sort_names[key] }}</option>
+                {% endfor %}
             </select>
             <select name="sort_order" id="sort_order" aria-label="Sort direction" data-change="submitSortForm"
                     class="flex-1 sm:flex-none min-w-0 bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-2 py-1.5 text-sm

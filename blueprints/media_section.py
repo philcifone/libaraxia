@@ -24,7 +24,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from models import can_view_book, get_library_members, is_friends_with
-from utils import media, search
+from utils import media, search, sorting
 from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
@@ -38,7 +38,6 @@ class Section:
     # Extra context for the add page (lookup flags, which tab opens first),
     # given the form values. Returns a dict for add_item.html.
     add_context: Callable[[dict], dict] = field(default=lambda values: {})
-    sort_columns: tuple = ('title', 'author', 'publish_year', 'created_at', 'runtime_minutes')
     # Help text under the empty grid
     empty_text: str = ''
     # Records: the cat. no. identifies a pressing, and there's no barcode
@@ -138,12 +137,10 @@ class Section:
                     f" AND t.user_id = ? AND t.tag_name IN ({tag_marks}))")
             params += [viewer_id, *tags]
 
-        sort_by = args.get('sort_by', 'title')
-        sort_by = sort_by if sort_by in self.sort_columns else 'title'
-        sort_order = 'desc' if args.get('sort_order') == 'desc' else 'asc'
-        # Column names come from the whitelist above, never from the request
-        sql += f" ORDER BY b.{sort_by} IS NULL, b.{sort_by} COLLATE NOCASE {sort_order}, b.title COLLATE NOCASE"
-        return conn.execute(sql, params).fetchall(), sort_by, sort_order
+        # The menu's choices for this section (utils/sorting.py)
+        sort_by, sort_order = sorting.choice(args, self.media_type)
+        order_sql, order_params = sorting.order_by(sort_by, sort_order, viewer_id)
+        return conn.execute(sql + order_sql, params + order_params).fetchall(), sort_by, sort_order
 
     def find_duplicates(self, conn, user_id, barcode=None, title=None, author=None,
                         catalog_number=None, exclude_id=None):
@@ -285,12 +282,16 @@ def make_blueprint(section: Section) -> Blueprint:
 
     def grid_page(owner_ids, tab, **extra):
         conn = get_db()
-        rows, sort_by, sort_order = section.filtered(conn, owner_ids, request.args, current_user.id)
+        # Filters, sorts and list view use the statuses, ratings and tags of
+        # whoever's entries are in view: the friend on their shelf, you on
+        # yours and the household's (11.3)
+        data_user = owner_ids[0] if tab == 'friend' else current_user.id
+        rows, sort_by, sort_order = section.filtered(conn, owner_ids, request.args, data_user)
         return render_template(
-            'media_grid.html', books=rows, tab=tab,
+            'media_grid.html', books=rows, tab=tab, marks_user=data_user,
             total_count=len(rows), has_more=False, current_page=1,
             sort_by=sort_by, sort_order=sort_order,
-            filter_options=get_filter_options(owner_ids, m_type),
+            filter_options=get_filter_options(owner_ids, m_type, data_user=data_user),
             m=section.m, empty_text=section.empty_text,
             # Friends' grids show only their shelf, so no hint there
             off_shelf=None if tab == 'friend' else section.off_shelf(
@@ -312,17 +313,9 @@ def make_blueprint(section: Section) -> Blueprint:
 
     @login_required
     def friends():
-        """Your friends, with how many items of this type each has."""
-        rows = get_db().execute(f'''
-            SELECT u.id, u.username, u.avatar_url, COUNT(v.id) AS item_count
-            FROM users u
-            JOIN friendships f ON (f.user_id_1 = :me AND f.user_id_2 = u.id)
-                               OR (f.user_id_2 = :me AND f.user_id_1 = u.id)
-            LEFT JOIN {section.view} v ON v.added_by = u.id AND v.owned = 1 AND v.removed_at IS NULL
-            GROUP BY u.id
-            ORDER BY u.username
-        ''', {'me': current_user.id}).fetchall()
-        return render_template('media_friends.html', friends=rows, tab='friends', m=section.m)
+        """Old Friends' tab of the section: friends are their own page now
+        (friends.index, ROADMAP 11.3)."""
+        return redirect(url_for('friends.index'))
 
     @login_required
     def user_items(username):

@@ -100,6 +100,8 @@
                     </div>
                     {% endif %}
 
+                    {% include '_reading_goal.html' %}
+
                     <!-- Friend Request Actions -->
                     {% if not is_own_profile %}
                     <!-- Household actions: shown to household members whether or not they're friends -->
@@ -296,13 +298,22 @@
                     <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
                 </div>
 
-                <!-- Appearance -->
-                <div class="space-y-3 sm:col-span-2" id="appearance-settings" data-theme-picker>
-                    <p class="label text-sm pb-1">Appearance</p>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if is_own_profile %}
+        <!-- Appearance (12.4): its own card, closed by default -->
+        <details class="appearance-card bg-secondary rounded-xl card">
+            <summary class="flex items-center justify-between gap-4 p-4 sm:p-6 cursor-pointer">
+                <h2 class="text-2xl font-display text-content-primary">Appearance</h2>
+                <span class="hidden sm:inline mr-auto text-sm text-content-secondary">Style, mode, font, accent</span>
+            </summary>
+            <div class="px-4 sm:px-6 pb-6 space-y-3" id="appearance-settings" data-theme-picker>
                     <div class="flex flex-wrap gap-x-8 gap-y-3">
                         {% for kind, label, options, current in [
                             ('style', 'Style', theme_styles, theme_style),
-                            ('mode', 'Mode', theme_modes, theme_mode)
+                            ('mode', 'Mode', mode_choices, theme_mode)
                         ] %}
                         <div class="flex items-center gap-3"{% if kind == 'mode' %} data-mode-picker{% endif %}>
                             <span class="text-sm text-content-secondary w-12">{{ label }}</span>
@@ -316,6 +327,7 @@
                                 </button>
                                 {% endfor %}
                             </div>
+                            {% if kind == 'mode' %}{% include '_follow_system.html' %}{% endif %}
                         </div>
                         {% endfor %}
                         <p data-outrun-note class="text-sm text-content-secondary">Outrun is always dark and has its own fonts, so Mode and Font are hidden.</p>
@@ -349,16 +361,15 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                {% endif %}
             </div>
-        </section>
+        </details>
+        {% endif %}
 
-        <!-- Shelves (8C): each section's statuses in use, rows that scroll sideways -->
+        <!-- Collections (8C): each section's statuses in use, rows that scroll sideways -->
         {% if profile_shelves %}
         <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
             <div class="flex items-center justify-between gap-4 mb-6">
-                <h2 class="text-2xl font-display text-content-primary">Shelves</h2>
+                <h2 class="text-2xl font-display text-content-primary">Collections</h2>
                 {% if is_own_profile %}
                 <a href="{{ url_for('collections.view_collections') }}" class="text-accent hover:text-accent-hover transition-colors text-sm">All collections →</a>
                 {% else %}
@@ -376,63 +387,6 @@
         </section>
         {% endif %}
 
-        <!-- Reading Goal Section -->
-        {% if current_user.id == user['id'] %}
-        <section class="bg-secondary rounded-xl p-6 card">
-            <h2 class="text-2xl font-display text-content-primary mb-6">{{ current_year }} Reading Goal</h2>
-
-            {% if user['reading_goal'] and user['reading_goal'] > 0 %}
-            <div class="space-y-4 mb-6">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-4xl font-bold text-content-primary">
-                            {{ stats.books_read_this_year if stats else 0 }} / {{ user['reading_goal'] }}
-                        </p>
-                        <p class="text-sm text-content-secondary mt-1">books read this year</p>
-                    </div>
-                    <div class="text-right">
-                        {% set progress = ((stats.books_read_this_year / user['reading_goal']) * 100) if (stats and user['reading_goal'] > 0) else 0 %}
-                        <p class="text-3xl font-bold text-accent">{{ "%.0f"|format(progress) }}%</p>
-                        <p class="text-sm text-content-secondary">complete</p>
-                    </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="w-full bg-primary rounded-full h-4 overflow-hidden">
-                    {% set progress_width = progress if progress <= 100 else 100 %}
-                    <div class="h-full bg-accent rounded-full transition-all duration-500"
-                         style="width: {{ progress_width }}%"></div>
-                </div>
-
-                <!-- Encouragement message -->
-                {% if progress >= 100 %}
-            <p class="text-center text-content-secondary font-semibold">Congratulations! You've reached your goal!</p>
-                {% elif progress >= 75 %}
-                <p class="text-center text-content-secondary">You're almost there! Keep going!</p>
-                {% elif progress >= 50 %}
-                <p class="text-center text-content-secondary">Halfway to your goal!</p>
-                {% endif %}
-            </div>
-            {% else %}
-            <p class="text-content-secondary mb-4">Set your annual reading goal to track your progress!</p>
-            {% endif %}
-
-            <!-- Update Reading Goal Form -->
-            <form method="POST" action="{{ url_for('user.update_reading_goal') }}" class="flex gap-3">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="number" id="reading_goal" name="reading_goal" aria-label="Books to read this year"
-                       value="{{ user['reading_goal'] or 0 }}" min="0"
-                       placeholder="How many books do you want to read this year?"
-                       class="flex-1 px-4 py-2 bg-primary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                <button type="submit"
-                        class="px-6 py-2 bg-accent text-on-accent rounded-lg hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent btn">
-                    Update Goal
-                </button>
-            </form>
-            <p class="text-xs text-content-secondary mt-2">Set to 0 to hide the progress tracker</p>
-        </section>
-        {% endif %}
-
         <!-- Friends List Section -->
         {% if are_friends %}
         <section class="bg-secondary rounded-xl p-6 card">
@@ -441,39 +395,10 @@
                     {% if is_own_profile %}Your Friends{% else %}{{ user['username'] }}'s Friends{% endif %}
                 </h2>
                 {% if is_own_profile %}
-                <button id="toggle-friend-search" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn" title="Find new friends">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    <span>Add Friends</span>
-                </button>
+                {# Finding friends and opening their shelves: the Friends page (11.3) #}
+                <a href="{{ url_for('friends.index') }}" class="text-sm text-accent hover:text-accent-hover underline">Find friends</a>
                 {% endif %}
             </div>
-
-            <!-- Inline Search Bar (hidden by default) -->
-            {% if is_own_profile %}
-            <div id="friend-search-container" class="hidden mb-4 bg-primary rounded-lg p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-lg mb-4 font-semibold text-content-primary">Find New Friends</h3>
-                    <button id="close-friend-search" aria-label="Close" class="text-content-secondary hover:text-content-primary transition-colors">
-                        <svg class="mb-4 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="mb-3">
-                    <input type="text"
-                           id="friend-search-input"
-                           aria-label="Search for users"
-                           placeholder="Search for users by username..."
-                           class="w-full mb-2 px-4 py-2 bg-secondary border border-primary-hover rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                           autocomplete="off">
-                </div>
-                <div id="search-results" class="space-y-2">
-                    <p class="text-content-secondary text-center py-4 text-sm">Start typing to search for users...</p>
-                </div>
-            </div>
-            {% endif %}
 
             {% if friends and friends|length > 0 %}
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -595,228 +520,8 @@
 
         {% endif %}
 
-        <!-- Statistics Tabs Section -->
-        {% if stats %}
-        <section class="bg-secondary rounded-xl overflow-hidden card">
-            <!-- Tab Navigation -->
-            <div class="flex">
-                <button data-click="switchTab" data-tab="overview" id="tab-overview" class="tab tab-button active text-content-primary">
-                    Overview
-                </button>
-                <button data-click="switchTab" data-tab="insights" id="tab-insights" class="tab tab-button text-content-secondary">
-                    Insights
-                </button>
-                <button data-click="switchTab" data-tab="library" id="tab-library" class="tab tab-button text-content-secondary">
-                    Library
-                </button>
-                {% for m, s in media_stats %}
-                <button data-click="switchTab" data-tab="{{ m.bp }}" id="tab-{{ m.bp }}" class="tab tab-button text-content-secondary">
-                    {{ m.section }}
-                </button>
-                {% endfor %}
-            </div>
-
-            <!-- Tab Content -->
-            <div class="p-6">
-                <!-- Overview Tab -->
-                <div id="content-overview" class="tab-content">
-                    <h2 class="text-2xl font-display text-content-primary mb-6">Your Reading Stats</h2>
-                    <div class="grid md:grid-cols-4 gap-6 mb-8">
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Books Read</p>
-                            <p class="text-3xl font-bold text-content-primary">{{ stats.books_read or 0 }}</p>
-                        </div>
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Pages Read</p>
-                            <p class="text-3xl font-bold text-content-primary">{{ "{:,}".format(stats.pages_read or 0) }}</p>
-                        </div>
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Average Rating</p>
-                            <p class="text-3xl font-bold text-content-primary">
-                                {{ "%.1f"|format(stats.avg_rating or 0) }}
-                                <span class="text-yellow-400">★</span>
-                            </p>
-                        </div>
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Read Percentage</p>
-                            <p class="text-3xl font-bold text-content-primary">{{ stats.read_percentage }}%</p>
-                        </div>
-                    </div>
-
-                    {# Books finished per month (user.reading_by_month). One hue, no
-                       legend: the title names the series. Screen readers get the
-                       summary on the bars and the table below. #}
-                    {% set chart = stats.by_month %}
-                    {% if chart %}
-                    {% set busiest = chart.bars|max(attribute='books') %}
-                    <figure class="reading-chart">
-                        <figcaption class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
-                            <span class="text-lg font-display text-content-primary">Books finished per month</span>
-                            <span class="text-sm text-content-secondary">{{ chart.start }} – {{ chart.end }} · {{ chart.total }} book{{ '' if chart.total == 1 else 's' }}</span>
-                        </figcaption>
-                        <div class="chart-bars" role="img"
-                             aria-label="Bar chart of books finished per month, {{ chart.start }} to {{ chart.end }}: {{ chart.total }} in all, most in {{ busiest.name }} ({{ busiest.books }}).">
-                            {% for bar in chart.bars %}
-                            <div class="chart-col" style="--h: {{ bar.pct }}%">
-                                <div class="chart-fill"></div>
-                                <span class="chart-tip">{{ bar.name }}: {{ bar.books }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <div class="chart-labels" aria-hidden="true">
-                            {% for bar in chart.bars %}<span>{{ bar.label }}</span>{% endfor %}
-                        </div>
-                        <details class="mt-4 text-sm">
-                            <summary class="cursor-pointer text-content-secondary hover:text-accent">Show as a table</summary>
-                            <table class="mt-2 w-full max-w-xs">
-                                <thead><tr class="text-left text-content-secondary"><th class="font-normal py-1">Month</th><th class="font-normal py-1 text-right">Books</th></tr></thead>
-                                <tbody>
-                                    {% for bar in chart.bars %}
-                                    <tr class="border-t border-rule"><td class="py-1 text-content-primary">{{ bar.name }}</td><td class="py-1 text-right text-content-primary">{{ bar.books }}</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </details>
-                    </figure>
-                    {% endif %}
-
-                </div>
-
-                <!-- Insights Tab -->
-                <div id="content-insights" class="tab-content hidden">
-                    <h2 class="text-2xl font-display text-content-primary mb-6">Reading Insights</h2>
-
-                    <!-- Top Genres -->
-                    <div class="bg-primary rounded-lg p-4 mb-6">
-                        <h3 class="text-lg font-semibold text-content-primary mb-4">Top Genres</h3>
-                        {% if stats.top_genres and stats.top_genres|length > 0 %}
-                        <div class="space-y-3">
-                            {% for genre in stats.top_genres %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg card">
-                                <div class="flex-1">
-                                    <p class="font-medium text-content-primary">{{ genre.genre }}</p>
-                                </div>
-                                <div class="flex-shrink-0">
-                                    <p class="text-lg font-semibold text-accent">{{ genre.count }} book{{ 's' if genre.count > 1 else '' }}</p>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <p class="text-content-secondary text-center py-8">No genre data available yet. Start reading books with genres!</p>
-                        {% endif %}
-                    </div>
-
-                    <!-- Collection Status -->
-                    <div class="bg-primary rounded-lg p-4 mb-6">
-                        <h3 class="text-lg font-semibold text-content-primary mb-4">Collection Status</h3>
-                        {% if stats.collection_status and stats.collection_status|length > 0 %}
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {% for status in stats.collection_status %}
-                            <div class="bg-secondary rounded-lg p-4 text-center card">
-                                <p class="text-sm text-content-secondary mb-1">{{ status.status.capitalize() }}</p>
-                                <p class="text-3xl font-bold text-accent">{{ status.count }}</p>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <p class="text-content-secondary text-center py-8">No collection data available yet.</p>
-                        {% endif %}
-                    </div>
-
-                    <!-- Top Authors -->
-                    <div class="bg-primary rounded-lg p-4">
-                        <h3 class="text-lg font-semibold text-content-primary mb-4">Top Authors</h3>
-                        {% if stats.top_authors and stats.top_authors|length > 0 %}
-                        <div class="space-y-3">
-                            {% for author in stats.top_authors %}
-                            <div class="flex items-center gap-2 p-4 mb-4 bg-secondary rounded-lg card">
-                                <div class="flex-1">
-                                    <p class="font-medium text-content-primary">{{ author.author }}</p>
-                                    <p class="text-sm text-content-secondary">{{ author.books_count }} book{{ 's' if author.books_count > 1 else '' }}</p>
-                                </div>
-                                <div class="flex-shrink-0">
-                                    <p class="text-lg font-semibold text-accent">
-                                        {{ author.avg_rating or 'N/A' }}
-                                        {% if author.avg_rating %}<span class="text-yellow-400">★</span>{% endif %}
-                                    </p>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <p class="text-content-secondary text-center py-8">No author data available yet. Start reading and rating books!</p>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Library Tab -->
-                <div id="content-library" class="tab-content hidden">
-                    {% if library_stats %}
-                    <h2 class="text-2xl font-display text-content-primary mb-6">Library Statistics</h2>
-                    <div class="grid md:grid-cols-4 gap-6 mb-8">
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Total Books</p>
-                            <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_books }}</p>
-                        </div>
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Total Pages</p>
-                            <p class="text-3xl font-bold text-content-primary">{{ library_stats.total_pages }}</p>
-                        </div>
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Unique Authors</p>
-                            <p class="text-3xl font-bold text-content-primary">{{ library_stats.unique_authors }}</p>
-                        </div>
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Longest Book</p>
-                            <p class="text-xl font-bold text-content-primary">{{ library_stats.longest_book }}</p>
-                        </div>
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">Most Common Genre</p>
-                            <p class="text-xl font-bold text-content-primary">{{ library_stats.most_common_genre }}</p>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-
-                {# Movies and Vinyls tabs: separate from the book stats
-                   (blueprints/user.py calculate_media_stats) #}
-                {% for m, s in media_stats %}
-                <div id="content-{{ m.bp }}" class="tab-content hidden">
-                    <div class="flex flex-wrap items-baseline gap-3 mb-6">
-                        <h2 class="mr-auto text-2xl font-display text-content-primary">{{ m.Noun }} Statistics</h2>
-                        <a href="{{ url_for(m.bp ~ '.index') if is_own_profile else url_for(m.bp ~ '.user_' ~ m.item ~ 's', username=user.username) }}"
-                           class="text-sm text-accent hover:text-accent-hover underline">See the {{ m.plural }}</a>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                        {% for label, value in [
-                            (m.section ~ ' owned', s.owned),
-                            (m.status_labels[m.done_status], s.done),
-                            (m.status_labels[m.want_status], s.want),
-                            ('Hours ' ~ m.verb_past, s.hours_done),
-                            ('Hours on the shelf', s.hours_owned),
-                            ('Reviews', s.reviews),
-                            ('Average rating', s.avg_rating or '-'),
-                        ] %}
-                        <div class="bg-primary rounded-lg p-4">
-                            <p class="text-sm text-content-secondary mb-1">{{ label }}</p>
-                            <p class="text-3xl font-bold text-content-primary">{{ value }}</p>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% if s.by_format %}
-                    <h3 class="label text-sm pb-1 mb-3">By format</h3>
-                    <ul class="flex flex-wrap gap-3">
-                        {% for f in s.by_format %}
-                        <li class="px-3 py-1 bg-primary border border-card rounded-pill text-sm text-content-primary font-mono">{{ f.format|format_label }}: {{ f.count }}</li>
-                        {% endfor %}
-                    </ul>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-        </section>
-        {% endif %}
+        <!-- Statistics (12.1): Overview | Insights, then Books | Movies | Music -->
+        {% include '_profile_stats.html' %}
 
         <!-- Export/Import Buttons -->
         {% if is_own_profile %}
@@ -854,7 +559,7 @@
             <h2 class="text-2xl font-display text-content-primary mb-4">Account</h2>
             <div class="flex flex-wrap gap-4 items-center justify-between">
                 <p class="text-sm text-content-secondary max-w-xl">
-                    Download everything of yours (books, movies and music; reviews, sessions, shelves, wishlist) as CSV files,
+                    Download everything of yours (books, movies and music; reviews, sessions, collections, wishlist) as CSV files,
                     or deactivate or delete your account.
                 </p>
                 <div class="flex flex-wrap gap-3">

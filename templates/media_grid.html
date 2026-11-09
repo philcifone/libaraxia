@@ -21,14 +21,10 @@
     {% endif %}
     {% include '_add_fab.html' %}
 
-    {% include '_media_tabs.html' %}
+    {% from '_shelves.html' import shelf_header %}
+    {{ shelf_header(m.type, tab, owner.username if tab == 'friend' else None) }}
 
-    {# The section's icon and the page's name as the heading #}
-    {% from '_icons.html' import section_heading %}
-    {% if tab == 'friend' %}{{ section_heading(m.type, owner.username ~ "'s " ~ m.section) }}
-    {% elif tab == 'shared' %}{{ section_heading(m.type, 'Household ' ~ m.section) }}
-    {% else %}{{ section_heading(m.type, 'My ' ~ m.section) }}{% endif %}
-
+    {% set whose = owner.username ~ "'s" if tab == 'friend' else 'your' %}
     {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
 
 

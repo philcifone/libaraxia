@@ -1,34 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}Shared Library - libaraxia{% endblock %}
+{% block title %}Household Shelves - libaraxia{% endblock %}
 {% block body_class %}bg-primary text-content-primary p-6{% endblock %}
 
 {% block content %}
     <!-- Floating Add Button -->
     {% with fab_items=[('Library', url_for('books.add_book')), ('Wishlist', url_for('wishlist.add_to_wishlist', type='book'))] %}{% include '_add_fab.html' %}{% endwith %}
 
-    <!-- Library View Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4">
-        <div class="bg-secondary rounded-xl overflow-hidden card">
-            <div class="flex items-stretch">
-                <a href="{{ url_for('base.index') }}"
-                   class="tab">
-                    <span class="text-center">My Library</span>
-                </a>
-                <a href="{{ url_for('base.shared_library') }}"
-                   class="tab tab-active" aria-current="page">
-                    <span class="text-center">Shared<span class="hidden sm:inline"> Library</span></span>
-                </a>
-                <a href="{{ url_for('base.friends_libraries') }}"
-                   class="tab">
-                    <span class="text-center">Friends'<span class="hidden sm:inline"> Libraries</span></span>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {% from '_icons.html' import section_heading %}
-    {{ section_heading('book', 'Shared Library') }}
+    {% from '_shelves.html' import shelf_header %}
+    {{ shelf_header('book', 'shared') }}
 
     {% include '_search_sort_filter.html' %}
 

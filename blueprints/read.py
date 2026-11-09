@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from utils.database import get_db
 from models import can_view_book
 from utils import media
-from datetime import datetime
+from datetime import date, datetime
 
 # Define the blueprint
 read_blueprint = Blueprint('read', __name__, template_folder='templates')
@@ -129,6 +129,21 @@ def rate_review(book_id):
     '''
     sessions = conn.execute(sessions_query, (current_user.id, book_id)).fetchall()
 
+    # Just marked Read / Watched / Listened (?finished=1, from the status
+    # menu): open the session form with today as the finished date, so the
+    # book counts toward this year's goal with one tap (ROADMAP 12.3). An
+    # open session (started, not finished) is the one to finish; nothing is
+    # offered when a session already finished today.
+    prefill = None
+    if request.args.get('finished'):
+        today = date.today().isoformat()
+        if not any(s['date_completed'] == today for s in sessions):
+            open_session = next((s for s in sessions if s['date_started'] and not s['date_completed']), None)
+            prefill = ({'mode': 'edit', 'session_id': open_session['session_id'],
+                        'started': open_session['date_started'], 'completed': today}
+                       if open_session else
+                       {'mode': 'add', 'session_id': '', 'started': '', 'completed': today})
+
 
     # Convert book data to the format you use (e.g., book[1])
     books = {1: {"id": book["id"], "title": book["title"], "author": book["author"], "cover_image_url": book["cover_image_url"]}} if book else {}
@@ -138,6 +153,7 @@ def rate_review(book_id):
         book=books.get(1),  # Matches book[1] format
         read_data=read_data,
         sessions=sessions,
+        prefill=prefill,
         m=media.media_labels(media.media_type_of(book)),
     )
 

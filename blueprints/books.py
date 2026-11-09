@@ -27,7 +27,7 @@ from utils.image_utils import delete_image_file, is_safe_upload_path
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
-from utils import media
+from utils import media, sorting
 from utils.search import match as search_match   # this module has a route called search
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
@@ -812,16 +812,7 @@ def search():
     search_term = request.args.get("search_term", "").strip()
 
     # Get sort parameters with validation
-    sort_by = request.args.get("sort_by", "title")
-    sort_order = request.args.get("sort_order", "asc")
-
-    valid_columns = {"title", "author", "publish_year", "created_at"}
-    valid_orders = {"asc", "desc"}
-
-    if sort_by not in valid_columns:
-        sort_by = "title"
-    if sort_order not in valid_orders:
-        sort_order = "asc"
+    sort_by, sort_order = sorting.choice(request.args, media.BOOK)
 
     # Limit per_page to reasonable values
     per_page = max(12, min(per_page, 100))
@@ -883,9 +874,10 @@ def search():
     total_count = conn.execute(count_query, params).fetchone()[0]
 
     # Add sorting and pagination
-    query += f" ORDER BY b.{sort_by} {sort_order} LIMIT ? OFFSET ?"
+    order_sql, order_params = sorting.order_by(sort_by, sort_order, current_user.id)
+    query += order_sql + " LIMIT ? OFFSET ?"
     offset = (page - 1) * per_page
-    params.extend([per_page, offset])
+    params.extend([*order_params, per_page, offset])
 
     # Get paginated books
     books = conn.execute(query, params).fetchall()

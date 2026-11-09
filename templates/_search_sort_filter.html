@@ -13,11 +13,13 @@
    is already searched or filtered (is_narrowed); then the view bar shows
    the count instead. `top_padding` is for a
    page without tabs above it (search results), to clear the fixed header. #}
+{# whose: "your", or "carol's" on a friend's shelf (11.3) #}
+{% set whose = whose|default('your') %}
 {% set plural = m.plural if m else 'books' %}
 {% if total_count is defined and not is_narrowed(request.args) %}
-{% set placeholder = 'Search your %d %s'|format(total_count, plural if total_count != 1 else (m.noun if m else 'book')) %}
+{% set placeholder = 'Search %s %d %s'|format(whose, total_count, plural if total_count != 1 else (m.noun if m else 'book')) %}
 {% else %}
-{% set placeholder = 'Search your ' ~ plural %}
+{% set placeholder = 'Search ' ~ whose ~ ' ' ~ plural %}
 {% endif %}
 <div class="search-form-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 {{ 'pt-20' if top_padding }}">
   <div class="relative z-30">
@@ -91,7 +93,7 @@
                     <div class="space-y-2">
                         <label for="genre" class="block text-sm font-medium text-content-secondary">Genre</label>
                         <select name="genre" id="genre"
-                                data-change="updateActiveFilters"
+                                data-change="filtersChanged"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Genres</option>
@@ -108,7 +110,7 @@
                     <div class="space-y-2">
                         <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>
                         <select name="format" id="format"
-                                data-change="updateActiveFilters"
+                                data-change="filtersChanged"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Formats</option>
@@ -123,13 +125,13 @@
                     <div class="space-y-2">
                         <label for="read_status" class="block text-sm font-medium text-content-secondary">{{ m.status_label if m else 'Read Status' }}</label>
                         <select name="read_status" id="read_status"
-                                data-change="updateActiveFilters"
+                                data-change="filtersChanged"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Statuses</option>
                             {% for status in filter_options.read_statuses %}
                             <option value="{{ status }}" {% if request.args.get('read_status')==status %}selected{% endif %}>
-                                {{ m.status_labels[status] if m else status }}
+                                {{ STATUS_LABELS.get(status, status) }}
                             </option>
                             {% endfor %}
                         </select>
@@ -139,7 +141,7 @@
                     <div class="space-y-2">
                         <label for="rating" class="block text-sm font-medium text-content-secondary">Minimum Rating</label>
                         <select name="rating" id="rating"
-                                data-change="updateActiveFilters"
+                                data-change="filtersChanged"
                                 class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                        focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                             <option value="">All Ratings</option>
@@ -159,7 +161,7 @@
                 <div class="space-y-2 md:w-1/2 lg:w-1/4">
                     <label for="show" class="block text-sm font-medium text-content-secondary">Show</label>
                     <select name="show" id="show"
-                            data-change="updateActiveFilters"
+                            data-change="filtersChanged"
                             class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                    focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
                         {% for value, label in SHOW_CHOICES %}
@@ -179,7 +181,7 @@
                                 <input type="checkbox"
                                        name="tags[]"
                                        value="{{ tag }}"
-                                       data-change="updateActiveFilters"
+                                       data-change="filtersChanged"
                                        {% if tag in request.args.getlist('tags[]') %}checked{% endif %}
                                        class="form-checkbox text-accent rounded border-rule-strong
                                               focus:ring-accent focus:ring-offset-0 cursor-pointer">
@@ -198,7 +200,7 @@
                             class="px-4 py-2 text-content-primary bg-primary-bg hover:bg-primary-hover rounded-lg font-medium btn btn-outline">
                         Clear Filters
                     </button>
-                    <button type="submit"
+                    <button type="submit" id="apply-filters"
                             data-click="showLoading" data-loading="Applying filters..."
                             class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium btn">
                         Apply Filters

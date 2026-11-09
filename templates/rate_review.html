@@ -50,9 +50,18 @@
                         </div>
 
                         <!-- Add/Edit Session Inline Form (Hidden by default) -->
-                        <div id="session-form-inline" class="hidden bg-primary-bg rounded-lg p-4 mb-4 border-2 border-accent mx-auto max-w-md">
+                        {# prefill (read.rate_review, ?finished=1): rate_review.js opens
+                           the form with today as the finished date #}
+                        <div id="session-form-inline" class="hidden bg-primary-bg rounded-lg p-4 mb-4 border-2 border-accent mx-auto max-w-md"
+                             {% if prefill %}data-prefill-mode="{{ prefill.mode }}" data-prefill-session="{{ prefill.session_id }}"
+                             data-prefill-started="{{ prefill.started }}" data-prefill-completed="{{ prefill.completed }}"{% endif %}>
                             <h4 class="font-medium text-content-primary mb-4 text-center" id="inline-session-form-title"
                                 data-add-title="Add New {{ m.session }}" data-edit-title="Edit {{ m.session }}">Add New {{ m.session }}</h4>
+                            {% if prefill %}
+                            <p class="text-sm text-content-secondary text-center mb-3">
+                                {{ m.verb_past|capitalize }} today? Save to count it toward this year. For an older {{ m.noun }}, change or clear the date.
+                            </p>
+                            {% endif %}
 
                             <div class="space-y-3">
                                 <div>

@@ -874,7 +874,7 @@ def wishlist_matches(conn, viewer_id, media_type, match_sql, match_params, limit
     return {'count': count, 'rows': [dict(r) for r in rows]}
 
 
-def get_filter_options(owner_ids, media_type='book'):
+def get_filter_options(owner_ids, media_type='book', data_user=None):
     """Choices for the filter panel (_search_sort_filter.html), from the
     shelves being shown.
 
@@ -885,6 +885,8 @@ def get_filter_options(owner_ids, media_type='book'):
     section (media.VIEWS: library_books, library_videos, library_records),
     so the Library never offers "watched" or a tag used only on movies.
     Movies and Vinyls also get the formats on those shelves.
+    `data_user` is whose statuses and tags to offer: the viewer (default),
+    or the friend whose shelf is shown (11.3).
     """
     from utils import media
     view = media.VIEWS[media_type]
@@ -904,12 +906,12 @@ def get_filter_options(owner_ids, media_type='book'):
         SELECT DISTINCT status FROM collections
         WHERE user_id = ? AND status IN ({status_marks})
         ORDER BY status
-    """, (current_user.id, *statuses)).fetchall()
+    """, (data_user or current_user.id, *statuses)).fetchall()
     tags = conn.execute(f"""
         SELECT DISTINCT tag_name FROM book_tags
         WHERE user_id = ? AND tag_name IS NOT NULL AND {media.only(media_type)}
         ORDER BY tag_name
-    """, (current_user.id,)).fetchall()
+    """, (data_user or current_user.id,)).fetchall()
     options = {
         'genres': [r[0] for r in genres],
         'read_statuses': [r[0] for r in read_statuses],

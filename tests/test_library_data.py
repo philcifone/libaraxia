@@ -54,7 +54,7 @@ def test_wishlist_entries_not_in_library_grid_or_friend_counts(client, db, peopl
 # --- stats -------------------------------------------------------------------
 
 def test_stats_count_only_your_shelf(app, db, people):
-    from blueprints.user import calculate_library_stats, calculate_user_stats
+    from utils.stats import type_stats
     alice, bob = people['alice'], people['bob']
     read = add_book(db, alice, title='Short', author='X')
     db.execute("UPDATE books SET page_count = 100, genre = 'Fiction' WHERE id = ?", (read,))
@@ -67,27 +67,24 @@ def test_stats_count_only_your_shelf(app, db, people):
         add_book(db, bob, title=f'Bob {i}')
     db.commit()
 
-    lib = calculate_library_stats(db, alice)
-    assert lib['total_books'] == 2                     # not removed, not wishlist, not bob's
-    assert lib['read_books'] == 1
-    assert lib['read_percentage'] == 50
-    assert lib['unique_authors'] == 2
-    assert lib['longest_book'] == 'Short'              # the removed 9000-pager doesn't count
-
-    user = calculate_user_stats(db, alice)
-    assert user['books_read'] == 1
-    assert user['read_percentage'] == 50.0
+    s = type_stats(db, alice, 'book')
+    assert s['owned'] == 2                             # not removed, not wishlist, not bob's
+    assert s['done'] == 1 and s['done_owned'] == 1
+    assert s['done_pct'] == 50
+    assert s['creators'] == 2
+    assert s['longest']['title'] == 'Short'            # the removed 9000-pager doesn't count
+    assert s['top_shelf_genre'] == 'Fiction'
 
 
 def test_books_read_matches_read_shelf_not_reviews(app, db, people):
-    from blueprints.user import calculate_user_stats
+    from utils.stats import type_stats
     alice = people['alice']
     rated_only = add_book(db, alice, title='Rated, not read')
     db.execute('INSERT INTO read_data (user_id, book_id, rating) VALUES (?, ?, 3)', (alice, rated_only))
     read = add_book(db, alice, title='Read, no review')
     db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, read))
     db.commit()
-    assert calculate_user_stats(db, alice)['books_read'] == 1
+    assert type_stats(db, alice, 'book')['done'] == 1
 
 
 # --- filters -----------------------------------------------------------------

@@ -32,14 +32,14 @@
 
         <!-- Custom shelves for this section -->
         <section class="bg-secondary rounded-lg p-4 sm:p-8 card">
-            <h2 class="text-2xl font-display text-content-primary mb-6">Custom Shelves</h2>
+            <h2 class="text-2xl font-display text-content-primary mb-6">Custom Collections</h2>
 
             <form action="{{ url_for('collections.create_custom_collection') }}" method="POST"
                   class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="media_type" value="{{ media_type }}"/>
-                <input type="text" name="name" aria-label="New shelf name" required maxlength="100"
-                       placeholder="New {{ m.noun }} shelf"
+                <input type="text" name="name" aria-label="New collection name" required maxlength="100"
+                       placeholder="New {{ m.noun }} collection"
                        class="flex-1 min-w-0 bg-primary text-content-primary px-4 py-2 rounded-lg
                               border border-primary-hover focus:border-accent outline-none transition-colors">
                 <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 rounded-lg btn">
@@ -50,7 +50,7 @@
             {% if custom_shelves %}
                 {% with shelves=custom_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
             {% else %}
-                <p class="text-content-secondary text-center italic">No {{ m.noun }} shelves yet</p>
+                <p class="text-content-secondary text-center italic">No {{ m.noun }} collections yet</p>
             {% endif %}
         </section>
     </main>

@@ -2376,6 +2376,10 @@ img.book-cover-img:not([data-loaded]) {
   grid-column: span 1 / span 1;
 }
 
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
+
 .col-span-3 {
   grid-column: span 3 / span 3;
 }
@@ -2483,6 +2487,10 @@ img.book-cover-img:not([data-loaded]) {
   margin-top: 0.25rem;
 }
 
+.mt-1\.5 {
+  margin-top: 0.375rem;
+}
+
 .mt-10 {
   margin-top: 2.5rem;
 }
@@ -2575,6 +2583,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .aspect-video {
   aspect-ratio: 16 / 9;
+}
+
+.h-1\.5 {
+  height: 0.375rem;
 }
 
 .h-10 {
@@ -2697,6 +2709,10 @@ img.book-cover-img:not([data-loaded]) {
   min-height: 100vh;
 }
 
+.w-0\.5 {
+  width: 0.125rem;
+}
+
 .w-10 {
   width: 2.5rem;
 }
@@ -2771,6 +2787,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .min-w-\[1\.1rem\] {
   min-width: 1.1rem;
+}
+
+.min-w-\[1\.25rem\] {
+  min-width: 1.25rem;
 }
 
 .min-w-\[12rem\] {
@@ -3067,10 +3087,22 @@ img.book-cover-img:not([data-loaded]) {
   margin-bottom: calc(0.25rem * var(--tw-space-y-reverse));
 }
 
+.space-y-1\.5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.375rem * var(--tw-space-y-reverse));
+}
+
 .space-y-2 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
   margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
   margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
+}
+
+.space-y-2\.5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.625rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.625rem * var(--tw-space-y-reverse));
 }
 
 .space-y-3 > :not([hidden]) ~ :not([hidden]) {
@@ -3424,6 +3456,11 @@ img.book-cover-img:not([data-loaded]) {
   padding-right: 0.25rem;
 }
 
+.px-1\.5 {
+  padding-left: 0.375rem;
+  padding-right: 0.375rem;
+}
+
 .px-2 {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
@@ -3586,6 +3623,10 @@ img.book-cover-img:not([data-loaded]) {
   padding-top: 1rem;
 }
 
+.pt-5 {
+  padding-top: 1.25rem;
+}
+
 .pt-6 {
   padding-top: 1.5rem;
 }
@@ -3688,6 +3729,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .leading-4 {
   line-height: 1rem;
+}
+
+.leading-5 {
+  line-height: 1.25rem;
 }
 
 .leading-none {
@@ -3888,17 +3933,6 @@ img.book-cover-img:not([data-loaded]) {
   box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 
-.ring-2 {
-  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-}
-
-.ring-accent {
-  --tw-ring-opacity: 1;
-  --tw-ring-color: rgb(var(--accent) / var(--tw-ring-opacity, 1));
-}
-
 .invert {
   --tw-invert: invert(100%);
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
@@ -3956,10 +3990,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .duration-300 {
   transition-duration: 300ms;
-}
-
-.duration-500 {
-  transition-duration: 500ms;
 }
 
 .ease-in-out {
@@ -4591,6 +4621,66 @@ dialog::backdrop {
   overflow: visible;
 }
 
+/* Records: the square-cover rule above ("Vinyl covers are square") is keyed
+   on #book-container, and an id outweighs this block, so without this the
+   album shelf came out a cover's width tall instead of --cover-h and the
+   bookcase lost its bottom ledge (Phil, 2026-11-08). Same weight, later. */
+
+:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] .book-cover {
+  height: var(--cover-h);
+  aspect-ratio: auto;
+  align-self: auto;
+}
+
+/* And the album shelf is as tall as an album is wide (Phil: "why is it so
+   tall"). --cover-h is sized for a 2:3 book; a square album is limited by
+   its column's width, so on books' shelf height it stood in a gap a third
+   taller than itself. Here --cover-h is one column's width, worked out from
+   the grid's container (its parent, a size container for this): the width,
+   less the frame, the side padding and the gaps, over the columns
+   (Tailwind's 2 / md 3 / lg 4 / xl 5; 3 on the Shelf phone). Rounded down to
+   whole px so the ledges, one repeating gradient, don't drift. */
+
+:root[data-style="shelf"] :has(> #book-container.shelf-grid.grid[data-media="record"]) {
+  container-type: inline-size;
+}
+
+:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+  --cols: 2;
+  --frame: 12px;
+  --pad-x: 1.25rem;
+  --gap-x: 1.5rem;
+  --col-w: calc((100cqw - 2 * var(--frame) - 2 * var(--pad-x) - (var(--cols) - 1) * var(--gap-x)) / var(--cols));
+  --cover-h: round(down, var(--col-w), 1px);
+}
+
+@media (min-width: 768px) {
+  :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+    --cols: 3;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+    --cols: 4;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+    --cols: 5;
+  }
+}
+
+@media (max-width: 767px) {
+  :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+    --cols: 3;
+    --frame: 8px;
+    --pad-x: .75rem;
+    --gap-x: .75rem;
+  }
+}
+
 /* Every cover is a box seen from a little above (Phil, 2026-11-08): its
    top and right side drawn as faces going up and right (Negative Earth's
    hard offset shadow, flipped vertically). Each face is a plain rectangle
@@ -4676,6 +4766,44 @@ dialog::backdrop {
 
 :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .no-cover {
   aspect-ratio: 1;
+}
+
+/* The printing on a coverless box. The box is a size container (its width
+   comes from the shelf height and aspect ratio, never from the text), so
+   type and margins scale with it: a phone's 99px-wide book gets the same
+   proportions as a desktop's 171px one. The left margin clears the 6px
+   spine and little more. Words break between words, hyphenated if a single
+   word still won't fit (lang="en" on <html>); never mid-letter. The box's
+   own padding can't use cqw (that would resolve against the page, not the
+   box), so it's fixed per breakpoint. */
+
+:root[data-style="shelf"] .shelf-grid.grid .no-cover {
+  container-type: inline-size;
+  gap: .4em;
+  padding: .9rem .6rem .9rem calc(6px + .5rem);
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+          hyphens: auto;
+}
+
+@media (max-width: 767px) {
+  :root[data-style="shelf"] .shelf-grid.grid .no-cover {
+    padding: .5rem .3rem .5rem calc(6px + .3rem);
+  }
+}
+
+:root[data-style="shelf"] .shelf-grid.grid .no-cover-title {
+  font-size: clamp(.7rem, 13cqw, 1.15rem);
+  line-height: 1.15;
+  -webkit-line-clamp: 6;
+}
+
+:root[data-style="shelf"] .shelf-grid.grid .no-cover-long .no-cover-title {
+  font-size: clamp(.65rem, 11cqw, 1rem);
+}
+
+:root[data-style="shelf"] .shelf-grid.grid .no-cover-author {
+  font-size: clamp(.6rem, 9cqw, .8rem);
 }
 
 :root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::before,
@@ -5059,6 +5187,126 @@ dialog::backdrop {
   aspect-ratio: auto;
 }
 
+/* ---- Sidebar on a short screen (ROADMAP 11.5) ----
+   Ten entries plus the welcome, mode picker and Log out are taller than a
+   small phone (667px); the nav scrolls, but Admin and Log out shouldn't
+   hide below the fold. Height is what runs out, so this keys on height:
+   a smaller avatar, tighter link rows. Unlayered, so it beats the
+   Tailwind padding utilities on the same elements. */
+
+@media (max-height: 760px) {
+  #sidebar .sidebar-head {
+    padding-top: 0;
+    padding-bottom: .75rem;
+  }
+
+  #sidebar .sidebar-avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-top: 3.4rem;
+    margin-bottom: .5rem;
+    font-size: 1.1rem;
+  }
+
+  #sidebar .sidebar-head h2 {
+    font-size: 1.05rem;
+  }
+
+  #sidebar > div {
+    padding-top: .75rem;
+    padding-bottom: .75rem;
+  }
+
+  #sidebar .nav-link {
+    padding: .4rem .75rem;
+  }
+
+  /* .75rem: "Do I Have This?" on one line */
+
+  #sidebar [data-mode-picker] {
+    padding-top: .5rem;
+  }
+
+  #sidebar form button {
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+  }
+}
+
+/* ---- Mode: Light | Dark, and "Follow system" (ROADMAP 12.4) ----
+   The link only shows once a mode was chosen (_follow_system.html). It's a
+   .theme-opt for the click handler, so undo the pressed-button look. */
+
+:root[data-mode="system"] .follow-system {
+  display: none;
+}
+
+.theme-opt.follow-system,
+.theme-opt.follow-system[aria-pressed] {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: rgb(var(--accent-text));
+}
+
+/* The Appearance card's summary: a heading with a disclosure arrow */
+
+.appearance-card > summary {
+  list-style: none;
+}
+
+.appearance-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.appearance-card > summary::after {
+  content: "+";
+  font-size: 1.5rem;
+  line-height: 1;
+  color: rgb(var(--ink-2));
+}
+
+.appearance-card[open] > summary::after {
+  content: "\2212";
+}
+
+/* ---- Profile stats: Year by year (ROADMAP 12.2) ----
+   One bar per year, split by type on one scale (_profile_stats.html), the
+   year's reading goal a tick across it. One hue in three strengths for
+   books, movies and music; the text above each bar carries the numbers. */
+
+.year-bar {
+  position: relative;
+  display: flex;
+  height: .75rem;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--rule));
+}
+
+.year-seg[data-kind="book"] {
+  background: rgb(var(--accent));
+}
+
+.year-seg[data-kind="video"] {
+  background: rgb(var(--accent) / .55);
+}
+
+.year-seg[data-kind="record"] {
+  background: rgb(var(--accent) / .28);
+}
+
+.year-goal, .year-goal-key {
+  background: rgb(var(--ink));
+}
+
+.year-goal {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+}
+
 :root[data-style="outrun"] .hover\:text-accent:hover {
   text-shadow: 0 0 8px rgb(var(--accent) / .55);
 }
@@ -5110,6 +5358,14 @@ dialog::backdrop {
 .first\:rounded-l:first-child {
   border-top-left-radius: var(--r);
   border-bottom-left-radius: var(--r);
+}
+
+.first\:border-0:first-child {
+  border-width: 0px;
+}
+
+.first\:pt-0:first-child {
+  padding-top: 0px;
 }
 
 .last\:rounded-r:last-child {
@@ -5225,10 +5481,6 @@ dialog::backdrop {
   background-color: rgb(var(--red) / 0.7);
 }
 
-.hover\:bg-secondary\/80:hover {
-  background-color: rgb(var(--surface) / 0.8);
-}
-
 .hover\:text-accent:hover {
   --tw-text-opacity: 1;
   color: rgb(var(--accent-text) / var(--tw-text-opacity, 1));
@@ -5242,11 +5494,6 @@ dialog::backdrop {
 .hover\:text-blue-300:hover {
   --tw-text-opacity: 1;
   color: rgb(var(--blue) / var(--tw-text-opacity, 1));
-}
-
-.hover\:text-content-primary:hover {
-  --tw-text-opacity: 1;
-  color: rgb(var(--ink) / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-on-accent:hover {
@@ -5378,10 +5625,6 @@ dialog::backdrop {
     right: 38px;
   }
 
-  .sm\:col-span-2 {
-    grid-column: span 2 / span 2;
-  }
-
   .sm\:mx-auto {
     margin-left: auto;
     margin-right: auto;
@@ -5506,6 +5749,11 @@ dialog::backdrop {
   .sm\:py-4 {
     padding-top: 1rem;
     padding-bottom: 1rem;
+  }
+
+  .sm\:text-3xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
   }
 
   .sm\:text-base {

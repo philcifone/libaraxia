@@ -69,73 +69,82 @@ function clearFilters() {
     window.location.href = window.location.pathname + (query ? '?' + query : '');
 }
 
-// Update active filters display
-function updateActiveFilters() {
-    const form = document.getElementById('filter-form');
-    if (!form) return;
+// The filter panel's fields as "key=value" strings with their pill labels
+// (tags are one entry each). Empty fields are left out: they're the default.
+function readFilterState() {
+    const fields = [
+        ['genre', 'Genre'], ['format', 'Format'], ['read_status', 'Status'],
+        ['rating', 'Rating'], ['show', 'Show'],
+    ];
+    const state = [];
+    fields.forEach(([id, label]) => {
+        const el = document.getElementById(id);
+        if (el && el.value) {
+            state.push({ key: `${id}=${el.value}`, label, value: el.options[el.selectedIndex].text });
+        }
+    });
+    document.querySelectorAll('#filter-form input[name="tags[]"]:checked').forEach(tag => {
+        state.push({ key: `tag=${tag.value}`, label: 'Tag', value: tag.value });
+    });
+    return state;
+}
 
-    const activeFilters = [];
+// How many fields differ between two states: anything added, removed or
+// changed (a changed select counts once, not as one removed + one added).
+function countFilterChanges(applied, current) {
+    const name = key => key.startsWith('tag=') ? key : key.split('=')[0];
+    const a = new Map(applied.map(f => [name(f.key), f.key]));
+    const c = new Map(current.map(f => [name(f.key), f.key]));
+    let changes = 0;
+    new Set([...a.keys(), ...c.keys()]).forEach(k => { if (a.get(k) !== c.get(k)) changes += 1; });
+    return changes;
+}
+
+// What the page was loaded with: the filters actually applied to the grid.
+// The form is rendered from the URL, so its state at load is the applied one.
+let appliedFilters = [];
+
+// The pills and the funnel's count show the applied filters only. Changing
+// the panel doesn't filter anything until Apply, so picking a status used to
+// add its pill while the grid still showed everything (ROADMAP 11.0).
+function renderAppliedFilters() {
     const pillsContainer = document.getElementById('active-filter-pills');
     const displayContainer = document.getElementById('active-filters-display');
     const countBadge = document.getElementById('filter-count-badge');
-
-    // Check genre
-    const genre = document.getElementById('genre');
-    if (genre && genre.value) {
-        activeFilters.push({ label: 'Genre', value: genre.options[genre.selectedIndex].text });
-    }
-
-    // Check format (Movies only)
-    const format = document.getElementById('format');
-    if (format && format.value) {
-        activeFilters.push({ label: 'Format', value: format.options[format.selectedIndex].text });
-    }
-
-    // Check read status
-    const readStatus = document.getElementById('read_status');
-    if (readStatus && readStatus.value) {
-        activeFilters.push({ label: 'Status', value: readStatus.options[readStatus.selectedIndex].text });
-    }
-
-    // Check rating
-    const rating = document.getElementById('rating');
-    if (rating && rating.value) {
-        activeFilters.push({ label: 'Rating', value: rating.options[rating.selectedIndex].text });
-    }
-
-    // Check the Show choice (empty = on the shelf, the default)
-    const show = document.getElementById('show');
-    if (show && show.value) {
-        activeFilters.push({ label: 'Show', value: show.options[show.selectedIndex].text });
-    }
-
-    // Check tags
-    const checkedTags = document.querySelectorAll('input[name="tags[]"]:checked');
-    checkedTags.forEach(tag => {
-        activeFilters.push({ label: 'Tag', value: tag.value });
-    });
-
-    // Update display
-    if (activeFilters.length > 0) {
-        pillsContainer.innerHTML = activeFilters.map(filter => `
+    if (!pillsContainer || !displayContainer || !countBadge) return;
+    if (appliedFilters.length > 0) {
+        pillsContainer.innerHTML = appliedFilters.map(filter => `
             <span class="inline-flex items-center px-3 py-1 rounded-pill text-xs font-medium bg-accent/20 text-accent border border-accent/30">
                 <span class="opacity-75">${escapeHtml(filter.label)}:</span>
                 <span class="ml-1">${escapeHtml(filter.value)}</span>
             </span>
         `).join('');
         displayContainer.classList.remove('hidden');
-        countBadge.textContent = activeFilters.length;
+        countBadge.textContent = appliedFilters.length;
         countBadge.classList.remove('hidden');
     } else {
         displayContainer.classList.add('hidden');
         countBadge.classList.add('hidden');
     }
 }
+
+// A field in the panel changed: say on the Apply button that something is
+// waiting ("Apply 2 changes"), or put it back to "Apply Filters".
+function filtersChanged() {
+    const apply = document.getElementById('apply-filters');
+    if (!apply) return;
+    const changes = countFilterChanges(appliedFilters, readFilterState());
+    apply.textContent = changes ? `Apply ${changes} change${changes === 1 ? '' : 's'}` : 'Apply Filters';
+}
+
 // On page load: show the active filters under the search row, and close the
 // filter panel on a click outside it or Escape. The panel isn't opened for
 // filters in the URL: it would cover the grid; the count and pills say so.
 document.addEventListener('DOMContentLoaded', function () {
-    updateActiveFilters();
+    if (document.getElementById('filter-form')) {
+        appliedFilters = readFilterState();
+        renderAppliedFilters();
+    }
 
     const panel = document.getElementById('filter-panel');
     const button = document.getElementById('filter-toggle');
@@ -575,6 +584,6 @@ registerActions({
     submitSortForm: () => submitSortForm(),
     clearFilters: () => clearFilters(),
     toggleFilters: () => toggleFilters(),
-    updateActiveFilters: () => updateActiveFilters(),
+    filtersChanged: () => filtersChanged(),
     showLoading: el => showLoadingIndicator(el.dataset.loading),
 });

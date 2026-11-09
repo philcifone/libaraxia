@@ -136,6 +136,16 @@ CREATE TABLE reading_sessions (
 );
 CREATE INDEX idx_reading_sessions_user_book ON reading_sessions(user_id, book_id);
 
+-- Reading goal per user and year (029, ROADMAP 12.3). users.reading_goal is
+-- the old single goal, left unused.
+CREATE TABLE reading_goals (
+    user_id INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    goal INTEGER NOT NULL CHECK (goal > 0),
+    PRIMARY KEY (user_id, year),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE book_tags (
     tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -380,4 +390,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('025_owned.sql'),
     ('026_accent.sql'),
     ('027_shelf_types.sql'),
-    ('028_font.sql');
+    ('028_font.sql'),
+    ('029_reading_goals.sql');

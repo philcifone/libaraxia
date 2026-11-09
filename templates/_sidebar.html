@@ -31,13 +31,13 @@
             transition-transform duration-300 ease-in-out z-40 border-r border-card">
     <div class="flex flex-col h-full p-6">
         <!-- User Section -->
-        <div class="py-6 text-center border-b border-content-primary/10">
+        <div class="sidebar-head py-6 text-center border-b border-content-primary/10">
             {% if current_user.avatar_url %}
                 <img src="{{ url_for('static', filename=current_user.avatar_url) }}"
                      alt="{{ current_user.username }}"
-                     class="w-16 h-16 mx-auto mb-4 mt-10 rounded-full object-cover">
+                     class="sidebar-avatar w-16 h-16 mx-auto mb-4 mt-10 rounded-full object-cover">
             {% else %}
-                <div class="w-16 h-16 mx-auto mb-4 mt-10 rounded-full bg-accent flex items-center justify-center
+                <div class="sidebar-avatar w-16 h-16 mx-auto mb-4 mt-10 rounded-full bg-accent flex items-center justify-center
                             text-2xl font-semibold text-on-accent">
                     {{ current_user.username[0].upper() }}
                 </div>
@@ -45,16 +45,19 @@
             <h2 class="text-xl text-content-primary">
                 Welcome, {{ current_user.username.capitalize() }}!
             </h2>
+            {# Notifications live here, under the welcome, with what's waiting
+               (requests, invites, unread) as a count (Phil, 2026-11-08) #}
+            {% set waiting = notification_count() %}
+            <a href="{{ url_for('friends.notifications_page') }}"
+               class="mt-2 inline-flex items-center gap-2 text-sm {{ 'text-accent font-semibold' if request.endpoint == 'friends.notifications_page' else 'text-content-secondary' }} hover:text-accent transition-colors">
+                {{ icon('bell', class='w-4 h-4') }}
+                Notifications
+                {% if waiting %}<span class="min-w-[1.25rem] px-1.5 bg-accent text-on-accent text-xs leading-5 text-center rounded-pill">{{ waiting }}<span class="sr-only"> waiting</span></span>{% endif %}
+            </a>
         </div>
 
         <!-- Navigation -->
         <nav class="flex-1 space-y-1 overflow-y-auto">
-            <a href="/friends/notifications_page"
-               class="nav-link {% if request.path.startswith('/friends') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
-                      hover:bg-accent/10 transition-colors">
-                {{ icon('bell') }}
-                Notifications
-            </a>
 
             <a href="/feed/activity"
                class="nav-link {% if request.path.startswith('/feed') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
@@ -63,24 +66,23 @@
                 Activity Feed
             </a>
         
-        <a href="/base/index"
-        class="nav-link {% if request.path.startswith('/base') or request.path.startswith('/books') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
-                hover:bg-accent/10 transition-colors">
-            {{ icon('library') }}
-            Library
-        </a>
-        <a href="/videos/"
-           class="nav-link {% if request.path.startswith('/videos') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
-                hover:bg-accent/10 transition-colors">
-            {{ icon('vhs') }}
-            Movies
-        </a>
-        <a href="/records/"
-           class="nav-link {% if request.path.startswith('/records') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
-                hover:bg-accent/10 transition-colors">
-            {{ icon('disc') }}
-            Music
-        </a>
+            {# One entry for Books, Movies and Music (ROADMAP 11.1): the Shelves
+               pages switch section themselves; this returns you to the last one #}
+            {# A friend's shelves count as Friends (that's where you came from) #}
+            {% set on_friend = request.endpoint in ('friends.index', 'base.friend_library', 'videos.user_videos', 'records.user_records') %}
+            <a href="{{ url_for('base.shelves') }}"
+               class="nav-link {% if request.path.startswith(('/base', '/books', '/videos', '/records')) and not on_friend %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      hover:bg-accent/10 transition-colors">
+                {{ icon('library') }}
+                Shelves
+            </a>
+
+            <a href="{{ url_for('friends.index') }}"
+               class="nav-link {% if on_friend %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+                      hover:bg-accent/10 transition-colors">
+                {{ icon('users') }}
+                Friends
+            </a>
 
             <a href="{{ url_for('have.check') }}"
                class="nav-link {% if request.path.startswith('/have') %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
@@ -125,7 +127,7 @@
             <div class="mt-auto px-4 pt-4 pb-2" data-theme-picker data-mode-picker>
                 <p class="label text-xs pb-1 mb-2">Mode</p>
                 <div class="flex" role="group" aria-label="Colour mode">
-                    {% for key, name in theme_modes.items() %}
+                    {% for key, name in mode_choices.items() %}
                     <button type="button"
                             class="theme-opt flex-1 px-2 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
                             data-kind="mode" data-value="{{ key }}"

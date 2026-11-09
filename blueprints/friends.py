@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, flash, redirect, url_for, render_
 from flask_login import login_required, current_user
 from utils.database import get_db
 from utils.rate_limiting import limiter
+from utils.notifications import unread_counts
 import sqlite3
 
 friends_blueprint = Blueprint('friends', __name__, url_prefix='/friends')
@@ -244,6 +245,32 @@ def get_friends():
 
 
 
+@friends_blueprint.route('/', methods=['GET'])
+@login_required
+def index():
+    """Friends (ROADMAP 11.3): your friends as people, each opening their
+    shelves; pending requests; and Find friends. Replaces the Friends' tab
+    that each Shelves section used to have."""
+    conn = get_db()
+    # Counts are what's on each friend's shelf (owned, not removed), per type
+    friends = conn.execute('''
+        SELECT u.id, u.username, u.avatar_url, u.bio,
+               (SELECT COUNT(*) FROM library_books b WHERE b.added_by = u.id
+                   AND b.owned = 1 AND b.removed_at IS NULL) AS books,
+               (SELECT COUNT(*) FROM library_videos v WHERE v.added_by = u.id
+                   AND v.owned = 1 AND v.removed_at IS NULL) AS movies,
+               (SELECT COUNT(*) FROM library_records r WHERE r.added_by = u.id
+                   AND r.owned = 1 AND r.removed_at IS NULL) AS albums
+        FROM users u
+        JOIN friendships f ON (f.user_id_1 = :me AND f.user_id_2 = u.id)
+                           OR (f.user_id_2 = :me AND f.user_id_1 = u.id)
+        ORDER BY u.username COLLATE NOCASE
+    ''', {'me': current_user.id}).fetchall()
+    waiting = unread_counts(conn, current_user.id)
+    return render_template('friends.html', friends=friends,
+                           friend_requests=waiting['friend_requests'])
+
+
 @friends_blueprint.route('/notifications_page', methods=['GET'])
 @login_required
 def notifications_page():
@@ -300,35 +327,8 @@ def notifications_page():
 @friends_blueprint.route('/notification_count', methods=['GET'])
 @login_required
 def notification_count():
-    """Get count of unread notifications and pending friend requests (JSON API)"""
-    conn = get_db()
-    # Count pending friend requests
-    friend_request_count = conn.execute('''
-        SELECT COUNT(*) as count
-        FROM friend_requests
-        WHERE receiver_id = ? AND status = 'pending'
-    ''', (current_user.id,)).fetchone()['count']
-
-    # Count unread notifications (excluding friend_request type)
-    notification_count = conn.execute('''
-        SELECT COUNT(*) as count
-        FROM notifications
-        WHERE user_id = ? AND is_read = 0 AND type != 'friend_request'
-    ''', (current_user.id,)).fetchone()['count']
-
-    household_invite_count = conn.execute(
-        'SELECT COUNT(*) FROM household_invites WHERE invitee_id = ?', (current_user.id,)
-    ).fetchone()[0]
-
-    total_count = friend_request_count + notification_count + household_invite_count
-
-    return jsonify({
-        'count': total_count,
-        'friend_requests': friend_request_count,
-        'notifications': notification_count,
-        'household_invites': household_invite_count,
-    })
-
+    """Unread notifications, friend requests and household invites (JSON API)."""
+    return jsonify(unread_counts(get_db(), current_user.id))
 
 
 @friends_blueprint.route('/dismiss_notification/<int:notification_id>', methods=['POST'])

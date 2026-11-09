@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{# Friends (ROADMAP 11.3): people, not a tab on every Shelves section. Each
+   friend opens their shelves (books first; the section switch there does
+   the rest), with their profile a link away. Find friends lives here; the
+   search script is static/friends.js. Requests are answered on the
+   Notifications page, linked from here when any are waiting. #}
+{% from '_icons.html' import page_heading %}
+
+{% block title %}Friends - libaraxia{% endblock %}
+{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
+
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 space-y-8">
+    {{ page_heading('users', 'Friends', class='') }}
+
+    {% if friend_requests %}
+    <a href="{{ url_for('friends.notifications_page') }}"
+       class="block bg-secondary rounded-xl card p-4 text-center text-content-primary hover:text-accent">
+        <strong>{{ friend_requests }} friend request{{ 's' if friend_requests != 1 }}</strong> waiting: answer on Notifications
+    </a>
+    {% endif %}
+
+    <!-- Your friends -->
+    <section aria-labelledby="your-friends">
+        <h2 id="your-friends" class="sr-only">Your friends</h2>
+        {% if friends %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for friend in friends %}
+            <div class="bg-secondary rounded-xl p-5 card flex items-center gap-4">
+                <a href="{{ shelf_url('book', 'friend', friend.username) }}" class="shrink-0" tabindex="-1" aria-hidden="true">
+                    {% if friend.avatar_url %}
+                    <img src="{{ url_for('static', filename=friend.avatar_url) }}" alt=""
+                         class="h-16 w-16 rounded-full object-cover">
+                    {% else %}
+                    <div class="h-16 w-16 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold text-2xl">
+                        {{ friend.username[0].upper() }}
+                    </div>
+                    {% endif %}
+                </a>
+                <div class="min-w-0 flex-1">
+                    <a href="{{ shelf_url('book', 'friend', friend.username) }}"
+                       class="block text-xl font-semibold text-content-primary hover:text-accent transition-colors truncate">{{ friend.username }}</a>
+                    {# What's on their shelves; each count opens that section #}
+                    <p class="text-sm text-content-secondary">
+                        {%- for kind, count, one, many in [('book', friend.books, 'book', 'books'),
+                                                           ('video', friend.movies, 'movie', 'movies'),
+                                                           ('record', friend.albums, 'album', 'albums')] %}
+                        {%- if not loop.first %} · {% endif %}
+                        <a href="{{ shelf_url(kind, 'friend', friend.username) }}" class="hover:text-accent">{{ count }} {{ one if count == 1 else many }}</a>
+                        {%- endfor %}
+                    </p>
+                    <a href="{{ url_for('user.profile', username=friend.username) }}"
+                       class="text-sm text-accent hover:text-accent-hover underline">Profile</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-secondary rounded-xl card p-8 text-center text-content-secondary">
+            No friends yet. Find someone below and send a request.
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Find friends -->
+    <section class="bg-secondary rounded-xl p-6 card" aria-labelledby="find-friends">
+        <h2 id="find-friends" class="text-2xl font-display text-content-primary mb-4">Find friends</h2>
+        <input type="text" id="friend-search-input" aria-label="Search for users by username"
+               placeholder="Search by username..." autocomplete="off"
+               class="w-full mb-2 px-4 py-2 bg-primary border border-rule-strong rounded-lg text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+        <div id="search-results" class="space-y-2" aria-live="polite">
+            <p class="text-content-secondary text-center py-4 text-sm">Start typing to search for users...</p>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='friends.js') }}"></script>
+{% endblock %}

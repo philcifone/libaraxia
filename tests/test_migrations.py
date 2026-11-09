@@ -167,6 +167,7 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
         DROP VIEW library_books;       -- added by 018
         DROP TABLE household_invites;  -- added by 021
         DROP TABLE cover_jobs;         -- added by 022
+        DROP TABLE reading_goals;      -- added by 029
         -- videos, added by 023
         DROP VIEW library_videos;
         DROP INDEX idx_books_media_type;

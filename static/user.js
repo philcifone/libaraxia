@@ -1,5 +1,6 @@
 // Profile page (templates/user.html): long reviews, stats tabs, inline
-// settings, avatar upload, bio, friend search and the appearance picker.
+// settings, avatar upload, bio and the appearance picker. (Friend search
+// moved to the Friends page, static/friends.js.)
 // Markup reaches these through data-click / data-change (registered at the
 // bottom); values the server knows come from data- attributes.
 
@@ -10,29 +11,27 @@
 // ---- Stats tabs ----------------------------------------------------------
 
 // Tab switching functionality
-function switchTab(tabName) {
-    // Hide all tab contents
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.add('hidden');
+// Profile statistics (12.1, _profile_stats.html): the section's data-view
+// (overview / insights) and data-kind (book / video / record) pick the one
+// panel shown; the buttons say which is on.
+function showStats(section) {
+    const { view, kind } = section.dataset;
+    section.querySelectorAll('[data-stats-panel]').forEach(panel => {
+        panel.hidden = !(panel.dataset.view === view && panel.dataset.kind === kind);
     });
-
-    // Deactivate all tab buttons
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active');
-        button.classList.remove('text-content-primary');
-        button.classList.add('text-content-secondary');
+    section.querySelectorAll('[data-stats-view]').forEach(button => {
+        const on = button.dataset.statsView === view;
+        button.classList.toggle('active', on);
+        button.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-
-    // Show selected tab content
-    document.getElementById('content-' + tabName).classList.remove('hidden');
-
-    // Activate selected tab button
-    const activeButton = document.getElementById('tab-' + tabName);
-    activeButton.classList.add('active', 'text-content-primary');
-    activeButton.classList.remove('text-content-secondary');
+    section.querySelectorAll('[data-stats-kind]').forEach(button => {
+        const on = button.dataset.statsKind === kind;
+        button.classList.toggle('tab-active', on);
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
 }
 
-// ---- Inline settings (email, username, password, avatar, bio) and friend search
+// ---- Inline settings (email, username, password, avatar, bio)
 
 // Inline editing functionality
 function editField(fieldName) {
@@ -430,113 +429,20 @@ if (bioInput) {
     updateCharCount();
 }
 
-// Friend search inline toggle functionality
-const toggleBtn = document.getElementById('toggle-friend-search');
-const closeBtn = document.getElementById('close-friend-search');
-const searchContainer = document.getElementById('friend-search-container');
-const searchInput = document.getElementById('friend-search-input');
-const searchResults = document.getElementById('search-results');
-let searchTimeout;
-
-// Toggle search container
-if (toggleBtn && searchContainer) {
-    toggleBtn.addEventListener('click', function() {
-        searchContainer.classList.toggle('hidden');
-        if (!searchContainer.classList.contains('hidden')) {
-            // Focus the search input when opening
-            setTimeout(() => {
-                if (searchInput) searchInput.focus();
-            }, 100);
-        }
-    });
-}
-
-// Close search container
-if (closeBtn && searchContainer) {
-    closeBtn.addEventListener('click', function() {
-        searchContainer.classList.add('hidden');
-        if (searchInput) {
-            searchInput.value = '';
-            searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">Start typing to search for users...</p>';
-        }
-    });
-}
-
-// Search functionality
-if (searchInput && searchResults) {
-    searchInput.addEventListener('input', function(e) {
-        clearTimeout(searchTimeout);
-        const query = e.target.value.trim();
-
-        if (query.length < 2) {
-            searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">Start typing to search for users...</p>';
-            return;
-        }
-
-        searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">Searching...</p>';
-
-        searchTimeout = setTimeout(() => {
-            fetch(`/friends/search_users?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(users => {
-                    if (users.length === 0) {
-                        searchResults.innerHTML = '<p class="text-content-secondary text-center py-4 text-sm">No users found</p>';
-                    } else {
-                        const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
-                        searchResults.innerHTML = users.map(user => {
-                            const username = esc(user.username);
-                            const userPath = esc(encodeURIComponent(user.username));
-                            const avatarHtml = user.avatar_url
-                                ? `<img src="/static/${esc(user.avatar_url)}" alt="${username}" class="w-10 h-10 rounded-full object-cover">`
-                                : `<div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-on-accent">${esc(user.username[0].toUpperCase())}</div>`;
-
-                            let actionHtml = '';
-                            if (user.friendship_status === 'friends') {
-                                actionHtml = '<span class="text-sm text-green-500">✓ Friends</span>';
-                            } else if (user.friendship_status === 'request_sent') {
-                                actionHtml = '<span class="text-sm text-content-secondary">Request Sent</span>';
-                            } else if (user.friendship_status === 'request_received') {
-                                actionHtml = '<span class="text-sm text-blue-500">Request Received</span>';
-                            } else {
-                                actionHtml = `<form method="POST" action="/friends/send_request/${userPath}" class="inline">
-                                    <input type="hidden" name="csrf_token" value="${escapeHtml(getCSRFToken())}">
-                                    <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent text-sm btn">
-                                        Add Friend
-                                    </button>
-                                </form>`;
-                            }
-
-                            return `
-                                <div class="p-2 mt-2 hover:bg-primary transition-colors rounded-lg">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <a href="/user/${userPath}" class="flex items-center gap-3 flex-1">
-                                            ${avatarHtml}
-                                            <div>
-                                                <p class="text-content-primary font-medium">${username}</p>
-                                            </div>
-                                        </a>
-                                        <div class="flex-shrink-0">
-                                            ${actionHtml}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                    }
-                })
-                .catch(error => {
-                    console.error('Search error:', error);
-                    searchResults.innerHTML = '<p class="text-red-500 text-center py-4 text-sm">Error searching users</p>';
-                });
-        }, 300);
-    });
-}
-
 // The Appearance picker (style and mode) is handled in sidebar.js, shared
 // with the sidebar's Mode shortcut.
 
 registerActions({
-    switchTab: button => switchTab(button.dataset.tab),
+    statsView: button => {
+        const section = button.closest('[data-stats]');
+        section.dataset.view = button.dataset.statsView;
+        showStats(section);
+    },
+    statsKind: button => {
+        const section = button.closest('[data-stats]');
+        section.dataset.kind = button.dataset.statsKind;
+        showStats(section);
+    },
     editField: button => editField(button.dataset.field),
     saveField: button => saveField(button.dataset.field),
     cancelEdit: button => cancelEdit(button.dataset.field),
