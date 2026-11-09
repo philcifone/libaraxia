@@ -177,6 +177,12 @@ def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any
             for identifier in volume_info.get("industryIdentifiers", [])
             if identifier.get("type") in ["ISBN_13", "ISBN_10"]
         ), None)
+        # Some volumes have no Google image at all (Infinite Jest's three
+        # Little, Brown entries, for one): show Open Library's cover for the
+        # ISBN instead. default=false makes a missing one a 404, so the page
+        # falls back to its no-cover box.
+        if not thumb and isbn:
+            thumb = f"https://covers.openlibrary.org/b/isbn/{quote(isbn, safe='')}-M.jpg?default=false"
 
         processed_items.append({
             "volumeInfo": {
@@ -189,9 +195,9 @@ def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any
                 "pageCount": volume_info.get("pageCount", 0),
                 "categories": volume_info.get("categories", []),
                 "industryIdentifiers": [{"type": "ISBN_13", "identifier": isbn}] if isbn else [],
-                # The plain thumbnail (zoom=1, every volume has one): shown in
-                # the results; picking one asks for the large size too
-                # (books.select_search_result, google_cover_candidates)
+                # Google's plain thumbnail (zoom=1), or Open Library's by
+                # ISBN: shown in the results; picking one asks for the large
+                # size too (books.select_search_result, google_cover_candidates)
                 "imageLinks": {"thumbnail": thumb} if thumb else {}
             }
         })

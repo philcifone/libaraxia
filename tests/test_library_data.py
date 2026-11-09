@@ -454,6 +454,27 @@ def test_google_cover_candidates_ask_for_the_large_size_first():
     assert google_cover_candidates('') == []
 
 
+def test_search_results_without_a_google_image_show_open_library(app, monkeypatch):
+    """Some volumes have no Google image at all (Infinite Jest): the result
+    shows Open Library's cover for its ISBN instead, and one with neither
+    has no thumbnail (the page shows its no-cover box)."""
+    from utils import book_utils
+    link = 'http://books.google.com/books/content?id=XfFvDwAAQBAJ&printsec=frontcover&img=1&zoom=1'
+    monkeypatch.setattr(book_utils, '_google_volumes', lambda q, n: [
+        {'volumeInfo': {'title': 'Infinite Jest',
+                        'industryIdentifiers': [{'type': 'ISBN_10', 'identifier': '0316920045'}]}},
+        {'volumeInfo': {'title': 'Has one', 'imageLinks': {'thumbnail': link},
+                        'industryIdentifiers': [{'type': 'ISBN_10', 'identifier': '0316920045'}]}},
+        {'volumeInfo': {'title': 'Neither'}},
+    ])
+    with app.app_context():
+        results = book_utils.search_google_books('infinite jest')
+    thumbs = [r['volumeInfo']['imageLinks'].get('thumbnail') for r in results]
+    assert thumbs == ['https://covers.openlibrary.org/b/isbn/0316920045-M.jpg?default=false',
+                      'https://books.google.com/books/content?id=XfFvDwAAQBAJ&printsec=frontcover&img=1&zoom=1',
+                      None]
+
+
 def test_picking_a_search_result_tries_large_google_then_open_library(client, db, people, monkeypatch):
     """Add Book's search result only carries Google's 128 px thumbnail.
     Picking it tries the large size, the thumbnail, then Open Library by
