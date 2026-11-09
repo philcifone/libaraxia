@@ -615,26 +615,29 @@ def test_shelf_style_reaches_every_cover_grid():
     assert '#book-container.grid' not in css
 
 
-def test_shelf_tap_to_peek_and_movie_rack(client, db, people):
-    """Shelf: shelf.js is on every page (first tap shows a cover's label on
-    touch screens, a second tap within 5 s opens it), .peek shows the label,
-    and the Movies grid is reskinned as a rack with a barcode sticker."""
+def test_shelf_covers_only_and_movie_rack(client, db, people):
+    """Shelf: shelf.js is on every page; the bookcase shows covers only, the
+    title and author visually hidden but there for screen readers, with a
+    focus ring for the keyboard; the Movies grid can be a rack."""
     login(client, 'alice')
     page = client.get('/base/index').get_data(as_text=True)
     assert "static/shelf.js" in page
+    assert 'class="book-title' in pathlib.Path('templates/_book_grid.html').read_text()  # still in the markup
     js = pathlib.Path('static/shelf.js').read_text()
-    assert "(hover: none)" in js and 'PEEK_MS = 5000' in js and "dataset.style !== 'shelf'" in js
+    assert 'peek' not in js
     css = pathlib.Path('static/styles.css').read_text()
-    assert '.shelf-grid.grid .book-link.peek .book-info' in css
+    hidden = css[css.index('No title label on the bookcase'):]
+    hidden = hidden[:hidden.index('}')]
+    assert 'clip: rect(0, 0, 0, 0)' in hidden and 'width: 1px' in hidden
+    assert '.book-link:focus-visible :is(.cover-box, .no-cover)' in css
+    assert '.book-info { opacity' not in css and 'peek' not in css
     rack = css[css.index('/* ---- Shelf: the movie rack'):]
-    assert '.shelf-grid.grid[data-media="video"]' in rack and '"VT323"' in rack
+    assert '.shelf-grid.grid[data-media="video"]' in rack
     assert '--shelf-frame' in rack
     # Every movie stands in the white case; a long title drops the director
     assert 'aspect-ratio: 5 / 8' in rack and '.no-cover-long .no-cover-author { display: none; }' in rack
     assert 'no-cover-long' in pathlib.Path('templates/_no_cover.html').read_text()
     assert 'no-cover-long' in pathlib.Path('static/common.js').read_text()
-    # The label shows the whole title, unclamped
-    assert '-webkit-line-clamp: none;' in css
 
 
 def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
