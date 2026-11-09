@@ -118,7 +118,8 @@ def test_every_page_loads(app, client, db, people):
              '/admin/users/%d/removal' % alice,
              f'/videos/{video}', f'/videos/edit/{video}', f'/read/rate_review/{video}',
              '/videos/?q=jaws&format=VHS&sort_by=runtime_minutes&sort_order=desc',
-             '/videos/add?barcode=012345678905', '/videos/user/alice']
+             '/videos/add?barcode=012345678905', '/videos/user/alice',
+             '/have/online?q=dune']            # a local hit: answers without asking anyone
     # Vinyls (Phase 8.7), the same way
     record = db.execute("INSERT INTO books (title, author, publisher, runtime_minutes, catalog_number, format, "
                         "description, added_by, media_type) VALUES ('Blue', 'Joni Mitchell', 'Reprise', 36, "

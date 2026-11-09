@@ -164,6 +164,9 @@ def render_add_book(destination="shelf", values=None, duplicates=(), status=200)
 
     values = book_details or {}
     if request.method == "GET":
+        # A title from Do I have this? (13b), when it had no ISBN
+        if not isbn:
+            values.update(media.add_prefill(request.args))
         # From Reviews' "Add it as not owned" (ROADMAP 13)
         values.update(then_review_values(request.args))
     # Preview: the cover the lookup saved, else its remote thumbnail (proxied)

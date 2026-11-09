@@ -15,7 +15,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 11 | [Shelves: one home for every section](#phase-11-shelves-one-home-for-every-section) | Next |
 | 12 | [Profile and stats](#phase-12-profile-and-stats) | After 11: stats use its section switch |
 | 13 | [Reviews section](#phase-13-reviews-section) | Done 2026-11-09 |
-| 13b | [Do I have this? across all three types](#phase-13b-do-i-have-this-across-all-three-types) | Next: after 13 |
+| 13b | [Do I have this? across all three types](#phase-13b-do-i-have-this-across-all-three-types) | Done 2026-11-09 |
 | 14 | [Bulk edit and granular import](#phase-14-bulk-edit-and-granular-import) | After 11: select mode lives on the new grids. Was Phase 9 |
 | 15 | [Portfolio: README, showcase site, demo](#phase-15-portfolio-readme-showcase-site-demo) | Last: screenshots of the finished app |
 
@@ -142,16 +142,21 @@ From Phil, 2026-11-09: "I searched Orville Peck Pony and it thought I was talkin
 
 **What happens today (reviewed 2026-11-09):** the local check (`utils/have.py`) already searches books, movies and music. The problem is the "Not here" step: for a typed title, `have.add_links` always offers *book* links (Add to wishlist / Add to library), and carries neither the title nor a type. For a non-ISBN barcode it offers four buttons (movie or album, wishlist or shelf) and you pick, though the code is carried. Nothing is looked up online until you reach the add page.
 
-- [ ] 🟠 **Online lookup on "Not here", across all three sources.** Ask Google Books / Open Library, TMDb and Discogs (MusicBrainz as backup) in parallel, through the existing lookup modules and SSRF guard. Load it with a fetch after the page renders (`have.js`), so the local answer stays instant and a slow source can't hold it up. Only on "Not here", never on a hit.
-- [ ] 🟠 **"Most likely" ranking.** Score each candidate on how well its title and creator cover the words searched (folded with `search.fold`). "orville peck pony" fits artist + title on a Discogs release far better than any book title. Show the best candidate as the headline with its type badge, then the rest grouped by type, so a wrong guess is one tap from right. Start with a plain, explainable heuristic (word coverage, exact-title bonus, creator match), not a model.
-- [ ] 🟠 **Barcodes:** a non-ISBN code asks TMDb/UPCitemdb and Discogs at once and picks whichever recognises it, instead of the four-button choice. Keep the choice as the fallback when neither or both answer.
-- [ ] 🟠 **"Add to wishlist" fills the form.** Each candidate links to its type's wishlist add page with the source id (`?isbn=`, TMDb id, `?discogs=` / `?mbid=`, or the barcode). The add page looks that up on load (`add_item.js` already auto-looks-up a carried code: extend it to the other ids), so the form arrives filled in. A text search with no candidates still carries `?title=`.
-- [ ] Tests: ranking on fixed fixtures (the Orville Peck case), each type's add link carrying its id, no network on a local hit, and the add page pre-fill per id.
+- [x] 🟠 **Online lookup on "Not here", across all three sources.** Ask Google Books / Open Library, TMDb and Discogs (MusicBrainz as backup) in parallel, through the existing lookup modules and SSRF guard. Load it with a fetch after the page renders (`have.js`), so the local answer stays instant and a slow source can't hold it up. Only on "Not here", never on a hit.
+- [x] 🟠 **"Most likely" ranking.** Score each candidate on how well its title and creator cover the words searched (folded with `search.fold`). "orville peck pony" fits artist + title on a Discogs release far better than any book title. Show the best candidate as the headline with its type badge, then the rest grouped by type, so a wrong guess is one tap from right. Start with a plain, explainable heuristic (word coverage, exact-title bonus, creator match), not a model.
+- [x] 🟠 **Barcodes:** a non-ISBN code asks TMDb/UPCitemdb and Discogs at once and picks whichever recognises it, instead of the four-button choice. Keep the choice as the fallback when neither or both answer.
+- [x] 🟠 **"Add to wishlist" fills the form.** Each candidate links to its type's wishlist add page with the source id (`?isbn=`, TMDb id, `?discogs=` / `?mbid=`, or the barcode). The add page looks that up on load (`add_item.js` already auto-looks-up a carried code: extend it to the other ids), so the form arrives filled in. A text search with no candidates still carries `?title=`.
+- [x] Tests: ranking on fixed fixtures (the Orville Peck case), each type's add link carrying its id, no network on a local hit, and the add page pre-fill per id.
 
 **Worth knowing before starting:**
 - Cost: up to three outside calls per "Not here". MusicBrainz is 1 request/s per process and Discogs about 60/min; the lookup modules already throttle and cache (6 h). Fine for one person in a shop, and the "only on Not here" rule keeps it that way.
 - Calculated risk: the ranking will sometimes guess wrong (a book and an album with the same name). Showing all three groups, only ordered, is what makes that acceptable.
 - Not in scope: auto-adding anything. A lookup only pre-fills; you still press Add.
+
+**Done 2026-11-09:** `utils/have_online.py` (sources in a thread pool, 5 s deadline for all, ranking `score_text` + `rank`), route `have.online` (`/have/online?q=`, 60/hour per user), `have.js` renders the candidates. Add pages take `?tmdb_id=` (Movies), `?discogs=` / `?mbid=` (Music) as `data-lookup-url`, and `?title=` / `?author=` (`media.add_prefill`). The by-hand links now come per type with the title carried. Tests: `tests/test_have_online.py`.
+- Decided on the way: a barcode both sources recognise shows both (the exact-code match first: Discogs/MusicBrainz scores above UPCitemdb + TMDb, which only matched a product name). UPCitemdb products filed under music aren't offered as movies (`upcitemdb` now returns `category`).
+- Known limit: an exact title that is a book, a film and an album ("purple rain") ties, and the tie goes to the first source (books). All three groups show, so the right one is a scroll away. A possible later bonus: candidates whose creator other results name in their titles.
+- Dev machine note: its IPv6 default route refuses connections, so the first request to Google / TMDb after idle spends ~1 s per IPv6 address before IPv4, past the deadline. Those sources are then "slow" once and fine after. Prod may not have this.
 
 **Done when:** a search or scan that isn't in the house shows the most likely match first, of the right type, and "Add to wishlist" opens that type's form already filled in.
 

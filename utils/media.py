@@ -346,3 +346,14 @@ def only(media_type, column='book_id'):
     if media_type not in MEDIA_TYPES:
         raise ValueError(f'unknown media type {media_type!r}')
     return f"{column} IN (SELECT id FROM books WHERE media_type = '{media_type}')"
+
+
+def add_prefill(args):
+    """An add page's ?title= and ?author= (a miss on Do I have this?, ROADMAP
+    13b): the form starts with them filled in. Empty ones are left out."""
+    values = {}
+    for key in ('title', 'author'):
+        value = (args.get(key) or '').strip()[:200]
+        if value:
+            values[key] = value
+    return values

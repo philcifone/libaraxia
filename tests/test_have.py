@@ -77,8 +77,10 @@ def test_misses_offer_adding_with_the_code(client, db, people):
     assert '/wishlist/add?type=book&amp;isbn=9780141439518' in html
     assert '/books/add?isbn=9780141439518' in html
     html = page(client, EAN)
-    assert 'Wishlist it as a movie' in html and 'Wishlist it as an album' in html
-    assert f'/records/add?barcode={EAN}' in html
+    assert 'Wishlist it as' in html and f'/wishlist/add?type=video&amp;barcode={EAN}' in html
+    assert f'/wishlist/add?type=record&amp;barcode={EAN}' in html
+    assert f'/records/add?barcode={EAN}' in html and f'/videos/add?barcode={EAN}' in html
+    assert '/books/add?barcode' not in html                   # a barcode isn't a book
     assert "isn't a valid barcode" in page(client, '123456789019')    # bad check digit
 
 

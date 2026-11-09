@@ -511,9 +511,19 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(file);
     });
 
+    // Arrived with a source id (a candidate picked on Do I have this?,
+    // ROADMAP 13b: a TMDb film, a Discogs or MusicBrainz release): the
+    // server checked it and built the section's lookup URL. Same answer as
+    // picking a search result, so the same form() fills it in.
+    if (root.dataset.lookupUrl) {
+        runLookup('Looking it up...', async () => {
+            const data = await getJSON(root.dataset.lookupUrl);
+            if (data.success && !data.found) return { notFound: 'Nothing more found on that one. Fill the form in by hand.' };
+            return type.form(data);
+        });
     // Arrived with a code in the URL (a tape scanned on Add Book, a miss on
     // Do I have this?) and nothing typed yet: look it up
-    if (codeInput && codeInput.value.trim() && !$('title').value.trim() && root.dataset.autoLookup) {
+    } else if (codeInput && codeInput.value.trim() && !$('title').value.trim() && root.dataset.autoLookup) {
         lookUpCode(codeInput.value);
     }
 });

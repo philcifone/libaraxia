@@ -17,6 +17,10 @@
    (MusicBrainz as backup), /records/lookup?barcode=.
 
    Lookups only pre-fill: they never overwrite what you typed (add_item.js).
+   Arriving with an id (Do I have this?, ROADMAP 13b: ?isbn=, ?tmdb_id=,
+   ?discogs=, ?mbid=, ?barcode=) the page looks it up on load; `values`
+   then carries `lookup_url` for the non-code ids. ?title= / ?author= only
+   pre-fill those fields.
 
    Two destinations: the shelf (Library / Movies) or the wishlist
    (wishlist.add_to_wishlist), which adds a note field. A code of the other
@@ -46,7 +50,7 @@
 {% endblock %}
 
 {% block content %}
-<div id="add-item" data-type="{{ m.type }}"{% if request.method == 'GET' and code_value %} data-auto-lookup="1"{% endif %} data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
+<div id="add-item" data-type="{{ m.type }}"{% if request.method == 'GET' and code_value %} data-auto-lookup="1"{% endif %}{% if request.method == 'GET' and values.lookup_url %} data-lookup-url="{{ values.lookup_url }}"{% endif %} data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
      class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
     {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun) }}
 

@@ -7,7 +7,7 @@ view; this module adds the Movies lookups: UPCitemdb by barcode and TMDb by
 title (utils/media_lookup.py). The UI says "Movies"; code, URLs and the DB
 say "video".
 """
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, url_for
 from flask_login import login_required
 
 from blueprints.media_section import Section, make_blueprint
@@ -25,10 +25,19 @@ def _add_context(values):
                 active_method='code' if code or not tmdb else 'search')
 
 
+def _lookup_url(args):
+    """?tmdb_id= (a film picked on Do I have this?): look it up on load."""
+    tmdb_id = args.get('tmdb_id', type=int)
+    if not tmdb_id or tmdb_id < 1 or not media_lookup.tmdb_key():
+        return None
+    return url_for('videos.lookup', tmdb_id=tmdb_id)
+
+
 VIDEOS = Section(
     media_type=media.VIDEO,
     view='library_videos',
     add_context=_add_context,
+    lookup_url=_lookup_url,
     empty_text='Type one in from its box, or scan its barcode. Movies are kept apart from your books.',
 )
 videos_blueprint = make_blueprint(VIDEOS)

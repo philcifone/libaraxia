@@ -12,7 +12,7 @@ the DB say "record".
 """
 import re
 
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, url_for
 from flask_login import login_required
 
 from blueprints.media_section import Section, make_blueprint
@@ -26,10 +26,23 @@ def _add_context(values):
     return dict(active_method='code' if values.get('barcode_input') else 'search')
 
 
+def _lookup_url(args):
+    """?discogs=<release id> or ?mbid=<MusicBrainz id> (a release picked
+    on Do I have this?): look it up on load."""
+    discogs_id = (args.get('discogs') or '').strip()
+    mbid = (args.get('mbid') or '').strip().lower()
+    if discogs_id.isdigit() and len(discogs_id) <= 12 and discogs_lookup.enabled():
+        return url_for('records.lookup', discogs=discogs_id)
+    if MBID_RE.match(mbid):
+        return url_for('records.lookup', mbid=mbid)
+    return None
+
+
 RECORDS = Section(
     media_type=media.RECORD,
     view='library_records',
     add_context=_add_context,
+    lookup_url=_lookup_url,
     match_catalog_number=True,
     empty_text='Search for one by artist and title, scan its barcode, or type it in from its sleeve. '
                'Music is kept apart from your books and movies.',

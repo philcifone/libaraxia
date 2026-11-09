@@ -43,6 +43,10 @@ class Section:
     empty_text: str = ''
     # Records: the cat. no. identifies a pressing, and there's no barcode
     match_catalog_number: bool = False
+    # The add page's lookup to run on load, from a source id in the URL
+    # (?tmdb_id=, ?discogs=, ?mbid=; Do I have this?, ROADMAP 13b): the
+    # section's own JSON lookup URL, or None. Given request.args.
+    lookup_url: Callable[[dict], Optional[str]] = field(default=lambda args: None)
 
     # ---------------------------------------------------------- naming
     @property
@@ -360,6 +364,9 @@ def make_blueprint(section: Section) -> Blueprint:
                        if section.has_barcode else '')
             values = {'format': section.pick_format(request.args.get('format')),
                       'barcode_input': barcode,
+                      # From Do I have this? (13b): a title, or an id to look up
+                      **media.add_prefill(request.args),
+                      'lookup_url': section.lookup_url(request.args),
                       # From Reviews' "Add it as not owned" (ROADMAP 13)
                       **then_review_values(request.args)}
             dups = (section.find_duplicates(conn, current_user.id, barcode=barcode)

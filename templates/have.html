@@ -66,10 +66,23 @@
                 {% if result.kind == 'text' %}Nothing called "{{ result.query }}" on your shelf, your household's or your wishlist, and you haven't read it here.
                 {% else %}{{ result.query }} isn't on your shelf, your household's or your wishlist.{% endif %}
             </p>
+            {# The online lookup (have.js, /have/online) fills this with what
+               it most likely is; the links below stay as the fallback #}
+            {% if online %}
+            <div id="have-online" data-online-url="{{ url_for('have.online', q=result.query) }}" data-kind="{{ result.kind }}"
+                 class="mt-5 text-left" aria-live="polite">
+                <p data-online-status class="text-sm text-content-secondary text-center">Looking it up online...</p>
+            </div>
+            {% endif %}
             {% if add_links %}
-            <div class="mt-5 flex flex-wrap justify-center gap-3">
-                {% for label, url in add_links %}
-                <a href="{{ url }}" class="px-4 py-2 rounded-lg btn {{ 'bg-accent hover:bg-accent-hover text-on-accent' if loop.first else 'bg-primary hover:bg-primary-hover text-content-primary border border-rule-strong' }}">{{ label }}</a>
+            <div id="have-add-links" class="mt-5 space-y-3">
+                {% for row_label, links in add_links %}
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                    {% if row_label %}<span class="text-sm text-content-secondary">{{ row_label }}</span>{% endif %}
+                    {% for label, url in links %}
+                    <a href="{{ url }}" class="px-4 py-2 rounded-lg btn {{ 'bg-accent hover:bg-accent-hover text-on-accent' if loop.first and loop.length == 2 and not row_label else 'bg-primary hover:bg-primary-hover text-content-primary border border-rule-strong' }}">{{ label }}</a>
+                    {% endfor %}
+                </div>
                 {% endfor %}
             </div>
             {% endif %}

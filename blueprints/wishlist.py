@@ -146,7 +146,10 @@ def _add_media(section):
     if request.method == "GET":
         barcode = media.normalize_barcode(request.args.get("barcode")) if section.has_barcode else None
         values = {"format": section.pick_format(request.args.get("format")),
-                  "barcode_input": barcode or ""}
+                  "barcode_input": barcode or "",
+                  # From Do I have this? (ROADMAP 13b): a title, or an id to look up
+                  **media.add_prefill(request.args),
+                  "lookup_url": section.lookup_url(request.args)}
         return section.add_page(values, destination="wishlist")
 
     values, errors = section.form_values(request.form)

@@ -132,7 +132,9 @@ def clean_title(raw):
 # ------------------------------------------------------------ sources
 
 def upcitemdb(barcode):
-    """{'title', 'brand', 'description', 'images'} for a barcode, or None."""
+    """{'title', 'brand', 'description', 'category', 'images'} for a
+    barcode, or None. `category` is UPCitemdb's ("Media > Music & Sound
+    Recordings"): Do I have this? uses it to tell a CD from a film."""
     ean = media.normalize_barcode(barcode)
     if not ean:
         return None
@@ -147,6 +149,7 @@ def upcitemdb(barcode):
         'title': (item.get('title') or '').strip(),
         'brand': (item.get('brand') or item.get('publisher') or '').strip(),
         'description': (item.get('description') or '').strip(),
+        'category': (item.get('category') or '').strip(),
         'images': [u for u in (item.get('images') or []) if isinstance(u, str)][:5],
     }
 

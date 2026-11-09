@@ -118,19 +118,30 @@ def find(conn, user_id, q):
     return result
 
 
-def add_links(kind, value):
-    """Where to add an item that wasn't found: [(label, url)], the code
-    carried along. An ISBN is a book; another barcode could be a movie or
-    an album, and only you know which."""
+def worth_asking(result):
+    """Whether "Not here" asks the outside sources (ROADMAP 13b): a code,
+    or a title of at least two letters. Never for a bad code or a hit."""
+    if result['matches'] or result['kind'] == 'bad_code':
+        return False
+    return result['kind'] != 'text' or len(result['query']) >= 2
+
+
+def add_links(kind, value, query=''):
+    """Where to add an item that wasn't found, the code or title carried
+    along: [(row label, [(label, url), ...])]. An ISBN is a book; another
+    barcode could be a movie or an album, and a title anything, so those
+    offer each type (the online lookup, have_online, replaces them with
+    real candidates when a source recognises it)."""
     from flask import url_for
     if kind == 'isbn':
         isbn = next((v for v in value if len(v) == 13), value[0])
-        return [('Add to wishlist', url_for('wishlist.add_to_wishlist', type=media.BOOK, isbn=isbn)),
-                ('Add to library', url_for('books.add_book', isbn=isbn))]
-    if kind == 'barcode':
-        return [('Wishlist it as a movie', url_for('wishlist.add_to_wishlist', type=media.VIDEO, barcode=value)),
-                ('Wishlist it as an album', url_for('wishlist.add_to_wishlist', type=media.RECORD, barcode=value)),
-                ('Add a movie', url_for('videos.add_video', barcode=value)),
-                ('Add an album', url_for('records.add_record', barcode=value))]
-    return [('Add to wishlist', url_for('wishlist.add_to_wishlist', type=media.BOOK)),
-            ('Add to library', url_for('books.add_book'))]
+        return [('', [('Add to wishlist', url_for('wishlist.add_to_wishlist', type=media.BOOK, isbn=isbn)),
+                      ('Add to library', url_for('books.add_book', isbn=isbn))])]
+    carry = {'barcode': value} if kind == 'barcode' else ({'title': query} if query else {})
+    types = [media.VIDEO, media.RECORD] if kind == 'barcode' else list(media.MEDIA_TYPES)
+    shelves = {media.BOOK: 'books.add_book', media.VIDEO: 'videos.add_video',
+               media.RECORD: 'records.add_record'}
+    names = {t: media.media_labels(t)['Noun'] for t in types}
+    return [('Wishlist it as', [(names[t], url_for('wishlist.add_to_wishlist', type=t, **carry))
+                                for t in types]),
+            ('Add to a shelf', [(names[t], url_for(shelves[t], **carry)) for t in types])]

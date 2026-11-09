@@ -3620,6 +3620,10 @@ img.book-cover-img:not([data-loaded]) {
   text-align: right;
 }
 
+.align-middle {
+  vertical-align: middle;
+}
+
 .font-display {
   font-family: var(--font-display);
 }
