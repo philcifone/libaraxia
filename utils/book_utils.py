@@ -688,7 +688,7 @@ def thumbnail_jpeg(url: str) -> Optional[bytes]:
     img.save(out, 'JPEG', quality=80)
     return out.getvalue()
 
-def _save_cover_image(img: Image.Image) -> str:
+def save_cover_image(img: Image.Image) -> str:
     """Normalize, resize and save a cover image. Returns the path relative to static/."""
     img = ImageOps.exif_transpose(img)
     if img.mode in ('RGBA', 'LA', 'P'):
@@ -705,6 +705,8 @@ def _save_cover_image(img: Image.Image) -> str:
     filename = f"cover_{uuid.uuid4().hex}.jpg"
     img.save(os.path.join(upload_folder, filename), 'JPEG', quality=85, optimize=True)
     return os.path.join('uploads', filename)
+
+_save_cover_image = save_cover_image   # the old private name, still used by callers
 
 def save_best_cover(urls: Iterable[str]) -> Optional[str]:
     """Download candidate cover URLs in order and save the best one.

@@ -73,11 +73,16 @@ Record who has a physical copy, for any type.
 - [ ] Loan history kept (returned loans stay, shown on the item page). Exports include loans.
 - Lending within a household is still worth recording (who physically has it), so it isn't limited to friends.
 
-### 15.3 Free-form cover crop 🟢
-For fetched covers with borders or scans of a whole sleeve.
-- [ ] On Edit (and after an upload or "Find a better cover"): a crop box over the cover, any aspect ratio, drag the corners. The browser sends only the box (x, y, w, h as fractions of the image); the server crops with Pillow in `process_image` and saves a new file, so the original is never trusted from the client and the old file goes through `delete_image_file()`.
-- [ ] Either vendor Cropper.js into `static/vendor/` with its hash (as quagga2), or a small hand-rolled box in `edit_book.js`; the hand-rolled one is likely enough for a rectangle. No CDN, no inline JS.
-- [ ] Touch and keyboard (arrow keys nudge the box), works at phone width.
+### 15.3 Free-form cover crop and perspective tool 🟢 (done 2026-11-10)
+For fetched covers with borders, scans of a whole sleeve and phone photos taken at an angle.
+- [x] A full-screen `<dialog>` on Add and Edit (Books, Movies, Music and the wishlist's add), opened by "Crop / straighten" under the cover preview. Crop mode (drag the corners, any ratio) and Perspective mode (each corner on its own, pulled back to a rectangle); rotate left/right, ratio menu (Free, Original, 1:1, 2:3, 3:4, DVD) with portrait/landscape, Reset; Crop keeps the tool open for tweaks, then Undo / Cancel / Save. Pointer events (mouse, touch, pen), keyboard (arrows nudge a handle, Shift x10, Enter crops, Esc cancels, Ctrl+Z undoes) and a 3x loupe while dragging a corner.
+- [x] Non-destructive until the form is saved: the browser sends only geometry (fractions of the image); `utils/cover_crop.py` renders from the server's copy (rect crop or a pure-Python homography for Perspective), previews are never stored, Save writes `crop_source` / `cover_crop` and the page's own Save stores the cover. A picked photo is staged once at up to 2400 px (`uploads/crop/`, EXIF and GPS stripped, swept after 24 h) so a phone photo isn't shrunk to 500x1000 before cropping. Old files go through `delete_image_file()`; only staged files are ever deleted because the browser named them.
+- [x] Tests: `tests/test_cover_crop.py` (geometry validation, rendering, routes, all save routes, path safety) and `tests/test_cover_crop_js.py` (the JS helpers under node, checked against the server's renderer).
+- Later ideas, not planned:
+  - [ ] Keep a high-res original next to each saved cover, so a re-crop of a saved cover isn't limited to its 500x1000 copy.
+  - [ ] Auto-detect the cover's corners for Perspective.
+  - [ ] A fine-angle straighten slider.
+  - [ ] Avatars.
 
 ---
 

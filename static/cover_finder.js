@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cover = covers[Number(pick.dataset.cover)];
         hidden.value = cover.url;
         showCover(`/static/${encodeURI(cover.url)}`);
+        document.dispatchEvent(new CustomEvent('cover-changed'));   // cover_crop.js
         options.classList.add('hidden');
         status.textContent = `Cover from ${cover.source} picked. Save to keep it.`;
     });

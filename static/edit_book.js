@@ -17,7 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = e => showCover(e.target.result);
+        reader.onload = e => {
+            showCover(e.target.result);
+            document.dispatchEvent(new CustomEvent('cover-changed'));   // cover_crop.js
+        };
         reader.readAsDataURL(file);
     });
 });

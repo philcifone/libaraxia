@@ -226,6 +226,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='cover_crop.js') }}"></script>
 <script src="{{ url_for('static', filename='add_item.js') }}"></script>
 {% if m.type == 'book' %}<script src="{{ url_for('static', filename='cover_finder.js') }}"></script>{% endif %}
 {% endblock %}

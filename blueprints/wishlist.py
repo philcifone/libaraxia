@@ -3,6 +3,7 @@ from utils import media
 from flask_login import login_required, current_user
 from utils.database import get_db
 from models import other_users_with_book_data, can_view_book
+from utils import cover_crop
 from utils.book_utils import process_image, find_duplicates
 from utils.book_matching import own_book_for_wishlist
 
@@ -113,8 +114,9 @@ def _add_book():
             flash("That book is already in your library.", "error")
             return redirect(url_for("books.show_book", id=book_id))
         if not book_id:
-            cover_image_url = process_image(request.files.get("image"),
-                                            request.form.get("existing_cover_url"))
+            cover_image_url = cover_crop.crop_or_flash(
+                request.form, [request.form.get("existing_cover_url")]) or process_image(
+                request.files.get("image"), request.form.get("existing_cover_url"))
             page_count = request.form.get("page_count", type=int) or 0
             cursor = conn.execute("""
                 INSERT INTO books (title, author, publisher, publish_year, isbn,
@@ -173,7 +175,8 @@ def _add_media(section):
             if row["owned"] and row["removed_at"] is None:
                 flash(f"That {noun} is already in your collection.", "error")
                 return redirect(url_for(section.endpoint("show"), id=row["id"]))
-    cover = process_image(request.files.get("image"), request.form.get("existing_cover_url"))
+    cover = cover_crop.crop_or_flash(request.form, [request.form.get("existing_cover_url")]) or process_image(
+        request.files.get("image"), request.form.get("existing_cover_url"))
     book_id = section.insert(conn, values, cover, current_user.id)
     return _add_wishlist_row(conn, book_id, section.m["Noun"])
 

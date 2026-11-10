@@ -23,6 +23,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
+from utils import cover_crop
 from utils.image_utils import delete_image_file, is_safe_upload_path
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -81,8 +82,9 @@ def add_book():
                 values["existing_cover_url"] = ""
             return render_add_book(values=values, duplicates=on_shelf, status=400)
 
-        # Process uploaded image or use downloaded cover
-        cover_image_url = process_image(
+        # A crop (15.3) wins; else the uploaded image or the downloaded cover
+        cover_image_url = cover_crop.crop_or_flash(
+            request.form, [request.form.get("existing_cover_url")]) or process_image(
             request.files.get("image"),
             request.form.get("existing_cover_url")
         )
@@ -458,8 +460,15 @@ def edit_book(id):
         # old field name)
         fetched_cover = request.form.get("existing_cover_url") or request.form.get("fetched_cover_url")
 
-        # Priority: uploaded image > fetched cover > existing cover
-        if request.files.get("image") and request.files.get("image").filename != '':
+        # Priority: crop > uploaded image > fetched cover > existing cover.
+        # The crop may start from this cover, a fetched one or a staged photo.
+        cropped = cover_crop.crop_or_flash(
+            request.form, [current_cover, fetched_cover if is_safe_upload_path(fetched_cover) else None])
+        if cropped:
+            if current_cover and current_cover != cropped:
+                delete_image_file(current_cover)
+            cover_image_url = cropped
+        elif request.files.get("image") and request.files.get("image").filename != '':
             # User uploaded a new image - delete old cover first
             if current_cover:
                 delete_image_file(current_cover)

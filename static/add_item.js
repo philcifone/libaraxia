@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!src) return false;
         preview.innerHTML = `<img src="${escapeHtml(src)}" alt="Cover" data-fallback-src="/static/no-cover.svg" class="max-w-[12rem] rounded-lg">`;
+        document.dispatchEvent(new CustomEvent('cover-changed'));   // cover_crop.js
         return true;
     }
 
@@ -507,6 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.onload = e => {
             $('cover-preview').innerHTML = `<img src="${escapeHtml(e.target.result)}" alt="Cover" class="max-w-[12rem] rounded-lg">`;
+            document.dispatchEvent(new CustomEvent('cover-changed'));   // cover_crop.js
         };
         reader.readAsDataURL(file);
     });

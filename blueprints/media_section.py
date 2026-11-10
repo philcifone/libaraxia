@@ -29,6 +29,7 @@ from utils.reviews import then_review_values
 from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
+from utils import cover_crop
 from utils.image_utils import delete_image_file, is_safe_upload_path
 
 
@@ -385,7 +386,9 @@ def make_blueprint(section: Section) -> Blueprint:
 
         # An upload wins; otherwise the cover a lookup saved (process_image
         # only accepts paths inside static/uploads)
-        cover = process_image(request.files.get('image'), request.form.get('existing_cover_url'))
+        # A crop (15.3) wins over an upload, which wins over the lookup's cover
+        cover = cover_crop.crop_or_flash(request.form, [request.form.get('existing_cover_url')]) or process_image(
+            request.files.get('image'), request.form.get('existing_cover_url'))
         owned = not request.form.get('not_owned')
         new_id = section.insert(conn, values, cover, current_user.id, owned=owned)
         conn.commit()
@@ -428,7 +431,12 @@ def make_blueprint(section: Section) -> Blueprint:
 
         cover = row['cover_image_url']
         upload = request.files.get('image')
-        if upload and upload.filename:
+        cropped = cover_crop.crop_or_flash(request.form, [cover])
+        if cropped:
+            if cover:
+                delete_image_file(cover)
+            cover = cropped
+        elif upload and upload.filename:
             new_cover = process_image(upload)
             if new_cover:
                 if cover and cover != new_cover:

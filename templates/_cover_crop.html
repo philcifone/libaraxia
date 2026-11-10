@@ -1,0 +1,89 @@
+{# The cover crop / straighten tool (ROADMAP 15.3): a full-screen dialog
+   opened from _item_fields.html and run by static/cover_crop.js. Included
+   inside the item form, so every button is type="button" (no nested form,
+   nothing submits). The tool writes two hidden inputs in _item_fields.html
+   (crop_source, cover_crop); the route renders the real crop on save.
+
+   One screen, nothing scrolls: the stage fills what's left, and the tools sit
+   in a panel beside it (under it on a phone). Styles: "Cover crop tool" in
+   static/styles.css, on the shared card / label / outline tokens. #}
+{% from '_icons.html' import icon %}
+<dialog id="crop-dialog" class="crop-dialog" aria-labelledby="crop-title">
+    <header class="crop-head">
+        <h2 id="crop-title" class="font-display text-xl text-content-primary">Crop cover</h2>
+        <p class="crop-hint text-sm text-content-secondary">Drag the corners. Double-click, double-tap or press Enter to crop.</p>
+    </header>
+
+    <div id="crop-stage" class="crop-stage card" tabindex="0" aria-label="Crop area">
+        <canvas id="crop-canvas"></canvas>
+        <svg id="crop-overlay" class="crop-overlay" aria-hidden="true">
+            <path id="crop-dim" fill-rule="evenodd"/>
+            <g id="crop-thirds"></g>
+            <polygon id="crop-outline"/>
+        </svg>
+        <button type="button" class="crop-handle" data-corner="0" aria-label="Top-left corner"></button>
+        <button type="button" class="crop-handle" data-corner="1" aria-label="Top-right corner"></button>
+        <button type="button" class="crop-handle" data-corner="2" aria-label="Bottom-right corner"></button>
+        <button type="button" class="crop-handle" data-corner="3" aria-label="Bottom-left corner"></button>
+        <canvas id="crop-loupe" class="crop-loupe" width="120" height="120" aria-hidden="true" hidden></canvas>
+        <p id="crop-busy" class="crop-busy" hidden>Preparing image...</p>
+        {# Small screens: the result as a thumbnail; tap it to compare full size #}
+        <button type="button" id="crop-thumb" class="crop-thumb" aria-label="Compare with the cropped result" hidden>
+            <img id="crop-thumb-img" alt="Cropped result">
+        </button>
+    </div>
+
+    <aside class="crop-panel card" aria-label="Crop options">
+        <section class="crop-sec" aria-labelledby="crop-l-mode">
+            <h3 id="crop-l-mode" class="label crop-label">Mode</h3>
+            <div class="crop-seg" role="group" aria-labelledby="crop-l-mode">
+                <button type="button" data-crop-mode="rect" aria-pressed="true">Crop</button>
+                <button type="button" data-crop-mode="quad" aria-pressed="false">Perspective</button>
+            </div>
+        </section>
+
+        <section class="crop-sec" aria-labelledby="crop-l-ratio">
+            <h3 id="crop-l-ratio" class="label crop-label">Ratio</h3>
+            <div class="crop-ratio-row">
+                <div class="crop-chips" role="group" aria-labelledby="crop-l-ratio">
+                    <button type="button" data-crop-ratio="free" aria-pressed="true">Free</button>
+                    <button type="button" data-crop-ratio="original" aria-pressed="false" title="The picture's own shape">Orig.</button>
+                    <button type="button" data-crop-ratio="1:1" aria-pressed="false" title="LP or CD">1:1</button>
+                    <button type="button" data-crop-ratio="2:3" aria-pressed="false" title="Book">2:3</button>
+                    <button type="button" data-crop-ratio="3:4" aria-pressed="false">3:4</button>
+                    <button type="button" data-crop-ratio="27:38" aria-pressed="false" title="DVD case, 27:38">DVD</button>
+                </div>
+                <div class="crop-seg crop-orient" role="group" aria-label="Orientation">
+                    <button type="button" data-crop-orient="portrait" aria-pressed="true" aria-label="Portrait" title="Portrait">{{ icon('portrait') }}</button>
+                    <button type="button" data-crop-orient="landscape" aria-pressed="false" aria-label="Landscape" title="Landscape">{{ icon('landscape') }}</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="crop-sec" aria-labelledby="crop-l-view">
+            <h3 id="crop-l-view" class="label crop-label">Straighten</h3>
+            <div class="crop-view" role="group" aria-labelledby="crop-l-view">
+                <button type="button" class="crop-btn" data-crop-rotate="-1" aria-label="Rotate left" title="Rotate left">{{ icon('rotate-ccw') }}</button>
+                <button type="button" class="crop-btn" data-crop-rotate="1" aria-label="Rotate right" title="Rotate right">{{ icon('rotate-cw') }}</button>
+                <button type="button" id="crop-reset" class="crop-btn">Reset</button>
+            </div>
+        </section>
+
+        {# Roomy screens only: the result beside the picture it came from #}
+        <section class="crop-sec crop-result-sec" aria-labelledby="crop-l-result">
+            <h3 id="crop-l-result" class="label crop-label">Result</h3>
+            <div class="crop-result">
+                <img id="crop-result-img" alt="Cropped result">
+                <p class="crop-result-empty text-sm text-content-secondary">Press Crop to see the result.</p>
+            </div>
+        </section>
+
+        <div class="crop-actions">
+            <button type="button" id="crop-do" class="crop-btn crop-primary">Crop</button>
+            <button type="button" id="crop-undo" class="crop-btn" hidden>Undo</button>
+            <button type="button" id="crop-cancel" class="crop-btn">Cancel</button>
+            <button type="button" id="crop-save" class="crop-btn crop-primary" hidden>Save</button>
+        </div>
+    </aside>
+    <p id="crop-live" class="sr-only" aria-live="polite"></p>
+</dialog>

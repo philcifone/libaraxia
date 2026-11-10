@@ -4,10 +4,12 @@ Started from the Goodreads import result and the profile page (your own
 books) or the admin covers page (every book). Progress shows in the floating
 panel from `_sidebar.html` (static/cover_jobs.js), which polls /covers/status.
 """
-from flask import Blueprint, abort, flash, jsonify, redirect, request, url_for
+from io import BytesIO
+
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, request, send_file, url_for
 from flask_login import current_user, login_required
 
-from utils import cover_jobs
+from utils import cover_crop, cover_jobs
 from utils.database import get_db
 from utils.rate_limiting import limiter
 
@@ -82,3 +84,51 @@ def dismiss(job_id):
                  (job_id, current_user.id))
     conn.commit()
     return jsonify({'success': True})
+
+
+# ---------------------------------------------------------------------------
+# Cover crop tool (static/cover_crop.js, logic in utils/cover_crop.py)
+# ---------------------------------------------------------------------------
+
+def _crop_error(message, status=400):
+    return jsonify({'success': False, 'error': message}), status
+
+
+@covers_blueprint.route('/crop/source', methods=['POST'])
+@login_required
+@limiter.limit("30 per hour")
+def crop_source():
+    """Stage a picked photo (up to 2400 px) so the crop works from a big
+    original instead of the 500x1000 cover."""
+    try:
+        staged = cover_crop.stage_upload(request.files.get('image'))
+    except ValueError as err:
+        return _crop_error(str(err))
+    except Exception:
+        current_app.logger.exception('Staging a cover for cropping failed')
+        return _crop_error("Couldn't prepare that image.", 500)
+    return jsonify({'success': True, **staged})
+
+
+@covers_blueprint.route('/crop/preview', methods=['POST'])
+@login_required
+@limiter.limit("600 per hour")
+def crop_preview():
+    """A rendered crop as a JPEG. Nothing is stored: the tool shows the blob,
+    and the real render happens when the form is saved."""
+    data = request.get_json(silent=True) or {}
+    source = data.get('source')
+    if not cover_crop.is_crop_source(source):
+        return _crop_error("That cover can't be cropped.")
+    try:
+        geom = cover_crop.parse_geometry(data.get('geometry'))
+        img = cover_crop.downscale(cover_crop.open_source(source))
+        jpeg = cover_crop.render_to_jpeg(img, geom)
+    except ValueError as err:
+        return _crop_error(str(err))
+    except Exception:
+        current_app.logger.exception('Cover crop preview failed')
+        return _crop_error("Couldn't render the crop.", 500)
+    response = send_file(BytesIO(jpeg), mimetype='image/jpeg')
+    response.headers['Cache-Control'] = 'no-store'
+    return response

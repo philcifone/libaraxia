@@ -17,7 +17,7 @@
         <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-6" id="item-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% with cover_url=url_for('static', filename=book['cover_image_url']) if book['cover_image_url'] else none,
-                    cover_fetch=true %}
+                    cover_fetch=true, current_cover=book['cover_image_url'] %}
             {% include '_item_fields.html' %}
             {% endwith %}
 
@@ -34,6 +34,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='cover_crop.js') }}"></script>
 <script src="{{ url_for('static', filename='cover_finder.js') }}"></script>
 <script src="{{ url_for('static', filename='edit_book.js') }}"></script>
 {% endblock %}

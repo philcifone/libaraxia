@@ -1913,3 +1913,295 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 .year-seg[data-kind="record"] { background: rgb(var(--accent) / .28); }
 .year-goal, .year-goal-key { background: rgb(var(--ink)); }
 .year-goal { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; }
+
+/* ---- Cover crop tool (static/cover_crop.js, templates/_cover_crop.html, ROADMAP 15.3) ----
+   One screen, nothing scrolls: the dialog is a grid exactly as tall as the
+   window (100dvh). Roomy screens: the picture (a .card) on the left, the tools
+   (a .card panel: mode, ratio, straighten, result, actions) on the right.
+   Phones and short windows: the picture on top and the tools in compact rows
+   under it, the result a thumbnail you tap to compare. Everything is drawn from
+   the style tokens (outline, card edge and shadow, radius, accent), so it is
+   square and hard-shadowed in Negative Earth, soft in OG, glowing in Outrun and
+   gently raised in Shelf, with no per-style rules of its own. */
+.crop-dialog {
+    position: fixed; inset: 0; margin: 0; padding: 0; border: 0;
+    width: 100%; max-width: none; height: 100vh; height: 100dvh; max-height: none;
+    background: rgb(var(--paper)); color: rgb(var(--ink)); overflow: hidden;
+}
+.crop-dialog::backdrop { background: rgb(0 0 0 / .7); }
+.crop-dialog[open] {
+    display: grid; gap: .75rem 1.25rem;
+    grid-template-columns: minmax(0, 1fr) 17rem; grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "head head" "stage panel";
+    --crop-px: max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right));
+    --crop-pt: max(.75rem, env(safe-area-inset-top));
+    padding: var(--crop-pt) var(--crop-px) max(1.25rem, env(safe-area-inset-bottom));
+}
+.crop-head { grid-area: head; display: flex; align-items: baseline; gap: .25rem 1rem; flex-wrap: wrap; min-width: 0; }
+
+/* The dialog sits inside the form's own .card, and `.card .card` flattens a
+   nested card to a hairline; these two are real panels, so put the style's
+   card edge and shadow back. */
+.crop-dialog .crop-stage, .crop-dialog .crop-panel {
+    border: var(--bw-card) solid var(--card-edge); box-shadow: var(--sh-card);
+}
+/* Nothing behind the modal scrolls either */
+html:has(.crop-dialog[open]) { overflow: hidden; }
+
+/* The picture */
+.crop-stage {
+    grid-area: stage; position: relative; min-width: 0; min-height: 0; overflow: hidden;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    background: rgb(var(--fill));
+}
+.crop-stage:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 3px; }
+.crop-stage canvas#crop-canvas { position: absolute; left: 0; top: 0; display: block; box-shadow: 0 0 0 1px rgb(var(--rule-strong)); }
+.crop-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+.crop-overlay #crop-dim { fill: rgb(0 0 0 / .6); }
+.crop-overlay #crop-outline { fill: none; stroke: rgb(var(--accent)); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.crop-overlay #crop-thirds line { stroke: rgb(255 255 255 / .4); stroke-width: 1; }
+.crop-overlay.is-invalid #crop-outline { stroke: rgb(var(--red)); }
+.crop-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; padding: .5rem 1rem; background: rgb(var(--paper)); border: var(--bw-btn) solid var(--outline-edge); white-space: nowrap; }
+.crop-busy[hidden], .crop-loupe[hidden], .crop-thumb[hidden] { display: none; }
+
+/* Corner handles: a 44px hit area (hover, focus and touch) round an 18px square */
+.crop-handle {
+    position: absolute; left: 0; top: 0; width: 44px; height: 44px; padding: 0;
+    background: transparent; border: 0; cursor: grab; touch-action: none;
+}
+.crop-handle::after {
+    content: ""; position: absolute; left: 13px; top: 13px; width: 18px; height: 18px;
+    background: rgb(var(--accent)); border: var(--bw-btn) solid var(--outline-edge);
+    border-radius: var(--r-sm); transition: transform .12s ease, box-shadow .12s ease;
+}
+.crop-handle:hover::after, .crop-handle:focus-visible::after, .crop-handle.is-active::after {
+    transform: scale(1.2); box-shadow: var(--sh-hard);
+}
+.crop-handle.is-active { cursor: grabbing; }
+.crop-handle:focus-visible { outline: none; }
+.crop-loupe {
+    position: absolute; left: 0; top: 0; width: 120px; height: 120px; pointer-events: none;
+    border: var(--bw-card) solid var(--card-edge); box-shadow: var(--sh-card); background: #000;
+}
+
+/* The tools */
+.crop-panel {
+    grid-area: panel; min-height: 0; display: flex; flex-direction: column;
+    background: rgb(var(--surface)); overflow: hidden;
+}
+.crop-sec { padding: .75rem .85rem; border-bottom: 1px solid rgb(var(--rule)); }
+.crop-label { margin: 0 0 .5rem; padding-bottom: .15rem; font-size: .7rem; font-weight: 400; }
+.crop-result-sec { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.crop-result {
+    position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+    background: rgb(var(--fill)); border: 1px solid rgb(var(--rule-strong)); overflow: hidden;
+}
+.crop-result img { display: none; max-width: 100%; max-height: 100%; object-fit: contain; }
+.crop-dialog.has-result .crop-result img { display: block; }
+.crop-dialog.has-result .crop-result-empty { display: none; }
+.crop-result-empty { margin: 0; padding: 0 1rem; text-align: center; }
+
+/* Controls: segmented pairs (attached, like the Appearance pickers), chips
+   and plain buttons share one height, border and pressed look */
+.crop-seg { display: flex; }
+.crop-seg > button, .crop-chips > button, .crop-btn {
+    min-height: 2.5rem; padding: 0 .6rem; font: inherit; font-size: .875rem; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+    color: rgb(var(--ink)); background: rgb(var(--paper)); cursor: pointer;
+    border: var(--bw-outline) solid var(--outline-edge); border-radius: var(--r-md);
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.crop-seg > button { flex: 1; margin-left: calc(var(--bw-outline) * -1); border-radius: 0; }
+.crop-seg > button:first-child { margin-left: 0; border-radius: var(--r-md) 0 0 var(--r-md); }
+.crop-seg > button:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.crop-seg > button:only-child { border-radius: var(--r-md); }
+.crop-seg > button:hover:not(:disabled):not([aria-pressed="true"]),
+.crop-chips > button:hover:not(:disabled):not([aria-pressed="true"]),
+.crop-btn:hover:not(:disabled):not(.crop-primary) { background: rgb(var(--fill)); }
+.crop-seg > button[aria-pressed="true"], .crop-chips > button[aria-pressed="true"] {
+    background: rgb(var(--accent)); color: rgb(var(--on-accent)); position: relative; z-index: 1;
+    box-shadow: var(--sh-btn);
+}
+.crop-seg > button:focus-visible, .crop-chips > button:focus-visible, .crop-btn:focus-visible,
+.crop-thumb:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; z-index: 2; }
+.crop-seg > button:disabled, .crop-chips > button:disabled, .crop-btn:disabled { opacity: .45; cursor: not-allowed; }
+.crop-seg svg { width: 1.15rem; height: 1.15rem; }
+.crop-btn svg { width: 1.15rem; height: 1.15rem; }
+.crop-btn[hidden] { display: none; }
+
+/* Filled call-to-action buttons: the house .btn look (outline, hard shadow, press) */
+.crop-primary { background: rgb(var(--accent)); color: rgb(var(--on-accent)); font-weight: 700; box-shadow: var(--sh-btn); border-color: rgb(var(--ink)); border-width: var(--bw-btn); }
+.crop-primary:hover:not(:disabled) { background: rgb(var(--accent-hover)); transform: var(--btn-press); box-shadow: var(--sh-btn-hover); }
+.crop-primary:disabled { box-shadow: none; }
+
+.crop-ratio-row { display: grid; gap: .5rem; }
+.crop-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.crop-view { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: .4rem; }
+.crop-actions {
+    display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .85rem;
+    margin-top: auto; border-top: 1px solid rgb(var(--rule));
+}
+
+/* The phone-size result: a thumbnail on the picture; tapping it lays the
+   full-size result over the picture (before / after) */
+.crop-thumb {
+    position: absolute; left: .6rem; bottom: .6rem; z-index: 2; padding: 0; cursor: zoom-in;
+    background: rgb(var(--paper)); border: var(--bw-card) solid var(--card-edge); box-shadow: var(--sh-card);
+}
+.crop-thumb img { display: block; width: 3.25rem; height: 3.25rem; object-fit: cover; }
+.crop-dialog.crop-compare .crop-thumb { inset: 0; left: 0; bottom: 0; width: 100%; height: 100%; border: 0; box-shadow: none; cursor: zoom-out; }
+.crop-dialog.crop-compare .crop-thumb img { width: 100%; height: 100%; object-fit: contain; }
+
+/* Where the tools go beside the picture but there's no height for the result
+   pane (a phone on its side, a short window), or there's no width at all */
+@media (max-height: 620px) {
+    .crop-result-sec { display: none; }
+    .crop-sec { padding: .5rem .75rem; }
+    .crop-label { display: none; }
+}
+@media (min-width: 720px) and (min-height: 621px) {
+    .crop-thumb { display: none; }
+}
+@media (max-height: 620px), (max-width: 719px) {
+    .crop-hint { display: none; }
+}
+
+/* Phones, upright: picture on top, tools in four compact rows under it */
+@media (max-width: 719px) {
+    .crop-dialog[open] {
+        gap: .5rem; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-areas: "head" "stage" "panel";
+        --crop-px: max(.5rem, env(safe-area-inset-left), env(safe-area-inset-right));
+        --crop-pt: max(.5rem, env(safe-area-inset-top));
+        padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+    }
+    .crop-head h2 { font-size: 1.05rem; }
+    .crop-panel { display: grid; gap: .4rem; padding: .5rem; overflow: visible; }
+    .crop-sec { padding: 0; border: 0; }
+    .crop-label, .crop-result-sec { display: none; }
+    .crop-ratio-row { grid-template-columns: 1fr auto; align-items: stretch; }
+    .crop-chips { grid-template-columns: repeat(6, 1fr); gap: .3rem; }
+    .crop-chips > button { padding: 0; }
+    .crop-orient { width: 5.5rem; }
+    .crop-view { grid-template-columns: 1fr 1fr 2fr; }
+    .crop-actions { padding: 0; border: 0; margin: 0; grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: .4rem; }
+    .crop-actions .crop-btn { padding: 0 .25rem; min-height: 2.75rem; }
+}
+/* A phone on its side: keep the picture left and a slim tools column right */
+@media (max-height: 620px) and (min-width: 720px) {
+    .crop-dialog[open] { grid-template-columns: minmax(0, 1fr) 16rem; gap: .5rem 1rem; padding-top: .5rem; padding-bottom: .75rem; }
+    .crop-head h2 { font-size: 1.05rem; }
+    .crop-seg > button, .crop-chips > button, .crop-btn { min-height: 2.25rem; }
+    .crop-sec { padding: .4rem .6rem; }
+    .crop-ratio-row { gap: .3rem; }
+    .crop-chips { grid-template-columns: repeat(6, 1fr); gap: .2rem; }
+    .crop-chips > button { padding: 0; }
+    .crop-actions { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: .3rem; padding: .4rem .6rem; }
+    .crop-actions .crop-btn { padding: 0 .2rem; }
+}
+@media (pointer: coarse) and (min-height: 621px) {
+    .crop-seg > button, .crop-chips > button, .crop-btn { min-height: 2.75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .crop-handle::after, .crop-seg > button, .crop-chips > button, .crop-btn { transition: none; }
+}
+
+/* ---- Cover crop tool: the Shelf style ----
+   The tokens already make it soft and rounded; Shelf is also skeuomorphic, as
+   everywhere else in the app (see "Shelf: the rest of the app"): a wooden bar
+   with cream lettering, the picture standing on a ledge in a framed, recessed
+   case, buttons with a lit top edge, toggles that look pressed in, sunken
+   fields, and the magnifier a round glass in a wooden ring. */
+:root[data-style="shelf"] .crop-head {
+    margin: calc(var(--crop-pt) * -1) calc(var(--crop-px) * -1) 0;
+    padding: var(--crop-pt) var(--crop-px) .65rem;
+    background-color: rgb(var(--shelf-bar));
+    box-shadow: inset 0 -3px 0 rgb(0 0 0 / .18), 0 3px 8px rgb(0 0 0 / .25);
+}
+:root[data-style="shelf"] .crop-head :is(h2, p) { color: rgb(var(--shelf-label)); }
+
+/* The case: a wooden frame round a darker back wall, lit from the front */
+:root[data-style="shelf"] .crop-dialog .crop-stage {
+    border: 12px solid rgb(var(--shelf-front));
+    background: rgb(var(--shelf-back));
+    box-shadow: inset 0 0 28px rgb(0 0 0 / .22), var(--sh-lg);
+}
+/* The picture stands on a ledge, sunk a little into its top face (the same
+   ledge the item page gives a cover). --picture-bottom is set by layout(). */
+:root[data-style="shelf"] .crop-stage::before {
+    content: ""; position: absolute; left: 0; right: 0; top: calc(var(--picture-bottom, 100%) - 4px); height: 14px;
+    background-image: var(--ledge-paint); box-shadow: 0 6px 10px -4px rgb(0 0 0 / .35);
+}
+:root[data-style="shelf"] .crop-stage canvas#crop-canvas { box-shadow: 4px 6px 12px rgb(0 0 0 / .3); }
+:root[data-style="shelf"] .crop-overlay #crop-dim { fill: rgb(0 0 0 / .5); }
+
+/* Handles: small raised studs */
+:root[data-style="shelf"] .crop-handle::after {
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .3), rgb(0 0 0 / .08));
+    border-color: rgb(0 0 0 / .35);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 2px 4px rgb(0 0 0 / .4);
+}
+:root[data-style="shelf"] :is(.crop-handle:hover, .crop-handle:focus-visible, .crop-handle.is-active)::after {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 3px 8px rgb(0 0 0 / .5);
+}
+
+/* The magnifier: a round glass in a wooden ring */
+:root[data-style="shelf"] .crop-loupe {
+    border-radius: 50%; border: 5px solid rgb(var(--shelf-front));
+    box-shadow: 0 6px 14px rgb(0 0 0 / .45), inset 0 0 10px rgb(0 0 0 / .45), 0 0 0 1px rgb(0 0 0 / .3);
+}
+:root[data-style="shelf"] .crop-thumb { border: 3px solid rgb(var(--shelf-front)); box-shadow: var(--sh-md); }
+
+/* The tool panel: paper with a wooden edge (like the sidebar drawer), the
+   actions on a ledge of their own */
+:root[data-style="shelf"] .crop-dialog .crop-panel {
+    border: 0; border-left: 6px solid rgb(var(--shelf-front));
+    box-shadow: var(--sh-md), inset 0 0 0 1px rgb(var(--rule));
+}
+:root[data-style="shelf"] .crop-actions {
+    border-top: 0; padding-top: calc(.85rem + 10px);
+    background-image: var(--ledge-paint); background-size: 100% 10px; background-repeat: no-repeat; background-position: top;
+}
+
+/* Buttons and chips: gently raised, with a lit top edge; the pressed toggles
+   are pressed in (inset shadow), the way the Shelf .btn is raised */
+:root[data-style="shelf"] :is(.crop-seg > button, .crop-chips > button, .crop-btn) {
+    border-color: rgb(0 0 0 / .22);
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .5), rgb(0 0 0 / .04));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .6), var(--sh-sm);
+}
+:root[data-style="shelf"] :is(.crop-seg > button, .crop-chips > button, .crop-btn):hover:not(:disabled):not([aria-pressed="true"]) {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .6), var(--sh);
+}
+:root[data-style="shelf"] :is(.crop-seg > button, .crop-chips > button)[aria-pressed="true"] {
+    background-image: linear-gradient(to bottom, rgb(0 0 0 / .14), rgb(0 0 0 / .02));
+    box-shadow: inset 0 2px 4px rgb(0 0 0 / .35), inset 0 -1px 0 rgb(255 255 255 / .15);
+}
+:root[data-style="shelf"] .crop-primary {
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .16), rgb(0 0 0 / .05));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-sm);
+}
+:root[data-style="shelf"] .crop-btn:active:not(:disabled) {
+    background-image: linear-gradient(to bottom, rgb(0 0 0 / .1), rgb(255 255 255 / .08));
+    box-shadow: inset 0 2px 3px rgb(0 0 0 / .3);
+}
+/* Dark wood: a softer lit edge, or the buttons go grey */
+:root[data-style="shelf"][data-mode="dark"] :is(.crop-seg > button, .crop-chips > button, .crop-btn):not([aria-pressed="true"]):not(.crop-primary) {
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .12), rgb(0 0 0 / .06));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), var(--sh-sm);
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) :is(.crop-seg > button, .crop-chips > button, .crop-btn):not([aria-pressed="true"]):not(.crop-primary) {
+        background-image: linear-gradient(to bottom, rgb(255 255 255 / .12), rgb(0 0 0 / .06));
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), var(--sh-sm);
+    }
+}
+/* The result sits in a sunken tray, like the form fields */
+:root[data-style="shelf"] .crop-result { box-shadow: inset 0 1px 3px rgb(0 0 0 / .2); border-color: rgb(var(--rule-strong)); }
+:root[data-style="shelf"] .crop-result img { filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35)); }
+
+@media (max-width: 719px) {
+    :root[data-style="shelf"] .crop-dialog .crop-stage { border-width: 8px; }
+    :root[data-style="shelf"] .crop-dialog .crop-panel { border-left: 0; border-top: 6px solid rgb(var(--shelf-front)); }
+    :root[data-style="shelf"] .crop-actions { padding: 0; background: none; }
+}

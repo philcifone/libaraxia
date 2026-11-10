@@ -6,7 +6,7 @@
 
    Needs: m, values (a dict or row: the posted form, a lookup result or the
    row being edited), formats (movies, vinyls), cover_url (current cover to preview,
-   or None); optional cover_fetch ("Find a better cover", cover_finder.js: Edit Book and Add Book) and
+   or None); optional current_cover (the saved cover's uploads/... path: the crop tool's source on Edit pages), cover_fetch ("Find a better cover", cover_finder.js: Edit Book and Add Book) and
    notes (the wishlist's note field). The add page's lookups fill these
    fields by id (add_item.js). #}
 
@@ -96,6 +96,18 @@
         <img src="{{ cover_url }}" alt="Cover" data-fallback-src="{{ url_for('static', filename='no-cover.svg') }}" class="max-w-[12rem] rounded-lg">
         {% endif %}
     </div>
+    {# Crop / straighten (cover_crop.js, ROADMAP 15.3). The tool works on a
+       copy the server holds: the saved cover (current_cover, Edit pages), a
+       fetched one (#existing_cover_url) or a staged upload. Save puts
+       crop_source + cover_crop here; the route renders them on Save Changes. #}
+    <button type="button" id="crop-open" data-crop-open data-current-cover="{{ current_cover or '' }}"
+            class="{{ '' if cover_url else 'hidden ' }}px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Crop / straighten</button>
+    <input type="hidden" name="crop_source" id="crop_source" value="">
+    <input type="hidden" name="cover_crop" id="cover_crop" value="">
+    <p id="crop-note" class="hidden text-sm text-content-secondary" aria-live="polite">
+        Cropped. Save to keep it.
+        <button type="button" data-click="removeCrop" class="underline text-accent">Remove crop</button>
+    </p>
     {# A cover a lookup (or "Find a better cover") saved, uploads/...; the
        route re-checks it with is_safe_upload_path / process_image #}
     <input type="hidden" name="existing_cover_url" id="existing_cover_url" value="{{ values.existing_cover_url or values.local_cover_url or '' }}">
@@ -113,4 +125,5 @@
     {% endif %}
     <input type="file" id="image" name="image" accept="image/*"
            class="w-full max-w-md text-content-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-accent file:text-on-accent hover:file:bg-accent-hover">
+    {% include '_cover_crop.html' %}
 </div>

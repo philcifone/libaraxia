@@ -9,7 +9,7 @@
    has no VHS icon), dvd (a disc with a hole), audiobook (Lucide
    "book-headphones"), turntable, disc-2 and cassette-tape (Lucide, the
    LP, CD and Cassette badges on the Music grid), and the sidebar's: bell, feed, bookmark (wishlist),
-   collections, user, settings; scan (Lucide scan-barcode, Do I have this?), star (Reviews), sun and moon (the sidebar's mode toggle), library-house (the Shelves heading's Mine / Household toggle: the
+   collections, user, settings; scan (Lucide scan-barcode, Do I have this?), star (Reviews), sun and moon (the sidebar's mode toggle), rotate-cw, rotate-ccw, portrait and landscape (the cover crop tool's toolbar), library-house (the Shelves heading's Mine / Household toggle: the
    library's books inside a house outline). Stroke icons in currentColor,
    24x24, hidden from screen readers: the caller supplies the words. #}
 {% macro icon(name, class='w-5 h-5') -%}
@@ -100,6 +100,18 @@
     <path d="M8 12v-2a4 4 0 0 1 8 0v2"/>
     <circle cx="15" cy="12" r="1"/>
     <circle cx="9" cy="12" r="1"/>
+{%- elif name == 'rotate-cw' %}
+    {# Lucide "rotate-cw": the cover crop tool's quarter turns #}
+    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+    <path d="M21 3v5h-5"/>
+{%- elif name == 'rotate-ccw' %}
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+    <path d="M3 3v5h5"/>
+{%- elif name == 'portrait' %}
+    {# A tall and a wide frame: the crop tool's orientation pair #}
+    <rect x="6" y="2" width="12" height="20"/>
+{%- elif name == 'landscape' %}
+    <rect x="2" y="6" width="20" height="12"/>
 {%- endif %}
 </svg>
 {%- endmacro %}
