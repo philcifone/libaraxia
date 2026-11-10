@@ -110,12 +110,33 @@ def test_fit_ratio_and_conversion():
     # a 100 x 200 px image: a square box spans twice as much of the width as of the height
     assert call('fractionalRatio', 1, 100, 200) == 2
     x, y, w, h = call('fitRatio', [0, 0, 1, 1], 0.5)
-    assert (w, h) == (0.5, 1) and x == 0.25
+    assert (w, h) == (pytest.approx(0.5), pytest.approx(1)) and x == pytest.approx(0.25)
     assert call('ratioFor', '2:3', False, 100, 200) == pytest.approx(2 / 3)
     assert call('ratioFor', '2:3', True, 100, 200) == pytest.approx(1.5)
     assert call('ratioFor', '1:1', True, 100, 200) == 1
     assert call('ratioFor', 'original', True, 100, 200) == 0.5
     assert call('ratioFor', 'free', False, 100, 200) is None
+
+
+def test_fit_ratio_keeps_the_area():
+    # a half-size centred box changes ratio without shrinking
+    box = [0.25, 0.25, 0.5, 0.5]
+    for ratio in (2 / 3, 3 / 4, 1, 1.5):
+        x, y, w, h = call('fitRatio', box, ratio)
+        assert w * h == pytest.approx(0.25)
+        assert w / h == pytest.approx(ratio)
+        assert x >= 0 and y >= 0 and x + w <= 1 + 1e-9 and y + h <= 1 + 1e-9
+    # a full-frame box can't keep its area at a new ratio, but takes the largest that fits
+    x, y, w, h = call('fitRatio', [0, 0, 1, 1], 2 / 3)
+    assert h == pytest.approx(1) and w == pytest.approx(2 / 3)
+    # cycling through the ratios (as the chips do, passing the remembered area) doesn't ratchet
+    box, area = [0.1, 0.1, 0.6, 0.6], 0.36
+    for ratio in (2 / 3, 3 / 4, 1, 2 / 3, 3 / 4, 1, 2 / 3):
+        box = call('fitRatio', box, ratio, area)
+        assert box[2] * box[3] == pytest.approx(area)
+    # the caller's remembered area wins over the box's own
+    _, _, w, h = call('fitRatio', [0.4, 0.4, 0.2, 0.2], 1, 0.36)
+    assert (w, h) == (pytest.approx(0.6), pytest.approx(0.6))
 
 
 def test_quad_checks_match_the_server():

@@ -129,12 +129,18 @@ function moveRect([x, y, w, h], dx, dy) {
     return [clamp(x + dx, 0, 1 - w), clamp(y + dy, 0, 1 - h), w, h];
 }
 
-// The largest box of this ratio inside `box`, centred in it.
-function fitRatio([x, y, w, h], ratio) {
-    let nw = w;
-    let nh = h;
-    if (w / h > ratio) nw = h * ratio; else nh = w / ratio;
-    return [x + (w - nw) / 2, y + (h - nh) / 2, nw, nh];
+// A box of this ratio (w / h in fractional units) with the given area
+// (default: the area of `box`), centred on `box` and kept inside the image.
+// When that area can't fit at this ratio it shrinks to the largest that does.
+// Keeping the area, instead of fitting inside the old box, means switching
+// ratios doesn't ratchet the crop smaller each time.
+function fitRatio([x, y, w, h], ratio, area = w * h) {
+    let nw = Math.sqrt(area * ratio);
+    let nh = nw / ratio;
+    const k = Math.min(1, 1 / nw, 1 / nh);
+    nw *= k;
+    nh *= k;
+    return [clamp(x + (w - nw) / 2, 0, 1 - nw), clamp(y + (h - nh) / 2, 0, 1 - nh), nw, nh];
 }
 
 // A ratio in pixels (width / height) as the fractional units the box uses on
@@ -237,6 +243,7 @@ function initCropTool() {
     let ratioChoice = 'free';       // the Ratio chips: free, original, 1:1, 2:3, 3:4, 27:38
     let landscape = false;          // the Portrait / Landscape pair
     let rect = [0, 0, 1, 1];
+    let ratioArea = null;           // area to keep across ratio changes; null = the box as it is
     let quad = boxCorners(rect);
     let history = [];               // [{key, geom, blob, url}]: one per Crop press
     let busy = false;
@@ -423,6 +430,7 @@ function initCropTool() {
     function moveCorner(corner, p) {
         if (mode === 'rect') {
             const [w, h] = rotatedSize();
+            ratioArea = null;
             rect = resizeRect(rect, corner, p, { ratio: fractionalRatio(selectedRatio(), w, h) });
             return;
         }
@@ -559,6 +567,7 @@ function initCropTool() {
 
     // Replace the whole shape (undo, reset, rotate, reopening a saved crop)
     function setGeometry(g) {
+        ratioArea = null;
         rotate = g.rotate;
         mode = g.mode;
         if (g.mode === 'rect') {
@@ -599,7 +608,10 @@ function initCropTool() {
         const ratio = selectedRatio();
         if (mode === 'rect' && ratio) {
             const [w, h] = rotatedSize();
-            rect = fitRatio(rect, fractionalRatio(ratio, w, h));
+            // Aim for the area the crop had before the ratio chips were
+            // touched, so a squeeze to fit the image edge isn't permanent
+            if (ratioArea === null) ratioArea = rect[2] * rect[3];
+            rect = fitRatio(rect, fractionalRatio(ratio, w, h), ratioArea);
         }
         draw();
     }
@@ -792,6 +804,7 @@ function initCropTool() {
         mode = 'rect';
         ratioChoice = 'free';
         landscape = false;
+        ratioArea = null;
         rect = [0, 0, 1, 1];
         quad = boxCorners(rect);
         syncToolbar();
