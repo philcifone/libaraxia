@@ -160,11 +160,13 @@
    info toggle, cancel/dismiss, a vertical progress stripe that fills upward,
    and a collapse toggle. The details card opens to its right.
    Corners follow the theme (rounded-lg is square in House, rounded in
-   Classic). z-30 so the sidebar drawer (z-40) covers it when open.
+   Classic). z-[35]: above the page's z-30 layers (the search row and its
+   filter panel, the add button), so its details card isn't drawn under the
+   search box; below the sidebar drawer (z-40), which covers it when open.
    Anchored by its bottom edge (about 9rem below centre, i.e. roughly centred
    when expanded) so the [-]/[+] button stays put when the panel collapses. #}
 {% if current_user.is_authenticated %}
-<div id="cover-job-panel" class="hidden fixed z-30 text-sm"
+<div id="cover-job-panel" class="hidden fixed z-[35] text-sm"
      style="left: 0.75rem; bottom: max(1rem, calc(50% - 9rem));"
      data-job='{{ cover_job|tojson }}'
      data-status-url="{{ url_for('covers.status') }}"

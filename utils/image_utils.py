@@ -20,6 +20,34 @@ def is_safe_upload_path(image_path):
     return normalized.startswith('uploads/') and '..' not in normalized.split('/')
 
 
+# Where stored paths ('uploads/...') resolve: <project>/static. A module
+# value rather than current_app, because cover_missing() runs as an SQL
+# function on any connection, request or not; tests point it elsewhere.
+STATIC_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static')
+
+
+def cover_missing(image_path):
+    """1 when a stored cover is an upload whose file is gone, else 0.
+
+    Registered as the SQL function cover_missing() on every connection
+    (utils/database.py), so "needs a cover" can be `cover_image_url IS NULL
+    OR cover_missing(cover_image_url)` (book_utils.missing_cover_sql). A path
+    that isn't an upload is left alone. If the uploads folder is missing or
+    empty, nothing counts as missing: that's an unmounted or moved folder,
+    not hundreds of lost covers, and the fetcher must not overwrite every
+    link in the catalog because of it."""
+    if not is_safe_upload_path(image_path):
+        return 0
+    uploads = os.path.join(STATIC_ROOT, 'uploads')
+    try:
+        with os.scandir(uploads) as entries:
+            if next(entries, None) is None:
+                return 0
+    except OSError:
+        return 0
+    return 0 if os.path.isfile(os.path.join(STATIC_ROOT, image_path)) else 1
+
+
 def delete_image_file(image_path):
     """
     Safely delete an image file given its relative path from static directory

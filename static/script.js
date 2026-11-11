@@ -389,14 +389,8 @@ class InfiniteScroll {
             : book.removed
             ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>'
             : '';
+        // No format badge: an item's format shows on its page (Phil, 2026-11-11)
 
-        // Audiobooks get a badge in the top-right corner (_format_badge.html);
-        // a plain book has none. Icon: Lucide "book-headphones".
-        const formatBadge = book.format === 'Audiobook'
-            ? `<span class="absolute top-2 right-2 z-10 p-1 flex items-center text-xs font-mono font-bold bg-primary-bg text-content-primary border border-card rounded-pill" title="Audiobook">
-                   <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M8 12v-2a4 4 0 0 1 8 0v2"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="12" r="1"/></svg>
-                   <span class="sr-only">Audiobook</span></span>`
-            : '';
 
         const coverImage = book.cover_image_url   // cover-box: as _book_grid.html
             ? `<span class="cover-box"><img src="/static/${this.escapeHtml(book.cover_image_url)}"
@@ -416,7 +410,6 @@ class InfiniteScroll {
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                         ${removedBadge}
-                        ${formatBadge}
                         ${coverImage}
                     </div>
                     <div class="book-info p-3 sm:p-4">

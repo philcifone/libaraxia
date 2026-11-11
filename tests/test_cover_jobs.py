@@ -161,3 +161,38 @@ def test_profile_button_starts_a_job_and_redirects(client, db, people, fake_look
     assert r.status_code == 302 and r.headers['Location'].endswith('/user/alice')
     r = client.post('/covers/start', data={'scope': 'own', 'next': '//evil.example'})
     assert r.headers['Location'].endswith('/base/index') or r.headers['Location'].endswith('/base/')
+
+
+def test_a_cover_whose_file_is_gone_is_fetched_again(app, client, db, people, fake_lookup, static_root):
+    """A stored link to a deleted file shows as no cover on the grid, so the
+    fetcher counts it as missing and replaces it; a cover whose file is
+    there is left alone."""
+    uploads = static_root / 'uploads'
+    uploads.mkdir()
+    (uploads / 'here.jpg').write_bytes(b'x')
+    gone = book_with_isbn(db, people['alice'], '9780000000019')
+    kept = book_with_isbn(db, people['alice'], '9780000000026')
+    db.execute("UPDATE books SET cover_image_url = 'uploads/gone.jpg' WHERE id = ?", (gone,))
+    db.execute("UPDATE books SET cover_image_url = 'uploads/here.jpg' WHERE id = ?", (kept,))
+    db.commit()
+    login(client, 'alice')
+    assert start(client).get_json()['job']['total'] == 1
+    run_worker(app)
+    assert fake_lookup['looked_up'] == ['9780000000019']
+    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', gone) == 'uploads/9780000000019.jpg'
+    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', kept) == 'uploads/here.jpg'
+
+
+def test_an_empty_or_absent_uploads_folder_marks_nothing_missing(db, people, static_root):
+    """An unmounted or moved uploads folder must not make every cover look
+    lost (the fetcher would overwrite the whole catalog's links)."""
+    from utils.book_utils import missing_cover_sql
+    b = book_with_isbn(db, people['alice'], '9780000000019')
+    db.execute("UPDATE books SET cover_image_url = 'uploads/gone.jpg' WHERE id = ?", (b,))
+    db.commit()
+    count = 'SELECT COUNT(*) ' + missing_cover_sql()
+    assert scalar(db, count) == 0                  # no uploads folder
+    (static_root / 'uploads').mkdir()
+    assert scalar(db, count) == 0                  # an empty one
+    (static_root / 'uploads' / 'other.jpg').write_bytes(b'x')
+    assert scalar(db, count) == 1

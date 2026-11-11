@@ -76,6 +76,22 @@ def format_label(fmt):
     """Display name of a stored format ('VHS' -> 'Cartridge'); '' for None."""
     return FORMAT_LABELS.get(fmt, fmt or '')
 
+
+# The icon (templates/_icons.html) an item page shows beside the title for
+# its format: a cassette for VHS, a disc for DVD, a book with headphones for
+# an audiobook, a turntable for LP, a CD, a cassette tape. Vinyl sizes (EP,
+# 7", ...) have none; their format is in the details list. Grids show no
+# format badge (Phil, 2026-11-11).
+FORMAT_ICONS = {
+    'VHS': 'vhs', 'DVD': 'dvd', AUDIOBOOK: 'audiobook',
+    'LP': 'turntable', 'CD': 'disc-2', 'Cassette': 'cassette-tape',
+}
+
+
+def format_icon(fmt):
+    """Icon name for a stored format, '' when it has none (the `format_icon` filter)."""
+    return FORMAT_ICONS.get(fmt, '')
+
 # Per-user status (collections.status) by type. The CHECK in migration 023
 # allows the union; routes check the status matches the item's type.
 STATUSES = {

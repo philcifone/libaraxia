@@ -23,10 +23,19 @@ def get_db_connection():
     # SQLite only enforces foreign keys (and their ON DELETE rules) when each
     # connection asks for it. Needs migrations 014/015 (manage.py migrate).
     conn.execute('PRAGMA foreign_keys = ON')
-    # fold(): accent- and punctuation-free matching for the search boxes
-    # (utils/search.py)
-    search.register(conn)
+    register_functions(conn)
     return conn
+
+
+def register_functions(conn):
+    """The app's own SQL functions, on any connection (tests call this on
+    theirs too):
+      fold()           accent- and punctuation-free matching for the search
+                       boxes (utils/search.py)
+      cover_missing()  a cover link whose file is gone (utils/image_utils.py)"""
+    from utils.image_utils import cover_missing
+    search.register(conn)
+    conn.create_function('cover_missing', 1, cover_missing)
 
 
 def get_db():

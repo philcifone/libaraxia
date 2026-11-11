@@ -16,7 +16,6 @@
                 <a href="{{ item_url(book) }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
-                        {% include '_format_badge.html' %}
                         {# Only shown when Show asks for them; marked so they can't pass for owned #}
                         {% if book.owned == 0 %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Not owned</span>
@@ -29,6 +28,12 @@
                         <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                              alt="{{ book['title'] }}" data-author="{{ book['author'] or '' }}"
                              class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>
+                        {% if book['media_type'] == 'video' %}
+                        {# The Shelf style's video-store rack prints the title on
+                           every case instead of showing the poster; hidden
+                           everywhere else (.rack-print in styles.css) #}
+                        {% with title=book['title'], author=book['author'], size='md', box='w-full h-full rack-print' %}{% include '_no_cover.html' %}{% endwith %}
+                        {% endif %}
                         {% else %}
                         {% with title=book['title'], author=book['author'], size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}

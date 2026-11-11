@@ -1060,14 +1060,20 @@ def clear_placeholder_covers(conn) -> Dict[str, int]:
 
 # ------------------------------------------------------------ missing covers
 
+# A book with no usable cover: none stored, or the stored file is gone
+NO_COVER_SQL = "(cover_image_url IS NULL OR cover_image_url = '' OR cover_missing(cover_image_url))"
+
+
 def missing_cover_sql(owner=False):
     """FROM/WHERE for books with no cover but an ISBN to look one up by.
-    With owner=True it takes one parameter, the owner's user id.
-    Books only: the cover fetcher skips videos (Phase 8.1)."""
-    sql = """
+    No cover includes a link whose file is gone (cover_missing(), an SQL
+    function from utils/database.py): the grid shows those as coverless, so
+    the fetcher treats them so too. With owner=True it takes one parameter,
+    the owner's user id. Books only: the cover fetcher skips videos (Phase 8.1)."""
+    sql = f"""
     FROM books
     WHERE media_type = 'book'
-      AND (cover_image_url IS NULL OR cover_image_url = '')
+      AND {NO_COVER_SQL}
       AND isbn IS NOT NULL AND isbn != ''
 """
     return sql + ("  AND added_by = ?\n" if owner else "")
@@ -1085,8 +1091,8 @@ def fetch_cover_for_book(conn, book):
         details = None
     if not (details and details.get('local_cover_url')):
         return False
-    conn.execute("UPDATE books SET cover_image_url = ? WHERE id = ? "
-                 "AND (cover_image_url IS NULL OR cover_image_url = '')",
+    # Only if it still has no usable cover (someone may have added one meanwhile)
+    conn.execute(f"UPDATE books SET cover_image_url = ? WHERE id = ? AND {NO_COVER_SQL}",
                  (details['local_cover_url'], book['id']))
     conn.commit()
     return True

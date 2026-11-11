@@ -173,17 +173,18 @@ def test_grid_tabs_and_search(client, db, people):
 
 def test_format_badges_use_icons_for_lp_cd_and_cassette(client, db, people):
     # LP, CD and Cassette get a Lucide icon (turntable, disc-2, cassette-tape)
-    # with the name kept for screen readers; vinyl sizes stay as text
-    add_record(db, people['alice'], title='Blue', fmt='LP')
-    add_record(db, people['alice'], title='Court and Spark', catno='7E-1001', fmt='CD')
-    add_record(db, people['alice'], title='Hissing', catno='7E-1051', fmt='Cassette')
+    # beside the title on the album's page, named for screen readers. The
+    # grid shows no format badge (Phil, 2026-11-11).
+    ids = {name: add_record(db, people['alice'], title=title, catno=catno, fmt=name)
+           for name, title, catno in (('LP', 'Blue', 'MS 2038'), ('CD', 'Court and Spark', '7E-1001'),
+                                      ('Cassette', 'Hissing', '7E-1051'))}
     login(client, 'alice')
-    page = client.get('/records/').get_data(as_text=True)
-    assert 'M18 8v4a8 8 0 0 1-1.07 4' in page          # turntable
-    assert '<circle cx="12" cy="12" r="4"/>' in page   # disc-2
-    assert 'M8 12h8' in page                           # cassette-tape
-    for name in ('LP', 'CD', 'Cassette'):
-        assert f'<span class="sr-only">{name}</span>' in page
+    assert 'M18 8v4a8 8 0 0 1-1.07 4' not in client.get('/records/').get_data(as_text=True)
+    for name, path in (('LP', 'M18 8v4a8 8 0 0 1-1.07 4'),          # turntable
+                       ('CD', '<circle cx="12" cy="12" r="4"/>'),   # disc-2
+                       ('Cassette', 'M8 12h8')):                    # cassette-tape
+        page = client.get(f'/records/{ids[name]}').get_data(as_text=True)
+        assert path in page and f'aria-label="{name}"' in page
 
 
 def test_household_and_friends_see_records(client, db, people):
@@ -569,3 +570,11 @@ def test_data_export_has_type_and_format(app, db, people):
     for name in ('collections.csv', 'wishlist.csv'):
         header = next(csv.reader(io.StringIO(z.read(name).decode())))
         assert header[-2:] == ['Type', 'Format'], name
+
+
+def test_vinyl_sizes_have_no_icon_and_a_centred_title(client, db, people):
+    """An EP or 7" has no format icon, so its page keeps the centred title."""
+    rid = add_record(db, people['alice'], title='Small', fmt='7in')
+    login(client, 'alice')
+    page = client.get(f'/records/{rid}').get_data(as_text=True)
+    assert '<header class="mb-8 px-3 md:px-6 text-center">' in page and 'role="img"' not in page

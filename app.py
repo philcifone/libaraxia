@@ -215,6 +215,7 @@ def create_app():
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media
     app.add_template_filter(media.format_label, 'format_label')
+    app.add_template_filter(media.format_icon, 'format_icon')
 
     # Pages that list several media types (feed, wishlist, collections) word
     # and link each row by its own type: labels_for(row).by, item_url(row).

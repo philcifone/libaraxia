@@ -321,7 +321,16 @@ document.addEventListener('error', event => {
     // A grid cover whose file is missing: the plain title binding, as for no cover
     const box = img.classList.contains('book-cover-img') ? img.closest('.cover-box') : null;
     if (box) {
-        box.outerHTML = noCoverHtml(img.alt, img.dataset.author || '');
+        // A movie card already carries the printed label the store rack
+        // shows (.rack-print, _book_grid.html): make it the placeholder
+        // rather than adding a second one beside it.
+        const print = box.parentElement.querySelector('.rack-print');
+        if (print) {
+            print.classList.remove('rack-print');
+            box.remove();
+        } else {
+            box.outerHTML = noCoverHtml(img.alt, img.dataset.author || '');
+        }
         return;
     }
     if (img.dataset.fallbackSrc && !img.dataset.fellBack) {

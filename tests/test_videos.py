@@ -229,13 +229,14 @@ def test_vhs_shows_as_cartridge_dvd_as_dvd(client, db, people):
     disc = add_video(db, people['alice'], title='Alien', barcode=None, fmt='DVD')
     login(client, 'alice')
     page = client.get('/videos/').get_data(as_text=True)
-    # Grid badges: a cassette icon for VHS, a disc for DVD, named for screen readers
-    assert 'title="Cartridge"' in page and 'title="DVD"' in page
-    assert '<span class="sr-only">Cartridge</span>' in page and '<span class="sr-only">DVD</span>' in page
-    assert '>VHS</span>' not in page
+    # No format badge on the grid (Phil, 2026-11-11); the filter names VHS Cartridge
+    assert 'title="Cartridge"' not in page and 'title="DVD"' not in page
     assert '<option value="VHS"' in page and '>Cartridge</option>' in page
-    assert 'Cartridge' in client.get(f'/videos/{tape}').get_data(as_text=True)
-    assert 'DVD' in client.get(f'/videos/{disc}').get_data(as_text=True)
+    # The item page: the icon beside the title, named for screen readers
+    page = client.get(f'/videos/{tape}').get_data(as_text=True)
+    assert 'aria-label="Cartridge"' in page and 'aria-label="VHS"' not in page
+    page = client.get(f'/videos/{disc}').get_data(as_text=True)
+    assert 'aria-label="DVD"' in page
 
 
 def test_add_dvd_filter_and_count(client, db, people):
@@ -818,3 +819,19 @@ def test_wishlist_tabs_show_books_movies_or_both(client, db, people):
     movies = page('?show=movies')
     assert 'Wished Movie' in movies and 'Wished Book' not in movies
     assert 'Wished Movie' in page('?show=nonsense')     # unknown: both
+
+
+def test_rack_prints_a_label_on_every_case(client, db, people):
+    """The Shelf style's video-store rack shows a printed title on every
+    case, so a movie with a poster carries the hidden .rack-print label too
+    (a coverless one already has its placeholder); books never get one."""
+    vid = add_video(db, people['alice'], title='Jaws')
+    db.execute("UPDATE books SET cover_image_url = 'uploads/jaws.jpg' WHERE id = ?", (vid,))
+    add_video(db, people['alice'], title='Alien', barcode=None)
+    add_book(db, people['alice'], title='Dune', cover='uploads/dune.jpg')
+    db.commit()
+    login(client, 'alice')
+    page = client.get('/videos/').get_data(as_text=True)
+    assert page.count('rack-print') == 1
+    assert re.search(r'rack-print[^>]*>\s*<span class="no-cover-title">Jaws<', page)
+    assert 'rack-print' not in client.get('/base/index').get_data(as_text=True)

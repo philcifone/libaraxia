@@ -61,11 +61,26 @@ def db_path(template_db, tmp_path, monkeypatch):
 @pytest.fixture
 def db(db_path):
     """A direct connection for arranging data and checking results."""
+    from utils.database import register_functions
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys = ON')
+    register_functions(conn)            # fold(), cover_missing(), as the app's
     yield conn
     conn.close()
+
+
+@pytest.fixture(autouse=True)
+def static_root(tmp_path, monkeypatch):
+    """Stored cover paths resolve under a temp static/ (utils.image_utils),
+    never the checkout's: its uploads/ holds whatever the developer has, and
+    cover_missing() would judge test covers by it. Starts with no uploads
+    folder, so no cover counts as missing until a test makes the folder."""
+    from utils import image_utils
+    root = tmp_path / 'static'
+    root.mkdir()
+    monkeypatch.setattr(image_utils, 'STATIC_ROOT', str(root))
+    return root
 
 
 @pytest.fixture(scope='session')

@@ -2403,6 +2403,10 @@ img.book-cover-img:not([data-loaded]) {
   z-index: 50;
 }
 
+.z-\[35\] {
+  z-index: 35;
+}
+
 .col-span-1 {
   grid-column: span 1 / span 1;
 }
@@ -4959,9 +4963,8 @@ dialog::backdrop {
   font-size: clamp(.6rem, 9cqw, .8rem);
 }
 
-/* A coverless record on a phone is a 99px square with the format badge over
-   its bottom edge: six lines of title were cut mid-line and the artist sat
-   under the badge. Four lines, and a long title goes without its artist (as
+/* A coverless record on a phone is a 99px square: six lines of title were
+   cut mid-line. Four lines, and a long title goes without its artist (as
    on the rack's cases). */
 
 @media (max-width: 767px) {
@@ -5407,6 +5410,56 @@ dialog::backdrop {
   height: 100%;
   max-width: none;
   aspect-ratio: auto;
+}
+
+/* Every case is printed, poster or not (Phil, 2026-11-11): the poster is
+   hidden and the title stands where a coverless one has it, in VT323
+   (Outrun's terminal face, the look of a store's label printer), with a
+   tiny barcode along the bottom of the case. The printed label of a movie
+   that has a poster is .rack-print (_book_grid.html), hidden outside the
+   rack. The barcode is the label's free ::before (the face it draws
+   elsewhere is off in the rack); the pattern is the one from the old
+   barcode sticker (ecdba30), at half scale. */
+
+.rack-print {
+  display: none;
+}
+
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .rack-print {
+  display: flex;
+}
+
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .cover-box {
+  display: none;
+}
+
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+  padding-bottom: 14px;
+  /* clear of the barcode */
+}
+
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.no-cover-title, .no-cover-author) {
+  font-family: "VT323", ui-monospace, monospace;
+  font-weight: 400;
+}
+
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-title {
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover::before {
+  content: "";
+  top: auto;
+  bottom: 3px;
+  left: 50%;
+  width: 50%;
+  height: 7px;
+  background: repeating-linear-gradient(90deg,
+        #111 0 1px, transparent 1px 2px, #111 2px 3px, transparent 3px 4px,
+        #111 4px 6px, transparent 6px 7px, #111 7px 8px, transparent 8px 10px);
+  box-shadow: none;
+  transform: translateX(-50%);
 }
 
 /* ---- Sidebar on a short screen (ROADMAP 11.5) ----
@@ -7404,6 +7457,11 @@ html:has(.bulk-sheet[open]) {
 
   .md\:p-8 {
     padding: 2rem;
+  }
+
+  .md\:px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 
   .md\:text-2xl {
