@@ -177,8 +177,8 @@
             <div class="text-sm text-content-secondary italic md:col-span-2">Data source: {{ values.source }}</div>
             {% endif %}
 
-            {# Books get "Find a better cover" (cover_finder.js) #}
-            {% with cover_fetch=(m.type == 'book') %}{% include '_item_fields.html' %}{% endwith %}
+            {# "Find a better cover" (cover_finder.js), every type #}
+            {% with cover_fetch=true %}{% include '_item_fields.html' %}{% endwith %}
 
             {# 8B.3: something you read/watched/listened to but don't have. It's
                saved as owned = 0: off the shelf and out of owned counts, there
@@ -228,5 +228,5 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='cover_crop.js') }}"></script>
 <script src="{{ url_for('static', filename='add_item.js') }}"></script>
-{% if m.type == 'book' %}<script src="{{ url_for('static', filename='cover_finder.js') }}"></script>{% endif %}
+<script src="{{ url_for('static', filename='cover_finder.js') }}"></script>
 {% endblock %}

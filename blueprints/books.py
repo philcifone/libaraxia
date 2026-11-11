@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import cover_crop
+from utils import cover_crop, media_covers
 from utils.image_utils import delete_image_file, is_safe_upload_path
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -370,8 +370,11 @@ def select_search_result():
 @login_required
 @limiter.limit("30 per hour")       # each search downloads a dozen or so images
 def fetch_cover():
-    """Edit Book's "Find a better cover": search every cover source for the
-    ISBN / title / author, download what they offer, and let the user pick.
+    """"Find a better cover" on the add and edit pages: search every cover
+    source for the item, download what they offer, and let the user pick.
+    `type` picks the sources: a book (default) by ISBN / title / author
+    (book_utils.cover_search_steps); a movie or album by barcode / title /
+    creator / year / format (media_covers.cover_search_steps).
 
     That's a dozen or more HTTP calls, so the answer is streamed as it goes
     (NDJSON, one JSON object per line) and the page shows progress and each
@@ -381,9 +384,14 @@ def fetch_cover():
       {"type": "done", "count", "error"?}        always last
     """
     data = request.get_json(silent=True) or {}
-    isbn = (data.get("isbn") or "").strip()
-    title = (data.get("title") or "").strip()
-    author = (data.get("author") or "").strip()
+    def text(key):
+        value = data.get(key)
+        return value.strip() if isinstance(value, str) else ""
+    media_type = text("type") or media.BOOK
+    if media_type not in media.MEDIA_TYPES:
+        return jsonify({"success": False, "error": "Unknown media type."}), 400
+    isbn, title, author = text("isbn"), text("title"), text("author")
+    year = int(text("year")) if text("year").isdigit() and len(text("year")) == 4 else None
 
     def line(**event):
         return json.dumps(event) + "\n"
@@ -392,7 +400,12 @@ def fetch_cover():
         count = 0
         try:
             # 1. Ask each source for cover URLs
-            steps = cover_search_steps(isbn=isbn, title=title, author=author)
+            if media_type == media.BOOK:
+                steps = cover_search_steps(isbn=isbn, title=title, author=author)
+            else:
+                steps = media_covers.cover_search_steps(media_type, title=title, author=author,
+                                                        barcode=text("barcode"), year=year,
+                                                        fmt=text("format"))
             candidates, seen = [], set()
             for i, (label, run) in enumerate(steps):
                 yield line(type="step", phase="search", label=label, done=i, total=len(steps))

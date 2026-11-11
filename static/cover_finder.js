@@ -1,8 +1,10 @@
-// "Find a better cover", on Edit Book and Add Book (books only; the button
-// is in _item_fields.html when the page passes cover_fetch).
+// "Find a better cover", on every add and edit page (books, movies, albums;
+// the button is in _item_fields.html when the page passes cover_fetch, and
+// carries the media type).
 // Shared helpers (getCSRFHeaders, escapeHtml) are in common.js.
 //
-// /books/fetch_cover asks each cover source for the ISBN/title, downloads
+// /books/fetch_cover asks each cover source for the item (a book's ISBN /
+// title, a movie's or album's barcode / title / creator), downloads
 // what they offer into static/uploads, and streams its progress as it goes
 // (NDJSON: one JSON object per line, see the route). The bar fills over the
 // search (first 40%) and the downloads (the rest), and each cover shows up
@@ -81,10 +83,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     button?.addEventListener('click', async () => {
-        const isbn = $('isbn').value.trim();
-        const title = $('title').value.trim();
-        if (!isbn && !title) {
-            status.textContent = 'Give an ISBN or a title first.';
+        // Whichever of these the form has (a book has an ISBN, a movie or
+        // album a barcode and a format)
+        const value = id => ($(id)?.value || '').trim();
+        const query = {
+            type: button.dataset.mediaType || 'book',
+            isbn: value('isbn'), barcode: value('barcode'), title: value('title'),
+            author: value('author'), year: value('year'), format: value('format'),
+        };
+        if (!query.title && !query.isbn && !query.barcode) {
+            status.textContent = query.type === 'book'
+                ? 'Give an ISBN or a title first.' : 'Give a title or a barcode first.';
             return;
         }
         button.disabled = true;
@@ -98,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/books/fetch_cover', {
                 method: 'POST',
                 headers: getCSRFHeaders(),
-                body: JSON.stringify({ isbn, title, author: $('author').value.trim() }),
+                body: JSON.stringify(query),
             });
             if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
 

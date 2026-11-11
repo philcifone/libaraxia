@@ -6,7 +6,7 @@
 
    Needs: m, values (a dict or row: the posted form, a lookup result or the
    row being edited), formats (movies, vinyls), cover_url (current cover to preview,
-   or None); optional current_cover (the saved cover's uploads/... path: the crop tool's source on Edit pages), cover_fetch ("Find a better cover", cover_finder.js: Edit Book and Add Book) and
+   or None); optional current_cover (the saved cover's uploads/... path: the crop tool's source on Edit pages), cover_fetch ("Find a better cover", cover_finder.js: every add and edit page) and
    notes (the wishlist's note field). The add page's lookups fill these
    fields by id (add_item.js). #}
 
@@ -112,8 +112,9 @@
        route re-checks it with is_safe_upload_path / process_image #}
     <input type="hidden" name="existing_cover_url" id="existing_cover_url" value="{{ values.existing_cover_url or values.local_cover_url or '' }}">
     {% if cover_fetch %}
-    {# Search the cover sources for this ISBN/title (cover_finder.js) #}
-    <button type="button" id="fetch-cover-btn"
+    {# Search the cover sources for this item (cover_finder.js): a book's
+       ISBN / title, a movie's or album's barcode / title / creator #}
+    <button type="button" id="fetch-cover-btn" data-media-type="{{ m.type }}"
             class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Find a better cover</button>
     {# Progress while the search runs: sources asked, then covers downloaded #}
     <div id="cover-progress" class="hidden w-full max-w-md h-2 bg-primary-bg border border-rule-strong overflow-hidden"

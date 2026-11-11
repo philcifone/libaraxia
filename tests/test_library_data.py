@@ -417,15 +417,21 @@ def test_add_book_refused_keeps_only_safe_cover_paths(client, db, people):
 
 
 def test_find_a_better_cover_on_add_book_and_for_owners(client, db, people, monkeypatch):
-    """The button is on Add Book (books only) as well as Edit Book, and the
-    route isn't admin-only any more: an owner who isn't an admin can use it."""
+    """The button is on every add and edit page (movies and albums since
+    2026-11-11, with their media type), and the route isn't admin-only: an
+    owner who isn't an admin can use it."""
     import blueprints.books as books_bp
     monkeypatch.setattr(books_bp, 'cover_search_steps', lambda **kw: [])
     login(client, 'bob')                                        # not an admin
     add = client.get('/books/add').get_data(as_text=True)
-    assert 'id="fetch-cover-btn"' in add and 'cover_finder.js' in add
-    movie = client.get('/videos/add').get_data(as_text=True)
-    assert 'id="fetch-cover-btn"' not in movie and 'cover_finder.js' not in movie
+    assert 'id="fetch-cover-btn" data-media-type="book"' in add and 'cover_finder.js' in add
+    for kind, path in (('video', 'videos'), ('record', 'records')):
+        item = db.execute("INSERT INTO books (title, author, media_type, added_by) VALUES ('X', 'Y', ?, ?)",
+                          (kind, people['bob'])).lastrowid
+        db.commit()
+        for url in (f'/{path}/add', f'/{path}/edit/{item}'):
+            page = client.get(url).get_data(as_text=True)
+            assert f'id="fetch-cover-btn" data-media-type="{kind}"' in page and 'cover_finder.js' in page
     r = client.post('/books/fetch_cover', json={'title': 'Dune'})
     assert r.status_code == 200
     assert json.loads(r.get_data(as_text=True).splitlines()[-1])['type'] == 'done'
@@ -486,3 +492,25 @@ def test_picking_a_search_result_tries_large_google_then_open_library(client, db
     assert r.get_json()['book_details']['local_cover_url'] == 'uploads/best.jpg'
     assert tried[0].endswith('&fife=w800-h1200') and tried[1].endswith('&zoom=1')
     assert any('covers.openlibrary.org/b/isbn/9780735211292' in u for u in tried[2:])
+
+
+def test_find_a_better_cover_for_movies_and_albums(client, db, people, monkeypatch):
+    """`type` sends the search to media_covers' steps with the form's
+    barcode, year and format; an unknown type is refused."""
+    import blueprints.books as books_bp
+    from utils import media_covers
+    asked = []
+
+    def steps(media_type, **kw):
+        asked.append((media_type, kw))
+        return [('Discogs', lambda: [('https://d.test/blue.jpg', 'Discogs: LP, US, 1971')])]
+    monkeypatch.setattr(media_covers, 'cover_search_steps', steps)
+    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls: 'uploads/blue.jpg')
+    login(client, 'alice')
+    r = client.post('/books/fetch_cover', json={'type': 'record', 'title': 'Blue', 'author': 'Joni Mitchell',
+                                                'barcode': '0012345678905', 'year': '1971', 'format': 'LP'})
+    events = [json.loads(l) for l in r.get_data(as_text=True).splitlines()]
+    assert asked == [('record', {'title': 'Blue', 'author': 'Joni Mitchell', 'barcode': '0012345678905',
+                                 'year': 1971, 'fmt': 'LP'})]
+    assert [e['source'] for e in events if e['type'] == 'cover'] == ['Discogs: LP, US, 1971']
+    assert client.post('/books/fetch_cover', json={'type': 'cassette'}).status_code == 400
