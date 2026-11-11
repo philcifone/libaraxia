@@ -200,3 +200,48 @@ def test_selection_route_lists_what_each_item_has_now(client, db, people):
     items = post(client, '/bulk/selection', ids=[mine, theirs, stranger]).get_json()['items']
     assert [(i['id'], i['tags'], i['yours']) for i in items] == [(mine, ['bobs'], False), (theirs, [], True)]
     assert post(client, '/bulk/selection', ids=['x']).status_code == 400
+
+
+def test_a_view_selection_is_resolved_at_plan_time(client, db, people):
+    """Select all 57 in this view: the server finds them with the grid's
+    query, across pages, and apply writes only what the plan named."""
+    alice = people['alice']
+    ids = [add_book(db, alice, title=f'Cook {i:02}') for i in range(57)]
+    add_book(db, alice, title='Something else')
+    login(client, 'alice')
+    body = dict(action='genre', params={'genre': 'Cookbooks'}, view='book:mine', args='search_term=cook&page=1')
+    plan = post(client, '/bulk/plan', **body).get_json()['plan']
+    assert plan['changes'] == 57 and sorted(plan['ids']) == ids
+    assert len(post(client, '/bulk/selection', view='book:mine', args='search_term=cook').get_json()['items']) == 57
+
+    # A book that joins the view after the review isn't written
+    late = add_book(db, alice, title='Cook late')
+    r = post(client, '/bulk/apply', action='genre', params={'genre': 'Cookbooks'}, ids=plan['ids'],
+             fingerprint=plan['fingerprint'])
+    assert r.status_code == 200 and r.get_json()['summary'] == 'Genre set to Cookbooks on 57 items'
+    assert genre_of(db, late) is None and all(genre_of(db, i) == 'Cookbooks' for i in ids)
+
+
+def test_view_selection_on_search_and_household(client, db, people):
+    alice, bob = people['alice'], people['bob']
+    mine, bobs = add_book(db, alice, title='Dune'), add_book(db, bob, title='Dune Messiah')
+    login(client, 'alice')
+    for view, args in (('book:search', 'search_term=dune'), ('book:household', 'search_term=dune')):
+        plan = post(client, '/bulk/plan', action='tag_add', params={'tag': 'sf'}, view=view, args=args)
+        assert sorted(plan.get_json()['plan']['ids']) == [mine, bobs], view
+    # alice's own grid is hers alone (?member= is test_grid_query's)
+    plan = post(client, '/bulk/plan', action='tag_add', params={'tag': 'sf'}, view='book:mine', args='search_term=dune')
+    assert plan.get_json()['plan']['ids'] == [mine]
+
+
+def test_view_selection_refuses_unknown_views_and_the_cap(client, db, people, monkeypatch):
+    login(client, 'alice')
+    for view in ('book:friend', 'nonsense', 'video:search'):
+        r = post(client, '/bulk/plan', action='genre', params={'genre': 'x'}, view=view, args='')
+        assert r.status_code == 400 and "can't be edited in bulk" in r.get_json()['error'], view
+    from utils import bulk
+    monkeypatch.setattr(bulk, 'MAX_ITEMS', 2)
+    for i in range(3):
+        add_book(db, people['alice'], title=f'B{i}')
+    r = post(client, '/bulk/plan', action='genre', params={'genre': 'x'}, view='book:mine', args='')
+    assert r.status_code == 400 and r.get_json()['error'].startswith('Too many for one edit (3)')

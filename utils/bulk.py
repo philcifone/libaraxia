@@ -128,6 +128,7 @@ class Plan:
             'skipped': [{'reason': reason, 'count': len(ids), 'items': [item(i) for i in ids]}
                         for reason, ids in self.skipped.items()],
             'notes': self.notes,
+            'ids': [r.id for r in self.rows],         # in order: a view selection's resolved ids
         }
 
 

@@ -8,7 +8,7 @@ at plan, apply and undo time.
 from flask import Blueprint, current_app, jsonify, request, session
 from flask_login import current_user, login_required
 
-from utils import bulk, media
+from utils import bulk, grid_query, media
 from utils.database import get_db
 from utils.rate_limiting import limiter
 
@@ -30,6 +30,21 @@ def _body():
     return data if isinstance(data, dict) else {}
 
 
+def _target_ids(conn, data):
+    """The ids a request is about: `ids`, or every id of a grid view
+    (`view` + `args`, the page's query string) resolved now with the grid's
+    own query (utils/grid_query.py). Over the cap raises bulk.TooMany."""
+    if data.get('view') is None:
+        return data.get('ids')
+    try:
+        ids = grid_query.view_ids(conn, current_user, data['view'], data.get('args') or '')
+    except ValueError:
+        raise bulk.BulkError("That view can't be edited in bulk.")
+    if len(ids) > bulk.MAX_ITEMS:
+        raise bulk.TooMany(f'Too many for one edit ({len(ids)}). Narrow the view to {bulk.MAX_ITEMS} or fewer.')
+    return ids
+
+
 @bulk_blueprint.app_context_processor
 def inject_bulk_result():
     """The banner after an apply or undo shows once (_bulk_result.html):
@@ -43,10 +58,13 @@ def inject_bulk_result():
 def plan():
     """What an action would do to a selection, for the review sheet.
 
-    POST only because the id list can be long. It writes nothing."""
+    POST only because the id list can be long. It writes nothing. A view
+    selection ({view, args}) is resolved here; the plan carries its ids,
+    and apply takes those, so a view that grows meanwhile can't widen it."""
     data = _body()
+    conn = get_db()
     try:
-        result = bulk.plan(get_db(), current_user, data.get('action'), data.get('params'), data.get('ids'))
+        result = bulk.plan(conn, current_user, data.get('action'), data.get('params'), _target_ids(conn, data))
     except bulk.BulkError as e:
         return _fail(str(e))
     except Exception:
@@ -62,7 +80,8 @@ def selection():
     """The selected items with what each has now, listed under the sheet's
     inputs before the review. POST for the id list; writes nothing."""
     try:
-        items = bulk.selection(get_db(), current_user, _body().get('ids'))
+        conn = get_db()
+        items = bulk.selection(conn, current_user, _target_ids(conn, _body()))
     except bulk.BulkError as e:
         return _fail(str(e))
     except Exception:

@@ -9,7 +9,7 @@
            choice; list view is CSS on the same markup (styles.css, "List view").
            Its extra columns are .book-meta below, hidden in grid view. #}
         {% set marks = viewer_marks(books, marks_user|default(none)) %}
-        <div id="book-container" data-media="{{ m.type if m else 'book' }}" data-view="grid"{% if bulk_select|default(false) %} data-bulkable{% endif %} class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div id="book-container" data-media="{{ m.type if m else 'book' }}" data-view="grid"{% if bulk_select|default(false) %} data-bulkable{% if bulk_view is defined %} data-bulk-view="{{ bulk_view }}"{% endif %}{% endif %} class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             {% set mark = marks.get(book.id, {}) %}
             <div class="book-item group">

@@ -20,7 +20,7 @@
     {% include '_off_shelf_hint.html' %}
 
     {% if books %}
-    {% set bulk_select = true %}
+    {% set bulk_select = true %}{% set bulk_view = 'book:search' %}
     {% include '_book_grid.html' %}
     {% include '_bulk_select.html' %}
     {% else %}

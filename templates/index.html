@@ -15,7 +15,7 @@
     {% include '_search_sort_filter.html' %}
 
     {% if books %}
-    {% set bulk_select = true %}
+    {% set bulk_select = true %}{% set bulk_view = 'book:mine' %}
     {% include '_book_grid.html' %}
     {% include '_bulk_select.html' %}
     {% else %}

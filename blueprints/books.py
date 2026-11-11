@@ -6,11 +6,9 @@ from utils.database import get_db
 from utils.book_utils import (
     card_json,
     get_filter_options,
-    shelf_filter,
     show_choice,
     off_shelf_matches,
     wishlist_matches,
-    format_filter,
     find_duplicates,
     fetch_book_details_from_isbn,
     process_image,
@@ -28,9 +26,8 @@ from utils.image_utils import delete_image_file, is_safe_upload_path
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
-from utils import media, sorting
+from utils import grid_query, media, sorting
 from utils.reviews import then_review_values
-from utils.search import match as search_match   # this module has a route called search
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -841,53 +838,9 @@ def search():
     # Get library members to filter books
     library_member_ids = get_library_members(current_user.id)
 
-    # Search only books from current user or their library members
-    placeholders = ','.join(['?' for _ in library_member_ids])
-    # Every word, accents and punctuation ignored, in any of these or your
-    # tags on the book (utils/search.py, ROADMAP 7.2b)
-    match_sql, match_params = search_match(
-        search_term, ['title', 'subtitle', 'author', 'isbn', 'publish_year'], viewer_id=current_user.id)
-    query = f'''
-        SELECT b.* FROM library_books b
-        WHERE b.added_by IN ({placeholders})
-        AND ({match_sql})
-    '''
-    params = library_member_ids + match_params
-
-    # Removed (deaccessioned) books are hidden unless asked for
-    query += shelf_filter(request.args)
-
-    # Apply filters if they exist (simplified)
-    if request.args.get('genre'):
-        query += " AND LOWER(b.genre) = LOWER(?)"
-        params.append(request.args.get('genre'))
-
-    # Book / Audiobook (8B.2)
-    fmt_sql, fmt_params = format_filter(request.args.get('format'))
-    query += fmt_sql
-    params.extend(fmt_params)
-
-    if request.args.get('read_status'):
-        query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
-        params.extend([current_user.id, request.args.get('read_status')])
-
-    if request.args.get('rating'):
-        query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
-        params.extend([current_user.id, int(request.args.get('rating'))])
-
-    tags = request.args.getlist('tags[]')
-    if tags:
-        # Validate tags exist for this user
-        valid_tags_query = 'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?'
-        valid_tags = [row['tag_name'] for row in conn.execute(valid_tags_query, (current_user.id,)).fetchall()]
-
-        # Filter to only valid tags
-        valid_tags_in_request = [tag for tag in tags if tag in valid_tags]
-        if valid_tags_in_request:
-            placeholders = ','.join(['?' for _ in valid_tags_in_request])
-            query += f" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = ? AND t.tag_name IN ({placeholders}))"
-            params.append(current_user.id)
-            params.extend(valid_tags_in_request)
+    # The query is shared with bulk edit's "select all in this view" (utils/grid_query.py)
+    query, params, match_sql, match_params = grid_query.search_query(
+        conn, library_member_ids, request.args, current_user.id)
 
     # Get total count before pagination
     count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")

@@ -16,7 +16,7 @@
 
     {# Bulk edit: your marks on anything here, item edits on your own (and any, for an admin) #}
     {% if books %}
-    {% set bulk_select = true %}
+    {% set bulk_select = true %}{% set bulk_view = 'book:household' %}
     {% include '_book_grid.html' %}
     {% include '_bulk_select.html' %}
     {% else %}

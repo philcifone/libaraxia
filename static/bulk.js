@@ -77,6 +77,12 @@ function applyLabel(n, action = '', shelfName = '') {
 
 function selectedLabel(n) { return `${n} selected`; }
 
+// The bar's count for a view selection ("Select all 57 in this view"):
+// past the cap it says so, and the actions are off.
+function viewLabel(total) {
+    return total > MAX_ITEMS ? `Too many for one edit (${total}). Narrow the view.` : `All ${total} in this view`;
+}
+
 // The genre field's state: what would be sent, and the line under the box.
 // `genres` is [{value, count}] from /bulk/genres. A typed value that folds
 // equal to an existing genre snaps to that spelling (the server writes
@@ -195,6 +201,10 @@ function idFromHref(href) {
     let anchor = -1;               // card index of the last click, where a range starts
     let container = null;
     let opener = null;             // the bar button that opened the sheet, for focus
+    // A view selection: every item of the grid's view, not just the loaded
+    // cards ({key, args, total}). The server resolves it at plan time. Cards
+    // can't be toggled one by one while it's on; the review leaves things out.
+    let viewAll = null;
 
     const $ = id => document.getElementById(id);
     const cards = () => container ? Array.from(container.querySelectorAll('.book-item')) : [];
@@ -245,6 +255,7 @@ function idFromHref(href) {
 
     function exitSelect() {
         selecting = false;
+        viewAll = null;
         selected.clear();
         anchor = -1;
         if (container) {
@@ -269,7 +280,20 @@ function idFromHref(href) {
     // The bar, the cards' aria-selected and the Select all / Clear toggle
     function refresh() {
         const list = cards();
-        list.forEach(card => card.setAttribute('aria-selected', String(selected.has(cardId(card)))));
+        list.forEach(card => card.setAttribute('aria-selected', String(!!viewAll || selected.has(cardId(card)))));
+        const hint = $('bulk-hint');
+        if (viewAll) {
+            const over = viewAll.total > MAX_ITEMS;
+            $('bulk-count').textContent = viewLabel(viewAll.total);
+            $('bulk-all').classList.add('hidden');
+            $('bulk-clear').classList.remove('hidden');
+            document.querySelectorAll('[data-bulk-action]').forEach(btn => {
+                btn.disabled = over;
+                btn.title = over ? `Select ${MAX_ITEMS} or fewer` : '';
+            });
+            hint.classList.add('hidden');
+            return;
+        }
         const n = selected.size;
         const tooMany = n > MAX_ITEMS;
         $('bulk-count').textContent = tooMany
@@ -284,10 +308,29 @@ function idFromHref(href) {
         // More of the view than the page has loaded: say so rather than let
         // "all" mean fewer than it sounds
         const total = Number(container?.parentElement?.dataset.totalCount) || 0;
-        const hint = $('bulk-hint');
         const partial = n > 0 && n === list.length && total > list.length;
         hint.classList.toggle('hidden', !partial);
-        hint.textContent = partial ? `Selected the ${list.length} loaded of ${total}. Scroll down to load more.` : '';
+        hint.replaceChildren();
+        if (!partial) return;
+        if (container.dataset.bulkView) {
+            // Paged grids (Books, Household books, Search) can take the whole view
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'bulk-link';
+            more.dataset.click = 'bulkSelectView';
+            more.textContent = `Select all ${total} in this view`;
+            hint.append(`All ${list.length} loaded are selected. `, more);
+        } else {
+            hint.textContent = `Selected the ${list.length} loaded of ${total}. Scroll down to load more.`;
+        }
+    }
+
+    function selectView() {
+        const total = Number(container?.parentElement?.dataset.totalCount) || 0;
+        if (!container?.dataset.bulkView || !total) return;
+        viewAll = { key: container.dataset.bulkView, args: window.location.search.replace(/^\?/, ''), total };
+        refresh();
+        $('bulk-clear').focus();
     }
 
     function setSelected(card, on) {
@@ -297,6 +340,7 @@ function idFromHref(href) {
 
     // Click, Space or a key: toggle one card, or select the range from the anchor
     function activate(card, range) {
+        if (viewAll) return;              // the whole view: leave items out in the review
         const list = cards();
         const index = list.indexOf(card);
         if (range && anchor >= 0) {
@@ -382,7 +426,7 @@ function idFromHref(href) {
         const to = nextIndex(index, e.key, cols, list.length);
         if (to === null) return;
         e.preventDefault();
-        if (e.shiftKey) {
+        if (e.shiftKey && !viewAll) {
             if (anchor < 0) anchor = index;
             rangeBetween(anchor, to).forEach(i => setSelected(list[i], true));
             refresh();
@@ -391,11 +435,13 @@ function idFromHref(href) {
     }
 
     function selectAll() {
+        if (viewAll) return;
         cards().forEach(card => setSelected(card, true));
         refresh();
     }
 
     function clearSelection() {
+        viewAll = null;
         selected.clear();
         anchor = -1;
         refresh();
@@ -421,7 +467,7 @@ function idFromHref(href) {
         shelf:   { title: 'Collections' },   // custom collections; code says shelf
         tag:     { title: 'Tags' },
     };
-    const sheet = { kind: null, action: null, params: null, ids: [], plan: null, excluded: new Set(), stage: 'choose' };
+    const sheet = { kind: null, action: null, params: null, ids: [], view: null, plan: null, excluded: new Set(), stage: 'choose' };
     const genre = { list: [], cleared: false, active: -1, filter: '' };
     const picked = { key: '', items: null };   // /bulk/selection for the ids in the sheet
     let options = null;             // /bulk/options for this section, fetched once
@@ -556,13 +602,16 @@ function idFromHref(href) {
     async function openSheet(kind, button) {
         if (!KINDS[kind]) return;
         sheet.kind = kind;
-        sheet.ids = ids();
-        if (!sheet.ids.length) return;
+        // A view selection is resolved by the server: the plan brings its ids
+        sheet.view = viewAll ? { view: viewAll.key, args: viewAll.args } : null;
+        sheet.ids = viewAll ? [] : ids();
+        const count = viewAll ? viewAll.total : sheet.ids.length;
+        if (!count) return;
         opener = button;
         resetInputs();
         for (const key of Object.keys(KINDS)) $(`bulk-in-${key}`).classList.toggle('hidden', key !== kind);
-        $('bulk-choose-count').textContent = itemsWord(sheet.ids.length);
-        document.querySelectorAll('[data-bulk-count]').forEach(el => { el.textContent = itemsWord(sheet.ids.length); });
+        $('bulk-choose-count').textContent = itemsWord(count);
+        document.querySelectorAll('[data-bulk-count]').forEach(el => { el.textContent = itemsWord(count); });
         fillPanels();
         showStage('choose');
         $('bulk-sheet').showModal();
@@ -592,12 +641,12 @@ function idFromHref(href) {
     // ---- the selected items, with what each has now ----
 
     async function loadSelection() {
-        const key = sheet.ids.join(',');
+        const key = sheet.view ? `view:${sheet.view.view}?${sheet.view.args}` : sheet.ids.join(',');
         if (picked.key !== key) {
             picked.key = key;
             picked.items = null;
             renderSelection();
-            const res = await api('/bulk/selection', { ids: sheet.ids });
+            const res = await api('/bulk/selection', target());
             if (picked.key !== key) return;          // the sheet moved on meanwhile
             picked.items = res.data?.success ? res.data.items : [];
         }
@@ -709,19 +758,26 @@ function idFromHref(href) {
 
     // ---- review ---------------------------------------------------------
 
+    // What the sheet is about, as /bulk/plan and /bulk/selection take it
+    function target() {
+        return sheet.view ? { ...sheet.view } : { ids: sheet.ids };
+    }
+
     async function goReview() {
         const choice = readChoice();
         if (!choice || !choice.valid) return;
         sheet.action = choice.action;
         sheet.params = choice.params;
         $('bulk-go').disabled = true;
-        const res = await api('/bulk/plan', { action: sheet.action, params: sheet.params, ids: sheet.ids });
+        const res = await api('/bulk/plan', { action: sheet.action, params: sheet.params, ...target() });
         if (!res.data?.success) {
             setError(res.data?.error || 'Could not work that out. Try again.');
             syncChoose();
             return;
         }
         sheet.plan = res.data.plan;
+        // Apply writes to exactly what was reviewed, even if the view has grown since
+        if (sheet.view) sheet.ids = sheet.plan.ids;
         sheet.excluded = new Set();
         if (!DEFAULT_TICKED) sheet.plan.groups.forEach(g => g.items.forEach(i => sheet.excluded.add(i.id)));
         showStage('review');
@@ -925,6 +981,7 @@ function idFromHref(href) {
         bulkToggleSelect: () => (selecting ? exitSelect() : enterSelect()),
         bulkSelectAll: selectAll,
         bulkClear: clearSelection,
+        bulkSelectView: selectView,
         bulkOpen: el => { toggleMenu(false); openSheet(el.dataset.action, el.closest('#bulk-menu') ? $('bulk-more') : el); },
         bulkMenu: () => toggleMenu(),
         bulkGo: () => (sheet.stage === 'choose' ? goReview() : goApply()),
@@ -1001,6 +1058,6 @@ function idFromHref(href) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         fold, rangeBetween, columnCount, nextIndex, groupTickState, applyCount, summaryLine, applyLabel,
-        selectedLabel, matchGenre, filterGenres, carryExclusions, idFromHref, buildParams, tagHint, nowText,
+        selectedLabel, viewLabel, matchGenre, filterGenres, carryExclusions, idFromHref, buildParams, tagHint, nowText,
     };
 }

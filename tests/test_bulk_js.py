@@ -201,3 +201,9 @@ def test_now_text_shows_the_value_the_action_changes():
     theirs = {**item, 'yours': False}
     assert call('nowText', 'genre', theirs) == 'Not yours, will be skipped'
     assert call('nowText', 'status', theirs) == 'Read'
+
+
+def test_view_label_and_the_cap():
+    assert call('viewLabel', 57) == 'All 57 in this view'
+    assert call('viewLabel', 500) == 'All 500 in this view'
+    assert call('viewLabel', 612) == 'Too many for one edit (612). Narrow the view.'

@@ -253,7 +253,7 @@ def test_view_ids_use_the_callers_marks(app, client, db, people, kind):
 def test_view_ids_refuse_unknown_views(app, db, people):
     me = people['alice']
     for view in ('', 'book', 'book:friend', 'friend:book', 'books:mine', 'book:mine; DROP TABLE books',
-                 'book:search', None):
+                 'video:search', None):
         with pytest.raises(ValueError):
             resolve(app, db, me, view, MultiDict())
 
@@ -285,3 +285,70 @@ def test_view_ids_never_leave_the_circle(app, db, people):
     me = people['alice']
     for view in ('book:mine', 'book:household'):
         assert theirs not in resolve(app, db, me, view, 'show=all')
+
+
+# --- Search (step 7): its own query, pinned and matched by the view -----------
+
+SEARCH_PINNED = {       # what Search returned before its query moved to grid_query
+    'search_term=a': ['Alpha Cooking', 'Beta Cookbook', 'Gamma', 'Zeta café'],
+    'search_term=cook': ['Alpha Cooking', 'Beta Cookbook', 'Bob Cooking'],
+    'search_term=cafe': ['Zeta café'],
+    'search_term=penguin': [],
+    'search_term=kitchen': ['Alpha Cooking', 'Beta Cookbook'],
+    'search_term=nothing+matches+this': [],
+    'search_term=a&genre=cooking': ['Alpha Cooking', 'Beta Cookbook'],
+    'search_term=a&genre=Fiction': ['Gamma', 'Zeta café'],
+    'search_term=a&format=Audiobook': ['Beta Cookbook'],
+    'search_term=a&read_status=read': ['Alpha Cooking'],
+    'search_term=a&read_status=want to read': ['Gamma'],
+    'search_term=a&rating=3': ['Alpha Cooking'],
+    'search_term=a&rating=1': ['Alpha Cooking', 'Gamma'],
+    'search_term=a&tags[]=kitchen': ['Alpha Cooking', 'Beta Cookbook'],
+    'search_term=a&tags[]=kitchen&tags[]=shelf': ['Alpha Cooking', 'Beta Cookbook', 'Gamma'],
+    'search_term=a&show=not_owned': ['Delta Zeta'],
+    'search_term=a&show=removed': [],
+    'search_term=a&show=all': ['Alpha Cooking', 'Beta Cookbook', 'Delta Zeta', 'Gamma', 'Zeta café'],
+    'search_term=a&show=bogus': ['Alpha Cooking', 'Beta Cookbook', 'Gamma', 'Zeta café'],
+    'search_term=a&sort_by=author&sort_order=desc': ['Alpha Cooking', 'Gamma', 'Zeta café', 'Beta Cookbook'],
+    'search_term=a&sort_by=author&sort_order=asc': ['Beta Cookbook', 'Zeta café', 'Gamma', 'Alpha Cooking'],
+    'search_term=a&sort_by=publish_year&sort_order=desc': ['Gamma', 'Zeta café', 'Alpha Cooking', 'Beta Cookbook'],
+    'search_term=a&sort_by=created_at&sort_order=desc': ['Zeta café', 'Beta Cookbook', 'Alpha Cooking', 'Gamma'],
+    'search_term=a&sort_by=created_at&sort_order=asc': ['Gamma', 'Alpha Cooking', 'Beta Cookbook', 'Zeta café'],
+    'search_term=a&sort_by=rating&sort_order=desc': ['Alpha Cooking', 'Gamma', 'Beta Cookbook', 'Zeta café'],
+    'search_term=a&sort_by=finished&sort_order=desc': ['Gamma', 'Alpha Cooking', 'Beta Cookbook', 'Zeta café'],
+    'search_term=a&sort_by=bogus&sort_order=sideways': ['Alpha Cooking', 'Beta Cookbook', 'Gamma', 'Zeta café'],
+    'search_term=a&genre=fiction&read_status=read&sort_by=created_at&sort_order=desc': [],
+    'show=all&search_term=zeta&sort_by=publish_year': ['Delta Zeta', 'Zeta café'],
+    'search_term=': ['Alpha Cooking', 'Beta Cookbook', 'Bob Cooking', 'Bob Fiction', 'Gamma', 'Zeta café'],
+    'search_term=a&tags[]=nosuchtag': ['Alpha Cooking', 'Beta Cookbook', 'Gamma', 'Zeta café'],
+}
+
+
+def search_queries():
+    """Search always has a term; the household's books, your marks."""
+    return [q if 'search_term' in q else ('search_term=a&' + q if q else 'search_term=a')
+            for q in queries(media.BOOK)] + ['search_term=', 'search_term=a&tags[]=nosuchtag']
+
+
+def test_search_order(client, db, people):
+    seed(db, people, media.BOOK)
+    login(client, 'alice')
+    got = {q: titles_of(db, rendered_ids(client, '/books/search?' + q)) for q in search_queries()}
+    for query, expected in SEARCH_PINNED.items():
+        assert got[query] == expected, query
+
+
+def test_view_ids_match_search(app, client, db, people):
+    """"Select all in this view" on Search names what Search shows, across pages."""
+    seed(db, people, media.BOOK)
+    login(client, 'alice')
+    for query in search_queries():
+        rendered = rendered_ids(client, '/books/search?' + query)
+        assert resolve(app, db, people['alice'], 'book:search', args_of(query)) == rendered, query
+    # Paging: the page holds 12, the view all of them
+    for i in range(20):
+        put(db, people['alice'], f'Apple {i:02}', media.BOOK)
+    db.commit()
+    first = rendered_ids(client, '/books/search?search_term=apple&per_page=12')
+    every = resolve(app, db, people['alice'], 'book:search', args_of('search_term=apple&per_page=12&page=1'))
+    assert len(first) == 12 and len(every) == 20 and every[:12] == first
