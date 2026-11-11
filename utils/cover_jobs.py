@@ -1,7 +1,8 @@
 """Fetch missing covers in the background.
 
-A cover lookup is several HTTP calls (Google Books, Open Library, cover
-sites), so a few hundred books can take minutes: far too long for a web
+A cover lookup is several HTTP calls (Google Books and Open Library for a
+book, UPCitemdb and TMDb for a movie, Discogs or MusicBrainz for an album;
+utils/media_covers.py), so a few hundred items can take minutes: far too long for a web
 request (gunicorn kills those after 30 s). Instead a request starts a *job*
 (a `cover_jobs` row) and a daemon thread in the app works through it one
 book at a time, after the user has left the page.
@@ -15,8 +16,9 @@ The row is the source of truth, not the thread:
   (deploy restart, crash), the heartbeat goes stale and the next status poll
   starts a thread here that takes the job over and carries on from the cursor.
 
-Scopes: 'own' = books the user added (library and wishlist), 'all' = every
-book (admins only, from the admin covers page).
+Scopes: 'own' = items the user added (library and wishlist), 'all' = every
+item (admins only, from the admin covers page). Books, movies and albums
+alike; book_utils.missing_cover_sql says which items qualify.
 """
 import logging
 import os
@@ -26,7 +28,7 @@ import time
 
 from flask import current_app
 
-from utils import book_utils
+from utils import book_utils, media_covers
 from utils.database import get_db_connection
 
 logger = logging.getLogger(__name__)
@@ -169,7 +171,8 @@ def _run_job(conn, job_id, worker, pause):
         if job is None or job['status'] != 'running' or job['worker'] != worker:
             return
         sql, params = _scope(job)
-        book = conn.execute('SELECT id, title, isbn ' + sql + ' AND id > ? ORDER BY id LIMIT 1',
+        book = conn.execute('SELECT id, title, author, isbn, barcode, format, publish_year, media_type '
+                            + sql + ' AND id > ? ORDER BY id LIMIT 1',
                             (*params, job['last_book_id'])).fetchone()
         if book is None:
             conn.execute("UPDATE cover_jobs SET status = 'done', finished_at = CURRENT_TIMESTAMP, "
@@ -178,7 +181,7 @@ def _run_job(conn, job_id, worker, pause):
             logger.info(f'Cover job {job_id} done: {job["found"]} of {job["checked"]} found')
             return
 
-        found = book_utils.fetch_cover_for_book(conn, book)  # network; commits the cover
+        found = media_covers.fetch_cover(conn, book)  # network; commits the cover
         conn.execute('''
             UPDATE cover_jobs
             SET checked = checked + 1, found = found + ?, last_book_id = ?,

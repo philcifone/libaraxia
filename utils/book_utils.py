@@ -1064,19 +1064,38 @@ def clear_placeholder_covers(conn) -> Dict[str, int]:
 NO_COVER_SQL = "(cover_image_url IS NULL OR cover_image_url = '' OR cover_missing(cover_image_url))"
 
 
-def missing_cover_sql(owner=False):
-    """FROM/WHERE for books with no cover but an ISBN to look one up by.
-    No cover includes a link whose file is gone (cover_missing(), an SQL
-    function from utils/database.py): the grid shows those as coverless, so
-    the fetcher treats them so too. With owner=True it takes one parameter,
-    the owner's user id. Books only: the cover fetcher skips videos (Phase 8.1)."""
+def missing_cover_sql(owner=False, types=None):
+    """FROM/WHERE for items with no usable cover (NO_COVER_SQL: none stored,
+    or the file is gone) and something to look one up by
+    (utils/media_covers.py): a book with an ISBN; a movie with a barcode, or
+    any movie when TMDB_API_KEY is set (TMDb by title); an album with a
+    barcode or an artist. `types` narrows it to some media types (the
+    Goodreads import counts books only). With owner=True it takes one
+    parameter, the owner's user id."""
+    from utils import media_lookup      # here: media_lookup imports this module
+    movie = "1" if media_lookup.tmdb_key() else "(barcode IS NOT NULL AND barcode != '')"
+    lookable = {
+        'book': "(media_type = 'book' AND isbn IS NOT NULL AND isbn != '')",
+        'video': f"(media_type = 'video' AND {movie})",
+        'record': "(media_type = 'record' AND ((barcode IS NOT NULL AND barcode != '')"
+                  " OR (author IS NOT NULL AND author != '')))",
+    }
+    chosen = [sql for kind, sql in lookable.items() if types is None or kind in types]
     sql = f"""
     FROM books
-    WHERE media_type = 'book'
-      AND {NO_COVER_SQL}
-      AND isbn IS NOT NULL AND isbn != ''
+    WHERE {NO_COVER_SQL}
+      AND ({' OR '.join(chosen)})
 """
     return sql + ("  AND added_by = ?\n" if owner else "")
+
+
+def store_found_cover(conn, item_id, path):
+    """Save a fetched cover on an item that still has no usable cover
+    (someone may have added one meanwhile). Commits; True if it was stored."""
+    stored = conn.execute(f"UPDATE books SET cover_image_url = ? WHERE id = ? AND {NO_COVER_SQL}",
+                          (path, item_id)).rowcount
+    conn.commit()
+    return bool(stored)
 
 
 def fetch_cover_for_book(conn, book):
@@ -1091,8 +1110,4 @@ def fetch_cover_for_book(conn, book):
         details = None
     if not (details and details.get('local_cover_url')):
         return False
-    # Only if it still has no usable cover (someone may have added one meanwhile)
-    conn.execute(f"UPDATE books SET cover_image_url = ? WHERE id = ? AND {NO_COVER_SQL}",
-                 (details['local_cover_url'], book['id']))
-    conn.commit()
-    return True
+    return store_found_cover(conn, book['id'], details['local_cover_url'])

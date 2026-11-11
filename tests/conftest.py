@@ -26,6 +26,7 @@ os.environ['TRUSTED_PROXY_COUNT'] = '0'
 # Lookups that only switch on with a key: off unless a test turns one on.
 # Set (to empty) so load_dotenv can't fill them in from a real .env.
 os.environ['DISCOGS_TOKEN'] = ''
+os.environ['TMDB_API_KEY'] = ''
 os.environ['MUSICBRAINZ_CONTACT'] = ''
 os.environ['DATABASE_PATH'] = os.path.join(ROOT, 'tests', '.no-database-yet.db')
 

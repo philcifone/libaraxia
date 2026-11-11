@@ -621,7 +621,8 @@ def import_goodreads():
 
     current_app.logger.info(f"Goodreads import by {current_user.username}: "
                             f"{report['total_rows']} rows, {report['outcomes']}")
-    covers = conn.execute("SELECT COUNT(*) " + missing_cover_sql(owner=True),
+    # Books only, as the result screen words it; the job it starts does all types
+    covers = conn.execute("SELECT COUNT(*) " + missing_cover_sql(owner=True, types=('book',)),
                           (current_user.id,)).fetchone()[0]
     return jsonify({'success': True, 'encoding': encoding,
                     'outcome_labels': list(OUTCOMES.items()),  # a list: jsonify sorts dict keys

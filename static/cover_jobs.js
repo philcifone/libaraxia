@@ -57,7 +57,7 @@
             return;
         }
         panel.classList.remove('hidden');
-        const scope = job.scope === 'all' ? 'all books' : 'your books';
+        const scope = job.scope === 'all' ? 'everyone' : 'yours';
         const pct = job.total ? Math.min(100, Math.round(job.checked / job.total * 100)) : 100;
         part('bar').style.height = `${pct}%`;
         part('track').setAttribute('aria-valuenow', String(pct));
@@ -73,7 +73,7 @@
             const missed = job.checked - job.found;
             part('title').textContent = job.status === 'cancelled' ? 'Cover fetch stopped' : 'Covers fetched';
             part('text').textContent = `${job.found} of ${job.checked} found.` +
-                (missed ? ` ${missed} had none online: search by title from the book's edit page.` : '');
+                (missed ? ` ${missed} had none online, or no exact match: add those from their edit pages.` : '');
             label = 'Dismiss';
         }
         action.title = label;

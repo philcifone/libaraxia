@@ -277,8 +277,9 @@ def test_records_stay_out_of_the_library_and_movies(client, db, people):
 
 
 def test_book_features_skip_records(app, db, people):
-    """Filter options, the cover fetcher, Goodreads matching and the book
-    duplicate check all ignore records."""
+    """Filter options, the cover fetcher's book lookup (by ISBN), Goodreads
+    matching and the book duplicate check all ignore records. (The fetcher
+    has its own lookup for them: tests/test_media_covers.py.)"""
     from flask_login import login_user
     from models import User
     from utils.book_utils import get_filter_options, find_duplicates, missing_cover_sql
@@ -287,7 +288,7 @@ def test_book_features_skip_records(app, db, people):
     record = add_record(db, alice, title='Dune')
     db.execute("UPDATE books SET genre = 'Folk', isbn = '9780306406157' WHERE id = ?", (record,))
     db.commit()
-    assert scalar(db, 'SELECT COUNT(*) ' + missing_cover_sql()) == 0
+    assert scalar(db, 'SELECT COUNT(*) ' + missing_cover_sql(types=('book',))) == 0
     with app.test_request_context():
         from utils.database import get_db
         conn = get_db()

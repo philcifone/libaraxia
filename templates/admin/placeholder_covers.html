@@ -48,9 +48,11 @@
         <div class="bg-secondary rounded-lg p-4 card">
             <h2 class="text-xl font-display text-content-primary mb-2">2. Fetch missing covers</h2>
             <p class="text-content-secondary text-sm mb-4">
-                {{ missing }} book(s) with an ISBN have no cover. This looks them all up in the background
-                (Open Library and Google Books, a second or two per book); progress shows in the corner of every page,
-                and you can leave this one. Books with no ISBN need a cover search from their edit page.
+                {{ missing }} item(s) have no cover. This looks them all up in the background, a second or two
+                each: books by ISBN (Open Library, Google Books), movies by barcode or title (UPCitemdb, TMDb),
+                albums by barcode or artist and title (Discogs, MusicBrainz). Only an exact match is kept.
+                Progress shows in the corner of every page, and you can leave this one. A book with no ISBN,
+                or anything not found, needs a cover from its edit page.
             </p>
             {% if missing %}
             <form method="POST" action="{{ url_for('covers.start') }}">

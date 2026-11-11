@@ -631,7 +631,7 @@ def placeholder_covers():
     """Books whose cover is a downloaded placeholder ("image not available")."""
     from utils.book_utils import find_placeholder_covers
     conn = get_db()
-    missing = conn.execute("SELECT COUNT(*) " + MISSING_COVER_SQL).fetchone()[0]
+    missing = conn.execute("SELECT COUNT(*) " + missing_cover_sql()).fetchone()[0]
     return render_template('admin/placeholder_covers.html',
                            books=find_placeholder_covers(conn),
                            missing=missing)
@@ -650,7 +650,6 @@ def clear_placeholder_covers():
     return redirect(url_for('admin.placeholder_covers'))
 
 
-MISSING_COVER_SQL = missing_cover_sql()
 # Fetching them is a background job: the button on placeholder_covers.html
 # posts to covers.start with scope=all (blueprints/covers.py).
 
