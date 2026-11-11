@@ -11,7 +11,7 @@
         <button type="button" id="bulk-clear" data-click="bulkClear" class="bulk-link hidden">Clear</button>
         <p id="bulk-hint" class="bulk-hint hidden"></p>
         <div class="bulk-actions">
-            {% for key, label in [('genre', 'Genre'), ('status', 'Status'), ('shelf', 'Shelf'), ('tag', 'Tag')] %}
+            {% for key, label in [('genre', 'Genre'), ('status', 'Status'), ('shelf', 'Collection'), ('tag', 'Tag')] %}
             <button type="button" data-click="bulkOpen" data-action="{{ key }}" data-bulk-action
                     class="bulk-main {{ btn }}" disabled title="Select something first">{{ label }}</button>
             {% endfor %}
@@ -24,7 +24,7 @@
                 <ul id="bulk-menu" role="menu" class="bulk-menu hidden">
                     {# data-tier="main" are the buttons beside More on a wide screen, so the menu hides them there #}
                     {% for key, label, tier in [('genre', 'Genre', 'main'), ('status', 'Status', 'main'),
-                                                ('shelf', 'Shelf', 'main'), ('tag', 'Tag', 'main'),
+                                                ('shelf', 'Collection', 'main'), ('tag', 'Tag', 'main'),
                                                 ('format', 'Format', 'more'), ('owned', 'Owned or not owned', 'more'),
                                                 ('remove', 'Remove from library', 'more'),
                                                 ('restore', 'Restore to library', 'more')] %}

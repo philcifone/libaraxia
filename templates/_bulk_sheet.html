@@ -52,17 +52,17 @@
                 <p>Put <span data-bulk-count></span> back on the shelf. Items that are already on it are left alone.</p>
             </div>
 
-            {# shelf #}
+            {# shelf: a custom collection (user_collections); the UI says "collection" #}
             <div id="bulk-in-shelf" class="hidden">
                 <fieldset class="mb-3">
-                    <legend class="sr-only">Add to or remove from a shelf</legend>
-                    <label class="bulk-radio"><input type="radio" name="bulk-shelf-mode" value="add" checked> Add to a shelf</label>
-                    <label class="bulk-radio"><input type="radio" name="bulk-shelf-mode" value="remove"> Remove from a shelf</label>
+                    <legend class="sr-only">Add to or remove from a collection</legend>
+                    <label class="bulk-radio"><input type="radio" name="bulk-shelf-mode" value="add" checked> Add to a collection</label>
+                    <label class="bulk-radio"><input type="radio" name="bulk-shelf-mode" value="remove"> Remove from a collection</label>
                 </fieldset>
-                <label for="bulk-shelf" class="block text-sm text-content-secondary mb-1">Shelf</label>
+                <label for="bulk-shelf" class="block text-sm text-content-secondary mb-1">Collection</label>
                 <select id="bulk-shelf" class="bulk-field"></select>
                 <div id="bulk-shelf-new-row" class="hidden mt-3">
-                    <label for="bulk-shelf-new" class="block text-sm text-content-secondary mb-1">Name of the new shelf</label>
+                    <label for="bulk-shelf-new" class="block text-sm text-content-secondary mb-1">Name of the new collection</label>
                     <input id="bulk-shelf-new" type="text" maxlength="60" class="bulk-field">
                 </div>
             </div>

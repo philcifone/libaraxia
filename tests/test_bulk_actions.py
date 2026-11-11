@@ -295,7 +295,7 @@ def test_shelf_add_and_remove_with_undo_that_only_touches_its_own_rows(conn, peo
     conn.commit()
     params = {'shelf_id': jazz, 'media_type': 'book'}
     p = bulk.plan(conn, alice, 'shelf_add', params, [a, b, c])
-    assert (p.changes, p.same, p.same_text) == (2, 1, 'Already on “Jazz”')
+    assert (p.changes, p.same, p.same_text) == (2, 1, 'Already in “Jazz”')
     r = run(conn, alice, 'shelf_add', params, [a, b, c])
     assert r.summary == 'Added 2 items to Jazz' and on_shelf(conn, jazz) == [a, b, c]
     bulk.undo(conn, alice, r.edit_id)
@@ -314,10 +314,10 @@ def test_a_shelf_is_for_one_section(conn, people, who):
     movie = mine(conn, people, 1, 'video')[0]
     films = shelf_of(conn, people, 'Noir', 'video')
     p = bulk.plan(conn, who['alice'], 'shelf_add', {'shelf_id': films, 'media_type': 'video'}, [book, movie])
-    assert p.skipped == {'Shelf is for Movies': [book]} and p.changes == 1
+    assert p.skipped == {'Collection is for Movies': [book]} and p.changes == 1
     # The shelf's own section wins over what the request claims
     again = bulk.plan(conn, who['alice'], 'shelf_add', {'shelf_id': films, 'media_type': 'book'}, [book, movie])
-    assert again.skipped == {'Shelf is for Movies': [book]}
+    assert again.skipped == {'Collection is for Movies': [book]}
 
 
 def test_shelf_must_be_yours(conn, people, who):
@@ -335,7 +335,7 @@ def test_new_shelf_is_created_on_apply_and_goes_with_an_undo(conn, people, who):
     a, b = mine(conn, people, 2)
     params = {'new_shelf': '  Road   trip ', 'media_type': 'book'}
     p = bulk.plan(conn, alice, 'shelf_add', params, [a, b])
-    assert p.notes == ['A new shelf “Road trip” will be created.']
+    assert p.notes == ['A new collection “Road trip” will be created.']
     assert rows(conn, 'SELECT name FROM user_collections') == []         # planning creates nothing
     r = run(conn, alice, 'shelf_add', params, [a, b])
     shelf = rows(conn, 'SELECT collection_id, name, media_type FROM user_collections')
@@ -363,7 +363,7 @@ def test_new_shelf_name_rules(conn, people, who):
             bulk.plan(conn, who['alice'], 'shelf_add', {'new_shelf': name, 'media_type': 'book'}, [book])
     # The same name in another section is fine
     assert bulk.plan(conn, who['alice'], 'shelf_add', {'new_shelf': 'Jazz', 'media_type': 'record'},
-                     [book]).skipped == {'Shelf is for Music': [book]}
+                     [book]).skipped == {'Collection is for Music': [book]}
     with pytest.raises(bulk.BulkError):                           # remove can't create one
         bulk.plan(conn, who['alice'], 'shelf_remove', {'new_shelf': 'x', 'media_type': 'book'}, [book])
 

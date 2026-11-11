@@ -176,7 +176,7 @@ def test_the_other_actions_work_through_the_routes(client, db, people):
         r = post(client, '/bulk/apply', action=action, params=params, ids=ids, fingerprint=fp)
         assert r.status_code == 200 and r.get_json()['summary'] == summary, action
     bad = post(client, '/bulk/plan', action='shelf_add', params={'shelf_id': 999, 'media_type': 'book'}, ids=ids)
-    assert bad.status_code == 400 and bad.get_json()['error'] == 'That shelf was not found.'
+    assert bad.status_code == 400 and bad.get_json()['error'] == 'That collection was not found.'
 
 
 def test_selection_route_lists_what_each_item_has_now(client, db, people):

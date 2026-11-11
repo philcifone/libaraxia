@@ -195,7 +195,7 @@ def test_now_text_shows_the_value_the_action_changes():
     assert call('nowText', 'format', item) == 'Audiobook'
     assert call('nowText', 'owned', item) == 'Not owned'
     assert call('nowText', 'restore', item) == 'Removed'
-    assert call('nowText', 'shelf', item) == 'On Jazz, Keep'
+    assert call('nowText', 'shelf', item) == 'In Jazz, Keep'
     assert call('nowText', 'tag', item) == 'No tags'
     # Item edits on someone else's item say so up front; marks don't
     theirs = {**item, 'yours': False}

@@ -173,7 +173,7 @@ function nowText(kind, item) {
         case 'owned': return item.owned ? 'Owned' : 'Not owned';
         case 'remove':
         case 'restore': return item.removed ? 'Removed' : 'On the shelf';
-        case 'shelf': return item.shelves.length ? 'On ' + item.shelves.join(', ') : 'On no shelves';
+        case 'shelf': return item.shelves.length ? 'In ' + item.shelves.join(', ') : 'In no collections';
         case 'tag': return item.tags.length ? item.tags.join(', ') : 'No tags';
         default: return '';
     }
@@ -418,7 +418,7 @@ function idFromHref(href) {
         owned:   { title: 'Owned or not' },
         remove:  { title: 'Remove from library', danger: true },
         restore: { title: 'Put back on the shelf' },
-        shelf:   { title: 'Shelves' },
+        shelf:   { title: 'Collections' },   // custom collections; code says shelf
         tag:     { title: 'Tags' },
     };
     const sheet = { kind: null, action: null, params: null, ids: [], plan: null, excluded: new Set(), stage: 'choose' };
@@ -503,10 +503,10 @@ function idFromHref(href) {
         if (!options) return;
         const adding = radio('bulk-shelf-mode') !== 'remove';
         const items = options.shelves.map(s => [String(s.id), `${s.name} (${s.count})`]);
-        if (adding) items.push(['__new__', 'New shelf…']);
+        if (adding) items.push(['__new__', 'New collection…']);
         const select = $('bulk-shelf');
         const was = select.value;
-        fillSelect(select, items, items.length ? 'Choose a shelf' : 'You have no shelves here yet');
+        fillSelect(select, items, items.length ? 'Choose a collection' : 'You have no collections here yet');
         if (items.some(([v]) => v === was)) select.value = was;
         else if (adding && !options.shelves.length) select.value = '__new__';
         $('bulk-shelf-new-row').classList.toggle('hidden', select.value !== '__new__');

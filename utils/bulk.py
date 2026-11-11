@@ -458,25 +458,25 @@ def _shelf_params_for(adding):
         params = params if isinstance(params, dict) else {}
         kind = params.get('media_type')
         if kind not in media.MEDIA_TYPES:
-            raise BulkError('Pick a shelf first.')
+            raise BulkError('Pick a collection first.')
         new = params.get('new_shelf')
         if new is not None:
             if not adding:
-                raise BulkError('Pick a shelf first.')
+                raise BulkError('Pick a collection first.')
             name = re.sub(r'\s+', ' ', str(new)).strip()
             if not name:
-                raise BulkError('Give the new shelf a name.')
+                raise BulkError('Give the new collection a name.')
             if len(name) > MAX_SHELF or any(ord(ch) < 32 for ch in name):
-                raise BulkError(f'Keep the shelf name to {MAX_SHELF} plain characters or fewer.')
+                raise BulkError(f'Keep the collection name to {MAX_SHELF} plain characters or fewer.')
             if conn.execute('SELECT 1 FROM user_collections WHERE user_id = ? AND media_type = ? AND name = ?',
                             (user.id, kind, name)).fetchone():
-                raise BulkError(f'You already have a shelf called {_quote(name)} in {SECTION_NAMES[kind]}. '
+                raise BulkError(f'You already have a collection called {_quote(name)} in {SECTION_NAMES[kind]}. '
                                 'Pick it from the list.')
             return {'new_shelf': name, 'shelf_name': name, 'media_type': kind}
         shelf = conn.execute('SELECT collection_id, name, media_type FROM user_collections '
                              'WHERE collection_id = ? AND user_id = ?', (params.get('shelf_id'), user.id)).fetchone()
         if shelf is None:
-            raise BulkError('That shelf was not found.')
+            raise BulkError('That collection was not found.')
         return {'shelf_id': shelf['collection_id'], 'shelf_name': shelf['name'], 'media_type': shelf['media_type']}
     return params_for
 
@@ -496,14 +496,14 @@ def _shelf_prepare(conn, user, params):
         shelf_id = conn.execute('INSERT INTO user_collections (user_id, name, media_type) VALUES (?, ?, ?)',
                                 (user.id, params['new_shelf'], params['media_type'])).lastrowid
     except sqlite3.IntegrityError:
-        raise BulkError(f'You already have a shelf called {_quote(params["new_shelf"])} there.')
+        raise BulkError(f'You already have a collection called {_quote(params["new_shelf"])} there.')
     return {**params, 'shelf_id': shelf_id, 'created_shelf': True}
 
 
 def _shelf_add_plan(conn, user, book, params):
     kind = media.media_type_of(book)
     if kind != params['media_type']:
-        return 'skip', f'Shelf is for {SECTION_NAMES[params["media_type"]]}', None, None
+        return 'skip', f'Collection is for {SECTION_NAMES[params["media_type"]]}', None, None
     row = None if 'new_shelf' in params else _shelf_row(conn, params['shelf_id'], book['id'])
     return ('same' if row else 'change'), '', None, ({'shelf': params['shelf_name']} if not row else None)
 
@@ -527,7 +527,7 @@ def _shelf_add_restore(conn, user, book_id, before, after, params):
 def _shelf_remove_plan(conn, user, book, params):
     kind = media.media_type_of(book)
     if kind != params['media_type']:
-        return 'skip', f'Shelf is for {SECTION_NAMES[params["media_type"]]}', None, None
+        return 'skip', f'Collection is for {SECTION_NAMES[params["media_type"]]}', None, None
     row = _shelf_row(conn, params['shelf_id'], book['id'])
     return ('change' if row else 'same'), '', row, None
 
@@ -545,7 +545,7 @@ def _shelf_remove_restore(conn, user, book_id, before, after, params):
 
 
 def _shelf_add_notes(rows, params):
-    return [f'A new shelf {_quote(params["new_shelf"])} will be created.'] if 'new_shelf' in params else []
+    return [f'A new collection {_quote(params["new_shelf"])} will be created.'] if 'new_shelf' in params else []
 
 
 # ------------------------------------------------------------------ tags (a mark)
@@ -690,14 +690,14 @@ ACTIONS = {
         describe=lambda p: f'Add to {_quote(p["shelf_name"])}',
         summary=lambda p, n: f'Added {_count(n)} to {p["shelf_name"]}',
         key=lambda b: None, label=lambda k, p: f'Add to {_quote(p["shelf_name"])}',
-        same_text=lambda p: f'Already on {_quote(p["shelf_name"])}',
+        same_text=lambda p: f'Already in {_quote(p["shelf_name"])}',
         notes=_shelf_add_notes, prepare=_shelf_prepare),
     'shelf_remove': Action(
         _shelf_params_for(False), _shelf_remove_plan, _shelf_remove_write, _shelf_current, _shelf_remove_restore,
         describe=lambda p: f'Remove from {_quote(p["shelf_name"])}',
         summary=lambda p, n: f'Removed {_count(n)} from {p["shelf_name"]}',
         key=lambda b: None, label=lambda k, p: f'Remove from {_quote(p["shelf_name"])}',
-        same_text=lambda p: f'Not on {_quote(p["shelf_name"])}'),
+        same_text=lambda p: f'Not in {_quote(p["shelf_name"])}'),
     'tag_add': Action(
         _tag_params, _tag_add_plan, _tag_add_write, _tag_current, _tag_add_restore,
         describe=lambda p: f'Add the tag {_quote(p["tag"])}',
