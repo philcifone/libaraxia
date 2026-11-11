@@ -37,15 +37,10 @@
 {# `m` (utils/media.py) is set on the Movies and Vinyls pages: "movies", "Director". #}
 {% set noun = m.noun if m else 'book' %}
 {% set count = total_count|default(books|length) %}
-{# One row everywhere: the match count (when narrowed) on the left, sort and
-   the switch on the right. On a phone the selects share what's left. #}
+{# One row everywhere: sort, the grid/list switch and Select. The match count
+   lives under the search box (_search_sort_filter.html), so the selects keep
+   the width on a phone. #}
 <div class="view-bar flex items-center gap-2 sm:gap-3 mb-6">
-    {% if is_narrowed(request.args) %}
-    <p class="shrink-0 text-sm text-content-secondary">
-        {{ count }} {{ noun }}{{ '' if count == 1 else 's' }}
-    </p>
-    {% endif %}
-
         <form method="GET" action="{{ request.path }}" id="sort-form" class="flex-1 min-w-0 flex items-center justify-end gap-2">
             {% for key in request.args %}
             {% if key not in ('sort_by', 'sort_order', 'page', 'csrf_token') %}
@@ -99,4 +94,16 @@
             </button>
             {% endif %}
         </div>
+
+        {# Bulk edit's select mode (static/bulk.js). The page opts in with
+           bulk_select; friends' grids never do (they're read-only). #}
+        {% if bulk_select|default(false) %}
+        {% from '_icons.html' import icon %}
+        <button type="button" id="bulk-select-btn" data-click="bulkToggleSelect" aria-pressed="false"
+                aria-label="Select" title="Select items to edit"
+                class="view-toggle-btn shrink-0 inline-flex items-center gap-1.5 border border-rule-strong rounded-lg px-2.5 py-1.5 text-sm">
+            {# icon only on a phone: the label squeezed the sort menus #}
+            {{ icon('check-square', 'w-4 h-4') }}<span data-bulk-label class="hidden sm:inline">Select</span>
+        </button>
+        {% endif %}
 </div>

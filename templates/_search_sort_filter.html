@@ -10,8 +10,8 @@
    `search_action` (the grid page itself), so search and filters stay on
    that page; their filter_options add `formats`. The box's placeholder
    carries the item count ("Search your 136 books", Phil) unless the list
-   is already searched or filtered (is_narrowed); then the view bar shows
-   the count instead. `top_padding` is for a
+   is already searched or filtered (is_narrowed); then the count of matches
+   is the line under the box. `top_padding` is for a
    page without tabs above it (search results), to clear the fixed header. #}
 {# whose: "your", or "carol's" on a friend's shelf (11.3) #}
 {% set whose = whose|default('your') %}
@@ -211,6 +211,12 @@
             </form>
     </div>
   </div>
+
+    {# Searched or filtered: the placeholder can't carry the count, so the matches are counted here #}
+    {% if is_narrowed(request.args) %}
+    {% set matches = total_count|default(books|length) %}
+    <p class="mt-2 text-sm text-content-secondary">{{ matches }} {{ plural if matches != 1 else (m.noun if m else 'book') }} match{{ 'es' if matches == 1 }}</p>
+    {% endif %}
 
     <!-- Active filters, under the row while any are set -->
     <div id="active-filters-display" class="hidden mt-2">

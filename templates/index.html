@@ -10,10 +10,15 @@
     {% from '_shelves.html' import shelf_header %}
     {{ shelf_header('book', 'mine') }}
 
+    {% include '_bulk_result.html' %}
+
     {% include '_search_sort_filter.html' %}
 
     {% if books %}
+    {% set bulk_select = true %}
     {% include '_book_grid.html' %}
+    {% include '_bulk_bar.html' %}
+    {% include '_bulk_sheet.html' %}
     {% else %}
     {# Nothing to show: an empty library, or filters that match nothing #}
     {% set filtered = request.args.keys()|reject('in', ['sort_by', 'sort_order', 'page', 'per_page', 'view'])|list %}
@@ -34,4 +39,5 @@
 
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='bulk.js') }}" defer></script>
 {% endblock %}

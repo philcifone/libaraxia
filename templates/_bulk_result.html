@@ -1,0 +1,16 @@
+{# The banner after a bulk edit or an undo (blueprints/bulk.py puts it in the
+   session; pop_bulk_result() takes it out, so it shows once). #}
+{% set bulk_result = pop_bulk_result() %}
+{% if bulk_result %}
+<div class="container mx-auto px-4">
+    <div class="bulk-banner card bg-secondary text-content-primary flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 mb-6"
+         role="status" data-bulk-banner>
+        <p class="flex-1 min-w-0">{{ bulk_result.summary }}{{ '' if bulk_result.summary.endswith('.') else '.' }}</p>
+        {% if bulk_result.edit_id and not bulk_result.undone %}
+        <button type="button" data-click="bulkUndo" data-edit-id="{{ bulk_result.edit_id }}"
+                class="btn btn-outline px-3 py-1 text-sm font-bold">Undo</button>
+        {% endif %}
+        <button type="button" data-click="bulkDismiss" class="btn btn-outline px-3 py-1 text-sm">Dismiss</button>
+    </div>
+</div>
+{% endif %}

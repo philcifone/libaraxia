@@ -764,8 +764,8 @@ def show_choice(args):
 def is_narrowed(args):
     """True when a grid page's list is searched or filtered (or shows one
     household member), so its count isn't "all your books". The search box
-    only puts the count in its placeholder when it isn't (_search_sort_filter.html);
-    the view bar shows it when it is (_view_bar.html)."""
+    only puts the count in its placeholder when it isn't; when it is, the line
+    under the box counts the matches (both in _search_sort_filter.html)."""
     keys = ('search_term', 'genre', 'format', 'read_status', 'rating', 'member')
     return (any(args.get(k) for k in keys) or bool(args.getlist('tags[]'))
             or show_choice(args) != '')

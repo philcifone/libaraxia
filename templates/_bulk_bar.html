@@ -1,0 +1,17 @@
+{# Bulk edit's selection bar (static/bulk.js): fixed to the bottom while select
+   mode is on, in place of the floating + (styles.css, "Bulk select"). One
+   action in step 4 (Genre); the rest of the spec's actions join it later.
+   Actions are disabled, not hidden, at 0 selected, so the bar never jumps. #}
+<div id="bulk-bar" class="bulk-bar hidden" role="region" aria-label="Selection">
+    <div class="bulk-bar-inner">
+        <p id="bulk-count" class="bulk-count" aria-live="polite">0 selected</p>
+        <button type="button" id="bulk-all" data-click="bulkSelectAll" class="bulk-link">Select all</button>
+        <button type="button" id="bulk-clear" data-click="bulkClear" class="bulk-link hidden">Clear</button>
+        <p id="bulk-hint" class="bulk-hint hidden"></p>
+        <div class="bulk-actions">
+            <button type="button" data-click="bulkOpen" data-action="genre" data-bulk-action
+                    class="btn bg-accent hover:bg-accent-hover text-on-accent px-3 py-1.5 text-sm font-bold"
+                    disabled title="Select something first">Genre</button>
+        </div>
+    </div>
+</div>

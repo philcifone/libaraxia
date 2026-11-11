@@ -374,6 +374,9 @@ class InfiniteScroll {
             const bookCard = this.createBookCard(book);
             this.bookGrid.insertAdjacentHTML('beforeend', bookCard);
         });
+        // bulk.js gives new cards select mode's attributes and marks
+        // the ones that were selected (the cards themselves know nothing of it)
+        document.dispatchEvent(new CustomEvent('cards-added', { detail: { container: this.bookGrid } }));
     }
 
     createBookCard(book) {

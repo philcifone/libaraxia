@@ -30,6 +30,7 @@ Housekeeping that doesn't belong to a phase. Tick and remove as done.
 - [ ] **Prod, Phil, from about 2026-11-09:** in `/home/phil/library-catalog`, delete `library-prod.db`, `libaraxia.db`, `library.db.backup-20251104` and the `library.db.backup-20261102-*` files from the Phase 2 deploy.
 - [ ] **Prod, Phil:** Admin → placeholder covers → clear them, then fetch missing covers (the October blank strips, 8F).
 - [ ] **Dev DB provenance:** `library.db` in the repo may be an old Goodreads import test rather than a prod copy (Phil, 2026-11-08). Before using it as evidence about prod, or for the 16.1 screenshots, take a fresh anonymised copy of prod's DB.
+- [ ] **Search should match the grid you're on** (Phil, 2026-11-10). Today every Books search goes to `/books/search`, which covers you and your household, whichever grid you searched from, and it drops the filters. On your own shelf it should search only your books, on the Household grid the household's, and the Movies and Music grids likewise (they already stay on their own page). Then the search box's count ("Search your 120 books") is exactly what gets searched. Also decide whether a search keeps the filters and sort you had. Relevant to bulk edit, which selects within the current view; `utils/grid_query.py` is the place to share the query.
 - [ ] **Trim CLAUDE.md** after Phase 11 (it's loaded into every session, ~8k tokens): Phase 11 rewrites the navigation and blueprint notes anyway, so do one pass then. Keep the gotchas and conventions; drop history ("was Vinyls until ...", settled product-direction notes) and anything the code says plainly.
 
 ---
@@ -43,7 +44,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 - [x] 1. Grid query extraction (`utils/grid_query.py`), no behaviour change, pinned by tests first.
 - [x] 2. Migration 031: `bulk_edits`, `bulk_edit_items`, `collections.quiet` (+ feed filter; the status route resets it).
 - [x] 3. `utils/bulk.py`, genre only, headless: plan, apply, undo.
-- [ ] 4. The UI on the Books grid, genre only: Select, bar, choose/review sheet, result banner. **Merge point M1.**
+- [x] 4. The UI on the Books grid, genre only: Select, bar, choose/review sheet, result banner. **Merge point M1.**
 - [ ] 5. Remaining actions: format, owned, remove, restore, status, shelves, tags.
 - [ ] 6. Movies, Music, Household, Search, collection pages; Profile -> Recent bulk edits.
 - [ ] 7. Select all in view. **Merge point M2.**

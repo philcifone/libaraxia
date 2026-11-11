@@ -92,6 +92,25 @@ class Plan:
     def changes(self):
         return sum(g.count for g in self.groups)
 
+    def as_dict(self):
+        """The review sheet's data (JSON-safe). Items carry a title and cover
+        only for what the user may see (PlanRow leaves the rest empty)."""
+        by_id = {r.id: r for r in self.rows}
+
+        def item(book_id):
+            r = by_id[book_id]
+            return {'id': r.id, 'title': r.title, 'creator': r.creator, 'cover': r.cover}
+        return {
+            'action': self.action, 'params': self.params, 'fingerprint': self.fingerprint,
+            'describe': ACTIONS[self.action].describe(self.params),
+            'changes': self.changes, 'same': self.same,
+            'groups': [{'before': g.before, 'after': g.after, 'count': g.count,
+                        'items': [item(i) for i in g.ids]} for g in self.groups],
+            'skipped': [{'reason': reason, 'count': len(ids), 'items': [item(i) for i in ids]}
+                        for reason, ids in self.skipped.items()],
+            'notes': self.notes,
+        }
+
 
 @dataclass
 class Result:
@@ -153,6 +172,10 @@ def _genre_restore(conn, user, book_id, before):
     return cur.rowcount == 1
 
 
+def _genre_describe(params):
+    return f'Set genre to \u201c{params["genre"]}\u201d' if params['genre'] else 'Clear the genre'
+
+
 def _genre_summary(params, count):
     what = f'Genre set to {params["genre"]}' if params['genre'] else 'Genre cleared'
     return f'{what} on {count} item{"" if count == 1 else "s"}'
@@ -166,12 +189,14 @@ class Action:
     write: callable        # (conn, user, book_id, before, after) -> bool
     current: callable      # (conn, book_id) -> snapshot now, for undo's check
     restore: callable      # (conn, user, book_id, before) -> bool
-    summary: callable      # (params, count) -> text
+    summary: callable      # (params, count) -> text, after the fact
+    describe: callable     # (params) -> text, the review's header
     owner_only: bool = True
 
 
 ACTIONS = {
-    'genre': Action(_genre_params, _genre_plan, _genre_write, _genre_current, _genre_restore, _genre_summary),
+    'genre': Action(_genre_params, _genre_plan, _genre_write, _genre_current, _genre_restore, _genre_summary,
+                    _genre_describe),
 }
 
 
@@ -374,5 +399,7 @@ def genres(conn, user, media_type=None):
         groups.setdefault(search.fold(spelling), []).append((row['n'], spelling))
     out = []
     for spellings in groups.values():
-        out.append({'value': max(spellings)[1], 'count': sum(n for n, _ in spellings)})
+        # Most used spelling; on a tie the first alphabetically (capitals sort first)
+        best = min(spellings, key=lambda t: (-t[0], t[1]))[1]
+        out.append({'value': best, 'count': sum(n for n, _ in spellings)})
     return sorted(out, key=lambda g: (-g['count'], g['value'].lower()))

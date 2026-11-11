@@ -404,10 +404,11 @@ def test_view_bar_sorts_in_place(client, db, people):
     assert '<input type="hidden" name="show_removed" value="include">' in bar
     assert 'name="sort_by" value=' not in bar                  # the selects carry the sort
     assert 'Oldest first' in bar and 'A–Z' not in bar           # a year isn't A–Z
-    assert '1 book' in bar
+    assert 'book' not in bar.replace('book-container', '').replace('Select', '')   # the count isn't in the bar
 
     dropdown = page[page.index('search-form-container'):page.index('class="view-bar')]
     assert 'id="sort-form"' not in dropdown and 'grid-view-btn' not in dropdown
+    assert '1 book matches' in dropdown                          # it is under the search box
 
     shared = client.get('/base/shared-library?member=%d' % people['bob']).get_data(as_text=True)
     sort_form = shared[shared.index('id="sort-form"') - 80:]
@@ -693,7 +694,8 @@ def test_no_cover_marks_long_titles(client, db, people):
 
 def test_search_box_carries_the_count_and_one_row_view_bar(client, db, people):
     """The search box says how many items there are ("Search your 2 books");
-    searched or filtered, it doesn't, and the view bar shows the matches."""
+    searched or filtered, it doesn't, and the line under the box counts the
+    matches. The view bar carries no count, so the sort menus keep the width."""
     from conftest import add_book
     alice = people['alice']
     add_book(db, alice, title='One')
@@ -701,10 +703,11 @@ def test_search_box_carries_the_count_and_one_row_view_bar(client, db, people):
     login(client, 'alice')
     page = client.get('/base/index').get_data(as_text=True)
     assert 'placeholder="Search your 2 books"' in page
-    assert 'class="shrink-0 text-sm text-content-secondary"' not in page
+    assert ' match' not in page[page.index('search-form-container'):page.index('class="view-bar')]
     page = client.get('/base/index?show=all').get_data(as_text=True)
     assert 'placeholder="Search your books"' in page
-    assert re.search(r'shrink-0 text-sm text-content-secondary">\s*2 books', page)
+    assert '2 books match' in page[page.index('search-form-container'):page.index('class="view-bar')]
+    assert '2 books' not in page[page.index('class="view-bar'):page.index('id="book-container"')]
 
 
 def test_filter_pills_show_only_applied_filters(client, db, people):

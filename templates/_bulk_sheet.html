@@ -1,0 +1,46 @@
+{# Bulk edit's action sheet (static/bulk.js): one <dialog>, two stages in
+   place, never two stacked. Stage 1 chooses the value, stage 2 is the review
+   that POST /bulk/plan returns; the footer button is Review, then Apply.
+   Everything the review shows is built by bulk.js from JSON with
+   textContent, so nothing here is user data. #}
+<dialog id="bulk-sheet" class="bulk-sheet" aria-labelledby="bulk-title">
+    <div class="bulk-sheet-head">
+        <h2 id="bulk-title" class="font-display text-xl">Set genre</h2>
+    </div>
+
+    <div class="bulk-sheet-body">
+        {# Stage 1: choose #}
+        <section id="bulk-choose">
+            <label for="bulk-genre-input" class="block text-sm text-content-secondary mb-1">Genre for <span id="bulk-choose-count">the selected items</span></label>
+            <div class="relative">
+                <input id="bulk-genre-input" type="text" role="combobox" aria-expanded="false"
+                       aria-controls="bulk-genre-list" aria-autocomplete="list" autocomplete="off"
+                       maxlength="80" placeholder="Type or pick a genre"
+                       class="w-full bg-primary-bg text-content-primary border border-rule-strong rounded-lg px-3 py-2
+                              focus:ring-2 focus:ring-accent focus:border-transparent">
+                <ul id="bulk-genre-list" role="listbox" aria-label="Your genres" class="bulk-list hidden"></ul>
+            </div>
+            <p id="bulk-genre-hint" class="text-sm text-content-secondary mt-2 min-h-[1.25rem]" aria-live="polite"></p>
+        </section>
+
+        {# Stage 2: review #}
+        <section id="bulk-review" class="hidden">
+            <div class="flex items-baseline justify-between gap-3 mb-2">
+                <p id="bulk-describe" class="font-semibold"></p>
+                <button type="button" data-click="bulkChange" class="bulk-link">Change</button>
+            </div>
+            <p id="bulk-stale" class="bulk-stale hidden" role="status">Some items changed since you looked. Here's the updated list.</p>
+            <p id="bulk-summary" class="text-sm text-content-secondary mb-3" aria-live="polite"></p>
+            <div id="bulk-groups" class="space-y-2"></div>
+            <ul id="bulk-quiet" class="text-sm text-content-secondary mt-3 space-y-1"></ul>
+        </section>
+
+        <p id="bulk-error" class="text-red-400 text-sm mt-3 hidden" role="alert"></p>
+    </div>
+
+    <div class="bulk-sheet-foot">
+        <button type="button" data-click="bulkCancel" class="btn btn-outline px-4 py-2 text-sm">Cancel</button>
+        <button type="button" id="bulk-go" data-click="bulkGo"
+                class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 text-sm font-bold" disabled>Review</button>
+    </div>
+</dialog>
