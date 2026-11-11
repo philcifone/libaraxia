@@ -16,7 +16,8 @@ library.db
 *.sqlite3
 
 # Uploads and user data
-static/uploads/
+# No trailing slash: a worktree links these, and "dir/" would not match the symlink
+static/uploads
 goodreads_library_export.csv
 *.csv
 
@@ -38,7 +39,7 @@ css_audit*
 schema.txt
 
 # Dependencies
-node_modules/
+node_modules
 
 # Docker and deployment
 docker-compose.yml
@@ -56,7 +57,7 @@ docker-compose.override.yml
 Thumbs.db
 
 # Local virtualenv and personal Claude notes
-venv/
+venv
 .claude/init
 
 .deploy-failed
