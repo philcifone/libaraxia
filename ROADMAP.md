@@ -37,17 +37,20 @@ Housekeeping that doesn't belong to a phase. Tick and remove as done.
 ## Phase 14: Bulk edit and granular import
 
 From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-and-actions UI, not a tweak.
-- [ ] **Select mode on the grids** (Shelves in every section, search results, a collection): an Edit / Select toggle; tap covers to select, shift-click for a range, select all (on this filtered view), with a count and a sticky action bar. Works with the keyboard and at phone width.
-- [ ] **Bulk actions** on the selection, each one POST with CSRF, ownership checked per item in SQL (owner or admin, as Edit), and a summary ("47 changed, 3 skipped: not yours"):
-  - add to / remove from a custom collection (the selection's section);
-  - set a status (only statuses valid for each item's type);
-  - set genre (the cookbooks case), format, owned / not owned;
-  - add or remove a tag;
-  - remove from library (deaccession) with one note.
-- [ ] Undo, or at least a clear confirmation before anything that isn't easy to reverse.
-- [ ] **Granular Goodreads import** (CLAUDE.md, product direction): after parsing, a sortable, filterable grid of the rows with checkboxes and a destination per row (library / wishlist / not owned / skip) and collection mapping, then import only the chosen ones. Reuses the select-mode pieces above. Covers can't come from the export (no URLs); the background cover job (`cover_jobs`) fills them after.
-  - **Wishlist rows that Goodreads says you've read** (Phil, 2026-11-08): today the import silently takes the book off your wishlist and marks it Read in your library (`utils/goodreads.py`, `row()`, "moved from your wishlist to your library"). It's the one case where the import changes existing data rather than only filling gaps. In the granular import, show it as its own outcome in the grid and let the row's destination decide (move to library, mark read but keep it wished for, or skip), defaulting to asking.
-  - Conflicts in general: the import never overwrites (an existing status, rating or review wins and the row is skipped as "already"). Worth showing those rows in the grid too, so you can see what was skipped and why.
+**Spec: [docs/BULK-EDIT-SPEC.md](docs/BULK-EDIT-SPEC.md)** (approved 2026-11-10). Built on branch `phase-14-bulk-edit` in the worktree `../libaraxia-bulk`, one step at a time; Phil commits and merges (spec section 14).
+
+### 14a Bulk edit 🟠
+- [ ] 1. Grid query extraction (`utils/grid_query.py`), no behaviour change, pinned by tests first.
+- [ ] 2. Migration 031: `bulk_edits`, `bulk_edit_items`, `collections.quiet` (+ feed filter; the status route resets it).
+- [ ] 3. `utils/bulk.py`, genre only, headless: plan, apply, undo.
+- [ ] 4. The UI on the Books grid, genre only: Select, bar, choose/review sheet, result banner. **Merge point M1.**
+- [ ] 5. Remaining actions: format, owned, remove, restore, status, shelves, tags.
+- [ ] 6. Movies, Music, Household, Search, collection pages; Profile -> Recent bulk edits.
+- [ ] 7. Select all in view. **Merge point M2.**
+- [ ] 8. Wrap-up: archive, CLAUDE.md.
+
+### 14b Granular Goodreads import 🟢
+- [ ] Re-spec after 14a ships (outline in the spec, section 16): staging table, review grid with a destination per row, conflicts per field (keep yours by default), wishlist-then-read as its own outcome defaulting to Ask, shelf mapping, undoable, and "import everything with the defaults" still one click. Covers still come from the `cover_jobs` fetch.
 
 ---
 
