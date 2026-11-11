@@ -1,7 +1,7 @@
 # Roadmap archive
 
 Completed phases of [ROADMAP.md](../ROADMAP.md), moved here on 2026-11-08
-(11 to 13b on 2026-11-09) so the live roadmap stays short. Kept verbatim, with their original numbers: code
+(11 to 13b on 2026-11-09, 14a on 2026-11-11) so the live roadmap stays short. Kept verbatim, with their original numbers: code
 comments and commit messages cite them ("ROADMAP 7.2b", "8B.3", "10.1"), so
 grep here for those. Items that were still open when the phase was archived
 are marked as moved; they live in ROADMAP.md now.
@@ -30,6 +30,7 @@ are marked as moved; they live in ROADMAP.md now.
 | 12 ✅ | [Profile and stats](#phase-12-profile-and-stats) | Uses 11's section switch | Same stats for every type, goal under the bio, Appearance its own card |
 | 13 ✅ | [Reviews section](#phase-13-reviews-section) | Reviews and not-owned items already existed (8B.3) | Every review two taps from the sidebar |
 | 13b ✅ | [Do I have this? across all three types](#phase-13b-do-i-have-this-across-all-three-types) | "Not here" assumed a book | Online candidates of the right type, add form filled in |
+| 14a ✅ | [Bulk edit](#phase-14a-bulk-edit) | Select mode lives on the grids Phase 11 built | Select many items on any grid you can edit, change them with one reviewed, undoable edit |
 
 Phases 3, 4 and 5 are independent of each other and can be interleaved. The ordering 0 → 1 → 2 → (3, 4, 5) → 6 → 7 → 8 → 8B → 8C → 8D → 8E → 8F → 9 is the part that matters. More styles (now Phase 10) was parked for a moment on 2026-11-08 (it was Phase 9 until bulk edit took that number), then pulled forward the same day and finished (Shelf, Outrun, font choice).
 
@@ -933,6 +934,20 @@ From Phil, 2026-11-09: "I searched Orville Peck Pony and it thought I was talkin
 - Dev machine note: its IPv6 default route refuses connections, so the first request to Google / TMDb after idle spends ~1 s per IPv6 address before IPv4, past the deadline. Those sources are then "slow" once and fine after. Prod may not have this.
 
 **Done when:** a search or scan that isn't in the house shows the most likely match first, of the right type, and "Add to wishlist" opens that type's form already filled in.
+
+---
+
+## Phase 14a: Bulk edit
+
+From Phil, 2026-11-08 (was Phase 9). Spec: [BULK-EDIT-SPEC.md](BULK-EDIT-SPEC.md). Built 2026-11-10 to 2026-11-11 on branch `phase-14-bulk-edit`, merged to main 2026-11-11. After his phone tests: long-press to select, the match count under the search box, the genre list inline and scrollable, the selected items listed with their current values and an X to leave one out, "collection" (not "shelf") for custom collections, "Select all on this shelf" / "Select all results", undo that says when nothing is left to undo, yellow warning flashes, and a missing cover file falls back to the title binding.
+- [x] 1. Grid query extraction (`utils/grid_query.py`), no behaviour change, pinned by tests first.
+- [x] 2. Migration 031: `bulk_edits`, `bulk_edit_items`, `collections.quiet` (+ feed filter; the status route resets it).
+- [x] 3. `utils/bulk.py`, genre only, headless: plan, apply, undo.
+- [x] 4. The UI on the Books grid, genre only: Select, bar, choose/review sheet, result banner. **Merge point M1.**
+- [x] 5. Remaining actions: format, owned, remove, restore, status, shelves, tags.
+- [x] 6. Movies, Music, Household, Search, collection pages; Profile -> Recent bulk edits.
+- [x] 7. Select all in view. **Merge point M2.**
+- [x] 8. Wrap-up: archive, CLAUDE.md.
 
 ---
 

@@ -2,7 +2,7 @@
 
 The single list of **open** work for Libaraxia, in the order to do it. Tick items (`[x]`) as they land; when a phase is finished, move it to [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md) with its date and keep only its line in the table below.
 
-Finished phases (0–8F, 10 and 11–13b) are in the archive, verbatim and with their original numbers, because code comments cite them ("ROADMAP 7.2b", "8B.3", "10.1"). Grep the archive for those.
+Finished phases (0–8F, 10, 11–13b and 14a) are in the archive, verbatim and with their original numbers, because code comments cite them ("ROADMAP 7.2b", "8B.3", "10.1"). Grep the archive for those.
 
 Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 
@@ -13,7 +13,8 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 0–8F | Design refresh, prod upkeep, data foundations and correctness, access, Goodreads import, page structure, design polish, physical media (movies, music), ownership and formats, collections, Do I have this?, cover quality | Done 2026-11-02 to 2026-11-08, [archive](docs/ROADMAP-ARCHIVE.md) |
 | 10 | More styles: Shelf (with the movie rack), Outrun, font choice | Done 2026-11-08, [archive](docs/ROADMAP-ARCHIVE.md#phase-10-more-styles) |
 | 11–13b | Shelves hub and Friends page, profile and stats, reading goals, Reviews section, Do I have this? across all types | Done 2026-11-08 to 2026-11-09, [archive](docs/ROADMAP-ARCHIVE.md#phase-11-shelves-one-home-for-every-section) |
-| 14 | [Bulk edit and granular import](#phase-14-bulk-edit-and-granular-import) | Next. Was Phase 9 |
+| 14a | Bulk edit: select on every grid, eight actions, review, undo | Done 2026-11-11, [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit) |
+| 14b | [Granular Goodreads import](#phase-14-bulk-edit-and-granular-import) | Next: re-spec first. Was Phase 9 |
 | 15 | [Movies & TV, lending, cover crop](#phase-15-movies--tv-lending-cover-crop) | After 14 |
 | 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Last: screenshots of the finished app |
 
@@ -40,15 +41,7 @@ Housekeeping that doesn't belong to a phase. Tick and remove as done.
 From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-and-actions UI, not a tweak.
 **Spec: [docs/BULK-EDIT-SPEC.md](docs/BULK-EDIT-SPEC.md)** (approved 2026-11-10). Built on branch `phase-14-bulk-edit` in the worktree `../libaraxia-bulk`, one step at a time; Phil commits and merges (spec section 14).
 
-### 14a Bulk edit 🟠
-- [x] 1. Grid query extraction (`utils/grid_query.py`), no behaviour change, pinned by tests first.
-- [x] 2. Migration 031: `bulk_edits`, `bulk_edit_items`, `collections.quiet` (+ feed filter; the status route resets it).
-- [x] 3. `utils/bulk.py`, genre only, headless: plan, apply, undo.
-- [x] 4. The UI on the Books grid, genre only: Select, bar, choose/review sheet, result banner. **Merge point M1.**
-- [x] 5. Remaining actions: format, owned, remove, restore, status, shelves, tags.
-- [x] 6. Movies, Music, Household, Search, collection pages; Profile -> Recent bulk edits.
-- [x] 7. Select all in view. **Merge point M2.**
-- [ ] 8. Wrap-up: archive, CLAUDE.md.
+14a (bulk edit) is done: [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit).
 
 ### 14b Granular Goodreads import 🟢
 - [ ] Re-spec after 14a ships (outline in the spec, section 16): staging table, review grid with a destination per row, conflicts per field (keep yours by default), wishlist-then-read as its own outcome defaulting to Ask, shelf mapping, undoable, and "import everything with the defaults" still one click. Covers still come from the `cover_jobs` fetch.
