@@ -127,12 +127,16 @@ def get_friendship_status(current_user_id, target_user_id):
     return 'none'
 
 
-def get_library_members(user_id):
+def get_library_members(user_id, conn=None):
     """
     Get all users who share a library with the given user (including the user themselves).
     Returns a list of user IDs.
+
+    Pass `conn` when you have one (utils/ code that takes the caller's
+    connection, so it works outside a request); otherwise the request's
+    connection is used.
     """
-    conn = get_db()
+    conn = conn if conn is not None else get_db()
     # Find the library this user belongs to
     library = conn.execute('''
         SELECT library_id FROM library_members

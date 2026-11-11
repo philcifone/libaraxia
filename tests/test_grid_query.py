@@ -16,7 +16,7 @@ from werkzeug.datastructures import MultiDict
 from conftest import add_user, login
 from utils import media
 from utils import grid_query
-from utils.database import get_db
+from utils.database import get_db_connection
 
 # (section, URL of its own grid, URL of its household grid, view keys)
 SECTIONS = {
@@ -153,12 +153,14 @@ def rendered_ids(client, url):
 
 
 def resolve(app, db, user_id, view, args):
-    """view_ids as a route calls it: inside an app context (the household
-    views read the household through models.get_library_members, which wants
-    one) on the request-scoped connection, which has the fold() SQL function
-    the searches need. `db` is the test's own connection, used to seed."""
-    with app.app_context():
-        return grid_query.view_ids(get_db(), Who(user_id), view, args)
+    """view_ids as bulk edit calls it: no app context, on a connection that
+    has the fold() SQL function the searches need (`db`, the test's own
+    connection, doesn't). `app` is unused; kept so call sites stay short."""
+    conn = get_db_connection()
+    try:
+        return grid_query.view_ids(conn, Who(user_id), view, args)
+    finally:
+        conn.close()
 
 
 def args_of(query):

@@ -164,7 +164,7 @@ def member_choice(conn, user_id, requested=()):
     of people outside your household are ignored; none left means everyone.
     """
     from models import get_library_members
-    everyone = get_library_members(user_id)
+    everyone = get_library_members(user_id, conn)
     marks = ','.join('?' * len(everyone))
     others = conn.execute(f'''
         SELECT id, username, avatar_url FROM users

@@ -10,9 +10,9 @@ query rather than two that drift apart.
 Movies and Music already have one implementation, Section.filtered, so
 view_ids calls that instead of copying it.
 
-Needs a Flask app context for the household views: households.member_choice
-reads the household through models.get_library_members, which uses the
-request-scoped connection.
+Takes the caller's connection and needs no app context, so tests and scripts
+can call it. The connection must have fold() registered (get_db() and
+get_db_connection() both do).
 """
 from urllib.parse import parse_qsl
 
