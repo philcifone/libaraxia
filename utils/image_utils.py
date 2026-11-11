@@ -26,6 +26,14 @@ def is_safe_upload_path(image_path):
 STATIC_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static')
 
 
+def upload_exists(image_path):
+    """True when a stored path is an upload whose file is there. Templates
+    use it as the `upload_exists` filter on avatars, so a dead link shows
+    the letter placeholder instead of a broken image (the browser's "?"):
+    {% if user.avatar_url|upload_exists %}."""
+    return is_safe_upload_path(image_path) and os.path.isfile(os.path.join(STATIC_ROOT, image_path))
+
+
 def cover_missing(image_path):
     """1 when a stored cover is an upload whose file is gone, else 0.
 

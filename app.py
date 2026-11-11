@@ -216,6 +216,9 @@ def create_app():
     from utils import media
     app.add_template_filter(media.format_label, 'format_label')
     app.add_template_filter(media.format_icon, 'format_icon')
+    # Avatars: a link whose file is gone shows the letter instead
+    from utils.image_utils import upload_exists
+    app.add_template_filter(upload_exists, 'upload_exists')
 
     # Pages that list several media types (feed, wishlist, collections) word
     # and link each row by its own type: labels_for(row).by, item_url(row).

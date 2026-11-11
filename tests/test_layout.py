@@ -896,3 +896,22 @@ def test_appearance_card_and_two_mode_buttons(client, db, people):
     # Following the system is still a mode you can go back to
     assert client.post('/user/update_theme', json={'mode': 'dark'}).status_code == 200
     assert client.post('/user/update_theme', json={'mode': 'system'}).status_code == 200
+
+
+def test_a_dead_avatar_link_shows_the_letter(client, db, people, static_root):
+    """An avatar whose file is gone falls back to the letter placeholder on
+    the server-rendered pages and in the friend search, instead of the
+    browser's broken-image icon."""
+    (static_root / 'uploads' / 'avatars').mkdir(parents=True)
+    (static_root / 'uploads' / 'avatars' / 'carol.jpg').write_bytes(b'x')
+    db.execute("UPDATE users SET avatar_url = 'uploads/avatars/gone.jpg' WHERE username = 'alice'")
+    db.execute("UPDATE users SET avatar_url = 'uploads/avatars/carol.jpg' WHERE username = 'carol'")
+    db.commit()
+    login(client, 'alice')
+    page = client.get('/friends/').get_data(as_text=True)
+    assert 'uploads/avatars/carol.jpg' in page          # a file that's there still shows
+    assert 'uploads/avatars/gone.jpg' not in page       # the sidebar's own avatar: the letter
+    login(client, 'carol')
+    found = {u['username']: u['avatar_url'] for u in client.get('/friends/search_users?q=ali').get_json()}
+    assert found['alice'] is None
+

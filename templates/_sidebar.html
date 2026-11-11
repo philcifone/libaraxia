@@ -32,7 +32,7 @@
     <div class="flex flex-col h-full p-6">
         <!-- User Section -->
         <div class="sidebar-head py-6 text-center border-b border-content-primary/10">
-            {% if current_user.avatar_url %}
+            {% if current_user.avatar_url|upload_exists %}
                 <img src="{{ url_for('static', filename=current_user.avatar_url) }}"
                      alt="{{ current_user.username }}"
                      class="sidebar-avatar w-16 h-16 mx-auto mb-4 mt-10 rounded-full object-cover">

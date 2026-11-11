@@ -22,7 +22,7 @@
                 {% for request in friend_requests %}
                 <div class="flex items-center gap-4 p-4 bg-primary rounded-lg">
                     <!-- Avatar (Circle) -->
-                    {% if request.avatar_url %}
+                    {% if request.avatar_url|upload_exists %}
                     <img src="{{ url_for('static', filename=request.avatar_url) }}"
                          alt="{{ request.username }}"
                          class="w-16 h-16 rounded-full object-cover flex-shrink-0">
@@ -67,7 +67,7 @@
             <div class="space-y-4">
                 {% for invite in household_invites %}
                 <div class="flex flex-wrap items-center gap-4 p-4 bg-primary rounded-lg">
-                    {% if invite.avatar_url %}
+                    {% if invite.avatar_url|upload_exists %}
                     <img src="{{ url_for('static', filename=invite.avatar_url) }}"
                          alt="{{ invite.username }}"
                          class="w-16 h-16 rounded-full object-cover flex-shrink-0">
@@ -126,7 +126,7 @@
                 {% for notif in notifications %}
                 <div class="flex items-start gap-3 p-4 rounded-lg hover:bg-primary/20 transition-colors {% if not notif.is_read %}bg-accent/10{% endif %}">
                     <!-- Avatar -->
-                    {% if notif.from_avatar_url %}
+                    {% if notif.from_avatar_url|upload_exists %}
                     <img src="{{ url_for('static', filename=notif.from_avatar_url) }}"
                          alt="{{ notif.from_username }}"
                          class="w-10 h-10 rounded-full object-cover">

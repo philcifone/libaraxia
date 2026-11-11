@@ -89,7 +89,7 @@
                             {% for member in members %}
                             <div class="flex items-center justify-between p-3 bg-secondary rounded-lg card">
                                 <div class="flex items-center gap-3">
-                                    {% if member.avatar_url %}
+                                    {% if member.avatar_url|upload_exists %}
                                         <img src="{{ url_for('static', filename=member.avatar_url) }}"
                                              alt="{{ member.username }}"
                                              class="h-10 w-10 rounded-full object-cover">
@@ -303,7 +303,7 @@
                         <tr class="hover:bg-primary transition-colors">
                             <td class="px-3 sm:px-6 py-4">
                                 <div class="flex items-center">
-                                    {% if user.avatar_url %}
+                                    {% if user.avatar_url|upload_exists %}
                                         <img src="{{ url_for('static', filename=user.avatar_url) }}" alt="{{ user.username }}"
                                              class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover mr-3 sm:mr-4">
                                     {% else %}

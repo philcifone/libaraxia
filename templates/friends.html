@@ -28,7 +28,7 @@
             {% for friend in friends %}
             <div class="bg-secondary rounded-xl p-5 card flex items-center gap-4">
                 <a href="{{ shelf_url('book', 'friend', friend.username) }}" class="shrink-0" tabindex="-1" aria-hidden="true">
-                    {% if friend.avatar_url %}
+                    {% if friend.avatar_url|upload_exists %}
                     <img src="{{ url_for('static', filename=friend.avatar_url) }}" alt=""
                          class="h-16 w-16 rounded-full object-cover">
                     {% else %}

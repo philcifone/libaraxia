@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, flash, redirect, url_for, render_
 from flask_login import login_required, current_user
 from utils.database import get_db
 from utils.rate_limiting import limiter
+from utils.image_utils import upload_exists
 from utils.notifications import unread_counts
 import sqlite3
 
@@ -417,5 +418,10 @@ def search_users():
     ''', (current_user.id, current_user.id, current_user.id, current_user.id,
           f'%{query}%', current_user.id, f'{query}%')).fetchall()
 
-    return jsonify([dict(u) for u in users])
+    # A dead avatar link sends no avatar: the result shows the letter
+    rows = [dict(u) for u in users]
+    for row in rows:
+        if not upload_exists(row['avatar_url']):
+            row['avatar_url'] = None
+    return jsonify(rows)
 

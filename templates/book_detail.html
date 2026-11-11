@@ -285,7 +285,7 @@
                     {% for review in household_reviews %}
                     <article class="bg-primary rounded-lg p-4 card">
                         <header class="flex items-center gap-3">
-                            {% if review.avatar_url %}
+                            {% if review.avatar_url|upload_exists %}
                             <img src="{{ url_for('static', filename=review.avatar_url) }}"
                                  alt=""
                                  class="w-10 h-10 shrink-0 rounded-full object-cover border-2 border-accent">

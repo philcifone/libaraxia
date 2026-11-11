@@ -16,7 +16,7 @@
                 <div class="relative flex-shrink-0 flex items-center gap-2 group">
                     <div style="width: 64px; height: 64px;">
                         <label for="avatar-input" class="block w-full h-full cursor-pointer">
-                            {% if user['avatar_url'] %}
+                            {% if user['avatar_url']|upload_exists %}
                                 <img id="avatar-image" src="{{ url_for('static', filename=user['avatar_url']) }}"
                                      alt="{{ user['username'] }}"
                                      class="w-full h-full rounded-full object-cover"
@@ -40,7 +40,7 @@
                 </div>
                 {% else %}
                 <div class="relative flex-shrink-0" style="width: 64px; height: 64px;">
-                    {% if user['avatar_url'] %}
+                    {% if user['avatar_url']|upload_exists %}
                         <img src="{{ url_for('static', filename=user['avatar_url']) }}"
                              alt="{{ user['username'] }}"
                              class="rounded-full object-cover"
@@ -405,7 +405,7 @@
                 {% for friend in friends %}
                 <a href="{{ url_for('user.profile', username=friend.username) }}"
                    class="bg-primary rounded-lg p-2 hover:bg-primary-hover transition-colors flex items-center gap-3">
-                    {% if friend.avatar_url %}
+                    {% if friend.avatar_url|upload_exists %}
                         <img src="{{ url_for('static', filename=friend.avatar_url) }}"
                              alt="{{ friend.username }}"
                              class="w-10 h-10 rounded-full object-cover flex-shrink-0">
