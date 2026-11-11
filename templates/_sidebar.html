@@ -42,22 +42,20 @@
                     {{ current_user.username[0].upper() }}
                 </div>
             {% endif %}
-            {# Notifications rides on the welcome line; Admin Settings (admins)
-               and the Light/Dark toggle sit under it (Phil, 2026-11-09, to save
-               sidebar height). The toggle shows the moon in light mode and the
-               sun in dark (sidebar.js; styles.css "Sidebar icon row"). Mode's
+            {# Under the welcome line, one row of icons: Notifications, Admin
+               Settings (admins) and the Light/Dark toggle (Phil, 2026-11-09, to
+               save sidebar height; the bell moved into the row 2026-11-11).
+               The toggle shows the moon in light mode and the sun in dark (sidebar.js; styles.css "Sidebar icon row"). Mode's
                full choice, with "Follow system", is at Profile -> Appearance. #}
             {% set waiting = notification_count() %}
-            <h2 class="text-xl text-content-primary flex items-center justify-center gap-1">
-                <span class="min-w-0">Welcome, {{ current_user.username.capitalize() }}!</span>
+            <h2 class="text-xl text-content-primary text-center">Welcome, {{ current_user.username.capitalize() }}!</h2>
+            <div class="sidebar-icons mt-1 flex items-center justify-center gap-3">
                 <a href="{{ url_for('friends.notifications_page') }}" title="Notifications"
                    aria-label="Notifications{% if waiting %}, {{ waiting }} waiting{% endif %}"
                    class="sidebar-icon relative shrink-0 {{ 'is-active' if request.endpoint == 'friends.notifications_page' }}">
                     {{ icon('bell') }}
                     {% if waiting %}<span class="absolute -top-1 -right-1 min-w-[1.25rem] px-1 bg-accent text-on-accent text-xs leading-5 text-center rounded-pill" aria-hidden="true">{{ waiting }}</span>{% endif %}
                 </a>
-            </h2>
-            <div class="sidebar-icons mt-1 flex items-center justify-center gap-3">
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('admin.settings') }}" title="Admin Settings" aria-label="Admin Settings"
                    class="sidebar-icon {{ 'is-active' if request.path.startswith('/admin') }}">
