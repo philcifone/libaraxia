@@ -6486,8 +6486,8 @@ html:has(.bulk-sheet[open]) {
 /* Keyboard focus is on the card (a roving tabindex), outside the selection outline */
 
 [data-select="on"] .book-item:focus-visible {
-  outline: 2px dashed rgb(var(--ink));
-  outline-offset: 5px;
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 6px;
 }
 
 [data-view="list"][data-select="on"] .book-item:focus-visible {
@@ -6530,6 +6530,10 @@ html:has(.bulk-sheet[open]) {
 .bulk-hint {
   flex-basis: 100%;
   order: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem .75rem;
   font-size: .8rem;
   color: rgb(var(--muted));
 }

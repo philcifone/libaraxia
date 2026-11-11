@@ -2377,7 +2377,7 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
     outline: 3px solid rgb(var(--accent)); outline-offset: 3px;
 }
 /* Keyboard focus is on the card (a roving tabindex), outside the selection outline */
-[data-select="on"] .book-item:focus-visible { outline: 2px dashed rgb(var(--ink)); outline-offset: 5px; }
+[data-select="on"] .book-item:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 6px; }
 [data-view="list"][data-select="on"] .book-item:focus-visible { outline-offset: 2px; }
 
 /* The bar */
@@ -2391,7 +2391,8 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
 .bulk-bar.hidden { display: none; }
 .bulk-bar-inner { max-width: 80rem; margin: 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: .4rem 1rem; }
 .bulk-count { font-weight: 700; }
-.bulk-hint { flex-basis: 100%; order: 5; font-size: .8rem; color: rgb(var(--muted)); }
+.bulk-hint { flex-basis: 100%; order: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .75rem;
+             font-size: .8rem; color: rgb(var(--muted)); }
 .bulk-hint.hidden { display: none; }
 .bulk-actions { margin-left: auto; display: flex; gap: .5rem; }
 .bulk-link {

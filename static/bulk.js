@@ -77,10 +77,10 @@ function applyLabel(n, action = '', shelfName = '') {
 
 function selectedLabel(n) { return `${n} selected`; }
 
-// The bar's count for a view selection ("Select all 57 in this view"):
+// The bar's count for a view selection (its "Select all in view" button):
 // past the cap it says so, and the actions are off.
 function viewLabel(total) {
-    return total > MAX_ITEMS ? `Too many for one edit (${total}). Narrow the view.` : `All ${total} in this view`;
+    return total > MAX_ITEMS ? `Too many for one edit (${total}). Narrow the view.` : `All ${total} in view`;
 }
 
 // The genre field's state: what would be sent, and the line under the box.
@@ -318,9 +318,9 @@ function idFromHref(href) {
         if (offerView) {
             const more = document.createElement('button');
             more.type = 'button';
-            more.className = 'bulk-link';
+            more.className = 'btn btn-outline px-3 py-1 text-sm';
             more.dataset.click = 'bulkSelectView';
-            more.textContent = `Select all ${total} in this view`;
+            more.textContent = 'Select all in view';      // the line before it gives the number
             hint.append(n === list.length ? `All ${n} loaded are selected. ` : `${n} of ${total} selected. `, more);
         } else if (partial) {
             hint.textContent = `Selected the ${list.length} loaded of ${total}. Scroll down to load more.`;
@@ -355,12 +355,15 @@ function idFromHref(href) {
         refresh();
     }
 
-    function focusCard(index) {
+    // The roving tabindex. A tap or click only moves it (`move` false): focusing
+    // the card would make iOS draw the keyboard ring on top of the selection
+    // outline. Arrow keys move focus as well.
+    function focusCard(index, move = true) {
         const list = cards();
         if (!list[index]) return;
         list.forEach(c => { c.tabIndex = -1; });
         list[index].tabIndex = 0;
-        list[index].focus();
+        if (move) list[index].focus();
     }
 
     // Long-press on a cover (touch or pen) starts select mode with that item
@@ -387,7 +390,7 @@ function idFromHref(href) {
                 ignoreClickUntil = Date.now() + 800;
                 enterSelect();
                 activate(card, false);
-                focusCard(cards().indexOf(card));
+                focusCard(cards().indexOf(card), false);
                 navigator.vibrate?.(15);       // a small tick where supported
             }, LONG_PRESS_MS),
         };
@@ -411,7 +414,7 @@ function idFromHref(href) {
         e.preventDefault();
         e.stopPropagation();
         activate(card, e.shiftKey);
-        focusCard(cards().indexOf(card));
+        focusCard(cards().indexOf(card), false);
     }
 
     function onGridKey(e) {

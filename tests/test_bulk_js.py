@@ -204,6 +204,6 @@ def test_now_text_shows_the_value_the_action_changes():
 
 
 def test_view_label_and_the_cap():
-    assert call('viewLabel', 57) == 'All 57 in this view'
-    assert call('viewLabel', 500) == 'All 500 in this view'
+    assert call('viewLabel', 57) == 'All 57 in view'
+    assert call('viewLabel', 500) == 'All 500 in view'
     assert call('viewLabel', 612) == 'Too many for one edit (612). Narrow the view.'
