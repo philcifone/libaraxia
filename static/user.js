@@ -432,7 +432,30 @@ if (bioInput) {
 // The Appearance picker (style and mode) is handled in sidebar.js, shared
 // with the sidebar's Mode shortcut.
 
+// Profile -> Recent bulk edits: undo in place, the row then says "Undone"
+// (the grids' banner Undo is static/bulk.js)
+async function bulkHistoryUndo(button) {
+    button.disabled = true;
+    let data = null;
+    try {
+        const res = await fetch(`/bulk/${encodeURIComponent(button.dataset.editId)}/undo`, {
+            method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ banner: false }) });
+        data = await res.json();
+    } catch { /* network or a non-JSON error page */ }
+    if (data?.success) {
+        const done = document.createElement('span');
+        done.className = 'text-sm text-content-secondary';
+        done.textContent = 'Undone';
+        button.replaceWith(done);
+        showFlashMessage('success', data.summary);
+    } else {
+        button.disabled = false;
+        showFlashMessage('error', data?.error || 'Could not undo that.');
+    }
+}
+
 registerActions({
+    bulkHistoryUndo,
     statsView: button => {
         const section = button.closest('[data-stats]');
         section.dataset.view = button.dataset.statsView;

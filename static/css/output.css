@@ -3197,6 +3197,11 @@ img.book-cover-img:not([data-loaded]) {
   border-color: rgb(var(--fill) / var(--tw-divide-opacity, 1));
 }
 
+.divide-rule > :not([hidden]) ~ :not([hidden]) {
+  --tw-divide-opacity: 1;
+  border-color: rgb(var(--rule) / var(--tw-divide-opacity, 1));
+}
+
 .self-start {
   align-self: flex-start;
 }

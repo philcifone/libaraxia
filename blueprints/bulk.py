@@ -112,8 +112,10 @@ def undo(edit_id):
         conn.rollback()
         current_app.logger.exception('Bulk undo failed')
         return _fail('Something went wrong. Nothing was changed.', 500)
-    # Shown once on the next page, without an Undo of its own
-    session['bulk_result'] = {'summary': result.summary, 'undone': True}
+    # Shown once on the next page, without an Undo of its own. Profile's
+    # Recent bulk edits says so in place instead ({"banner": false}).
+    if _body().get('banner', True) is not False:
+        session['bulk_result'] = {'summary': result.summary, 'undone': True}
     return jsonify({'success': True, 'summary': result.summary,
                     'restored': result.changed, 'skipped': result.skipped})
 

@@ -28,13 +28,18 @@
     {{ shelf_header(m.type, tab, owner.username if tab == 'friend' else None) }}
     {% endif %}
 
+    {# Bulk edit on your own and the household's grids, never a friend's (read-only) #}
+    {% if tab != 'friend' %}{% include '_bulk_result.html' %}{% endif %}
+
     {% set whose = owner.username ~ "'s" if tab == 'friend' else 'your' %}
     {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
 
 
     {% include '_off_shelf_hint.html' %}
     {% if books %}
+    {% set bulk_select = tab != 'friend' %}
     {% include '_book_grid.html' %}
+    {% if bulk_select %}{% include '_bulk_select.html' %}{% endif %}
     {% else %}
     {% set filtered = request.args.keys()|reject('in', ['sort_by', 'sort_order', 'view'])|list %}
     {% if filtered %}

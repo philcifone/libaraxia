@@ -6,7 +6,7 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
-from utils import media, reviews, shelves
+from utils import bulk, media, reviews, shelves
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
@@ -154,6 +154,8 @@ def profile(username):
         recent_reviews=recent_reviews,
         account_removal=(removal_context(conn, current_user.id, viewer_is_admin=False)
                          if is_own_profile else None),
+        # Recent bulk edits (ROADMAP 14), yours only, with their Undo
+        bulk_history=bulk.recent(conn, current_user) if is_own_profile else [],
     )
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])

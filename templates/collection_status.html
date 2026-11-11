@@ -25,7 +25,12 @@
             </h1>
         </div>
 
+        {% if is_own_profile %}{% include '_bulk_result.html' %}{% endif %}
+
+            {# Bulk edit on your own collections; a friend's status page is read-only #}
+            {% set bulk_select = is_own_profile and books|length > 0 %}
             {% include '_book_grid.html' %}
+            {% if bulk_select %}{% include '_bulk_select.html' %}{% endif %}
 
             {% if not books %}
             <div class="col-span-full py-16 text-center">

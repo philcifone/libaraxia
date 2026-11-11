@@ -1,0 +1,9 @@
+{# Bulk edit on a grid page (ROADMAP 14): the selection bar, the action sheet
+   and their script. A page includes this after _book_grid.html, with
+   `{% set bulk_select = true %}` before the grid so the view bar shows Select
+   and the grid takes long-press. Friends' grids never include it
+   (read-only), and the result banner (_bulk_result.html) goes at the top of
+   the page's content. #}
+{% include '_bulk_bar.html' %}
+{% include '_bulk_sheet.html' %}
+<script src="{{ url_for('static', filename='bulk.js') }}" defer></script>

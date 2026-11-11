@@ -10,10 +10,18 @@
     {% from '_shelves.html' import shelf_header %}
     {% call shelf_header('book', 'shared') %}{% include '_household_members.html' %}{% endcall %}
 
+    {% include '_bulk_result.html' %}
+
     {% include '_search_sort_filter.html' %}
 
-
+    {# Bulk edit: your marks on anything here, item edits on your own (and any, for an admin) #}
+    {% if books %}
+    {% set bulk_select = true %}
     {% include '_book_grid.html' %}
+    {% include '_bulk_select.html' %}
+    {% else %}
+    {% include '_book_grid.html' %}
+    {% endif %}
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}

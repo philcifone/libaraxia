@@ -31,6 +31,7 @@ import logging
 import re
 import sqlite3
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from models import can_view_book
 from utils import media, search
@@ -912,6 +913,27 @@ def history(conn, user, limit=10):
     return conn.execute(
         "SELECT * FROM bulk_edits WHERE user_id = ? AND created_at >= datetime('now', ?) "
         'ORDER BY created_at DESC, id DESC LIMIT ?', (user.id, f'-{KEEP_DAYS} days', limit)).fetchall()
+
+
+def ago(timestamp, now=None):
+    """'just now', '5 minutes ago', '3 hours ago', '2 days ago' for a
+    CURRENT_TIMESTAMP value (UTC, 'YYYY-MM-DD HH:MM:SS')."""
+    try:
+        then = datetime.strptime(str(timestamp)[:19], '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return ''
+    now = now or datetime.now(timezone.utc).replace(tzinfo=None)     # naive UTC, as SQLite stores it
+    seconds = (now - then).total_seconds()
+    for size, unit in ((86400, 'day'), (3600, 'hour'), (60, 'minute')):
+        if seconds >= size:
+            n = int(seconds // size)
+            return f'{n} {unit}{"" if n == 1 else "s"} ago'
+    return 'just now'
+
+
+def recent(conn, user, limit=10):
+    """Profile -> Recent bulk edits: history() as dicts with `ago`."""
+    return [dict(row, ago=ago(row['created_at'])) for row in history(conn, user, limit)]
 
 
 def genres(conn, user, media_type=None):

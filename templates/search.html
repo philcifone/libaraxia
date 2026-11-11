@@ -15,10 +15,14 @@
         {{ crumbs([('Library', url_for('base.index'))], 'Search' ~ (': ' ~ search_term if search_term else ''), class='') }}
     </div>
 
+    {% include '_bulk_result.html' %}
+
     {% include '_off_shelf_hint.html' %}
 
     {% if books %}
+    {% set bulk_select = true %}
     {% include '_book_grid.html' %}
+    {% include '_bulk_select.html' %}
     {% else %}
     {% with title=('No books match "' ~ search_term ~ '"') if search_term else 'Nothing to search for',
             text='This searches titles, authors and years on your shelf and your household\'s. To find a book you don\'t have yet, search Google Books from Add Book.',

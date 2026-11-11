@@ -557,6 +557,28 @@
             </form>
         </div>
 
+        {# Recent bulk edits (ROADMAP 14): the last 10 within 30 days, each with Undo #}
+        {% if bulk_history %}
+        <section id="bulk-edits" class="bg-secondary rounded-xl p-6 card">
+            <h2 class="text-2xl font-display text-content-primary mb-1">Recent bulk edits</h2>
+            <p class="text-sm text-content-secondary mb-4">Undo puts back what each edit changed, unless it has changed again since. Kept for 30 days.</p>
+            <ul class="divide-y divide-rule">
+                {% for edit in bulk_history %}
+                <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
+                    <span class="flex-1 min-w-0">{{ edit.summary }}</span>
+                    <span class="text-sm text-content-secondary">{{ edit.ago }}</span>
+                    {% if edit.undone_at %}
+                    <span class="text-sm text-content-secondary">Undone</span>
+                    {% else %}
+                    <button type="button" data-click="bulkHistoryUndo" data-edit-id="{{ edit.id }}"
+                            class="btn btn-outline px-3 py-1 text-sm">Undo</button>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
         <!-- Account: export everything, deactivate or delete -->
         <section id="account" class="bg-secondary rounded-xl p-6 card">
             <h2 class="text-2xl font-display text-content-primary mb-4">Account</h2>
