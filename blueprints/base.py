@@ -1,10 +1,10 @@
 from flask import render_template, redirect, url_for, request, Blueprint, jsonify, abort, flash
 from flask_login import login_required, current_user
 from utils.database import get_db
-from utils import households, media, search, sorting
+from utils import grid_query, households, media, sorting
 from datetime import datetime
 from models import get_library_members, is_friends_with
-from utils.book_utils import get_filter_options, shelf_filter, format_filter, card_json
+from utils.book_utils import get_filter_options, card_json
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
 
@@ -42,39 +42,8 @@ def library_page(template, owner_ids, data_user, **extra):
     sort_by, sort_order = sorting.choice(request.args, media.BOOK)
 
     conn = get_db()
-    marks = ','.join('?' * len(owner_ids))
-    query = f'SELECT b.* FROM library_books b WHERE b.added_by IN ({marks})'
-    params = list(owner_ids)
-
-    # Only what's on the shelf unless Show asks for not-owned or removed ones
-    query += shelf_filter(request.args)
-
-    term = (request.args.get('search_term') or '').strip()
-    if term:
-        match_sql, match_params = search.match(term, ['title', 'subtitle', 'author', 'publisher', 'isbn',
-                                                      'publish_year'], viewer_id=data_user)
-        query += f' AND ({match_sql})'
-        params += match_params
-    if request.args.get('genre'):
-        query += " AND LOWER(b.genre) = LOWER(?)"
-        params.append(request.args.get('genre'))
-    # Book / Audiobook (8B.2)
-    fmt_sql, fmt_params = format_filter(request.args.get('format'))
-    query += fmt_sql
-    params.extend(fmt_params)
-    if request.args.get('read_status'):
-        query += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
-        params.extend([data_user, request.args.get('read_status')])
-    rating = request.args.get('rating', type=int)
-    if rating:
-        query += " AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)"
-        params.extend([data_user, rating])
-    tags = [t for t in request.args.getlist('tags[]') if t]
-    if tags:
-        tag_marks = ','.join('?' * len(tags))
-        query += (" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id"
-                  f" AND t.user_id = ? AND t.tag_name IN ({tag_marks}))")
-        params += [data_user, *tags]
+    # The filters live in utils/grid_query.py, shared with bulk edit's selection of a view
+    query, params = grid_query.books_query(owner_ids, request.args, data_user)
 
     total_count = conn.execute(query.replace("SELECT b.*", "SELECT COUNT(b.id)", 1), params).fetchone()[0]
     order_sql, order_params = sorting.order_by(sort_by, sort_order, data_user)
