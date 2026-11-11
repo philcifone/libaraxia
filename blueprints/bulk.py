@@ -55,6 +55,22 @@ def plan():
     return jsonify({'success': True, 'plan': result.as_dict()})
 
 
+@bulk_blueprint.route('/selection', methods=['POST'])
+@login_required
+@limiter.limit('300 per hour', key_func=_per_user)
+def selection():
+    """The selected items with what each has now, listed under the sheet's
+    inputs before the review. POST for the id list; writes nothing."""
+    try:
+        items = bulk.selection(get_db(), current_user, _body().get('ids'))
+    except bulk.BulkError as e:
+        return _fail(str(e))
+    except Exception:
+        current_app.logger.exception('Bulk selection failed')
+        return _fail('Something went wrong loading the selection.', 500)
+    return jsonify({'success': True, 'items': items})
+
+
 @bulk_blueprint.route('/apply', methods=['POST'])
 @login_required
 @limiter.limit('60 per hour', key_func=_per_user)
@@ -111,3 +127,14 @@ def genres():
     if kind and kind not in media.MEDIA_TYPES:
         return _fail('Unknown type.')
     return jsonify({'success': True, 'genres': bulk.genres(get_db(), current_user, kind or None)})
+
+
+@bulk_blueprint.route('/options', methods=['GET'])
+@login_required
+def options():
+    """What the sheet's pickers offer for one type (?type=book|video|record):
+    its statuses and formats, your shelves for the section and your tags."""
+    kind = request.args.get('type')
+    if kind and kind not in media.MEDIA_TYPES:
+        return _fail('Unknown type.')
+    return jsonify({'success': True, **bulk.options(get_db(), current_user, kind)})

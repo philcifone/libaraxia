@@ -5,22 +5,87 @@
    textContent, so nothing here is user data. #}
 <dialog id="bulk-sheet" class="bulk-sheet" aria-labelledby="bulk-title">
     <div class="bulk-sheet-head">
-        <h2 id="bulk-title" class="font-display text-xl">Set genre</h2>
+        <h2 id="bulk-title" class="font-display text-xl" tabindex="-1">Set genre</h2>
     </div>
 
     <div class="bulk-sheet-body">
-        {# Stage 1: choose #}
+        {# Stage 1: choose. One panel per action; bulk.js shows the one asked for. #}
         <section id="bulk-choose">
-            <label for="bulk-genre-input" class="block text-sm text-content-secondary mb-1">Genre for <span id="bulk-choose-count">the selected items</span></label>
-            <div class="relative">
-                <input id="bulk-genre-input" type="text" role="combobox" aria-expanded="false"
+            {# genre: a filter box over a list that is always there and scrolls #}
+            <div id="bulk-in-genre">
+                <label for="bulk-genre-input" class="block text-sm text-content-secondary mb-1">Genre for <span id="bulk-choose-count">the selected items</span></label>
+                <input id="bulk-genre-input" type="text" role="combobox" aria-expanded="true"
                        aria-controls="bulk-genre-list" aria-autocomplete="list" autocomplete="off"
-                       maxlength="80" placeholder="Type or pick a genre"
-                       class="w-full bg-primary-bg text-content-primary border border-rule-strong rounded-lg px-3 py-2
-                              focus:ring-2 focus:ring-accent focus:border-transparent">
-                <ul id="bulk-genre-list" role="listbox" aria-label="Your genres" class="bulk-list hidden"></ul>
+                       maxlength="80" placeholder="Type a new genre or filter the list" class="bulk-field">
+                <p id="bulk-genre-hint" class="text-sm text-content-secondary mt-2 min-h-[1.25rem]" aria-live="polite"></p>
+                <ul id="bulk-genre-list" role="listbox" aria-label="Your genres" class="bulk-list mt-1"></ul>
             </div>
-            <p id="bulk-genre-hint" class="text-sm text-content-secondary mt-2 min-h-[1.25rem]" aria-live="polite"></p>
+
+            {# status #}
+            <div id="bulk-in-status" class="hidden">
+                <label for="bulk-status" class="block text-sm text-content-secondary mb-1">Status for <span data-bulk-count></span></label>
+                <select id="bulk-status" class="bulk-field"></select>
+            </div>
+
+            {# format #}
+            <div id="bulk-in-format" class="hidden">
+                <label for="bulk-format" class="block text-sm text-content-secondary mb-1">Format for <span data-bulk-count></span></label>
+                <select id="bulk-format" class="bulk-field"></select>
+            </div>
+
+            {# owned #}
+            <fieldset id="bulk-in-owned" class="hidden">
+                <legend class="block text-sm text-content-secondary mb-2">Mark <span data-bulk-count></span> as</legend>
+                <label class="bulk-radio"><input type="radio" name="bulk-owned" value="1"> Owned</label>
+                <label class="bulk-radio"><input type="radio" name="bulk-owned" value="0"> Not owned</label>
+            </fieldset>
+
+            {# remove #}
+            <div id="bulk-in-remove" class="hidden">
+                <label for="bulk-note" class="block text-sm text-content-secondary mb-1">Note, kept with each item (optional)</label>
+                <input id="bulk-note" type="text" maxlength="200" placeholder="e.g. Little Free Library" class="bulk-field">
+                <p class="text-sm text-content-secondary mt-2">Removed items leave your shelf. Reviews, ratings and reading history stay, and you can put them back.</p>
+            </div>
+
+            {# restore #}
+            <div id="bulk-in-restore" class="hidden">
+                <p>Put <span data-bulk-count></span> back on the shelf. Items that are already on it are left alone.</p>
+            </div>
+
+            {# shelf #}
+            <div id="bulk-in-shelf" class="hidden">
+                <fieldset class="mb-3">
+                    <legend class="sr-only">Add to or remove from a shelf</legend>
+                    <label class="bulk-radio"><input type="radio" name="bulk-shelf-mode" value="add" checked> Add to a shelf</label>
+                    <label class="bulk-radio"><input type="radio" name="bulk-shelf-mode" value="remove"> Remove from a shelf</label>
+                </fieldset>
+                <label for="bulk-shelf" class="block text-sm text-content-secondary mb-1">Shelf</label>
+                <select id="bulk-shelf" class="bulk-field"></select>
+                <div id="bulk-shelf-new-row" class="hidden mt-3">
+                    <label for="bulk-shelf-new" class="block text-sm text-content-secondary mb-1">Name of the new shelf</label>
+                    <input id="bulk-shelf-new" type="text" maxlength="60" class="bulk-field">
+                </div>
+            </div>
+
+            {# tag #}
+            <div id="bulk-in-tag" class="hidden">
+                <fieldset class="mb-3">
+                    <legend class="sr-only">Add or remove a tag</legend>
+                    <label class="bulk-radio"><input type="radio" name="bulk-tag-mode" value="add" checked> Add a tag</label>
+                    <label class="bulk-radio"><input type="radio" name="bulk-tag-mode" value="remove"> Remove a tag</label>
+                </fieldset>
+                <label for="bulk-tag-input" class="block text-sm text-content-secondary mb-1">Tag</label>
+                <input id="bulk-tag-input" type="text" list="bulk-tag-list" maxlength="50" autocomplete="off"
+                       placeholder="Type a tag" class="bulk-field">
+                <datalist id="bulk-tag-list"></datalist>
+                <p id="bulk-tag-hint" class="text-sm text-content-secondary mt-2 min-h-[1.25rem]" aria-live="polite"></p>
+            </div>
+
+            {# What the selected items have now, for the action in hand (bulk.js) #}
+            <div id="bulk-selected" class="mt-6 hidden">
+                <h3 class="text-sm text-content-secondary mb-2" id="bulk-selected-head">Selected</h3>
+                <ul id="bulk-selected-list" class="bulk-items" aria-labelledby="bulk-selected-head"></ul>
+            </div>
         </section>
 
         {# Stage 2: review #}

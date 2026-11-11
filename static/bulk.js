@@ -66,7 +66,14 @@ function summaryLine(changes, same, skipped) {
 
 function itemsWord(n) { return `${n} item${n === 1 ? '' : 's'}`; }
 
-function applyLabel(n) { return `Apply to ${itemsWord(n)}`; }
+// The review's primary button: the verb and the live count.
+function applyLabel(n, action = '', shelfName = '') {
+    if (action === 'remove') return `Remove ${n} from library`;
+    if (action === 'restore') return `Put ${itemsWord(n)} back`;
+    if (action === 'shelf_add') return `Add ${n} to ${shelfName}`;
+    if (action === 'shelf_remove') return `Remove ${n} from ${shelfName}`;
+    return `Apply to ${itemsWord(n)}`;
+}
 
 function selectedLabel(n) { return `${n} selected`; }
 
@@ -96,14 +103,80 @@ function filterGenres(genres, typed) {
 // unticked items stay unticked by id where they are still in the plan.
 function carryExclusions(oldPlan, oldExcluded, newPlan) {
     const groupsOff = new Set(oldPlan.groups
-        .filter(g => g.items.length && g.items.every(i => oldExcluded.has(i.id))).map(g => g.before));
+        .filter(g => g.items.length && g.items.every(i => oldExcluded.has(i.id))).map(g => g.key));
     const next = new Set();
     for (const g of newPlan.groups) {
         for (const item of g.items) {
-            if (groupsOff.has(g.before) || oldExcluded.has(item.id)) next.add(item.id);
+            if (groupsOff.has(g.key) || oldExcluded.has(item.id)) next.add(item.id);
         }
     }
     return next;
+}
+
+// What the sheet sends for an action, from the raw values of its inputs:
+// {action, params, valid}. `kind` is the sheet's panel ('shelf' and 'tag'
+// choose between add and remove with v.mode). Server rules decide the rest;
+// this only keeps Review disabled until there is something to send.
+function buildParams(kind, v) {
+    const text = String(v.text ?? '').trim();
+    switch (kind) {
+        case 'genre': {
+            const g = matchGenre(v.text, v.genres || [], !!v.cleared);
+            return { action: 'genre', params: { genre: g.value }, valid: g.valid };
+        }
+        case 'status':
+            return { action: 'status', params: { status: v.value }, valid: !!v.value };
+        case 'format':
+            return { action: 'format', params: { format: v.value }, valid: !!v.value };
+        case 'owned':
+            return { action: 'owned', params: { owned: v.value }, valid: v.value === '1' || v.value === '0' };
+        case 'remove':
+            return { action: 'remove', params: { note: text || null }, valid: true };
+        case 'restore':
+            return { action: 'restore', params: {}, valid: true };
+        case 'shelf': {
+            const action = v.mode === 'remove' ? 'shelf_remove' : 'shelf_add';
+            if (v.shelf === '__new__' && action === 'shelf_add') {
+                const name = String(v.newName ?? '').trim();
+                return { action, params: { media_type: v.mediaType, new_shelf: name }, valid: !!name && name.length <= 60 };
+            }
+            const id = Number(v.shelf);
+            return { action, params: { media_type: v.mediaType, shelf_id: id }, valid: Number.isInteger(id) && id > 0 };
+        }
+        case 'tag': {
+            const tag = text.toLowerCase();
+            return { action: v.mode === 'remove' ? 'tag_remove' : 'tag_add', params: { tag },
+                     valid: !!tag && tag.length <= 50 };
+        }
+        default:
+            return { action: '', params: {}, valid: false };
+    }
+}
+
+// The line under the tag box: tags are kept lower case, as everywhere else.
+function tagHint(typed) {
+    const text = String(typed ?? '').trim();
+    if (!text) return '';
+    if (text.length > 50) return 'Keep it to 50 characters or fewer.';
+    return text === text.toLowerCase() ? '' : `Saved as \u201c${text.toLowerCase()}\u201d`;
+}
+
+// What a selected item has now, for the action in hand: the line under its
+// title in the choose step. `item` is one row of POST /bulk/selection.
+const OWNER_ONLY = new Set(['genre', 'format', 'owned', 'remove', 'restore']);
+function nowText(kind, item) {
+    if (OWNER_ONLY.has(kind) && !item.yours) return 'Not yours, will be skipped';
+    switch (kind) {
+        case 'genre': return item.genre || '(no genre)';
+        case 'status': return item.status;
+        case 'format': return item.format || '(no format)';
+        case 'owned': return item.owned ? 'Owned' : 'Not owned';
+        case 'remove':
+        case 'restore': return item.removed ? 'Removed' : 'On the shelf';
+        case 'shelf': return item.shelves.length ? 'On ' + item.shelves.join(', ') : 'On no shelves';
+        case 'tag': return item.tags.length ? item.tags.join(', ') : 'No tags';
+        default: return '';
+    }
 }
 
 // The id in a card's link: /books/book/12, /videos/12, /records/12.
@@ -181,6 +254,7 @@ function idFromHref(href) {
         }
         delete document.documentElement.dataset.bulk;
         $('bulk-bar').classList.add('hidden');
+        $('bulk-menu')?.classList.add('hidden');
         syncButton();
     }
 
@@ -334,19 +408,48 @@ function idFromHref(href) {
 
     // ---- the sheet ------------------------------------------------------
 
-    const sheet = { action: null, params: null, ids: [], plan: null, excluded: new Set(), stage: 'choose' };
-    const genre = { list: [], cleared: false, active: -1 };
+    // Each bar action opens the same dialog with its own inputs (a panel in
+    // _bulk_sheet.html). `kind` is the panel; the server action key (shelf and
+    // tag choose add or remove) comes from buildParams.
+    const KINDS = {
+        genre:   { title: 'Set genre' },
+        status:  { title: 'Set status' },
+        format:  { title: 'Set format' },
+        owned:   { title: 'Owned or not' },
+        remove:  { title: 'Remove from library', danger: true },
+        restore: { title: 'Put back on the shelf' },
+        shelf:   { title: 'Shelves' },
+        tag:     { title: 'Tags' },
+    };
+    const sheet = { kind: null, action: null, params: null, ids: [], plan: null, excluded: new Set(), stage: 'choose' };
+    const genre = { list: [], cleared: false, active: -1, filter: '' };
+    const picked = { key: '', items: null };   // /bulk/selection for the ids in the sheet
+    let options = null;             // /bulk/options for this section, fetched once
+
+    const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value;
+    const mediaType = () => container?.dataset.media || 'book';
 
     function showStage(stage) {
         sheet.stage = stage;
         $('bulk-choose').classList.toggle('hidden', stage !== 'choose');
         $('bulk-review').classList.toggle('hidden', stage !== 'review');
-        $('bulk-title').textContent = stage === 'choose' ? 'Set genre' : 'Review';
+        $('bulk-title').textContent = stage === 'choose' ? KINDS[sheet.kind].title : 'Review';
         setError('');
         if (stage === 'choose') {
-            $('bulk-go').textContent = 'Review';
-            syncGenre();
+            const go = $('bulk-go');
+            go.textContent = 'Review';
+            styleGo(false);
+            syncChoose();
         }
+    }
+
+    // The remove action's button is the danger colour, as the spec asks
+    function styleGo(danger) {
+        const go = $('bulk-go');
+        go.classList.toggle('bg-red-600', danger);
+        go.classList.toggle('hover:bg-red-700', danger);
+        go.classList.toggle('bg-accent', !danger);
+        go.classList.toggle('hover:bg-accent-hover', !danger);
     }
 
     function setError(message) {
@@ -363,23 +466,158 @@ function idFromHref(href) {
         return { status: res.status, data };
     }
 
-    async function openSheet(action, button) {
-        sheet.action = action;
+    function fillSelect(select, items, placeholder) {
+        select.replaceChildren();
+        if (placeholder) {
+            const first = document.createElement('option');
+            first.value = '';
+            first.textContent = placeholder;
+            select.append(first);
+        }
+        for (const [value, label] of items) {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            select.append(opt);
+        }
+    }
+
+    // Put the pickers' choices in the panels (statuses, formats, shelves, tags)
+    function fillPanels() {
+        if (!options) return;
+        fillSelect($('bulk-status'), options.statuses.map(s =>
+            [s.value, s.value === 'untracked' ? `${s.label} (clears the status)` : s.label]), 'Choose a status');
+        fillSelect($('bulk-format'), options.formats.map(f => [f.value, f.label]), 'Choose a format');
+        fillShelves();
+        const tags = $('bulk-tag-list');
+        tags.replaceChildren();
+        for (const t of options.tags) {
+            const opt = document.createElement('option');
+            opt.value = t.value;
+            tags.append(opt);
+        }
+    }
+
+    // "New shelf..." only makes sense when adding
+    function fillShelves() {
+        if (!options) return;
+        const adding = radio('bulk-shelf-mode') !== 'remove';
+        const items = options.shelves.map(s => [String(s.id), `${s.name} (${s.count})`]);
+        if (adding) items.push(['__new__', 'New shelf…']);
+        const select = $('bulk-shelf');
+        const was = select.value;
+        fillSelect(select, items, items.length ? 'Choose a shelf' : 'You have no shelves here yet');
+        if (items.some(([v]) => v === was)) select.value = was;
+        else if (adding && !options.shelves.length) select.value = '__new__';
+        $('bulk-shelf-new-row').classList.toggle('hidden', select.value !== '__new__');
+    }
+
+    function resetInputs() {
+        genre.cleared = false;
+        genre.active = -1;
+        genre.filter = '';
+        $('bulk-genre-input').value = '';
+        $('bulk-status').value = '';
+        $('bulk-format').value = '';
+        document.querySelectorAll('input[name="bulk-owned"]').forEach(r => { r.checked = false; });
+        $('bulk-note').value = '';
+        $('bulk-shelf-new').value = '';
+        $('bulk-tag-input').value = '';
+        document.querySelectorAll('input[name="bulk-shelf-mode"], input[name="bulk-tag-mode"]')
+            .forEach(r => { r.checked = r.value === 'add'; });
+    }
+
+    // What the open panel would send, or null before any panel is open
+    function readChoice() {
+        const kind = sheet.kind;
+        const v = {
+            genre: () => ({ text: $('bulk-genre-input').value, genres: genre.list, cleared: genre.cleared }),
+            status: () => ({ value: $('bulk-status').value }),
+            format: () => ({ value: $('bulk-format').value }),
+            owned: () => ({ value: radio('bulk-owned') }),
+            remove: () => ({ text: $('bulk-note').value }),
+            restore: () => ({}),
+            shelf: () => ({ mode: radio('bulk-shelf-mode'), shelf: $('bulk-shelf').value,
+                            newName: $('bulk-shelf-new').value, mediaType: mediaType() }),
+            tag: () => ({ mode: radio('bulk-tag-mode'), text: $('bulk-tag-input').value }),
+        }[kind];
+        return v ? buildParams(kind, v()) : null;
+    }
+
+    function syncChoose() {
+        if (!sheet.kind) return;
+        const choice = readChoice();
+        if (sheet.kind === 'genre') $('bulk-genre-hint').textContent = matchGenre(
+            $('bulk-genre-input').value, genre.list, genre.cleared).hint;
+        if (sheet.kind === 'tag') $('bulk-tag-hint').textContent = tagHint($('bulk-tag-input').value);
+        $('bulk-go').disabled = sheet.stage === 'choose' && !(choice && choice.valid);
+    }
+
+    async function openSheet(kind, button) {
+        if (!KINDS[kind]) return;
+        sheet.kind = kind;
         sheet.ids = ids();
         if (!sheet.ids.length) return;
         opener = button;
-        genre.cleared = false;
-        genre.active = -1;
-        $('bulk-genre-input').value = '';
+        resetInputs();
+        for (const key of Object.keys(KINDS)) $(`bulk-in-${key}`).classList.toggle('hidden', key !== kind);
         $('bulk-choose-count').textContent = itemsWord(sheet.ids.length);
+        document.querySelectorAll('[data-bulk-count]').forEach(el => { el.textContent = itemsWord(sheet.ids.length); });
+        fillPanels();
         showStage('choose');
         $('bulk-sheet').showModal();
-        $('bulk-genre-input').focus();
-        // Your genres for this section, most used first; the box works while it loads
-        const res = await api('/bulk/genres?type=' + encodeURIComponent(container.dataset.media || 'book'));
-        genre.list = res.data?.success ? res.data.genres : [];
+        // On a touch screen focusing a text box opens the keyboard over the
+        // lists, so focus goes to the heading there and you tap what you want
+        if (window.matchMedia('(pointer: fine)').matches) {
+            $(`bulk-in-${kind}`).querySelector('input:not([type="radio"]), select, input[type="radio"]')?.focus();
+        } else {
+            $('bulk-title').focus();
+        }
         renderGenreList();
-        syncGenre();
+        loadSelection();
+        // Your genres and the pickers' choices for this section; the sheet works while they load
+        const type = encodeURIComponent(mediaType());
+        if (kind === 'genre' && !genre.list.length) {
+            const res = await api('/bulk/genres?type=' + type);
+            genre.list = res.data?.success ? res.data.genres : [];
+            renderGenreList();
+        }
+        if (!options && ['status', 'format', 'shelf', 'tag'].includes(kind)) {
+            const res = await api('/bulk/options?type=' + type);
+            if (res.data?.success) { options = res.data; fillPanels(); }
+        }
+        syncChoose();
+    }
+
+    // ---- the selected items, with what each has now ----
+
+    async function loadSelection() {
+        const key = sheet.ids.join(',');
+        if (picked.key !== key) {
+            picked.key = key;
+            picked.items = null;
+            renderSelection();
+            const res = await api('/bulk/selection', { ids: sheet.ids });
+            if (picked.key !== key) return;          // the sheet moved on meanwhile
+            picked.items = res.data?.success ? res.data.items : [];
+        }
+        renderSelection();
+    }
+
+    function renderSelection() {
+        const box = $('bulk-selected');
+        const items = picked.items;
+        box.classList.toggle('hidden', !items || !items.length);
+        if (!items) return;
+        $('bulk-selected-head').textContent = `Selected (${items.length})`;
+        $('bulk-selected-list').replaceChildren(...items.map(item => {
+            const row = itemRow(item, false);
+            const now = document.createElement('span');
+            now.className = 'bulk-item-now';
+            now.textContent = nowText(sheet.kind, item);
+            row.querySelector('.bulk-item-text').append(now);
+            return row;
+        }));
     }
 
     function closeSheet() {
@@ -392,8 +630,8 @@ function idFromHref(href) {
 
     function renderGenreList() {
         const list = $('bulk-genre-list');
-        const typed = $('bulk-genre-input').value;
-        const shown = filterGenres(genre.list, typed);
+        const shown = filterGenres(genre.list, genre.filter);
+        const value = fold($('bulk-genre-input').value);
         list.replaceChildren();
         shown.forEach((g, i) => {
             const li = document.createElement('li');
@@ -401,6 +639,7 @@ function idFromHref(href) {
             li.setAttribute('role', 'option');
             li.className = 'bulk-opt';
             li.dataset.value = g.value;
+            if (!genre.cleared && value && fold(g.value) === value) li.dataset.chosen = '';
             const name = document.createElement('span');
             name.textContent = g.value;
             const count = document.createElement('span');
@@ -416,14 +655,10 @@ function idFromHref(href) {
         none.className = 'bulk-opt bulk-opt-none';
         none.dataset.clear = '1';
         none.textContent = '(no genre)';
+        if (genre.cleared) none.dataset.chosen = '';
         list.append(none);
         genre.active = -1;
         $('bulk-genre-input').removeAttribute('aria-activedescendant');
-    }
-
-    function openList(open) {
-        $('bulk-genre-list').classList.toggle('hidden', !open);
-        $('bulk-genre-input').setAttribute('aria-expanded', String(open));
     }
 
     function setActive(i) {
@@ -439,57 +674,51 @@ function idFromHref(href) {
     function chooseOption(opt) {
         genre.cleared = !!opt.dataset.clear;
         $('bulk-genre-input').value = genre.cleared ? '(no genre)' : opt.dataset.value;
-        openList(false);
-        syncGenre();
-    }
-
-    function currentGenre() {
-        return matchGenre($('bulk-genre-input').value, genre.list, genre.cleared);
-    }
-
-    function syncGenre() {
-        const state = currentGenre();
-        $('bulk-genre-hint').textContent = state.hint;
-        $('bulk-go').disabled = sheet.stage === 'choose' && !state.valid;
+        genre.filter = '';          // the whole list again, the choice marked
+        renderGenreList();
+        syncChoose();
     }
 
     function onGenreInput() {
         genre.cleared = false;      // typing again leaves "(no genre)"
+        genre.filter = $('bulk-genre-input').value;
         renderGenreList();
-        openList(true);
-        syncGenre();
+        syncChoose();
     }
 
     function onGenreKey(e) {
-        const listOpen = !$('bulk-genre-list').classList.contains('hidden');
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
-            if (!listOpen) { openList(true); }
             setActive(genre.active + (e.key === 'ArrowDown' ? 1 : -1));
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            const opt = listOpen && genre.active >= 0 ? $('bulk-genre-list').children[genre.active] : null;
+            const opt = genre.active >= 0 ? $('bulk-genre-list').children[genre.active] : null;
             if (opt) chooseOption(opt);
-            else if (currentGenre().valid) goReview();
-        } else if (e.key === 'Escape' && listOpen) {
-            // The first Escape closes the list; the sheet stays
+            else if (readChoice()?.valid) goReview();
+        }
+    }
+
+    // Enter in any other text box goes to Review as well
+    function onChooseKey(e) {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type === 'text'
+            && e.target.id !== 'bulk-genre-input') {
             e.preventDefault();
-            e.stopPropagation();
-            openList(false);
+            if (readChoice()?.valid) goReview();
         }
     }
 
     // ---- review ---------------------------------------------------------
 
     async function goReview() {
-        const state = currentGenre();
-        if (!state.valid) return;
-        sheet.params = { genre: state.value };
+        const choice = readChoice();
+        if (!choice || !choice.valid) return;
+        sheet.action = choice.action;
+        sheet.params = choice.params;
         $('bulk-go').disabled = true;
         const res = await api('/bulk/plan', { action: sheet.action, params: sheet.params, ids: sheet.ids });
         if (!res.data?.success) {
             setError(res.data?.error || 'Could not work that out. Try again.');
-            syncGenre();
+            syncChoose();
             return;
         }
         sheet.plan = res.data.plan;
@@ -498,13 +727,6 @@ function idFromHref(href) {
         showStage('review');
         $('bulk-stale').classList.add('hidden');
         renderReview(true);
-    }
-
-    function line(text, cls) {
-        const p = document.createElement('p');
-        p.className = cls;
-        p.textContent = text;
-        return p;
     }
 
     function renderReview(initial, openGroups = null) {
@@ -521,8 +743,8 @@ function idFromHref(href) {
         groups.replaceChildren();
 
         const startOpen = plan.changes <= OPEN_ALL_UP_TO;
-        plan.groups.forEach((g, gi) => {
-            const key = String(g.before);
+        plan.groups.forEach(g => {
+            const key = String(g.key);
             const ids = g.items.map(i => i.id);
             const box = document.createElement('details');
             box.className = 'bulk-group';
@@ -537,7 +759,7 @@ function idFromHref(href) {
             const state = groupTickState(ids, sheet.excluded);
             check.checked = state === 'all';
             check.indeterminate = state === 'some';
-            check.setAttribute('aria-label', `${g.before || '(no genre)'} to ${g.after || '(no genre)'}, ${g.count} items`);
+            check.setAttribute('aria-label', `${g.label}, ${g.count} items`);
             // The checkbox sits in the <summary>: don't let a tick toggle the group open
             check.addEventListener('click', e => e.stopPropagation());
             check.addEventListener('change', () => {
@@ -546,7 +768,7 @@ function idFromHref(href) {
             });
             const label = document.createElement('span');
             label.className = 'bulk-group-label';
-            label.textContent = `${g.before || '(no genre)'} → ${g.after || '(no genre)'}`;
+            label.textContent = g.label;
             const count = document.createElement('span');
             count.className = 'bulk-group-count';
             count.textContent = g.count;
@@ -579,15 +801,16 @@ function idFromHref(href) {
 
         const quiet = $('bulk-quiet');
         quiet.replaceChildren();
-        if (plan.same) quiet.append(li(`Already “${plan.params.genre ?? '(no genre)'}” (${plan.same})`));
+        if (plan.same) quiet.append(li(`${plan.same_text} (${plan.same})`));
         plan.skipped.forEach(s => quiet.append(li(`Skipped: ${s.reason.toLowerCase()} (${s.count})`)));
         plan.notes.forEach(n => quiet.append(li(n)));
 
         $('bulk-summary').textContent = summaryLine(plan.changes, plan.same, skipped);
         const n = applyCount(plan, sheet.excluded);
         const go = $('bulk-go');
-        go.textContent = applyLabel(n);
+        go.textContent = applyLabel(n, plan.action, plan.params.shelf_name);
         go.disabled = n === 0;
+        styleGo(!!KINDS[sheet.kind].danger);
 
         body.scrollTop = scrollTop;
         if (focused >= 0) $('bulk-review').querySelectorAll('.bulk-tick')[focused]?.focus({ preventScroll: true });
@@ -599,7 +822,9 @@ function idFromHref(href) {
         return el;
     }
 
-    function itemRow(item) {
+    // One item: cover, title, creator. In the review it has a tick box that
+    // leaves it out; in the choose step's list it doesn't.
+    function itemRow(item, withTick = true) {
         const row = document.createElement('li');
         row.className = 'bulk-item';
         const check = document.createElement('input');
@@ -625,7 +850,8 @@ function idFromHref(href) {
         creator.className = 'bulk-item-creator';
         creator.textContent = item.creator || '';
         text.append(title, creator);
-        row.append(check, img, text);
+        if (withTick) row.append(check);
+        row.append(img, text);
         return row;
     }
 
@@ -657,7 +883,30 @@ function idFromHref(href) {
 
     function goBack() {
         showStage('choose');
-        $('bulk-genre-input').focus();
+        $(`bulk-in-${sheet.kind}`).querySelector('input:not([type="radio"]), select')?.focus();
+    }
+
+    // ---- the actions menu (More on a wide screen, Actions on a phone) ----
+
+    const menuOpen = () => !$('bulk-menu').classList.contains('hidden');
+
+    function toggleMenu(open = !menuOpen()) {
+        $('bulk-menu').classList.toggle('hidden', !open);
+        $('bulk-more').setAttribute('aria-expanded', String(open));
+        if (open) {
+            // Restore only makes sense where removed items are in view (Show: removed or everything)
+            const show = new URLSearchParams(window.location.search);
+            $('bulk-restore-item').hidden = !(['removed', 'all'].includes(show.get('show')) || show.get('show_removed'));
+            Array.from($('bulk-menu').querySelectorAll('button:not([hidden])')).find(b => b.offsetParent)?.focus();
+        }
+    }
+
+    function onMenuKey(e) {
+        const items = Array.from($('bulk-menu').querySelectorAll('button')).filter(b => !b.hidden && b.offsetParent);
+        const at = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') { e.preventDefault(); items[(at + 1) % items.length]?.focus(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); items[(at - 1 + items.length) % items.length]?.focus(); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); toggleMenu(false); $('bulk-more').focus(); }
     }
 
     // ---- banner ---------------------------------------------------------
@@ -676,7 +925,8 @@ function idFromHref(href) {
         bulkToggleSelect: () => (selecting ? exitSelect() : enterSelect()),
         bulkSelectAll: selectAll,
         bulkClear: clearSelection,
-        bulkOpen: el => openSheet(el.dataset.action, el),
+        bulkOpen: el => { toggleMenu(false); openSheet(el.dataset.action, el.closest('#bulk-menu') ? $('bulk-more') : el); },
+        bulkMenu: () => toggleMenu(),
         bulkGo: () => (sheet.stage === 'choose' ? goReview() : goApply()),
         bulkChange: goBack,
         bulkCancel: closeSheet,
@@ -702,15 +952,27 @@ function idFromHref(href) {
         const input = $('bulk-genre-input');
         input.addEventListener('input', onGenreInput);
         input.addEventListener('keydown', onGenreKey);
-        input.addEventListener('focus', () => { renderGenreList(); openList(true); });
-        // pointerdown, not click: the input would blur and hide the list first
-        $('bulk-genre-list').addEventListener('pointerdown', e => {
-            const opt = e.target.closest('[role="option"]');
-            if (opt) { e.preventDefault(); chooseOption(opt); }
+        // Any other input in the sheet re-checks whether Review can be pressed
+        const choose = $('bulk-choose');
+        choose.addEventListener('input', syncChoose);
+        choose.addEventListener('change', e => {
+            if (e.target.name === 'bulk-shelf-mode') fillShelves();
+            if (e.target.id === 'bulk-shelf') {
+                $('bulk-shelf-new-row').classList.toggle('hidden', e.target.value !== '__new__');
+                if (e.target.value === '__new__') $('bulk-shelf-new').focus();
+            }
+            syncChoose();
         });
-        // Click elsewhere in the sheet closes the list
-        $('bulk-sheet').addEventListener('click', e => {
-            if (!e.target.closest('#bulk-genre-input, #bulk-genre-list')) openList(false);
+        choose.addEventListener('keydown', onChooseKey);
+        $('bulk-menu').addEventListener('keydown', onMenuKey);
+        // A click outside the menu closes it
+        document.addEventListener('click', e => {
+            if (menuOpen() && !e.target.closest('#bulk-menu, #bulk-more')) toggleMenu(false);
+        });
+        // click, not pointerdown: a finger that starts on an option may be scrolling the list
+        $('bulk-genre-list').addEventListener('click', e => {
+            const opt = e.target.closest('[role="option"]');
+            if (opt) chooseOption(opt);
         });
         // Esc, however the dialog closed, sends focus back to the button that opened it
         $('bulk-sheet').addEventListener('close', () => (opener || $('bulk-select-btn'))?.focus());
@@ -725,6 +987,7 @@ function idFromHref(href) {
     document.addEventListener('keydown', e => {
         if (!selecting || $('bulk-sheet').open) return;     // an open sheet takes its own Escape
         if (e.key === 'Escape') {
+            if (menuOpen()) { toggleMenu(false); return; }   // the menu closes first
             exitSelect();
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a'
                    && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
@@ -738,6 +1001,6 @@ function idFromHref(href) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         fold, rangeBetween, columnCount, nextIndex, groupTickState, applyCount, summaryLine, applyLabel,
-        selectedLabel, matchGenre, filterGenres, carryExclusions, idFromHref,
+        selectedLabel, matchGenre, filterGenres, carryExclusions, idFromHref, buildParams, tagHint, nowText,
     };
 }

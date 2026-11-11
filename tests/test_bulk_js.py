@@ -116,10 +116,10 @@ def test_filter_genres_by_folded_text():
 
 
 def test_choices_carry_over_a_stale_plan():
-    old = {'groups': [{'before': 'Cooking', 'items': [{'id': 1}, {'id': 2}]},
-                      {'before': 'Cookery', 'items': [{'id': 3}, {'id': 4}]}]}
-    new = {'groups': [{'before': 'Cooking', 'items': [{'id': 1}, {'id': 2}, {'id': 9}]},   # 9 is new
-                      {'before': 'Cookery', 'items': [{'id': 4}]}]}                      # 3 moved on
+    old = {'groups': [{'key': 'Cooking', 'items': [{'id': 1}, {'id': 2}]},
+                      {'key': 'Cookery', 'items': [{'id': 3}, {'id': 4}]}]}
+    new = {'groups': [{'key': 'Cooking', 'items': [{'id': 1}, {'id': 2}, {'id': 9}]},   # 9 is new
+                      {'key': 'Cookery', 'items': [{'id': 4}]}]}                      # 3 moved on
     script = (f'const b = require({json.dumps(str(BULK))});'
               f'const out = b.carryExclusions({json.dumps(old)}, new Set([1, 2, 4]), {json.dumps(new)});'
               'console.log(JSON.stringify([...out].sort()))')
@@ -135,3 +135,69 @@ def test_id_from_a_card_link():
     assert call('idFromHref', '/records/300') == 300
     assert call('idFromHref', '/nothing') is None
     assert call('idFromHref', None) is None
+
+
+def test_the_button_names_the_verb_and_the_count():
+    assert call('applyLabel', 44, 'status') == 'Apply to 44 items'
+    assert call('applyLabel', 1, 'genre') == 'Apply to 1 item'
+    assert call('applyLabel', 44, 'remove') == 'Remove 44 from library'
+    assert call('applyLabel', 30, 'shelf_add', 'Jazz') == 'Add 30 to Jazz'
+    assert call('applyLabel', 3, 'shelf_remove', 'Jazz') == 'Remove 3 from Jazz'
+    assert call('applyLabel', 2, 'restore') == 'Put 2 items back'
+
+
+def test_what_each_panel_sends():
+    assert call('buildParams', 'status', {'value': 'read'}) == {
+        'action': 'status', 'params': {'status': 'read'}, 'valid': True}
+    assert call('buildParams', 'status', {'value': ''})['valid'] is False
+    assert call('buildParams', 'format', {'value': 'DVD'})['params'] == {'format': 'DVD'}
+    assert call('buildParams', 'owned', {'value': '0'})['params'] == {'owned': '0'}
+    assert call('buildParams', 'owned', {})['valid'] is False
+    assert call('buildParams', 'remove', {'text': '  sold  '})['params'] == {'note': 'sold'}
+    assert call('buildParams', 'remove', {'text': '  '}) == {'action': 'remove', 'params': {'note': None},
+                                                              'valid': True}     # the note is optional
+    assert call('buildParams', 'restore', {}) == {'action': 'restore', 'params': {}, 'valid': True}
+    assert call('buildParams', 'genre', {'text': 'cookbooks', 'genres': GENRES}) == {
+        'action': 'genre', 'params': {'genre': 'Cookbooks'}, 'valid': True}
+    assert call('buildParams', 'nothing', {})['valid'] is False
+
+
+def test_shelf_panel_adds_removes_and_creates():
+    add = call('buildParams', 'shelf', {'mode': 'add', 'shelf': '7', 'mediaType': 'book'})
+    assert add == {'action': 'shelf_add', 'params': {'media_type': 'book', 'shelf_id': 7}, 'valid': True}
+    remove = call('buildParams', 'shelf', {'mode': 'remove', 'shelf': '7', 'mediaType': 'video'})
+    assert remove['action'] == 'shelf_remove' and remove['params'] == {'media_type': 'video', 'shelf_id': 7}
+    new = call('buildParams', 'shelf', {'mode': 'add', 'shelf': '__new__', 'newName': ' Road trip ', 'mediaType': 'book'})
+    assert new == {'action': 'shelf_add', 'params': {'media_type': 'book', 'new_shelf': 'Road trip'}, 'valid': True}
+    assert call('buildParams', 'shelf', {'mode': 'add', 'shelf': '__new__', 'newName': ' ', 'mediaType': 'book'})['valid'] is False
+    assert call('buildParams', 'shelf', {'mode': 'add', 'shelf': '', 'mediaType': 'book'})['valid'] is False
+    # You can't create a shelf by removing from it
+    assert call('buildParams', 'shelf', {'mode': 'remove', 'shelf': '__new__', 'newName': 'x', 'mediaType': 'book'})['valid'] is False
+
+
+def test_tag_panel_and_its_hint():
+    got = call('buildParams', 'tag', {'mode': 'add', 'text': '  Gifted '})
+    assert got == {'action': 'tag_add', 'params': {'tag': 'gifted'}, 'valid': True}
+    assert call('buildParams', 'tag', {'mode': 'remove', 'text': 'x'})['action'] == 'tag_remove'
+    assert call('buildParams', 'tag', {'mode': 'add', 'text': ' '})['valid'] is False
+    assert call('buildParams', 'tag', {'mode': 'add', 'text': 'x' * 51})['valid'] is False
+    assert call('tagHint', 'Gifted') == 'Saved as \u201cgifted\u201d'
+    assert call('tagHint', 'gifted') == ''
+    assert call('tagHint', '') == ''
+    assert call('tagHint', 'x' * 51) == 'Keep it to 50 characters or fewer.'
+
+
+def test_now_text_shows_the_value_the_action_changes():
+    item = {'yours': True, 'genre': None, 'status': 'Read', 'format': 'Audiobook', 'owned': False,
+            'removed': True, 'shelves': ['Jazz', 'Keep'], 'tags': []}
+    assert call('nowText', 'genre', item) == '(no genre)'
+    assert call('nowText', 'status', item) == 'Read'
+    assert call('nowText', 'format', item) == 'Audiobook'
+    assert call('nowText', 'owned', item) == 'Not owned'
+    assert call('nowText', 'restore', item) == 'Removed'
+    assert call('nowText', 'shelf', item) == 'On Jazz, Keep'
+    assert call('nowText', 'tag', item) == 'No tags'
+    # Item edits on someone else's item say so up front; marks don't
+    theirs = {**item, 'yours': False}
+    assert call('nowText', 'genre', theirs) == 'Not yours, will be skipped'
+    assert call('nowText', 'status', theirs) == 'Read'

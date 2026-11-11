@@ -38,7 +38,7 @@ def test_plan_shape(client, db, people):
     plan = r.get_json()['plan']
     assert plan['describe'] == 'Set genre to “Cookbooks”'
     assert (plan['changes'], plan['same']) == (3, 1)
-    assert [(g['before'], g['count']) for g in plan['groups']] == [('Cooking', 2), ('Cookbook', 1)]
+    assert [(g['key'], g['count']) for g in plan['groups']] == [('Cooking', 2), ('Cookbook', 1)]
     assert {i['title'] for i in plan['groups'][0]['items']} == {'Book 0', 'Book 1'}
     assert plan['fingerprint'] and plan['skipped'] == []
     assert genre_of(db, ids[0]) == 'Cooking'                       # nothing written
@@ -85,7 +85,7 @@ def test_stale_apply_is_409_with_the_new_plan(client, db, people):
     r = post(client, '/bulk/apply', action='genre', params=params, ids=ids, fingerprint=fp)
     body = r.get_json()
     assert r.status_code == 409 and body['stale'] is True and body['success'] is False
-    assert body['plan']['fingerprint'] != fp and body['plan']['groups'][0]['before'] == 'Elsewhere'
+    assert body['plan']['fingerprint'] != fp and body['plan']['groups'][0]['key'] == 'Elsewhere'
     assert [genre_of(db, i) for i in ids] == ['Elsewhere', 'Cookbook']
     assert client.get('/base/index').get_data(as_text=True).count('Genre set') == 0
 
@@ -150,3 +150,53 @@ def test_the_bulk_routes_are_not_csrf_exempt(app):
     csrf = app.extensions['csrf']
     exempt = getattr(csrf, '_exempt_views', set()) | getattr(csrf, '_exempt_blueprints', set())
     assert not [e for e in exempt if 'bulk' in str(e)]
+
+
+def test_options_route(client, db, people):
+    db.execute("INSERT INTO user_collections (user_id, name, media_type) VALUES (?, 'Jazz', 'book')",
+               (people['alice'],))
+    db.commit()
+    login(client, 'alice')
+    got = client.get('/bulk/options?type=video').get_json()
+    assert got['success'] and got['section'] == 'Movies'
+    assert [s['value'] for s in got['statuses']] == ['watched', 'want to watch', 'untracked']
+    assert got['shelves'] == []
+    assert [s['name'] for s in client.get('/bulk/options?type=book').get_json()['shelves']] == ['Jazz']
+    assert client.get('/bulk/options?type=bogus').status_code == 400
+    assert client.get('/bulk/options').status_code == 200            # defaults to books
+
+
+def test_the_other_actions_work_through_the_routes(client, db, people):
+    ids = books(db, people['alice'], ['A', 'B'])
+    login(client, 'alice')
+    for action, params, summary in (('tag_add', {'tag': 'Gift'}, 'Tag “gift” added to 2 items'),
+                                    ('status', {'status': 'read'}, 'Status set to Read on 2 items'),
+                                    ('remove', {'note': 'sold'}, 'Removed 2 items from the library')):
+        fp = post(client, '/bulk/plan', action=action, params=params, ids=ids).get_json()['plan']['fingerprint']
+        r = post(client, '/bulk/apply', action=action, params=params, ids=ids, fingerprint=fp)
+        assert r.status_code == 200 and r.get_json()['summary'] == summary, action
+    bad = post(client, '/bulk/plan', action='shelf_add', params={'shelf_id': 999, 'media_type': 'book'}, ids=ids)
+    assert bad.status_code == 400 and bad.get_json()['error'] == 'That shelf was not found.'
+
+
+def test_selection_route_lists_what_each_item_has_now(client, db, people):
+    """The choose step's list: each item's current values, the viewer's own
+    marks, and nothing the viewer can't see."""
+    alice, bob = people['alice'], people['bob']
+    mine, theirs = books(db, alice, ['Cooking', None])
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, mine))
+    db.execute("INSERT INTO book_tags (user_id, book_id, tag_name) VALUES (?, ?, 'gift')", (alice, mine))
+    db.execute("INSERT INTO book_tags (user_id, book_id, tag_name) VALUES (?, ?, 'bobs')", (bob, mine))
+    stranger = add_book(db, people['carol'], title='Carol only')
+    db.execute('UPDATE books SET added_by = ? WHERE id = ?', (bob, theirs))       # household: visible, not hers
+    db.commit()
+    login(client, 'alice')
+    items = post(client, '/bulk/selection', ids=[mine, theirs]).get_json()['items']
+    assert [(i['id'], i['genre'], i['status'], i['tags']) for i in items] == [
+        (mine, 'Cooking', 'Read', ['gift']), (theirs, None, 'Unread', [])]
+    assert items[0]['format'] == 'Book' and items[0]['owned'] and not items[0]['removed']
+    # Bob (household, not an admin): his own marks, and only his item is "yours"
+    login(client, 'bob')
+    items = post(client, '/bulk/selection', ids=[mine, theirs, stranger]).get_json()['items']
+    assert [(i['id'], i['tags'], i['yours']) for i in items] == [(mine, ['bobs'], False), (theirs, [], True)]
+    assert post(client, '/bulk/selection', ids=['x']).status_code == 400

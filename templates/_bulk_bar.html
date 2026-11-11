@@ -1,7 +1,9 @@
 {# Bulk edit's selection bar (static/bulk.js): fixed to the bottom while select
-   mode is on, in place of the floating + (styles.css, "Bulk select"). One
-   action in step 4 (Genre); the rest of the spec's actions join it later.
-   Actions are disabled, not hidden, at 0 selected, so the bar never jumps. #}
+   mode is on, in place of the floating +. On a wide screen the common actions
+   are buttons and the rest are under More; on a phone everything is under
+   one Actions button (styles.css, "Bulk select"). Actions are disabled, not
+   hidden, at 0 selected, so the bar never jumps. #}
+{% set btn = 'btn bg-accent hover:bg-accent-hover text-on-accent px-3 py-1.5 text-sm font-bold' %}
 <div id="bulk-bar" class="bulk-bar hidden" role="region" aria-label="Selection">
     <div class="bulk-bar-inner">
         <p id="bulk-count" class="bulk-count" aria-live="polite">0 selected</p>
@@ -9,9 +11,30 @@
         <button type="button" id="bulk-clear" data-click="bulkClear" class="bulk-link hidden">Clear</button>
         <p id="bulk-hint" class="bulk-hint hidden"></p>
         <div class="bulk-actions">
-            <button type="button" data-click="bulkOpen" data-action="genre" data-bulk-action
-                    class="btn bg-accent hover:bg-accent-hover text-on-accent px-3 py-1.5 text-sm font-bold"
-                    disabled title="Select something first">Genre</button>
+            {% for key, label in [('genre', 'Genre'), ('status', 'Status'), ('shelf', 'Shelf'), ('tag', 'Tag')] %}
+            <button type="button" data-click="bulkOpen" data-action="{{ key }}" data-bulk-action
+                    class="bulk-main {{ btn }}" disabled title="Select something first">{{ label }}</button>
+            {% endfor %}
+            <div class="relative">
+                <button type="button" id="bulk-more" data-click="bulkMenu" data-bulk-action
+                        aria-haspopup="menu" aria-expanded="false" aria-controls="bulk-menu"
+                        class="{{ btn }}" disabled title="Select something first">
+                    <span class="sm:hidden">Actions</span><span class="hidden sm:inline">More</span>
+                </button>
+                <ul id="bulk-menu" role="menu" class="bulk-menu hidden">
+                    {# data-tier="main" are the buttons beside More on a wide screen, so the menu hides them there #}
+                    {% for key, label, tier in [('genre', 'Genre', 'main'), ('status', 'Status', 'main'),
+                                                ('shelf', 'Shelf', 'main'), ('tag', 'Tag', 'main'),
+                                                ('format', 'Format', 'more'), ('owned', 'Owned or not owned', 'more'),
+                                                ('remove', 'Remove from library', 'more'),
+                                                ('restore', 'Restore to library', 'more')] %}
+                    <li role="none"{% if key == 'restore' %} id="bulk-restore-item" hidden{% endif %}>
+                        <button type="button" role="menuitem" data-click="bulkOpen" data-action="{{ key }}"
+                                data-tier="{{ tier }}" class="bulk-menu-item {{ 'bulk-menu-danger' if key == 'remove' }}">{{ label }}</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
     </div>
 </div>

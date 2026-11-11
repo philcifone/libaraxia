@@ -2399,6 +2399,22 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
 }
 .bulk-link.hidden { display: none; }
 
+/* The Actions / More menu: opens upward from the bar. On a wide screen the
+   first four actions are buttons, so the menu holds the rest; on a phone it
+   holds everything and the buttons are hidden. */
+.bulk-menu {
+    position: absolute; right: 0; bottom: calc(100% + .6rem); min-width: 13rem; z-index: 35;
+    background: rgb(var(--surface)); border: var(--bw-card) solid var(--card-edge); box-shadow: var(--sh-card);
+    padding: .25rem 0;
+}
+.bulk-menu.hidden { display: none; }
+.bulk-menu-item { display: block; width: 100%; text-align: left; padding: .6rem 1rem; background: none; border: 0; cursor: pointer; color: rgb(var(--ink)); }
+.bulk-menu-item:hover, .bulk-menu-item:focus-visible { background: rgb(var(--accent)); color: rgb(var(--on-accent)); outline: none; }
+.bulk-menu-item:disabled { opacity: .5; cursor: not-allowed; }
+.bulk-menu-danger { color: rgb(var(--ink)); border-top: 1px solid rgb(var(--rule)); }
+@media (max-width: 639px) { .bulk-main { display: none; } }
+@media (min-width: 640px) { .bulk-menu [data-tier="main"] { display: none; } }
+
 /* The sheet: centred on wide screens, full height on a phone */
 .bulk-sheet {
     padding: 0; margin: auto;
@@ -2419,10 +2435,19 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
     .bulk-sheet { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-width: 0; }
 }
 
+/* The sheet's inputs */
+.bulk-field {
+    width: 100%; padding: .5rem .75rem;
+    background: rgb(var(--paper)); color: rgb(var(--ink));
+    border: 1px solid rgb(var(--rule-strong));
+}
+.bulk-field:focus { outline: 2px solid rgb(var(--accent)); outline-offset: 1px; }
+.bulk-radio { display: flex; align-items: center; gap: .6rem; padding: .35rem 0; cursor: pointer; }
+.bulk-radio input { width: 1.1rem; height: 1.1rem; accent-color: rgb(var(--accent)); }
+
 /* The genre picker */
 .bulk-list {
-    position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin-top: 2px;
-    max-height: 14rem; overflow-y: auto;
+    max-height: min(16rem, 40dvh); overflow-y: auto; overscroll-behavior: contain;
     background: rgb(var(--surface)); border: 2px solid rgb(var(--rule-strong));
 }
 .bulk-list.hidden { display: none; }
@@ -2430,7 +2455,13 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
 .bulk-opt:hover, .bulk-opt[aria-selected="true"] { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
 .bulk-opt-count { color: rgb(var(--muted)); font-variant-numeric: tabular-nums; }
 .bulk-opt:hover .bulk-opt-count, .bulk-opt[aria-selected="true"] .bulk-opt-count { color: inherit; }
+.bulk-opt[data-chosen] { font-weight: 700; box-shadow: inset 4px 0 0 rgb(var(--accent)); }
 .bulk-opt-none { border-top: 1px solid rgb(var(--rule)); font-style: italic; }
+
+/* The choose step's list of the selected items: the value each has now */
+#bulk-selected-list { max-height: none; }
+#bulk-title:focus { outline: none; }
+.bulk-item-now { display: block; font-size: .85rem; color: rgb(var(--accent-text)); }
 
 /* The review: one line per group, items on demand */
 .bulk-stale {

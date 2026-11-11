@@ -45,7 +45,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 - [x] 2. Migration 031: `bulk_edits`, `bulk_edit_items`, `collections.quiet` (+ feed filter; the status route resets it).
 - [x] 3. `utils/bulk.py`, genre only, headless: plan, apply, undo.
 - [x] 4. The UI on the Books grid, genre only: Select, bar, choose/review sheet, result banner. **Merge point M1.**
-- [ ] 5. Remaining actions: format, owned, remove, restore, status, shelves, tags.
+- [x] 5. Remaining actions: format, owned, remove, restore, status, shelves, tags.
 - [ ] 6. Movies, Music, Household, Search, collection pages; Profile -> Recent bulk edits.
 - [ ] 7. Select all in view. **Merge point M2.**
 - [ ] 8. Wrap-up: archive, CLAUDE.md.

@@ -62,9 +62,10 @@ def cookbooks(conn, people):
 def test_plan_groups_changes_by_before_value(conn, people, who):
     ids = cookbooks(conn, people)
     p = bulk.plan(conn, who['alice'], 'genre', {'genre': 'Cookbooks'}, everything(ids))
-    assert [(g.before, g.count) for g in p.groups] == [
+    assert [(g.key, g.count) for g in p.groups] == [
         ('Cooking', 4), ('Cookbook', 3), ('Cookery', 2), ('Reference', 2), (None, 2)]
-    assert all(g.after == 'Cookbooks' for g in p.groups)
+    assert all(g.label.endswith('\u2192 Cookbooks') for g in p.groups)
+    assert p.groups[0].label == 'Cooking \u2192 Cookbooks' and p.groups[-1].label == '(no genre) \u2192 Cookbooks'
     assert p.changes == 13 and p.same == 1 and p.skipped == {}
     assert sorted(p.groups[0].ids) == sorted(ids['Cooking'])
 
