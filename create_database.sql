@@ -108,10 +108,34 @@ CREATE TABLE collections (
     status TEXT NOT NULL REFERENCES statuses(status),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- 1 = written by a bulk edit or import: not announced in the feed (031)
+    quiet INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_collections_created_at ON collections(created_at);
+
+-- Bulk edit's journal (031, ROADMAP 14a): one row per applied edit, and what
+-- each item was before and after so undo can put it back.
+CREATE TABLE bulk_edits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,          -- whitelist key: 'genre', 'status', ...
+    params TEXT NOT NULL,          -- JSON of the action's value(s)
+    summary TEXT NOT NULL,         -- 'Genre set to Cookbooks on 42 items'
+    item_count INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    undone_at TIMESTAMP
+);
+CREATE INDEX idx_bulk_edits_user ON bulk_edits(user_id, created_at);
+
+CREATE TABLE bulk_edit_items (
+    edit_id INTEGER NOT NULL REFERENCES bulk_edits(id) ON DELETE CASCADE,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    before TEXT,                   -- JSON snapshot; NULL = no row existed
+    after TEXT,                    -- JSON snapshot; NULL = no row exists now
+    PRIMARY KEY (edit_id, book_id)
+);
 
 -- Rating and review.
 CREATE TABLE read_data (
@@ -391,4 +415,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('026_accent.sql'),
     ('027_shelf_types.sql'),
     ('028_font.sql'),
-    ('029_reading_goals.sql');
+    ('029_reading_goals.sql'),
+    ('031_bulk_edits.sql');

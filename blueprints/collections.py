@@ -222,7 +222,8 @@ def add_to_status_collection():
         if exists:
             conn.execute('''
                 UPDATE collections
-                SET status = ?, updated_at = CURRENT_TIMESTAMP
+                SET status = ?, updated_at = CURRENT_TIMESTAMP,
+                    quiet = 0  -- a status you set by hand is yours to announce again (031)
                 WHERE user_id = ? AND book_id = ?
             ''', (status, current_user.id, book_id))
         else:

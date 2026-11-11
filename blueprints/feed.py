@@ -91,6 +91,8 @@ def activity_feed():
         -- activity (books use reviews for that)
         WHERE c.status IN ('currently reading', 'want to read', 'watched', 'want to watch',
                            'listened', 'want to listen')
+        -- rows written by a bulk edit are quiet (migration 031)
+        AND c.quiet = 0
         AND NOT EXISTS (
             SELECT 1 FROM dismissed_activities da
             WHERE da.activity_type = 'collection_added'

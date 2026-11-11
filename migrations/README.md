@@ -52,3 +52,4 @@ python3 manage.py migrate             # back up, then apply pending (asks first)
 - `027_shelf_types.sql` - Custom shelves get a `media_type` (Books / Movies / Music tabs on Collections, ROADMAP 8C); names unique per section. Rebuilds `user_collections`; a shelf holding only movies or only albums becomes that section's, every other shelf a Books one.
 - `028_font.sql` - Adds `users.font` (Profile → Appearance → Font).
 - `029_reading_goals.sql` - Reading goals per year (`reading_goals`, ROADMAP 12.3); the existing `users.reading_goal` becomes this year's row and the column is left unused.
+- `031_bulk_edits.sql` - Bulk edit (ROADMAP 14a): `bulk_edits` and `bulk_edit_items` (the undo journal) and `collections.quiet` (status rows written in bulk stay out of the feed). 030 is reserved for ROADMAP 15.1.

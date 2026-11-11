@@ -82,6 +82,8 @@ def wind_back_to_023(conn):
         DROP VIEW library_books;
         DROP VIEW library_videos;
         DROP VIEW library_records;
+        DROP TABLE bulk_edit_items;    -- 031 runs again below: the rebuilt
+        DROP TABLE bulk_edits;         -- collections has no quiet column
         DROP TABLE books;
         DROP TABLE collections;
         DROP TABLE statuses;
@@ -95,8 +97,10 @@ def wind_back_to_023(conn):
           AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = b.added_by);
         -- 024 rebuilds books and 025 adds books.owned; the rebuilt books
         -- above has neither, so both run again. Later migrations on other
-        -- tables (026: users) stay applied.
-        DELETE FROM schema_migrations WHERE name IN ('024_add_records.sql', '025_owned.sql');
+        -- tables (026: users) stay applied. 031 adds collections.quiet and
+        -- references books, so it goes back too.
+        DELETE FROM schema_migrations WHERE name IN ('024_add_records.sql', '025_owned.sql',
+                                                     '031_bulk_edits.sql');
     """)
 
 
@@ -329,3 +333,58 @@ def test_lookup_tables_match_utils_media(db):
     assert {r[0] for r in db.execute('SELECT name FROM media_types')} == set(media.MEDIA_TYPES)
     in_db = {(r[0], r[1]) for r in db.execute('SELECT status, media_type FROM statuses')}
     assert in_db == {(s, t) for t, statuses in media.STATUSES.items() for s in statuses}
+
+
+def test_031_on_a_database_at_029(template_db, tmp_path):
+    """031 (bulk edit, ROADMAP 14a) on a database that has everything up to
+    029: existing status rows survive and are not quiet, the journal tables
+    appear, and the schema ends up the same as a fresh one."""
+    path = tmp_path / 'at-029.db'
+    conn = fresh_db(path)
+    conn.executescript("""
+        DROP TABLE bulk_edit_items;
+        DROP TABLE bulk_edits;
+        ALTER TABLE collections DROP COLUMN quiet;
+        DELETE FROM schema_migrations WHERE name = '031_bulk_edits.sql';
+        INSERT INTO users (id, username, email, password) VALUES (1, 'phil', 'p@example.test', 'x');
+        INSERT INTO books (id, title, author, added_by) VALUES (1, 'A book', 'A', 1);
+        INSERT INTO collections (user_id, book_id, status) VALUES (1, 1, 'read');
+    """)
+    conn.close()
+
+    result = run_manage('--db', str(path), 'migrate', '-y')
+    assert '031_bulk_edits.sql' in result.stdout
+
+    conn = connect(path)
+    assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    assert [tuple(r) for r in conn.execute('SELECT book_id, status, quiet FROM collections')] == [(1, 'read', 0)]
+    assert conn.execute('SELECT COUNT(*) FROM bulk_edits').fetchone()[0] == 0
+    conn.close()
+    assert schema(path) == schema(template_db)
+
+
+def test_bulk_journal_follows_its_parents(db, people):
+    """An edit's items go with the edit, a book's with the book, an edit with
+    its user (the 30-day sweep and account deletion rely on the cascades)."""
+    alice, bob = people['alice'], people['bob']
+    db.execute('PRAGMA foreign_keys = ON')
+    book = db.execute("INSERT INTO books (title, author, added_by) VALUES ('B', 'A', ?)", (alice,)).lastrowid
+    other = db.execute("INSERT INTO books (title, author, added_by) VALUES ('C', 'A', ?)", (alice,)).lastrowid
+
+    def edit(user):
+        eid = db.execute("INSERT INTO bulk_edits (user_id, action, params, summary, item_count) "
+                         "VALUES (?, 'genre', '{}', 'x', 2)", (user,)).lastrowid
+        for b in (book, other):
+            db.execute("INSERT INTO bulk_edit_items (edit_id, book_id, before, after) VALUES (?, ?, NULL, '{}')",
+                       (eid, b))
+        return eid
+
+    first, second, third = edit(alice), edit(alice), edit(bob)
+    db.execute('DELETE FROM bulk_edits WHERE id = ?', (first,))
+    assert db.execute('SELECT COUNT(*) FROM bulk_edit_items WHERE edit_id = ?', (first,)).fetchone()[0] == 0
+    db.execute('DELETE FROM books WHERE id = ?', (book,))
+    assert [r[0] for r in db.execute('SELECT book_id FROM bulk_edit_items WHERE edit_id = ?', (second,))] == [other]
+    db.execute('DELETE FROM users WHERE id = ?', (bob,))
+    assert db.execute('SELECT COUNT(*) FROM bulk_edits WHERE id = ?', (third,)).fetchone()[0] == 0
+    assert db.execute('SELECT COUNT(*) FROM bulk_edit_items WHERE edit_id = ?', (third,)).fetchone()[0] == 0
+    assert db.execute('PRAGMA foreign_key_check').fetchall() == []
