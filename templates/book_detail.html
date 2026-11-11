@@ -250,17 +250,9 @@
                             Remove from {{ m.section }}
                         </button>
                     </form>
-                    {# A mistake at add time, not a removal: never had it #}
-                    <form action="{{ url_for('books.set_ownership', id=book['id']) }}" method="POST" class="mt-2 text-center">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="owned" value="0">
-                        <button type="submit" class="text-xs text-content-secondary underline hover:text-accent">
-                            Never owned it? Mark it not owned
-                        </button>
-                    </form>
                     {% endif %}
 
-                    <p class="mt-4 text-xs text-content-secondary">Transfer and permanent delete are under <a href="{{ item_url(book, 'edit') }}#book-tools">Edit {{ m.Noun }} → {{ m.Noun }} tools</a>.</p>
+                    <p class="mt-4 text-xs text-content-secondary">Mark it not owned, transfer it or delete it permanently under <a href="{{ item_url(book, 'edit') }}#book-tools">Edit {{ m.Noun }} → {{ m.Noun }} tools</a>.</p>
                     {% endif %}
                 </div>
             </div>

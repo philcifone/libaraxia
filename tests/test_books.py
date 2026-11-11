@@ -275,7 +275,7 @@ def test_redirect_to_private_address_is_blocked(app):
 # --- book tools on the edit page (Phase 7.2) ---------------------------------
 
 def test_book_tools_live_on_the_edit_page(client, db, people):
-    """Transfer and permanent delete moved from the book page into a "Book
+    """Transfer, marking it not owned and permanent delete live in a "Book
     tools" disclosure on the edit page (owner/admin only, like the edit page)."""
     book = add_book(db, people['bob'], 'Dune', 'Frank Herbert')
     login(client, 'bob')
@@ -284,9 +284,12 @@ def test_book_tools_live_on_the_edit_page(client, db, people):
     assert f'action="/books/transfer/{book}"' in edit          # bob shares a household with alice
     assert f'action="/books/delete/{book}"' in edit
     assert '<option value="%d">alice</option>' % people['alice'] in edit
+    # Ownership: the not-owned switch sits with transfer (Phil, 2026-11-11)
+    assert f'action="/books/ownership/{book}"' in edit and 'Mark It Not Owned' in edit
 
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
     assert f'/books/delete/{book}' not in page and f'/books/transfer/{book}' not in page
+    assert f'/books/ownership/{book}' not in page               # owned: the switch is in the tools
     assert f'/books/remove/{book}' in page                      # the everyday action stays
     assert f'/books/edit/{book}#book-tools' in page
 

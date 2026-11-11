@@ -1,5 +1,5 @@
-{# Owner/admin "Book tools" on the edit page: transfer ownership and permanent
-   delete. (Remove from Library / Put Back stays on the book page: it's the
+{# Owner/admin "Book tools" on the edit page: ownership (owned or not, and
+   transfer within a household) and permanent delete. (Remove from Library / Put Back stays on the book page: it's the
    everyday action.) The edit route only renders for the owner or an admin;
    the transfer and delete routes check again on POST.
    Needs: book, library_members, owner_username, others_with_data, in_wishlist. #}
@@ -13,10 +13,28 @@
     </summary>
 
     <div class="mt-6 space-y-8">
+        <section class="space-y-3">
+            <h2 class="label text-sm pb-1">Ownership</h2>
+            {# Owned or not (8B.3): never had it (an audiobook, an ebook, a
+               library copy) vs. on your shelf. Not for a wishlist entry. #}
+            {% if not in_wishlist %}
+            <form action="{{ url_for('books.set_ownership', id=book['id']) }}" method="POST"
+                  class="flex flex-col sm:flex-row sm:items-center gap-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if book['owned'] %}
+                <p class="flex-1 text-sm text-content-secondary">Never owned it (an audiobook, an ebook, a library copy)? It leaves your shelf; your status, review and history stay.</p>
+                <input type="hidden" name="owned" value="0">
+                <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Mark It Not Owned</button>
+                {% else %}
+                <p class="flex-1 text-sm text-content-secondary">Marked <strong class="text-content-primary">not owned</strong>: off your shelf, still in your stats and reviews.</p>
+                <input type="hidden" name="owned" value="1">
+                <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">I Own It Now</button>
+                {% endif %}
+            </form>
+            {% endif %}
+
         {# Transfer: household members (admins: anyone) #}
         {% if library_members and library_members|length > 1 %}
-        <section class="space-y-3">
-            <h2 class="label text-sm pb-1">Transfer ownership</h2>
             <p class="text-sm text-content-secondary">
                 Current owner: <span class="text-content-primary font-bold">{{ owner_username or 'No owner' }}</span>.
                 Give this {{ noun }} to another member of your household; it moves to their shelf.
@@ -37,11 +55,11 @@
                     {% endfor %}
                 </select>
                 <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
-                    Transfer Book
+                    Transfer {{ noun|capitalize }}
                 </button>
             </form>
-        </section>
         {% endif %}
+        </section>
 
         {# Permanent delete: for mistakes (duplicates, bad scans) #}
         <section class="space-y-3">
