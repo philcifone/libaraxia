@@ -40,9 +40,9 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 **Spec: [docs/BULK-EDIT-SPEC.md](docs/BULK-EDIT-SPEC.md)** (approved 2026-11-10). Built on branch `phase-14-bulk-edit` in the worktree `../libaraxia-bulk`, one step at a time; Phil commits and merges (spec section 14).
 
 ### 14a Bulk edit 🟠
-- [ ] 1. Grid query extraction (`utils/grid_query.py`), no behaviour change, pinned by tests first.
-- [ ] 2. Migration 031: `bulk_edits`, `bulk_edit_items`, `collections.quiet` (+ feed filter; the status route resets it).
-- [ ] 3. `utils/bulk.py`, genre only, headless: plan, apply, undo.
+- [x] 1. Grid query extraction (`utils/grid_query.py`), no behaviour change, pinned by tests first.
+- [x] 2. Migration 031: `bulk_edits`, `bulk_edit_items`, `collections.quiet` (+ feed filter; the status route resets it).
+- [x] 3. `utils/bulk.py`, genre only, headless: plan, apply, undo.
 - [ ] 4. The UI on the Books grid, genre only: Select, bar, choose/review sheet, result banner. **Merge point M1.**
 - [ ] 5. Remaining actions: format, owned, remove, restore, status, shelves, tags.
 - [ ] 6. Movies, Music, Household, Search, collection pages; Profile -> Recent bulk edits.
