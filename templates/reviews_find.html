@@ -35,7 +35,7 @@
                 <li>
                     <a href="{{ url_for('read.rate_review', book_id=r.id, from='reviews') }}"
                        class="flex items-center gap-4 bg-secondary rounded-lg p-3 card card-link">
-                        {% if r.cover_image_url %}
+                        {% if r.cover_image_url|upload_exists %}
                         <img src="{{ url_for('static', filename=r.cover_image_url) }}" alt="" loading="lazy"
                              class="w-12 max-h-20 object-contain rounded shrink-0">
                         {% else %}

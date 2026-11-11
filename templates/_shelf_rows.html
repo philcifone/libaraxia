@@ -36,7 +36,7 @@
                 {% for c in shelf.covers %}
                     {% set labelled = c.stars or c.by %}
                     {% if labelled %}<figure class="shelf-figure flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
-                    {% if c.cover_image_url %}
+                    {% if c.cover_image_url|upload_exists %}
                     <img src="{{ url_for('static', filename=c.cover_image_url) }}" alt="{{ c.title }}"
                          loading="lazy" class="{{ cover_h }} w-auto max-w-[8rem] rounded shadow-sm">
                     {% else %}

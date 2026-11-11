@@ -101,7 +101,7 @@
             {% set lm = labels_for(row) %}
             <li>
                 <a href="{{ item_url(row) }}" class="flex gap-4 bg-secondary rounded-xl card card-link p-3 sm:p-4">
-                    {% if row.cover_image_url %}
+                    {% if row.cover_image_url|upload_exists %}
                     <img src="{{ url_for('static', filename=row.cover_image_url) }}" alt="" loading="lazy"
                          class="h-24 w-auto max-w-[5rem] self-start rounded shadow-sm">
                     {% else %}

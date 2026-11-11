@@ -464,7 +464,7 @@
                     <div class="flex gap-4">
                         <!-- Book Cover -->
                         <a href="{{ url_for('books.show_book', id=review.book_id) }}" class="flex-shrink-0" aria-label="{{ review.title }}">
-                            {% if review.cover_image_url %}
+                            {% if review.cover_image_url|upload_exists %}
                             <img src="{{ url_for('static', filename=review.cover_image_url) }}"
                                  alt="{{ review.title }}"
                                  class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" />

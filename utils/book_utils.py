@@ -839,6 +839,7 @@ def card_json(conn, viewer_id, books):
     with what list view shows: year, format, and the viewer's status
     (as its label) and rating."""
     from utils import media
+    from utils.image_utils import upload_exists
     marks = viewer_marks(conn, viewer_id, [b['id'] for b in books])
     out = []
     for b in books:
@@ -848,7 +849,8 @@ def card_json(conn, viewer_id, books):
             'id': b['id'],
             'title': b['title'],
             'author': b['author'],
-            'cover_image_url': b['cover_image_url'],
+            # A dead link is sent as none, so the card gets the placeholder
+            'cover_image_url': b['cover_image_url'] if upload_exists(b['cover_image_url']) else None,
             'removed': b['removed_at'] is not None,
             'not_owned': not b['owned'],
             'format': b['format'],

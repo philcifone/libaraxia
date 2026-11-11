@@ -47,7 +47,7 @@
                 <!-- Book Cover Section -->
                 <div class="space-y-4">
                     <div class="cover-stand w-72 md:w-full max-w-[300px] mx-auto">{# cover-stand: a ledge in the Shelf style #}
-                        {% if book.cover_image_url %}
+                        {% if book.cover_image_url|upload_exists %}
                             <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                                 alt="{{ book['title'] }} Cover"
                                 class="w-full rounded-lg shadow-lg">

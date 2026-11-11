@@ -915,3 +915,24 @@ def test_a_dead_avatar_link_shows_the_letter(client, db, people, static_root):
     found = {u['username']: u['avatar_url'] for u in client.get('/friends/search_users?q=ali').get_json()}
     assert found['alice'] is None
 
+
+def test_dead_cover_links_get_the_placeholder_everywhere(client, db, people, static_root):
+    """A cover whose file is gone is drawn as the title placeholder, like no
+    cover at all, on every page that shows covers (and in the grid's
+    infinite-scroll JSON), never as the browser's broken-image icon."""
+    from conftest import add_book as put, add_review
+    (static_root / 'uploads').mkdir()
+    (static_root / 'uploads' / 'here.jpg').write_bytes(b'x')
+    gone = put(db, people['alice'], title='Gone Book', cover='uploads/gone.jpg')
+    put(db, people['alice'], title='Here Book', cover='uploads/here.jpg')
+    add_review(db, people['alice'], gone)
+    login(client, 'alice')
+    for url in ('/base/index', f'/books/book/{gone}', f'/read/rate_review/{gone}',
+                '/user/alice', '/reviews/?type=book', '/have/?q=Gone+Book'):
+        page = client.get(url).get_data(as_text=True)
+        assert 'uploads/gone.jpg' not in page, url
+        assert 'no-cover' in page, url
+    assert 'uploads/here.jpg' in client.get('/base/index').get_data(as_text=True)
+    cards = client.get('/base/index?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()['books']
+    covers = {c['title']: c['cover_image_url'] for c in cards}
+    assert covers == {'Gone Book': None, 'Here Book': 'uploads/here.jpg'}

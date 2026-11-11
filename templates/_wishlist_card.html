@@ -8,7 +8,7 @@
      data-search="{{ (book.title ~ ' ' ~ (book.author or ''))|lower }}">
     <a href="{{ item_url(book) }}" class="block flex-1">
         <div class="relative">
-            {% if book.cover_image_url %}
+            {% if book.cover_image_url|upload_exists %}
             <img src="{{ url_for('static', filename=book.cover_image_url) }}" alt="{{ book.title }}"
                  class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200">
             {% else %}

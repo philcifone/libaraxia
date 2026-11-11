@@ -22,7 +22,7 @@
                         {% elif book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
                         {% endif %}
-                        {% if book.cover_image_url %}
+                        {% if book.cover_image_url|upload_exists %}
                         {# cover-box: the Shelf style draws the cover as a 3D box on it;
                            display: contents (no box at all) everywhere else #}
                         <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"

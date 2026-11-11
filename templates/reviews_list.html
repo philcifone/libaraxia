@@ -22,7 +22,7 @@
             {% set page = item_url(r) %}
             <li class="bg-secondary rounded-lg p-4 card flex gap-4 min-w-0">
                 <a href="{{ page }}" class="shrink-0 self-start" aria-label="{{ r.title }}">
-                    {% if r.cover_image_url %}
+                    {% if r.cover_image_url|upload_exists %}
                     <img src="{{ url_for('static', filename=r.cover_image_url) }}" alt="" loading="lazy"
                          class="w-20 max-h-32 object-contain rounded shadow-sm">
                     {% else %}

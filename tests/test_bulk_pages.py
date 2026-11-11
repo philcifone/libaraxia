@@ -138,10 +138,13 @@ def test_warning_flashes_are_their_own_colour(client, people):
     assert '.flash-warning' in (root / 'static' / 'styles.css').read_text()
 
 
-def test_grid_covers_carry_the_author_for_the_missing_file_fallback(client, db, people):
-    """A cover whose file is gone turns into the title binding (common.js),
-    which needs the author as well as the alt text."""
+def test_grid_covers_carry_the_author_for_the_missing_file_fallback(client, db, people, static_root):
+    """A cover that fails to load in the browser turns into the title binding
+    (common.js), which needs the author as well as the alt text. (A file
+    that's gone on the server never gets an <img>: test_dead_cover_links.)"""
     from conftest import add_book as put
-    put(db, people['alice'], title='Gone', author='Nobody', cover='uploads/no_such_file.jpg')
+    (static_root / 'uploads').mkdir()
+    (static_root / 'uploads' / 'flaky.jpg').write_bytes(b'x')
+    put(db, people['alice'], title='Gone', author='Nobody', cover='uploads/flaky.jpg')
     login(client, 'alice')
     assert 'alt="Gone" data-author="Nobody"' in client.get('/base/index').get_data(as_text=True)

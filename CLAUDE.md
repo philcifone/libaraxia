@@ -195,6 +195,7 @@ Not scheduled and not to be worked on until Phil picks them up; they belong in a
 ### Image Handling
 - Covers are uploaded or auto-fetched, resized to MAX_IMAGE_SIZE (500x1000), and stored under `static/uploads/` as `uploads/...` paths relative to `static/`. Avatars go in `static/uploads/avatars/`.
 - Fallback image (JS, when a cover fails to load): `static/no-cover.svg`. Templates show a themed "No Image Available" box instead.
+- A stored cover or avatar whose file is gone is treated as none: templates test `{% if x.cover_image_url|upload_exists %}` (not the bare column), and `card_json` sends None. Use the filter in any new template that shows a cover.
 - `app.py` sets `UPLOAD_FOLDER = static/uploads` (relative to the working dir), overriding the paths in config.py.
 
 ### Database Migrations

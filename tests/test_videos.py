@@ -822,10 +822,13 @@ def test_wishlist_tabs_show_books_movies_or_both(client, db, people):
     assert 'Wished Movie' in page('?show=nonsense')     # unknown: both
 
 
-def test_rack_prints_a_label_on_every_case(client, db, people):
+def test_rack_prints_a_label_on_every_case(client, db, people, static_root):
     """The Shelf style's video-store rack shows a printed title on every
     case, so a movie with a poster carries the hidden .rack-print label too
     (a coverless one already has its placeholder); books never get one."""
+    (static_root / 'uploads').mkdir()
+    for name in ('jaws.jpg', 'dune.jpg'):
+        (static_root / 'uploads' / name).write_bytes(b'x')
     vid = add_video(db, people['alice'], title='Jaws')
     db.execute("UPDATE books SET cover_image_url = 'uploads/jaws.jpg' WHERE id = ?", (vid,))
     add_video(db, people['alice'], title='Alien', barcode=None)
