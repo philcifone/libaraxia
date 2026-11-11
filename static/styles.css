@@ -1353,10 +1353,18 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
        the panel. */
     --side-w: calc(var(--ledge-top) / 2);
     --side-angle: 26.57deg;
+    /* The case's outside faces go back at 45 degrees, like the books' own
+       (Phil: the 1:2 slope of the inside looked too blunt at the top left
+       corner), so the top face runs right as far as it is tall. */
+    --case-run: var(--ledge-top);
     row-gap: var(--shelf-gap);
     column-gap: 1.5rem;
     padding: 24px 1.25rem 0;
-    border: 12px solid rgb(var(--shelf-frame, var(--shelf-front)));
+    --frame: 12px;              /* the case's frame (its border) */
+    position: relative;         /* for the case's outside faces, below */
+    margin-top: var(--ledge-top);   /* room for the top face */
+    margin-right: var(--case-run);  /* and the right side */
+    border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
     border-bottom-width: 0;     /* the last ledge is the bottom */
     background-color: rgb(var(--shelf-back));
     background-image:
@@ -1407,9 +1415,39 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         column-gap: .75rem;
         padding: 20px .75rem 0;
         background-position: 0 20px;
-        border-width: 8px;
+        --frame: 8px;
+        border-width: var(--frame);
         border-bottom-width: 0;
     }
+}
+/* The case's outside: seen from above and to the right, like its books, so
+   its top and right panels show as faces going back up and right (Phil,
+   2026-11-11): the top face as tall as a shelf's top face (--ledge-top),
+   slanting back at the books' 45 degrees, so it runs --case-run to the
+   right, and the right face that wide, meeting it at the far corner. The top is
+   lit, the right side in shade. Absolutely positioned, so they're no grid
+   cells; clip-path cuts the slants. */
+:root[data-style="shelf"] .shelf-grid.grid::before,
+:root[data-style="shelf"] .shelf-grid.grid::after {
+    content: '';
+    position: absolute;
+    top: calc(-1 * (var(--frame) + var(--ledge-top)));
+    pointer-events: none;
+}
+:root[data-style="shelf"] .shelf-grid.grid::before {    /* top */
+    left: calc(-1 * var(--frame));
+    width: calc(100% + 2 * var(--frame) + var(--case-run));
+    height: var(--ledge-top);
+    background: linear-gradient(to top, rgb(0 0 0 / .06), transparent),   /* darker at the front edge's lip */
+                rgb(var(--case-top, var(--shelf-top)));
+    clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
+}
+:root[data-style="shelf"] .shelf-grid.grid::after {     /* right side */
+    left: calc(100% + var(--frame));
+    width: var(--case-run);
+    height: calc(100% + var(--frame) + var(--ledge-top));
+    background: rgb(var(--case-side, var(--shelf-side)));
+    clip-path: polygon(0 var(--ledge-top), 100% 0, 100% calc(100% - var(--ledge-top)), 0 100%);
 }
 :root[data-style="shelf"] .shelf-grid.grid .book-item {
     padding-bottom: var(--ledge);   /* room for the ledge */
