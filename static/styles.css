@@ -1199,6 +1199,7 @@
 .flash-message { border: 1px solid rgb(var(--rule-strong)); box-shadow: var(--sh-hard); }
 .flash-success { background: rgb(var(--accent));     color: rgb(var(--on-accent)); }
 .flash-error   { background: rgb(var(--red-strong)); color: rgb(var(--on-accent)); }
+.flash-warning { background: rgb(var(--yellow));     color: rgb(var(--on-accent)); }   /* done, with a but */
 .flash-info    { background: rgb(var(--surface));    color: rgb(var(--ink)); }
 
 .animate-slide-in  { animation: slide-in 0.3s ease-out; }
@@ -2461,6 +2462,13 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
 /* The choose step's list of the selected items: the value each has now */
 #bulk-selected-list { max-height: none; }
 #bulk-title:focus { outline: none; }
+.bulk-drop {
+    margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    width: 2.5rem; height: 2.5rem;           /* a finger-sized target */
+    background: none; border: 1px solid transparent; color: rgb(var(--muted)); cursor: pointer;
+}
+.bulk-drop svg { width: 1.1rem; height: 1.1rem; }
+.bulk-drop:hover, .bulk-drop:focus-visible { color: rgb(var(--ink)); border-color: rgb(var(--rule-strong)); outline: none; }
 .bulk-item-now { display: block; font-size: .85rem; color: rgb(var(--accent-text)); }
 
 /* The review: one line per group, items on demand */

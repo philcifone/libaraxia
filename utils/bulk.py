@@ -901,9 +901,13 @@ def undo(conn, user, edit_id):
                      (params['shelf_id'], user.id, params['shelf_id']))
     conn.execute('UPDATE bulk_edits SET undone_at = CURRENT_TIMESTAMP WHERE id = ?', (edit_id,))
     conn.commit()
-    summary = f'Undone: {restored} restored'
-    if left:
-        summary += f', {left} changed since and left alone'
+    if not restored:
+        # Nothing matched what the edit left: say why, not "0 restored"
+        summary = f'Nothing to undo: {_count(left)} changed since, and keep the later change'
+    else:
+        summary = f'Undone: {restored} restored'
+        if left:
+            summary += f', {left} changed since and left alone'
     return Result(edit_id, summary + '.', restored, 0, left)
 
 
@@ -932,9 +936,26 @@ def ago(timestamp, now=None):
     return 'just now'
 
 
+def undoable(conn, user, edit):
+    """How many of an edit's items undo would put back now: the ones you can
+    still see that look as the edit left them (undo's own test). Reads only."""
+    if edit['undone_at']:
+        return 0
+    act = _action(edit['action'])
+    params = json.loads(edit['params'])
+    count = 0
+    for item in conn.execute('SELECT book_id, after FROM bulk_edit_items WHERE edit_id = ?', (edit['id'],)):
+        after = json.loads(item['after']) if item['after'] is not None else None
+        if can_view_book(conn, user, item['book_id']) and act.current(conn, user, item['book_id'], params) == after:
+            count += 1
+    return count
+
+
 def recent(conn, user, limit=10):
-    """Profile -> Recent bulk edits: history() as dicts with `ago`."""
-    return [dict(row, ago=ago(row['created_at'])) for row in history(conn, user, limit)]
+    """Profile -> Recent bulk edits: history() as dicts with `ago` and
+    `undoable` (0: everything has changed since, so no Undo is offered)."""
+    return [dict(row, ago=ago(row['created_at']), undoable=undoable(conn, user, row))
+            for row in history(conn, user, limit)]
 
 
 def genres(conn, user, media_type=None):

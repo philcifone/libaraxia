@@ -386,3 +386,13 @@ def test_genres_group_by_fold_and_show_the_most_used_spelling(conn, people, who)
     assert [g['value'] for g in bulk.genres(conn, who['alice'], 'video')] == ['Documentary']
     assert 'Documentary' not in {g['value'] for g in bulk.genres(conn, who['alice'], 'book')}
     assert bulk.genres(conn, User(999, False)) == []
+
+
+def test_an_undo_that_restores_nothing_says_why(conn, people, who):
+    alice = who['alice']
+    ids = [add_book(conn, people['alice'], title=f'B{i}') for i in range(2)]
+    p = bulk.plan(conn, alice, 'genre', {'genre': 'SF'}, ids)
+    r = bulk.apply(conn, alice, 'genre', {'genre': 'SF'}, ids, p.fingerprint)
+    conn.execute("UPDATE books SET genre = 'Other'")
+    conn.commit()
+    assert bulk.undo(conn, alice, r.edit_id).summary == 'Nothing to undo: 2 items changed since, and keep the later change.'

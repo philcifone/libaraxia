@@ -4376,6 +4376,13 @@ img.book-cover-img:not([data-loaded]) {
   color: rgb(var(--on-accent));
 }
 
+.flash-warning {
+  background: rgb(var(--yellow));
+  color: rgb(var(--on-accent));
+}
+
+/* done, with a but */
+
 .flash-info    {
   background: rgb(var(--surface));
   color: rgb(var(--ink));
@@ -6745,6 +6752,32 @@ html:has(.bulk-sheet[open]) {
 }
 
 #bulk-title:focus {
+  outline: none;
+}
+
+.bulk-drop {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  /* a finger-sized target */
+  background: none;
+  border: 1px solid transparent;
+  color: rgb(var(--muted));
+  cursor: pointer;
+}
+
+.bulk-drop svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.bulk-drop:hover, .bulk-drop:focus-visible {
+  color: rgb(var(--ink));
+  border-color: rgb(var(--rule-strong));
   outline: none;
 }
 

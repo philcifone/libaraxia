@@ -102,3 +102,46 @@ def test_ago():
     assert bulk.ago('2026-11-10 09:00:00', now) == '3 hours ago'
     assert bulk.ago('2026-11-08 12:00:00', now) == '2 days ago'
     assert bulk.ago('nonsense', now) == ''
+
+
+def test_an_edit_with_nothing_left_to_undo_offers_no_undo(client, db, people, shelves):
+    """Undo leaves alone what changed since; when that's everything, Profile
+    says "Changed since" instead of an Undo that would restore nothing."""
+    login(client, 'alice')
+    book = shelves['book']
+    fp = client.post('/bulk/plan', json={'action': 'genre', 'params': {'genre': 'SF'}, 'ids': [book]}
+                     ).get_json()['plan']['fingerprint']
+    edit_id = client.post('/bulk/apply', json={'action': 'genre', 'params': {'genre': 'SF'}, 'ids': [book],
+                                               'fingerprint': fp}).get_json()['edit_id']
+    conn_edit = db.execute('SELECT * FROM bulk_edits WHERE id = ?', (edit_id,)).fetchone()
+    assert bulk.undoable(db, bulk_user(people['alice']), conn_edit) == 1
+    assert f'data-edit-id="{edit_id}"' in client.get('/user/alice').get_data(as_text=True)
+
+    db.execute("UPDATE books SET genre = 'Fantasy' WHERE id = ?", (book,))      # changed by hand since
+    db.commit()
+    html = client.get('/user/alice').get_data(as_text=True)
+    assert f'data-edit-id="{edit_id}"' not in html and 'Changed since' in html
+
+
+def bulk_user(user_id):
+    class Who:
+        id, is_admin = user_id, True
+    return Who()
+
+
+def test_warning_flashes_are_their_own_colour(client, people):
+    """Yellow "done, but", not the red of an error (Phil, 2026-11-11)."""
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent
+    assert "category == 'warning' %}flash-warning" in (root / 'templates' / '_flash_messages.html').read_text()
+    assert "if (category === 'warning') return 'flash-warning';" in (root / 'static' / 'common.js').read_text()
+    assert '.flash-warning' in (root / 'static' / 'styles.css').read_text()
+
+
+def test_grid_covers_carry_the_author_for_the_missing_file_fallback(client, db, people):
+    """A cover whose file is gone turns into the title binding (common.js),
+    which needs the author as well as the alt text."""
+    from conftest import add_book as put
+    put(db, people['alice'], title='Gone', author='Nobody', cover='uploads/no_such_file.jpg')
+    login(client, 'alice')
+    assert 'alt="Gone" data-author="Nobody"' in client.get('/base/index').get_data(as_text=True)

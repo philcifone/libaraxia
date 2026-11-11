@@ -40,6 +40,9 @@ def _target_ids(conn, data):
         ids = grid_query.view_ids(conn, current_user, data['view'], data.get('args') or '')
     except ValueError:
         raise bulk.BulkError("That view can't be edited in bulk.")
+    # Left out in the sheet's list (its X)
+    dropped = {i for i in data.get('drop_ids') or [] if isinstance(i, int)}
+    ids = [i for i in ids if i not in dropped]
     if len(ids) > bulk.MAX_ITEMS:
         raise bulk.TooMany(f'Too many for one edit ({len(ids)}). Narrow the view to {bulk.MAX_ITEMS} or fewer.')
     return ids

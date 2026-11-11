@@ -5,7 +5,8 @@
     {% for category, message in get_flashed_messages(with_categories=true) %}
         <div role="status" class="flash-message mb-2 px-4 py-3 rounded-lg flex items-start gap-3 animate-slide-in
             {% if category == 'success' %}flash-success
-            {% elif category in ['danger', 'error', 'warning'] %}flash-error
+            {% elif category == 'warning' %}flash-warning
+            {% elif category in ['danger', 'error'] %}flash-error
             {% else %}flash-info
             {% endif %}">
             <div class="flex-1">{{ message }}</div>

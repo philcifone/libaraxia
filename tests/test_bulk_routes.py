@@ -245,3 +245,14 @@ def test_view_selection_refuses_unknown_views_and_the_cap(client, db, people, mo
         add_book(db, people['alice'], title=f'B{i}')
     r = post(client, '/bulk/plan', action='genre', params={'genre': 'x'}, view='book:mine', args='')
     assert r.status_code == 400 and r.get_json()['error'].startswith('Too many for one edit (3)')
+
+
+def test_items_left_out_of_a_view_selection_stay_out(client, db, people):
+    """The X on the sheet's list: drop_ids come off the resolved view."""
+    alice = people['alice']
+    ids = [add_book(db, alice, title=f'Cook {i}') for i in range(4)]
+    login(client, 'alice')
+    view = dict(view='book:mine', args='search_term=cook', drop_ids=[ids[1], 'junk'])
+    plan = post(client, '/bulk/plan', action='tag_add', params={'tag': 'x'}, **view).get_json()['plan']
+    assert sorted(plan['ids']) == [ids[0], ids[2], ids[3]]
+    assert [i['id'] for i in post(client, '/bulk/selection', **view).get_json()['items']] == [ids[0], ids[2], ids[3]]

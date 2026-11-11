@@ -308,19 +308,21 @@ function idFromHref(href) {
         // More of the view than the page has loaded: say so rather than let
         // "all" mean fewer than it sounds
         const total = Number(container?.parentElement?.dataset.totalCount) || 0;
+        // Paged grids (Books, Household books, Search) can take the whole view.
+        // The offer stays while anything is selected, also once scrolling has
+        // loaded cards that aren't (Phil, 2026-11-11).
+        const offerView = !!container?.dataset.bulkView && n > 0 && total > n;
         const partial = n > 0 && n === list.length && total > list.length;
-        hint.classList.toggle('hidden', !partial);
+        hint.classList.toggle('hidden', !(offerView || partial));
         hint.replaceChildren();
-        if (!partial) return;
-        if (container.dataset.bulkView) {
-            // Paged grids (Books, Household books, Search) can take the whole view
+        if (offerView) {
             const more = document.createElement('button');
             more.type = 'button';
             more.className = 'bulk-link';
             more.dataset.click = 'bulkSelectView';
             more.textContent = `Select all ${total} in this view`;
-            hint.append(`All ${list.length} loaded are selected. `, more);
-        } else {
+            hint.append(n === list.length ? `All ${n} loaded are selected. ` : `${n} of ${total} selected. `, more);
+        } else if (partial) {
             hint.textContent = `Selected the ${list.length} loaded of ${total}. Scroll down to load more.`;
         }
     }
@@ -328,7 +330,8 @@ function idFromHref(href) {
     function selectView() {
         const total = Number(container?.parentElement?.dataset.totalCount) || 0;
         if (!container?.dataset.bulkView || !total) return;
-        viewAll = { key: container.dataset.bulkView, args: window.location.search.replace(/^\?/, ''), total };
+        viewAll = { key: container.dataset.bulkView, args: window.location.search.replace(/^\?/, ''), total,
+                    drop: new Set() };       // items taken out from the sheet's list
         refresh();
         $('bulk-clear').focus();
     }
@@ -596,7 +599,7 @@ function idFromHref(href) {
         if (sheet.kind === 'genre') $('bulk-genre-hint').textContent = matchGenre(
             $('bulk-genre-input').value, genre.list, genre.cleared).hint;
         if (sheet.kind === 'tag') $('bulk-tag-hint').textContent = tagHint($('bulk-tag-input').value);
-        $('bulk-go').disabled = sheet.stage === 'choose' && !(choice && choice.valid);
+        $('bulk-go').disabled = sheet.stage === 'choose' && !(choice && choice.valid && sheetCount() > 0);
     }
 
     async function openSheet(kind, button) {
@@ -610,8 +613,7 @@ function idFromHref(href) {
         opener = button;
         resetInputs();
         for (const key of Object.keys(KINDS)) $(`bulk-in-${key}`).classList.toggle('hidden', key !== kind);
-        $('bulk-choose-count').textContent = itemsWord(count);
-        document.querySelectorAll('[data-bulk-count]').forEach(el => { el.textContent = itemsWord(count); });
+        setCounts();
         fillPanels();
         showStage('choose');
         $('bulk-sheet').showModal();
@@ -640,8 +642,46 @@ function idFromHref(href) {
 
     // ---- the selected items, with what each has now ----
 
+    // What the sheet's list was loaded for: the ids, or the view less what was taken out
+    function selectionKey() {
+        return sheet.view ? `view:${sheet.view.view}?${sheet.view.args}|${Array.from(viewAll?.drop || []).join(',')}`
+                          : sheet.ids.join(',');
+    }
+
+    // How many the sheet is about, for its "for N items" lines
+    function sheetCount() {
+        if (picked.items && picked.key === selectionKey()) return picked.items.length;
+        return sheet.view ? viewAll.total - viewAll.drop.size : sheet.ids.length;
+    }
+
+    function setCounts() {
+        const words = itemsWord(sheetCount());
+        $('bulk-choose-count').textContent = words;
+        document.querySelectorAll('[data-bulk-count]').forEach(el => { el.textContent = words; });
+    }
+
+    // The X on a row of the sheet's list: out of the selection, card and all
+    function dropItem(id) {
+        if (sheet.view) {
+            viewAll.drop.add(id);
+        } else {
+            sheet.ids = sheet.ids.filter(x => x !== id);
+            const card = cards().find(c => cardId(c) === id);
+            if (card) setSelected(card, false); else selected.delete(id);
+            refresh();
+        }
+        picked.items = picked.items.filter(item => item.id !== id);
+        picked.key = selectionKey();
+        setCounts();
+        renderSelection();
+        syncChoose();
+        // Keep focus in the list: the next row's X, else the heading
+        const next = $('bulk-selected-list').querySelector('.bulk-drop');
+        (next || $('bulk-title')).focus();
+    }
+
     async function loadSelection() {
-        const key = sheet.view ? `view:${sheet.view.view}?${sheet.view.args}` : sheet.ids.join(',');
+        const key = selectionKey();
         if (picked.key !== key) {
             picked.key = key;
             picked.items = null;
@@ -650,7 +690,9 @@ function idFromHref(href) {
             if (picked.key !== key) return;          // the sheet moved on meanwhile
             picked.items = res.data?.success ? res.data.items : [];
         }
+        setCounts();           // the list is the true count: items you can't see aren't in it
         renderSelection();
+        syncChoose();
     }
 
     function renderSelection() {
@@ -665,8 +707,32 @@ function idFromHref(href) {
             now.className = 'bulk-item-now';
             now.textContent = nowText(sheet.kind, item);
             row.querySelector('.bulk-item-text').append(now);
+            row.append(dropButton(item));
             return row;
         }));
+    }
+
+    // An X (Lucide "x"), not a bin: it takes the item out of this edit and
+    // deletes nothing
+    function dropButton(item) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'bulk-drop';
+        button.setAttribute('aria-label', `Leave ${item.title || 'this item'} out`);
+        button.title = 'Leave out of this edit';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+                                              'stroke-width': '2', 'stroke-linecap': 'round', 'aria-hidden': 'true' })) {
+            svg.setAttribute(k, v);
+        }
+        for (const d of ['M18 6 6 18', 'm6 6 12 12']) {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            svg.append(path);
+        }
+        button.append(svg);
+        button.addEventListener('click', () => dropItem(item.id));
+        return button;
     }
 
     function closeSheet() {
@@ -760,7 +826,7 @@ function idFromHref(href) {
 
     // What the sheet is about, as /bulk/plan and /bulk/selection take it
     function target() {
-        return sheet.view ? { ...sheet.view } : { ids: sheet.ids };
+        return sheet.view ? { ...sheet.view, drop_ids: Array.from(viewAll?.drop || []) } : { ids: sheet.ids };
     }
 
     async function goReview() {

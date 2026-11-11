@@ -447,7 +447,8 @@ async function bulkHistoryUndo(button) {
         done.className = 'text-sm text-content-secondary';
         done.textContent = 'Undone';
         button.replaceWith(done);
-        showFlashMessage('success', data.summary);
+        // Something left alone (changed since) is a yellow "done, but", not a green "done"
+        showFlashMessage(data.skipped || !data.restored ? 'warning' : 'success', data.summary);
     } else {
         button.disabled = false;
         showFlashMessage('error', data?.error || 'Could not undo that.');

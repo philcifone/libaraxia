@@ -87,7 +87,8 @@ const FLASH_DISMISS_TIME = 5000; // ms before a message closes itself
 function flashBackground(category) {
     // Colours live in styles.css (.flash-*), shared with _flash_messages.html
     if (category === 'success') return 'flash-success';
-    if (['danger', 'error', 'warning'].includes(category)) return 'flash-error';
+    if (category === 'warning') return 'flash-warning';
+    if (['danger', 'error'].includes(category)) return 'flash-error';
     return 'flash-info';
 }
 
@@ -317,6 +318,12 @@ document.addEventListener('submit', event => {
 document.addEventListener('error', event => {
     const img = event.target;
     if (img.tagName !== 'IMG') return;
+    // A grid cover whose file is missing: the plain title binding, as for no cover
+    const box = img.classList.contains('book-cover-img') ? img.closest('.cover-box') : null;
+    if (box) {
+        box.outerHTML = noCoverHtml(img.alt, img.dataset.author || '');
+        return;
+    }
     if (img.dataset.fallbackSrc && !img.dataset.fellBack) {
         img.dataset.fellBack = '1';   // only once, in case the fallback fails too
         img.src = img.dataset.fallbackSrc;

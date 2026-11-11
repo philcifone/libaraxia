@@ -27,7 +27,7 @@
                         {# cover-box: the Shelf style draws the cover as a 3D box on it;
                            display: contents (no box at all) everywhere else #}
                         <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"
-                             alt="{{ book['title'] }}"
+                             alt="{{ book['title'] }}" data-author="{{ book['author'] or '' }}"
                              class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>
                         {% else %}
                         {% with title=book['title'], author=book['author'], size='md', box='w-full h-full' %}{% include '_no_cover.html' %}{% endwith %}
