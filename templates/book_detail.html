@@ -46,11 +46,13 @@
             <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
                 <!-- Book Cover Section -->
                 <div class="space-y-4">
-                    <div class="cover-stand w-72 md:w-full max-w-[300px] mx-auto">{# cover-stand: a ledge in the Shelf style #}
+                    {# cover-stand: a ledge in the Shelf style, and the cover a 3D box on it
+                       as on the bookcase (.cover-box, display: contents elsewhere; 14c) #}
+                    <div class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="{{ m.type }}">
                         {% if book.cover_image_url|upload_exists %}
-                            <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
+                            <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                                 alt="{{ book['title'] }} Cover"
-                                class="w-full rounded-lg shadow-lg">
+                                class="w-full rounded-lg shadow-lg"></span>
                         {% else %}
                             {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}

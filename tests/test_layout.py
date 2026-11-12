@@ -936,3 +936,17 @@ def test_dead_cover_links_get_the_placeholder_everywhere(client, db, people, sta
     cards = client.get('/base/index?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()['books']
     covers = {c['title']: c['cover_image_url'] for c in cards}
     assert covers == {'Gone Book': None, 'Here Book': 'uploads/here.jpg'}
+
+
+def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
+    """The Shelf style draws the item page's cover as a 3D box (14c): the
+    image sits in .cover-box and the stand says which kind of item it is."""
+    import os
+    from conftest import add_book, login
+    os.makedirs(static_root / 'uploads', exist_ok=True)
+    (static_root / 'uploads' / 'c.jpg').write_bytes(b'x')
+    book = add_book(db, people['alice'], cover='uploads/c.jpg')
+    login(client, 'alice')
+    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="book"' in html
+    assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
