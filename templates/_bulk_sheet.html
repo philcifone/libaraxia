@@ -40,6 +40,14 @@
                 <label class="bulk-radio"><input type="radio" name="bulk-owned" value="0"> Unshelved</label>
             </fieldset>
 
+            {# kind: Movies & TV only (15.1) #}
+            <fieldset id="bulk-in-kind" class="hidden">
+                <legend class="block text-sm text-content-secondary mb-2">Mark <span data-bulk-count></span> as</legend>
+                <label class="bulk-radio"><input type="radio" name="bulk-kind" value="movie"> Movie</label>
+                <label class="bulk-radio"><input type="radio" name="bulk-kind" value="tv"> TV</label>
+                <p class="text-sm text-content-secondary mt-2">A season stays with its item; set it on the item's page.</p>
+            </fieldset>
+
             {# remove #}
             <div id="bulk-in-remove" class="hidden">
                 <label for="bulk-note" class="block text-sm text-content-secondary mb-1">Note, kept with each item (optional)</label>

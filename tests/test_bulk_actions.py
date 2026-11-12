@@ -106,6 +106,34 @@ def test_owned_undo_and_permission(conn, people, who):
     assert col(conn, book, 'owned') == 1
 
 
+# --- kind: movie or TV (15.1) ----------------------------------------------------
+
+def test_kind_sets_tv_and_back_to_null(conn, people, who):
+    film, show = mine(conn, people, 1, 'video') + mine(conn, people, 1, 'video', video_kind='tv', season='Season 2')
+    p = bulk.plan(conn, who['alice'], 'kind', {'kind': 'tv'}, [film, show])
+    assert (p.changes, p.same) == (1, 1) and p.groups[0].label == 'Movie \u2192 TV'
+    r = run(conn, who['alice'], 'kind', {'kind': 'tv'}, [film, show])
+    assert col(conn, film, 'video_kind') == 'tv' and r.summary == 'Kind set to TV on 1 item'
+    run(conn, who['alice'], 'kind', {'kind': 'movie'}, [film, show])
+    # A movie is stored as NULL; the season stays, hidden, in case it turns TV again
+    assert (col(conn, film, 'video_kind'), col(conn, show, 'video_kind')) == (None, None)
+    assert col(conn, show, 'season') == 'Season 2'
+    for bad in (None, 'anime', {}):
+        with pytest.raises(bulk.BulkError):
+            bulk.plan(conn, who['alice'], 'kind', {'kind': bad}, [film])
+
+
+def test_kind_skips_books_and_others_items_and_undoes(conn, people, who):
+    book = mine(conn, people)[0]
+    film = mine(conn, people, 1, 'video')[0]
+    p = bulk.plan(conn, who['alice'], 'kind', {'kind': 'tv'}, [book, film])
+    assert p.skipped == {'Only for Movies & TV': [book]} and p.changes == 1
+    assert bulk.plan(conn, who['bob'], 'kind', {'kind': 'tv'}, [film]).skipped == {'Not yours': [film]}
+    r = run(conn, who['alice'], 'kind', {'kind': 'tv'}, [film])
+    bulk.undo(conn, who['alice'], r.edit_id)
+    assert col(conn, film, 'video_kind') is None
+
+
 # --- remove and restore ------------------------------------------------------
 
 def test_remove_then_restore_round_trip(conn, people, who):

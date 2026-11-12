@@ -307,6 +307,49 @@ def _owned_notes(rows, params):
     return notes
 
 
+# ------------------------------------------------------------------ kind (Movies & TV, 15.1)
+
+def _kind_params(conn, user, params):
+    value = params.get('kind') if isinstance(params, dict) else None
+    if value not in media.VIDEO_KINDS:
+        raise BulkError('Choose movie or TV first.')
+    return {'kind': value}
+
+
+def _kind_name(value):
+    """'TV' for a stored 'tv', 'Movie' for NULL (or a hand-stored 'movie')."""
+    return 'TV' if value == media.TV else 'Movie'
+
+
+def _kind_plan(conn, user, book, params):
+    kind = media.media_type_of(book)
+    if kind != media.VIDEO:
+        return 'skip', f'Only for {SECTION_NAMES[media.VIDEO]}', None, None
+    # Stored as media.video_kind does it: 'tv', or NULL for a movie. The
+    # season is left as it is: hidden on a movie, back if it turns TV again.
+    stored = media.video_kind(params['kind'])
+    now = media.video_kind(book['video_kind'])
+    return ('same' if now == stored else 'change'), '', {'video_kind': book['video_kind']}, {'video_kind': stored}
+
+
+def _kind_write(conn, user, book_id, before, after, params):
+    guard, args = _owner_ok(user)
+    cur = conn.execute("UPDATE books SET video_kind = ? WHERE id = ? AND media_type = 'video' AND video_kind IS ?"
+                       + guard, (after['video_kind'], book_id, before['video_kind'], *args))
+    return cur.rowcount == 1, after
+
+
+def _kind_current(conn, user, book_id, params):
+    row = conn.execute('SELECT video_kind FROM books WHERE id = ?', (book_id,)).fetchone()
+    return None if row is None else {'video_kind': row['video_kind']}
+
+
+def _kind_restore(conn, user, book_id, before, after, params):
+    guard, args = _owner_ok(user)
+    return conn.execute('UPDATE books SET video_kind = ? WHERE id = ?' + guard,
+                        (before['video_kind'], book_id, *args)).rowcount == 1
+
+
 # ------------------------------------------------------------------ remove / restore
 
 def _remove_params(conn, user, params):
@@ -662,6 +705,13 @@ ACTIONS = {
         key=lambda b: _owned_name(b['owned']), label=lambda k, p: _arrow(k, _owned_name(p['owned'])),
         same_text=lambda p: f'Already {_owned_name(p["owned"]).lower()}',
         notes=_owned_notes, owner_only=True),
+    'kind': Action(
+        _kind_params, _kind_plan, _kind_write, _kind_current, _kind_restore,
+        describe=lambda p: f'Set kind to {_kind_name(p["kind"])}',
+        summary=lambda p, n: f'Kind set to {_kind_name(p["kind"])} on {_count(n)}',
+        key=lambda b: _kind_name(b['video_kind']), label=lambda k, p: _arrow(k, _kind_name(p['kind'])),
+        same_text=lambda p: f'Already {_kind_name(p["kind"])}',
+        owner_only=True),
     'remove': Action(
         _remove_params, _remove_plan, _remove_write, _removal_current, _removal_restore,
         describe=lambda p: 'Remove from the library' + (f' ({p["note"]})' if p['note'] else ''),
@@ -744,7 +794,8 @@ def _action(key):
     return ACTIONS[key]
 
 
-BOOK_COLUMNS = 'id, title, author, cover_image_url, media_type, genre, added_by, format, owned, removed_at, removed_note'
+BOOK_COLUMNS = ('id, title, author, cover_image_url, media_type, genre, added_by, format, owned, removed_at, '
+                'removed_note, video_kind')
 
 
 def plan(conn, user, action, params, ids):
@@ -1006,6 +1057,7 @@ def selection(conn, user, ids):
             'genre': book['genre'] or None,
             'format': media.format_label(book['format']) or ('Book' if kind == media.BOOK else None),
             'owned': bool(book['owned']), 'removed': bool(book['removed_at']),
+            'kind': _kind_name(book['video_kind']) if kind == media.VIDEO else None,
             'status': _status_name(status['status']) if status else media.NO_STATUS_LABEL[kind],
             'tags': [r['tag_name'] for r in conn.execute(
                 'SELECT tag_name FROM book_tags WHERE user_id = ? AND book_id = ? ORDER BY tag_name',

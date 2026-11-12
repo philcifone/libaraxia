@@ -142,6 +142,8 @@ function buildParams(kind, v) {
             return { action: 'format', params: { format: v.value }, valid: !!v.value };
         case 'owned':
             return { action: 'owned', params: { owned: v.value }, valid: v.value === '1' || v.value === '0' };
+        case 'kind':
+            return { action: 'kind', params: { kind: v.value }, valid: v.value === 'movie' || v.value === 'tv' };
         case 'remove':
             return { action: 'remove', params: { note: text || null }, valid: true };
         case 'restore':
@@ -175,7 +177,7 @@ function tagHint(typed) {
 
 // What a selected item has now, for the action in hand: the line under its
 // title in the choose step. `item` is one row of POST /bulk/selection.
-const OWNER_ONLY = new Set(['genre', 'format', 'owned', 'remove', 'restore']);
+const OWNER_ONLY = new Set(['genre', 'format', 'kind', 'owned', 'remove', 'restore']);
 function nowText(kind, item) {
     if (OWNER_ONLY.has(kind) && !item.yours) return 'Not yours, will be skipped';
     switch (kind) {
@@ -183,6 +185,7 @@ function nowText(kind, item) {
         case 'status': return item.status;
         case 'format': return item.format || '(no format)';
         case 'owned': return item.owned ? 'Owned' : 'Unshelved';
+        case 'kind': return item.kind || '';
         case 'remove':
         case 'restore': return item.removed ? 'Removed' : 'On the shelf';
         case 'shelf': return item.shelves.length ? 'In ' + item.shelves.join(', ') : 'In no collections';
@@ -474,6 +477,7 @@ function idFromHref(href) {
         status:  { title: 'Set status' },
         format:  { title: 'Set format' },
         owned:   { title: 'Owned or not' },
+        kind:    { title: 'Movie or TV' },
         remove:  { title: 'Remove from library', danger: true },
         restore: { title: 'Put back on the shelf' },
         shelf:   { title: 'Collections' },   // custom collections; code says shelf
@@ -577,7 +581,7 @@ function idFromHref(href) {
         $('bulk-genre-input').value = '';
         $('bulk-status').value = '';
         $('bulk-format').value = '';
-        document.querySelectorAll('input[name="bulk-owned"]').forEach(r => { r.checked = false; });
+        document.querySelectorAll('input[name="bulk-owned"], input[name="bulk-kind"]').forEach(r => { r.checked = false; });
         $('bulk-note').value = '';
         $('bulk-shelf-new').value = '';
         $('bulk-tag-input').value = '';
@@ -593,6 +597,7 @@ function idFromHref(href) {
             status: () => ({ value: $('bulk-status').value }),
             format: () => ({ value: $('bulk-format').value }),
             owned: () => ({ value: radio('bulk-owned') }),
+            kind: () => ({ value: radio('bulk-kind') }),
             remove: () => ({ text: $('bulk-note').value }),
             restore: () => ({}),
             shelf: () => ({ mode: radio('bulk-shelf-mode'), shelf: $('bulk-shelf').value,

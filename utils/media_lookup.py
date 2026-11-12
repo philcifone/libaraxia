@@ -147,6 +147,8 @@ _SEASON_RE = re.compile(
     r'complete\s+(?P<series>series)'
     r'|(?:complete\s+)?(?P<ord>' + '|'.join(_ORDINALS) + r'|\d+(?:st|nd|rd|th))\s+season'
     # a range, unless it's a disc count ("Season 1 - 5 Disc Set")
+    # two ("Season 1 & 2", "Seasons 1 and 2") before a range
+    r'|seasons?\s+(?P<pair>\d+\s*(?:&|and)\s*\d+)'
     r'|seasons?\s+(?P<num>\d+(?:\s*[-\u2013]\s*\d+(?!\s*-?\s*discs?\b))?)'
     r')\b.*$', re.IGNORECASE)
 
@@ -163,6 +165,9 @@ def split_season(title):
         return title, None
     if found.group('series'):
         season = 'Complete series'
+    elif found.group('pair'):
+        first, second = re.findall(r'\d+', found.group('pair'))   # "1 and 2" -> "Seasons 1 & 2"
+        season = f'Seasons {first} & {second}'
     elif found.group('ord'):
         word = found.group('ord').lower()                  # 'first', or '2nd'
         number = _ORDINALS.get(word) or int(word[:-2])

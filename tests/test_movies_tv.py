@@ -282,6 +282,8 @@ def tmdb(monkeypatch):
     ('Friends - Season 3', ('Friends', 'Season 3')),
     ('Sex and the City 2nd Season', ('Sex and the City', 'Season 2')),
     ('The Sopranos Seasons 1-3', ('The Sopranos', 'Seasons 1-3')),
+    ("It's Always Sunny in Philadelphia: Season 1 & 2", ("It's Always Sunny in Philadelphia", 'Seasons 1 & 2')),
+    ('Seinfeld Seasons 1 and 2', ('Seinfeld', 'Seasons 1 & 2')),
     ('The Wire: Season 1 - 5 Disc Set', ('The Wire', 'Season 1')),       # a disc count, not a range
     ('Twin Peaks Complete Series', ('Twin Peaks', 'Complete series')),
     ('Season of the Witch', ('Season of the Witch', None)),              # a film's own title
@@ -377,3 +379,11 @@ def test_stats_without_tv_say_nothing_new(client, db, people):
     login(client, 'alice')
     page = client.get('/user/alice').get_data(as_text=True)
     assert 'data-kind-split' not in page and 'Directors on the shelf' in page
+
+
+def test_bulk_menu_offers_kind_on_movies_and_tv_only(client, db, people):
+    add_video(db, people['alice'], 'Heat')
+    login(client, 'alice')
+    assert 'data-action="kind"' in client.get('/videos/').get_data(as_text=True)
+    assert 'data-action="kind"' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-action="kind"' not in client.get('/records/').get_data(as_text=True)

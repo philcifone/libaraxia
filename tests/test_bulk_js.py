@@ -153,6 +153,8 @@ def test_what_each_panel_sends():
     assert call('buildParams', 'format', {'value': 'DVD'})['params'] == {'format': 'DVD'}
     assert call('buildParams', 'owned', {'value': '0'})['params'] == {'owned': '0'}
     assert call('buildParams', 'owned', {})['valid'] is False
+    assert call('buildParams', 'kind', {'value': 'tv'}) == {'action': 'kind', 'params': {'kind': 'tv'}, 'valid': True}
+    assert call('buildParams', 'kind', {'value': 'anime'})['valid'] is False
     assert call('buildParams', 'remove', {'text': '  sold  '})['params'] == {'note': 'sold'}
     assert call('buildParams', 'remove', {'text': '  '}) == {'action': 'remove', 'params': {'note': None},
                                                               'valid': True}     # the note is optional
