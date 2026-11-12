@@ -208,7 +208,7 @@
                 ('Reviews', s.reviews),
                 (m.creator ~ 's on the shelf', s.creators),
             ] %}
-            {% if s.not_owned %}{% set tiles = tiles + [('Not owned', s.not_owned)] %}{% endif %}
+            {% if s.not_owned %}{% set tiles = tiles + [('Unshelved', s.not_owned)] %}{% endif %}
             <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
                 {% for label, value in tiles %}
                 <div class="bg-primary rounded-lg p-3 sm:p-4">

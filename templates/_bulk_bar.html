@@ -25,7 +25,7 @@
                     {# data-tier="main" are the buttons beside More on a wide screen, so the menu hides them there #}
                     {% for key, label, tier in [('genre', 'Genre', 'main'), ('status', 'Status', 'main'),
                                                 ('shelf', 'Collection', 'main'), ('tag', 'Tag', 'main'),
-                                                ('format', 'Format', 'more'), ('owned', 'Owned or not owned', 'more'),
+                                                ('format', 'Format', 'more'), ('owned', 'Owned or unshelved', 'more'),
                                                 ('remove', 'Remove from library', 'more'),
                                                 ('restore', 'Restore to library', 'more')] %}
                     <li role="none"{% if key == 'restore' %} id="bulk-restore-item" hidden{% endif %}>

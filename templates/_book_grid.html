@@ -18,7 +18,7 @@
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                         {# Only shown when Show asks for them; marked so they can't pass for owned #}
                         {% if book.owned == 0 %}
-                        <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Not owned</span>
+                        <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Unshelved</span>
                         {% elif book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
                         {% endif %}

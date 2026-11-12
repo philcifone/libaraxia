@@ -122,11 +122,11 @@ def add_book():
 
         if request.form.get("then") == "review":
             # From Reviews' "Add it as not owned" (ROADMAP 13): on to the review
-            flash(f"Book added{'' if owned else ' as not owned'}. Now your review.", "success")
+            flash(f"Book added{'' if owned else ' as unshelved'}. Now your review.", "success")
             return redirect(url_for("read.rate_review", book_id=cursor.lastrowid, **{"from": "reviews"}))
         if not owned:
             # The library won't show it, so go to its page, where the review is
-            flash("Book added as not owned, so it isn't in your library. Rate and review it here.", "success")
+            flash("Book added as unshelved, so it isn't on your shelf. Rate and review it here.", "success")
             return redirect(url_for("books.show_book", id=cursor.lastrowid))
         flash("Book added successfully!", "success")
         return redirect(url_for("base.index"))
@@ -794,8 +794,8 @@ def set_ownership(id):
     if owned:
         flash(f"'{book['title']}' is {where} now.", "success")
     else:
-        flash(f"'{book['title']}' is marked not owned, so it isn't {where}. "
-              f"Choose Show: Not owned in the filters to see it.", "success")
+        flash(f"'{book['title']}' is marked unshelved, so it isn't {where}. "
+              f"Choose Show: Unshelved in the filters to see it.", "success")
     return redirect(url_for(media.item_endpoint(book['media_type']), id=id))
 
 

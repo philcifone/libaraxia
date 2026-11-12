@@ -65,7 +65,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 - [x] 5. Routes and the review page; old route removed.
 - [x] 6. Provenance in the UI: From Goodreads filter, book page note.
 - [x] 6b. Site backups before shipping (Phil, 2026-11-12): Admin → Backups (back up now; per backup restore, download the database, delete), "Back up first" on the import page. `utils/backups.py`. Then per user (Phil, same day): Profile → Library backups, each user backs up and restores their own data only (`utils/personal_backups.py`); the import takes a personal backup first (no backup, no import), no site backup. The library CSV gains a Section column and the household's shelf. **Prod:** set `BACKUP_DIR` (e.g. `/var/lib/libaraxia/backups`, beside the uploads, outside the repo) before M2 is pushed.
-- [ ] 6c. "Not owned" becomes **"Unshelved"** in the UI (Phil, 2026-11-12): covers never-had and have-it-but-not-scanned-yet. Wording only (grid badge, Show filter, stats tile, bulk radio, `media.py` labels, book page and Book tools, Goodreads page); `books.owned` unchanged.
+- [x] 6c. "Not owned" becomes **"Unshelved"** in the UI (Phil, 2026-11-12): covers never-had and have-it-but-not-scanned-yet. Wording only (grid badge, Show filter, stats tile, bulk radio, `media.py` labels, book page and Book tools, Goodreads page); `books.owned` unchanged.
 - [ ] 7. Dry run on a prod copy (Phil), wrap-up. **Merge point M2.**
 
 ---

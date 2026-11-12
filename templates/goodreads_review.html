@@ -14,7 +14,7 @@
 {% macro match_label(row) -%}
     {%- if row.kind == 'household' -%}{{ row.book.owner }}'s copy
     {%- elif row.kind == 'wishlist' -%}on your wishlist
-    {%- elif row.kind == 'not_owned' -%}yours, not owned
+    {%- elif row.kind == 'not_owned' -%}yours, unshelved
     {%- elif row.kind == 'removed' -%}yours, removed
     {%- else -%}yours{%- endif -%}
 {%- endmacro %}

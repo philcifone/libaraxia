@@ -104,9 +104,9 @@ def test_read_not_in_your_library_defaults_to_not_owned(db, people):
         assert (r.box, r.kind, r.default, r.choice) == ('read_new', 'none', 'not_owned', 'not_owned')
         assert r.choices == ['not_owned', 'library', 'skip']
         assert r.writes
-    assert by_title(p, 'Piranesi').adds == ['new book, not owned', 'status Read', 'rating ★5',
+    assert by_title(p, 'Piranesi').adds == ['new book, unshelved', 'status Read', 'rating ★5',
                                             'a reading session (2022-01-09)']
-    assert by_title(p, 'Quit').adds == ['new book, not owned', 'status Did Not Finish']
+    assert by_title(p, 'Quit').adds == ['new book, unshelved', 'status Did Not Finish']
 
 
 def test_currently_reading_needs_a_decision_when_new_or_no_status_here(db, people):
@@ -407,12 +407,12 @@ def test_decisions_word_what_they_would_add(db, people):
     gp.choose(db, who(alice), [2], 'finished')
     gp.choose(db, who(alice), [3], 'drop_wish')
     p = gp.plan(db, who(alice))
-    assert by_title(p, 'New Reading').adds == ['new book, not owned', 'status Read', 'rating ★4',
+    assert by_title(p, 'New Reading').adds == ['new book, unshelved', 'status Read', 'rating ★4',
                                                'a reading session']
-    assert by_title(p, 'Wished').adds == ['off your wishlist, as read and not owned', 'status Read',
+    assert by_title(p, 'Wished').adds == ['off your wishlist, as read and unshelved', 'status Read',
                                           'rating ★5', 'a reading session (2023-04-02)']
     gp.choose(db, who(alice), [2], 'dnf')
-    assert by_title(gp.plan(db, who(alice)), 'New Reading').adds == ['new book, not owned',
+    assert by_title(gp.plan(db, who(alice)), 'New Reading').adds == ['new book, unshelved',
                                                                       'status Did Not Finish', 'rating ★4']
 
 
@@ -523,7 +523,7 @@ def test_one_click_with_the_defaults_on_a_mixed_file(db, people):
                          row(''))
     assert [r['outcome'] for r in report['rows']] == [
         'not_owned', 'not_owned', 'filled', 'filled', 'wishlist', 'nothing', 'later', 'later', 'skipped', 'nothing']
-    assert report['summary'] == 'Goodreads import: 2 added as not owned, 1 to your wishlist, 2 filled'
+    assert report['summary'] == 'Goodreads import: 2 added as unshelved, 1 to your wishlist, 2 filled'
 
     new = book_named(db, 'Read New')
     assert (new['owned'], new['format'], new['added_by']) == (0, None, alice)

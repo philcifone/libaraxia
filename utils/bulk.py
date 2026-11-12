@@ -266,7 +266,7 @@ def _owned_params(conn, user, params):
         return {'owned': 1}
     if value in (0, False, '0'):
         return {'owned': 0}
-    raise BulkError('Choose owned or not owned first.')
+    raise BulkError('Choose owned or unshelved first.')
 
 
 def _owned_plan(conn, user, book, params):
@@ -293,13 +293,13 @@ def _owned_restore(conn, user, book_id, before, after, params):
 
 
 def _owned_name(value):
-    return 'Owned' if value else 'Not owned'
+    return 'Owned' if value else 'Unshelved'
 
 
 def _owned_notes(rows, params):
     notes = []
     if not params['owned'] and any(r.outcome == 'change' for r in rows):
-        notes.append('Not owned items leave your shelf. Reviews, ratings and history stay.')
+        notes.append('Unshelved items leave your shelf. Reviews, ratings and history stay.')
     # The single-item route also puts a removed item back; a bulk edit says what it
     # writes and nothing else, so removal is left as it is
     if any(r.removed and r.outcome in ('change', 'same') for r in rows):

@@ -16,7 +16,7 @@
     'yours': ('You own this', 'It is on your shelf.'),
     'household': ('Your household owns this', 'It is on the shared shelf.'),
     'wishlist': ('On your wishlist', "You don't own it yet."),
-    'not_owned': ("You don't own this", 'But it is in your records.'),
+    'not_owned': ('Unshelved', "It is in your records, not on your shelf."),
     'removed': ("You don't own this any more", 'You had it; it left your shelf.'),
     'their_wishlist': ("Nobody here owns this", "It is on a household member's wishlist."),
     'data_only': ("You don't own this", 'But it is in your records.'),
@@ -114,7 +114,7 @@
                             {%- if row.verdict == 'yours' %}On your shelf
                             {%- elif row.verdict == 'household' %}On the shelf: {{ row.owner }}'s
                             {%- elif row.verdict == 'wishlist' %}On your wishlist
-                            {%- elif row.verdict == 'not_owned' %}Not owned
+                            {%- elif row.verdict == 'not_owned' %}Unshelved
                             {%- elif row.verdict == 'removed' %}Removed from your shelf
                             {%- elif row.verdict == 'their_wishlist' %}On {{ row.owner }}'s wishlist
                             {%- else %}{{ row.owner ~ "'s copy" if row.owner else 'No owner' }}, not on a shelf here{% endif -%}

@@ -154,13 +154,13 @@ def test_find_results_open_the_review_page(client, db, people):
 def test_find_nothing_offers_not_owned_add(client, db, people):
     login(client, 'alice')
     html = page(client, '/reviews/find?type=video&q=Nowhere+Film')
-    assert 'Add it as not owned' in html
+    assert 'Add it as unshelved' in html
     assert '/videos/add?not_owned=1&amp;then=review&amp;title=Nowhere+Film' in html
     # empty search: no results, no offer yet
-    assert 'Add it as not owned' not in page(client, '/reviews/find?type=video')
+    assert 'Add it as unshelved' not in page(client, '/reviews/find?type=video')
 
 
-# --- not owned -> review --------------------------------------------------------
+# --- unshelved -> review --------------------------------------------------------
 
 def test_add_page_prefilled_for_review(client, db, people):
     login(client, 'alice')

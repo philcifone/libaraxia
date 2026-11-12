@@ -744,7 +744,7 @@ def save_best_cover(urls: Iterable[str]) -> Optional[str]:
 # listened to but never had; `removed_at` is a copy you had that left.
 SHOW_CHOICES = (
     ('', 'On the shelf'),
-    ('not_owned', 'Not owned'),
+    ('not_owned', 'Unshelved'),
     ('removed', 'Removed'),
     ('all', 'Everything'),
 )

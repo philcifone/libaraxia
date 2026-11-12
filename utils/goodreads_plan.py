@@ -65,7 +65,7 @@ BOXES = {
     'read_new': {
         'title': 'Read, not in your library',
         'text': 'Comes in read, with your rating, review and reading dates. Off the shelf; '
-                'under Books, Show: Not owned.',
+                'under Books, Show: Unshelved.',
         'default': 'not_owned', 'choices': ['library', 'skip']},
     'fill': {
         'title': 'Already in Libaraxia, something to add',
@@ -93,7 +93,7 @@ BOXES = {
 # 'ask' is only ever a default, never something the user sets.
 CHOICES = {
     'ask':           'Ask',
-    'not_owned':     'Add as read, not owned',
+    'not_owned':     'Add as read, unshelved',
     'library':       'Add to my library',
     'wishlist':      'Add to wishlist',
     'fill':          "Add what's missing",
@@ -108,7 +108,7 @@ CHOICES = {
 
 # One per CSV row in the result (section 8). The counts add up to the file.
 OUTCOMES = {
-    'not_owned': 'Added as read, not owned',
+    'not_owned': 'Added as read, unshelved',
     'library':   'Added to your library',
     'wishlist':  'Added to your wishlist',
     'filled':    'Added what was missing to a book you have',
@@ -406,10 +406,10 @@ def _words(parts, new=False):
     """A row's "adds:" list."""
     out = []
     if new:
-        out.append({'not_owned': 'new book, not owned', 'library': 'new book, in your library',
+        out.append({'not_owned': 'new book, unshelved', 'library': 'new book, in your library',
                     'wishlist': 'new wishlist entry'}[new])
     if parts.get('wishlist_move'):
-        out.append({'drop_wish': 'off your wishlist, as read and not owned',
+        out.append({'drop_wish': 'off your wishlist, as read and unshelved',
                     'bought': 'off your wishlist, into your library'}[parts['wishlist_move']])
     if parts.get('status'):
         out.append(f"status {media.STATUS_LABELS[parts['status']]}")
@@ -768,7 +768,7 @@ def _outcome(row):
     return row.parts['create']          # not_owned, library or wishlist
 
 
-SUMMARY_WORDS = (('not_owned', 'added as not owned'), ('library', 'to your library'),
+SUMMARY_WORDS = (('not_owned', 'added as unshelved'), ('library', 'to your library'),
                  ('wishlist', 'to your wishlist'), ('filled', 'filled'), ('decided', 'decided'))
 
 

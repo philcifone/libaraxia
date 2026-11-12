@@ -62,9 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return data;
     }
 
-    // A match you have as "not owned" (read, watched or listened to, never
+    // A match you have as "unshelved" (read, watched or listened to, never
     // had): bought it now? Its page has "I own it now", which keeps your review
-    const NOT_OWNED_NOTE = 'not owned (if you\'ve bought it, open it and choose "I own it now")';
+    const NOT_OWNED_NOTE = 'unshelved (if it\'s on your shelf now, open it and choose "I own it now")';
 
     // --- Filling the form ----------------------------------------------------
 
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formatSelect && type === RECORD) formatSelect.dataset.filled = formatSelect.value;
 
     // Books (8B.2): an audiobook is usually borrowed or streamed, so picking
-    // Audiobook ticks "I don't own this", and back to Book unticks it. Once
+    // Audiobook ticks "Not on my shelf", and back to Book unticks it. Once
     // you've clicked the box yourself, it's yours and the format leaves it be.
     const notOwnedBox = $('not_owned');
     if (formatSelect && notOwnedBox && type === BOOK) {

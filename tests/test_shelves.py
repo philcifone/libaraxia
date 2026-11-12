@@ -80,7 +80,7 @@ def test_status_shelf_page_is_one_type(client, db, people):
     page = client.get('/collections/collections/status/listened').get_data(as_text=True)
     assert 'Blue' in page and 'Dune' not in page
     assert '/collections/collections?type=record" class="crumb-link">Collections' in page
-    assert 'rounded-pill">Not owned<' not in page                   # owned items, no badge
+    assert 'rounded-pill">Unshelved<' not in page                   # owned items, no badge
     assert client.get('/collections/collections/status/nonsense').status_code == 404
 
 

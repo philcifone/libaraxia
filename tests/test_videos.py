@@ -727,7 +727,7 @@ def test_movie_on_the_wishlist_then_onto_the_shelf(client, db, people):
     movie = scalar(db, "SELECT id FROM books WHERE title = 'Alien'")
     assert scalar(db, 'SELECT media_type FROM books WHERE id = ?', movie) == 'video'
     assert scalar(db, 'SELECT notes FROM wishlist WHERE book_id = ?', movie) == "the director's cut"
-    assert scalar(db, 'SELECT COUNT(*) FROM library_videos WHERE id = ?', movie) == 0   # wished, not owned
+    assert scalar(db, 'SELECT COUNT(*) FROM library_videos WHERE id = ?', movie) == 0   # wished, unshelved
     page = client.get('/wishlist/view').get_data(as_text=True)
     assert 'Movies <span' in page and 'Alien' in page and 'Add to Movies' in page
     assert client.get('/videos/').get_data(as_text=True).count('>Alien<') == 0
@@ -764,9 +764,9 @@ def test_removing_a_watched_wishlist_movie_keeps_it_as_watched_not_owned(client,
     db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'watched')", (alice, movie))
     db.commit()
     client.post(f'/wishlist/remove/{movie}')
-    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', movie) == 1   # not owned, not removed (8B.3)
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', movie) == 1   # unshelved, not removed (8B.3)
     assert scalar(db, """SELECT COUNT(*) FROM collection_books cb JOIN user_collections uc USING (collection_id)
-                         WHERE uc.name = 'Watched but not owned' AND cb.book_id = ?""", movie) == 1
+                         WHERE uc.name = 'Watched, unshelved' AND cb.book_id = ?""", movie) == 1
 
 
 def test_wishlist_isbn_box_sends_a_movie_barcode_to_the_wishlist_movie_form(client, people):

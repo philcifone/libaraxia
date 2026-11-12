@@ -4,7 +4,7 @@ own-books-only matching it shares with the wishlist (utils/book_matching.py).
 The planner's own rules are tested headless in test_goodreads_plan.py.
 
 Expectations changed in 14b on purpose (spec section 13): read rows come in
-not owned by default; no collections from shelves; no Want to Read for an
+unshelved by default; no collections from shelves; no Want to Read for an
 owned to-read row; a matched book with a status gets what's missing."""
 import csv
 import io
@@ -341,7 +341,7 @@ def test_audiobook_shelf_imports_as_not_owned_audiobook(client, db, people):
         row('Want The Audio', shelf='to-read', bookshelves='to-read, audiobook'))
     got = {r['title']: (r['format'], r['owned']) for r in
            db.execute('SELECT title, format, owned FROM books')}
-    # Paper Copy was (None, 1): read books now come in not owned by default
+    # Paper Copy was (None, 1): read books now come in unshelved by default
     assert got == {'Heard It': ('Audiobook', 0), 'By Binding': ('Audiobook', 0),
                    'Paper Copy': (None, 0), 'Want The Audio': ('Audiobook', 1)}
     heard = scalar(db, "SELECT id FROM books WHERE title = 'Heard It'")
@@ -473,7 +473,7 @@ def test_import_is_undone_through_the_bulk_route_and_listed_on_the_profile(clien
     from utils import goodreads_plan
     monkeypatch.setattr(goodreads_plan, 'delete_image_file', lambda path: None)
     report = run(client, 'alice', row('Undo Me'), row('Wanted', 'to-read'))
-    assert report['summary'] == 'Goodreads import: 1 added as not owned, 1 to your wishlist'
+    assert report['summary'] == 'Goodreads import: 1 added as unshelved, 1 to your wishlist'
     profile = client.get('/user/alice').get_data(as_text=True)
     assert report['summary'] in profile
     r = client.post(f"/bulk/{report['edit_id']}/undo", json={'banner': False})
@@ -512,7 +512,7 @@ def test_from_goodreads_filter_shows_what_your_imports_touched(client, db, peopl
         row('Mine After All'), choices=[([4], 'library')])
     # Owned and on the shelf: the default Show
     assert grid_titles(client, '/base/index?from=goodreads') == ['Already Mine', 'Mine After All']
-    # Read Elsewhere came in not owned: under Show: Not owned / Everything
+    # Read Elsewhere came in unshelved: under Show: Unshelved / Everything
     assert grid_titles(client, '/base/index?from=goodreads&show=not_owned') == ['Read Elsewhere']
     assert grid_titles(client, '/base/index?from=goodreads&show=all') == \
            ['Already Mine', 'Mine After All', 'Read Elsewhere']

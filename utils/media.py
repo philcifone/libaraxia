@@ -144,7 +144,7 @@ _LABELS = {
         'search_hint': 'Title, author, ISBN or tag',
         'title_search_placeholder': 'Title or author...',
         'no_sessions': 'No reading sessions yet. Click "Add Session" to record when you read this book.',
-        'not_owned': 'Read but not owned',
+        'not_owned': 'Read, unshelved',
         'description': 'Description',
     },
     VIDEO: {
@@ -168,7 +168,7 @@ _LABELS = {
         'search_hint': 'Title, director or barcode',
         'title_search_placeholder': 'Film title...',
         'no_sessions': 'No viewings yet. Click "Add Session" to record when you watched it.',
-        'not_owned': 'Watched but not owned',
+        'not_owned': 'Watched, unshelved',
         'description': 'Description',
     },
     RECORD: {
@@ -194,7 +194,7 @@ _LABELS = {
         'search_hint': 'Artist, title, label or cat. no.',
         'title_search_placeholder': 'Artist and title...',
         'no_sessions': 'No listens yet. Click "Add Session" to record when you listened to it.',
-        'not_owned': 'Listened to but not owned',
+        'not_owned': 'Listened to, unshelved',
         'description': 'Tracklist and notes',
     },
 }

@@ -389,7 +389,7 @@ class InfiniteScroll {
         // Not-owned and removed items only appear when Show asks for them,
         // and are marked so they can't pass for something on the shelf
         const removedBadge = book.not_owned
-            ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Not owned</span>'
+            ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Unshelved</span>'
             : book.removed
             ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>'
             : '';

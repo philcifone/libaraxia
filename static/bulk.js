@@ -182,7 +182,7 @@ function nowText(kind, item) {
         case 'genre': return item.genre || '(no genre)';
         case 'status': return item.status;
         case 'format': return item.format || '(no format)';
-        case 'owned': return item.owned ? 'Owned' : 'Not owned';
+        case 'owned': return item.owned ? 'Owned' : 'Unshelved';
         case 'remove':
         case 'restore': return item.removed ? 'Removed' : 'On the shelf';
         case 'shelf': return item.shelves.length ? 'In ' + item.shelves.join(', ') : 'In no collections';

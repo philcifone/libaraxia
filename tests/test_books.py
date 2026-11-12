@@ -161,7 +161,7 @@ def test_wishlist_remove_deletes_own_wishlist_book(client, db, people):
 def test_wishlist_remove_keeps_rated_book_out_of_library(client, db, people):
     """Phase 5 leftover: a rated wishlist book (e.g. a Goodreads to-read row
     with a rating) used to land in your library when removed from the
-    wishlist. Now it's marked not owned and kept on "Read but not owned"."""
+    wishlist. Now it's marked unshelved and kept on "Read, unshelved"."""
     carol = people['carol']
     book = add_book(db, carol, 'Read it, never bought it')
     db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (carol, book))
@@ -171,11 +171,11 @@ def test_wishlist_remove_keeps_rated_book_out_of_library(client, db, people):
     client.post(f'/wishlist/remove/{book}')
 
     assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE book_id = ?', book) == 1      # review kept
-    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', book) == 1   # not owned, not removed (8B.3)
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', book) == 1   # unshelved, not removed (8B.3)
     assert 'Read it, never bought it' not in client.get('/base/index').get_data(as_text=True)
     assert scalar(db, """SELECT COUNT(*) FROM collection_books cb
                          JOIN user_collections uc ON uc.collection_id = cb.collection_id
-                         WHERE uc.user_id = ? AND uc.name = 'Read but not owned' AND cb.book_id = ?""",
+                         WHERE uc.user_id = ? AND uc.name = 'Read, unshelved' AND cb.book_id = ?""",
                   carol, book) == 1
     assert fk_violations(db) == []
 
@@ -190,8 +190,8 @@ def test_wishlist_remove_unread_book_with_data_is_not_shelved_as_read(client, db
     db.commit()
     login(client, 'carol')
     client.post(f'/wishlist/remove/{book}')
-    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', book) == 1   # not owned, not removed (8B.3)
-    assert scalar(db, "SELECT COUNT(*) FROM user_collections WHERE name = 'Read but not owned'") == 0
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', book) == 1   # unshelved, not removed (8B.3)
+    assert scalar(db, "SELECT COUNT(*) FROM user_collections WHERE name = 'Read, unshelved'") == 0
 
 
 # --- cover paths (arbitrary file deletion fix) --------------------------------------
@@ -275,7 +275,7 @@ def test_redirect_to_private_address_is_blocked(app):
 # --- book tools on the edit page (Phase 7.2) ---------------------------------
 
 def test_book_tools_live_on_the_edit_page(client, db, people):
-    """Transfer, marking it not owned and permanent delete live in a "Book
+    """Transfer, marking it unshelved and permanent delete live in a "Book
     tools" disclosure on the edit page (owner/admin only, like the edit page)."""
     book = add_book(db, people['bob'], 'Dune', 'Frank Herbert')
     login(client, 'bob')
@@ -285,7 +285,7 @@ def test_book_tools_live_on_the_edit_page(client, db, people):
     assert f'action="/books/delete/{book}"' in edit
     assert '<option value="%d">alice</option>' % people['alice'] in edit
     # Ownership: the not-owned switch sits with transfer (Phil, 2026-11-11)
-    assert f'action="/books/ownership/{book}"' in edit and 'Mark It Not Owned' in edit
+    assert f'action="/books/ownership/{book}"' in edit and 'Mark It Unshelved' in edit
 
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
     assert f'/books/delete/{book}' not in page and f'/books/transfer/{book}' not in page

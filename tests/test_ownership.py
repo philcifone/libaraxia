@@ -2,7 +2,7 @@
 
 `books.owned = 0` is something you read, watched or listened to but never
 had. It stays yours (reviews, statuses, sessions hang on it) but no library
-view, search or owned count shows it unless "Show: Not owned" is chosen, and
+view, search or owned count shows it unless "Show: Unshelved" is chosen, and
 then it's badged. These tests pin that down, since the whole point is that
 the shelf never claims you own something you don't.
 """
@@ -62,9 +62,9 @@ def test_grid_badges_not_owned(client, db, people):
     not_owned(db, people['alice'], 'Borrowed audiobook')
     login(client, 'alice')
     page = client.get('/base/index?show=not_owned').get_data(as_text=True)
-    assert 'Borrowed audiobook' in page and '>Not owned</span>' in page
+    assert 'Borrowed audiobook' in page and '>Unshelved</span>' in page
     # The Show choice is in the filter panel, set to what the URL asked
-    assert '<option value="not_owned" selected>Not owned</option>' in page
+    assert '<option value="not_owned" selected>Unshelved</option>' in page
 
 
 def test_search_shared_and_friends_skip_not_owned(client, db, people):
@@ -130,7 +130,7 @@ def test_add_book_not_owned_goes_to_its_page(client, db, people):
     assert scalar(db, 'SELECT owned FROM books WHERE id = ?', book) == 0
     assert r.headers['Location'].endswith(f'/books/book/{book}')
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'Not owned.' in page and 'I Own It Now' in page
+    assert 'Unshelved.' in page and 'I Own It Now' in page
 
 
 def test_add_book_owned_by_default(client, db, people):
@@ -279,7 +279,7 @@ def test_search_hints_at_matches_not_on_the_shelf(client, db, people):
     page = client.get('/books/search?search_term=dune').get_data(as_text=True)
     hint = page[page.index('Not on your shelf:'):]
     hint = hint[:hint.index('</p>')]
-    assert f'/books/book/{read}' in hint and '(read, not owned)' in hint
+    assert f'/books/book/{read}' in hint and '(read, unshelved)' in hint
     assert f'/books/book/{owned}"' not in hint                     # it's in the results instead
     assert 'show=all' in hint and 'Show it' in hint
     # The results themselves still hold only the owned copy

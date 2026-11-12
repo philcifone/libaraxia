@@ -156,10 +156,10 @@
                 {% for d in duplicates %}
                 {% if not is_book %}
                 <li><a class="underline hover:text-accent" href="{{ url_for(m.bp ~ '.show_' ~ m.item, id=d.id) }}">{{ d.title }}</a>{% if m.type == 'record' and d.author %}, {{ d.author }}{% endif %}
-                    {% if d.format %}({{ d.format|format_label }}){% endif %}, {{ d.owner or 'no owner' }}'s{% if d.not_owned %}, not owned (bought it? open it and choose "I own it now"){% endif %}{% if d.removed %}, removed{% endif %}:
+                    {% if d.format %}({{ d.format|format_label }}){% endif %}, {{ d.owner or 'no owner' }}'s{% if d.not_owned %}, unshelved (on your shelf now? open it and choose "I own it now"){% endif %}{% if d.removed %}, removed{% endif %}:
                     same {{ d.match_reason|join(' and ') }}</li>
                 {% else %}
-                <li><a class="underline hover:text-accent" href="{{ url_for('books.show_book', id=d.id) }}">{{ d.title }}</a>{% if d.author %}, {{ d.author }}{% endif %}{% if d.not_owned %}, not owned (bought it? open it and choose "I own it now"){% elif d.removed %}, removed from the library{% endif %}:
+                <li><a class="underline hover:text-accent" href="{{ url_for('books.show_book', id=d.id) }}">{{ d.title }}</a>{% if d.author %}, {{ d.author }}{% endif %}{% if d.not_owned %}, unshelved (on your shelf now? open it and choose "I own it now"){% elif d.removed %}, removed from the library{% endif %}:
                     same {{ d.match_reason|join(' and ') }}</li>
                 {% endif %}
                 {% endfor %}
@@ -171,7 +171,7 @@
               class="grid md:grid-cols-2 gap-6">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="media_type" value="{{ m.type }}">
-            {# From Reviews' "Add it as not owned": saving opens the review page #}
+            {# From Reviews' "Add it as unshelved": saving opens the review page #}
             {% if values.then == 'review' %}<input type="hidden" name="then" value="review">{% endif %}
             {% if values.source %}
             <div class="text-sm text-content-secondary italic md:col-span-2">Data source: {{ values.source }}</div>
@@ -187,7 +187,7 @@
             <label class="md:col-span-2 flex items-center justify-center gap-2 text-sm text-content-primary">
                 <input type="checkbox" name="not_owned" value="1" id="not_owned" class="form-checkbox text-accent"
                        {% if values.not_owned %}checked{% endif %}>
-                I don't own this (I {{ m.verb_past }} it and want to review it)
+                Not on my shelf (I {{ m.verb_past }} it and want to review it)
             </label>
             {% endif %}
 
