@@ -18,7 +18,7 @@
     {% endwith %}
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
-        {{ page_heading('bookmark', 'Wishlist', "Books, movies and music you'd like to own", class='mb-8') }}
+        {{ page_heading('bookmark', 'Wishlist', "Books, movies, TV and music you'd like to own", class='mb-8') }}
 
         {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
            links, so they work without JS and the filter below still applies #}
@@ -77,9 +77,9 @@
 
         {% if not total %}
         {% with title='Your wishlist is empty',
-                text="Use the + button to add a book, a movie or an album you'd like to own: search for it, type its ISBN or barcode, or scan it.",
+                text="Use the + button to add a book, a movie or show, or an album you'd like to own: search for it, type its ISBN or barcode, or scan it.",
                 links=[(url_for('wishlist.add_to_wishlist', type='book'), 'Add a book'),
-                       (url_for('wishlist.add_to_wishlist', type='video'), 'Add a movie'),
+                       (url_for('wishlist.add_to_wishlist', type='video'), 'Add a movie or show'),
                        (url_for('wishlist.add_to_wishlist', type='record'), 'Add an album')] %}
             {% include '_empty_state.html' %}
         {% endwith %}

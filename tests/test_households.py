@@ -169,6 +169,6 @@ def test_member_row_without_a_household(client, db, people):
 
 def test_member_row_label_per_section(client, db, people):
     login(client, 'alice')
-    for url, word in (('/base/shared-library', 'books'), ('/videos/shared', 'movies'), ('/records/shared', 'music')):
+    for url, word in (('/base/shared-library', 'books'), ('/videos/shared', 'movies and TV'), ('/records/shared', 'music')):
         html = client.get(url).get_data(as_text=True)
         assert f'Your shared {word} with</p>' in html

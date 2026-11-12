@@ -16,7 +16,7 @@ from utils import media
 
 COVERS_PER_ROW = 12
 # Tab and row names: the sections' own names, except the Library's books
-SECTION_NAMES = {media.BOOK: 'Books', media.VIDEO: 'Movies', media.RECORD: 'Music'}
+SECTION_NAMES = media.SECTION_NAMES
 
 
 def _covers(conn, sql, params):

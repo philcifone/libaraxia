@@ -1,11 +1,12 @@
-"""Movies section (Phase 8): VHS tapes ("Cartridges") and DVDs.
+"""Movies & TV section (Phase 8, 15.1): VHS tapes ("Cartridges") and DVDs,
+films and TV box sets (books.video_kind).
 
 A video is a `books` row with media_type = 'video' (migration 023). The
 grid, tabs, add/edit forms and duplicate check are the shared section code
 (blueprints/media_section.py, also used by Vinyls) on the `library_videos`
 view; this module adds the Movies lookups: UPCitemdb by barcode and TMDb by
-title (utils/media_lookup.py). The UI says "Movies"; code, URLs and the DB
-say "video".
+title (utils/media_lookup.py). The UI says "Movies & TV"; code, URLs and
+the DB say "video".
 """
 from flask import request, jsonify, current_app, url_for
 from flask_login import login_required
@@ -38,7 +39,7 @@ VIDEOS = Section(
     view='library_videos',
     add_context=_add_context,
     lookup_url=_lookup_url,
-    empty_text='Type one in from its box, or scan its barcode. Movies are kept apart from your books.',
+    empty_text='Type one in from its box, or scan its barcode. Movies and TV are kept apart from your books.',
 )
 videos_blueprint = make_blueprint(VIDEOS)
 

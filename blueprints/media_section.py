@@ -1,4 +1,4 @@
-"""Shared code for the Movies and Vinyls sections (Phase 8.7).
+"""Shared code for the Movies & TV and Music sections (Phase 8.7).
 
 Both sections are `books` rows of one media type (utils/media.py), each
 read through its own view (library_videos, library_records), so the Library
@@ -74,6 +74,11 @@ class Section:
     @property
     def default_format(self):
         return media.DEFAULT_FORMAT[self.media_type]
+
+    def item_m(self, values):
+        """The words for one item of this section, from a row or the form's
+        values: a video's kind picks "TV show" or "movie" (media.KIND_WORDS)."""
+        return media.item_labels({**dict(values), 'media_type': self.media_type})
 
     def pick_format(self, fmt):
         return fmt if fmt in self.formats else self.default_format
@@ -377,7 +382,7 @@ def make_blueprint(section: Section) -> Blueprint:
         values, errors = section.form_values(request.form)
         duplicates = section.duplicates_for(conn, values)
         if duplicates and not request.form.get('confirm_duplicate'):
-            errors.append(f"This looks like a {section.m['noun']} already on your household's "
+            errors.append(f"This looks like a {section.item_m(values)['noun']} already on your household's "
                           "shelf. Tick \"Add it anyway\" if it's a second copy.")
         if errors:
             for error in errors:
@@ -395,10 +400,11 @@ def make_blueprint(section: Section) -> Blueprint:
         if values['then'] == 'review':
             flash(f"'{values['title']}' added{'' if owned else ' as unshelved'}. Now your review.", 'success')
             return redirect(url_for('read.rate_review', book_id=new_id, **{'from': 'reviews'}))
+        im = section.item_m(values)
         if owned:
-            flash(f"'{values['title']}' added to your {section.m['plural']}.", 'success')
+            flash(f"'{values['title']}' added to your {im['plural']}.", 'success')
         else:
-            flash(f"'{values['title']}' added as unshelved, so it isn't on your {section.m['shelf']}. "
+            flash(f"'{values['title']}' added as unshelved, so it isn't on your {im['shelf']}. "
                   f"Rate and review it here.", 'success')
         return redirect(url_for(section.endpoint('show'), id=new_id))
 
@@ -414,8 +420,9 @@ def make_blueprint(section: Section) -> Blueprint:
         from blueprints.books import _book_tools_context
 
         def page(values, status=200):
+            # Worded by the kind on the form (a re-shown POST) or the row's
             return render_template('media_form.html', video=row, values=values,
-                                   m=section.m, formats=section.formats,
+                                   m=section.item_m(values), formats=section.formats,
                                    **_book_tools_context(conn, row)), status
 
         if request.method == 'GET':
@@ -451,7 +458,7 @@ def make_blueprint(section: Section) -> Blueprint:
               values['publish_year'], values['runtime_minutes'], values['format'], values['barcode'],
               values['catalog_number'], values['genre'], values['description'], cover, id, m_type))
         conn.commit()
-        flash(f"{section.m['Noun']} updated.", 'success')
+        flash(f"{section.item_m(values)['Noun']} updated.", 'success')
         return redirect(url_for(section.endpoint('show'), id=id))
 
     @login_required

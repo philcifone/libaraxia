@@ -158,7 +158,7 @@ def test_options_route(client, db, people):
     db.commit()
     login(client, 'alice')
     got = client.get('/bulk/options?type=video').get_json()
-    assert got['success'] and got['section'] == 'Movies'
+    assert got['success'] and got['section'] == 'Movies & TV'
     assert [s['value'] for s in got['statuses']] == ['watched', 'want to watch', 'untracked']
     assert got['shelves'] == []
     assert [s['name'] for s in client.get('/bulk/options?type=book').get_json()['shelves']] == ['Jazz']

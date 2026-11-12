@@ -263,7 +263,8 @@ def create_app():
         return url_for(endpoint, username=username) if scope == 'friend' else url_for(endpoint)
     app.add_template_global(shelf_url, 'shelf_url')
     app.add_template_global(media.SECTION_NAMES, 'SECTION_NAMES')
-    app.add_template_global(lambda row: media.media_labels(media.media_type_of(row)), 'labels_for')
+    app.add_template_global(media.SECTION_WORDS, 'SECTION_WORDS')
+    app.add_template_global(media.item_labels, 'labels_for')
 
     # List view's status and rating columns (_book_grid.html, ROADMAP 7.2b):
     # the viewer's own, for a page of items in one query

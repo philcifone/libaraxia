@@ -55,7 +55,7 @@ def test_format_is_checked_against_each_items_own_type(conn, people, who):
     assert p.groups[0].label == '→'.join(['Cartridge ', ' DVD'])
     assert bulk.ACTIONS['format'].describe({'format': 'VHS'}) == 'Set format to Cartridge'
     audiobook_on_a_movie = bulk.plan(conn, who['alice'], 'format', {'format': 'Audiobook'}, [movie])
-    assert audiobook_on_a_movie.skipped == {'Not a format for Movies': [movie]}
+    assert audiobook_on_a_movie.skipped == {'Not a format for Movies & TV': [movie]}
     for bad in ('Betamax', '', None):
         with pytest.raises(bulk.BulkError):
             bulk.plan(conn, who['alice'], 'format', {'format': bad}, [movie])
@@ -186,7 +186,7 @@ def test_status_types_and_untracked(conn, people, who):
     p = bulk.plan(conn, alice, 'status', {'status': 'watched'}, [book, movie])
     assert p.skipped == {'Not a status for Books': [book]} and p.changes == 1
     assert bulk.plan(conn, alice, 'status', {'status': 'listened'}, [movie]).skipped == {
-        'Not a status for Movies': [movie]}
+        'Not a status for Movies & TV': [movie]}
     assert bulk.plan(conn, alice, 'status', {'status': 'untracked'}, [book]).same == 1      # nothing to clear
     for bad in ('', None, 'finished', 'READ'):
         with pytest.raises(bulk.BulkError):
@@ -314,10 +314,10 @@ def test_a_shelf_is_for_one_section(conn, people, who):
     movie = mine(conn, people, 1, 'video')[0]
     films = shelf_of(conn, people, 'Noir', 'video')
     p = bulk.plan(conn, who['alice'], 'shelf_add', {'shelf_id': films, 'media_type': 'video'}, [book, movie])
-    assert p.skipped == {'Collection is for Movies': [book]} and p.changes == 1
+    assert p.skipped == {'Collection is for Movies & TV': [book]} and p.changes == 1
     # The shelf's own section wins over what the request claims
     again = bulk.plan(conn, who['alice'], 'shelf_add', {'shelf_id': films, 'media_type': 'book'}, [book, movie])
-    assert again.skipped == {'Collection is for Movies': [book]}
+    assert again.skipped == {'Collection is for Movies & TV': [book]}
 
 
 def test_shelf_must_be_yours(conn, people, who):

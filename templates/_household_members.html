@@ -1,5 +1,5 @@
 {# Who shares the household's shelves, as centred name boxes right under the
-   Shelves heading (Books, Movies and Music, Household; Phil, 2026-11-09):
+   Shelves heading (Books, Movies & TV and Music, Household; Phil, 2026-11-09):
    "Everyone", then each other member with their avatar. Chips toggle: each
    one on adds that member's items to yours (?member=, repeated;
    utils/households.member_choice), so you pick who's on the shelf. Turning
@@ -12,9 +12,9 @@
    (the chosen ids, a list) #}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
     {% if household_members %}
-    {# Worded by section: books, movies or music (the Library page has no m) #}
+    {# Worded by section: books, movies and TV or music (the Library page has no m) #}
     {% set kind = m.type if m is defined and m else 'book' %}
-    <p id="member-row-label" class="text-sm text-content-secondary text-center mb-2">Your shared {{ SECTION_NAMES[kind]|lower }} with</p>
+    <p id="member-row-label" class="text-sm text-content-secondary text-center mb-2">Your shared {{ SECTION_WORDS[kind] }} with</p>
     <nav class="member-row" aria-label="Whose items" aria-describedby="member-row-label">
         <a href="{{ url_with(member=[], page=None) }}" class="member-chip card-link {{ 'is-on' if not member_filter }}"
            {% if not member_filter %}aria-current="true"{% endif %}>Everyone</a>

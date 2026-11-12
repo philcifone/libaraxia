@@ -17,7 +17,7 @@ The columns are shared and relabelled by type:
     description       Description        Synopsis         Tracklist and notes
 
 The Library (and everything built on the `library_books` view) is books
-only; the Movies section reads `library_videos` and Vinyls reads
+only; the Movies & TV section reads `library_videos` and Music reads
 `library_records`. Everything that differs by type lives here, so templates
 (via `media_labels`) and JS (via data- attributes) don't each keep their own
 copy. The database has the same lists of types and statuses in its
@@ -176,7 +176,12 @@ _LABELS = {
     },
     VIDEO: {
         'type': VIDEO,
-        'noun': 'movie', 'Noun': 'Movie', 'plural': 'movies', 'a': 'a',
+        # The section is "Movies & TV" (ROADMAP 15.1): a movie or a TV box set,
+        # told apart by books.video_kind. These are the section's words, for
+        # pages about the shelf ("Search your 6 movies and shows"); a page
+        # about one item gets its kind's words (KIND_WORDS, item_labels).
+        # The form's defaults (creator, about) are a movie's.
+        'noun': 'movie or show', 'Noun': 'Movie or Show', 'plural': 'movies and shows', 'a': 'a',
         'creator': 'Director', 'by': 'directed by',
         'publisher': 'Studio',
         'year': 'Release Year',
@@ -190,10 +195,10 @@ _LABELS = {
         'info_heading': 'Viewing Info',
         'tags_heading': 'Movie Tags',
         'about': 'About this Movie',
-        'shelf': 'movie shelf',
-        'section': 'Movies',
+        'shelf': 'Movies & TV shelf',
+        'section': 'Movies & TV',
         'search_hint': 'Title, director or barcode',
-        'title_search_placeholder': 'Film title...',
+        'title_search_placeholder': 'Movie or show title...',
         'no_sessions': 'No viewings yet. Click "Add Session" to record when you watched it.',
         'not_owned': 'Watched, unshelved',
         'description': 'Description',
@@ -239,7 +244,7 @@ ITEMS = {BOOK: 'book', VIDEO: 'video', RECORD: 'record'}
 HOMES = {BOOK: 'base.index', VIDEO: 'videos.index', RECORD: 'records.index'}
 
 # The Shelves pages (ROADMAP 11.1): every section in every scope. One
-# sidebar entry, then a Books | Movies | Music switch that keeps the scope
+# sidebar entry, then a Books | Movies & TV | Music switch that keeps the scope
 # (_shelves.html). 'friend' is one friend's shelf (takes a username); the
 # list of friends is the Friends page (friends.index, ROADMAP 11.3).
 SHELF_ENDPOINTS = {
@@ -248,7 +253,10 @@ SHELF_ENDPOINTS = {
     RECORD: {'mine': 'records.index', 'shared': 'records.shared', 'friend': 'records.user_records'},
 }
 # The switch's labels, in order
-SECTION_NAMES = {BOOK: 'Books', VIDEO: 'Movies', RECORD: 'Music'}
+SECTION_NAMES = {BOOK: 'Books', VIDEO: 'Movies & TV', RECORD: 'Music'}
+# The same in running text ("Your shared movies and TV with"): lowercased
+# SECTION_NAMES would say "movies & tv"
+SECTION_WORDS = {BOOK: 'books', VIDEO: 'movies and TV', RECORD: 'music'}
 # The endpoint -> section map the "last section used" cookie is set from
 SHELF_SECTION_OF = {endpoint: kind for kind, scopes in SHELF_ENDPOINTS.items()
                     for endpoint in scopes.values()}
@@ -302,16 +310,41 @@ def media_type_of(row):
     return value if value in MEDIA_TYPES else BOOK
 
 
-def media_labels(media_type):
-    """Labels and statuses for one type (see _LABELS), plus 'statuses'."""
+# A video's words by kind (15.1), over the section's in _LABELS: an item
+# page, its edit form and its flashes say "TV show" and "Creator" for a box
+# set, "movie" and "Director" for a film.
+KIND_WORDS = {
+    MOVIE: {'noun': 'movie', 'Noun': 'Movie', 'plural': 'movies',
+            'creator': 'Director', 'by': 'directed by',
+            'tags_heading': 'Movie Tags', 'about': 'About this Movie'},
+    TV: {'noun': 'TV show', 'Noun': 'TV Show', 'plural': 'TV shows',
+         'creator': 'Creator', 'by': 'created by',
+         'tags_heading': 'Show Tags', 'about': 'About this Show'},
+}
+
+
+def media_labels(media_type, kind=None):
+    """Labels and statuses for one type (see _LABELS), plus 'statuses'.
+    `kind` ('movie' / 'tv', videos only) swaps in that kind's words
+    (KIND_WORDS); without it a video gets the section's ("movie or show").
+    'kind' in the result is the kind, or None."""
     media_type = media_type if media_type in MEDIA_TYPES else BOOK
-    return {**_LABELS[media_type], 'statuses': STATUSES[media_type],
+    kind = kind if media_type == VIDEO and kind in KIND_WORDS else None
+    return {**_LABELS[media_type], **KIND_WORDS.get(kind, {}), 'kind': kind,
+            'statuses': STATUSES[media_type],
             'status_labels': STATUS_LABELS, 'done_status': DONE_STATUS[media_type],
             'want_status': WANT_STATUS[media_type],
             'no_status': NO_STATUS_LABEL[media_type],
             'bp': BLUEPRINTS[media_type], 'item': ITEMS[media_type], 'home': HOMES[media_type],
             'formats': FORMATS.get(media_type, ()),
             'has_barcode': HAS_BARCODE[media_type]}
+
+
+def item_labels(row):
+    """media_labels for one item: its type, and its kind when it's a video
+    (a row selected without video_kind reads as a movie). Templates get it
+    as labels_for(row)."""
+    return media_labels(media_type_of(row), kind_of(row))
 
 
 def is_valid_status(media_type, status):

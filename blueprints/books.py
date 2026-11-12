@@ -732,7 +732,7 @@ def render_item_page(conn, book):
         wishlist_owner_entry=wishlist_owner_entry,
         household_reviews=household_reviews,
         can_manage=can_manage,
-        m=media.media_labels(media.media_type_of(book)),
+        m=media.item_labels(book),
         runtime=media.format_runtime(book['runtime_minutes']),
     )
 
@@ -810,7 +810,7 @@ def delete_book(id):
     delete cascades into reviews, statuses and reading history.
     """
     conn = get_db()
-    book = conn.execute("SELECT added_by, cover_image_url, media_type FROM books WHERE id = ?",
+    book = conn.execute("SELECT added_by, cover_image_url, media_type, video_kind FROM books WHERE id = ?",
                         (id,)).fetchone()
 
     if not book:
@@ -835,7 +835,7 @@ def delete_book(id):
         delete_image_file(book['cover_image_url'])
     kind = media.media_type_of(book)
     if kind != media.BOOK:
-        flash(f"{media.media_labels(kind)['Noun']} deleted.", "success")
+        flash(f"{media.item_labels(book)['Noun']} deleted.", "success")
         return redirect(url_for(f"{media.BLUEPRINTS[kind]}.index"))
     flash("Book deleted successfully.", "success")
     return redirect(url_for('base.index'))

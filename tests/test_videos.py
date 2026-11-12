@@ -209,10 +209,11 @@ def test_grid_search_and_filters(client, db, people):
 
 
 def test_section_is_called_movies(client, db, people):
-    # The UI says "Movies" (Phil, 2026-11-07); code, URLs and the DB keep "video"
+    # The UI says "Movies & TV" (15.1; "Movies" from 2026-11-07); code, URLs
+    # and the DB keep "video"
     login(client, 'alice')
-    assert 'My Movies' in client.get('/videos/').get_data(as_text=True)
-    assert 'Household Movies' in client.get('/videos/shared').get_data(as_text=True)
+    assert 'My Movies &amp; TV' in client.get('/videos/').get_data(as_text=True)
+    assert 'Household Movies &amp; TV' in client.get('/videos/shared').get_data(as_text=True)
     # Friends are their own page (11.3); the old tab redirects there
     assert client.get('/videos/friends').headers['Location'].endswith('/friends/')
     assert 'Video' not in client.get('/videos/add').get_data(as_text=True).replace('lookupVideo', '')
@@ -660,7 +661,8 @@ def test_search_thumbnails_allow_tmdb_posters_only():
     assert 'image.tmdb.org' in THUMBNAIL_HOSTS and 'api.themoviedb.org' not in THUMBNAIL_HOSTS
 
 
-@pytest.mark.parametrize('url, noun, code_tab', [('/books/add', 'Book', 'ISBN'), ('/videos/add', 'Movie', 'Barcode')])
+@pytest.mark.parametrize('url, noun, code_tab', [('/books/add', 'Book', 'ISBN'),
+                                                 ('/videos/add', 'Movie or Show', 'Barcode')])
 def test_add_pages_share_one_layout(client, people, url, noun, code_tab):
     login(client, 'alice')
     page = client.get(url).get_data(as_text=True)
@@ -711,7 +713,7 @@ def test_edit_movie_uses_the_shared_fields(client, db, people):
 def test_wishlist_add_page_for_each_type(client, people):
     login(client, 'alice')
     page = client.get('/wishlist/add?type=video&format=DVD').get_data(as_text=True)
-    assert 'Add a Movie to your Wishlist</h1>' in page and 'id="notes"' in page
+    assert 'Add a Movie or Show to your Wishlist</h1>' in page and 'id="notes"' in page
     assert 'action="/wishlist/add"' in page and '<option value="DVD" selected' in page
     assert 'Add to Wishlist' in page and 'class="crumb-link">Wishlist<' in page
     book = client.get('/wishlist/add?type=book').get_data(as_text=True)
@@ -731,7 +733,7 @@ def test_movie_on_the_wishlist_then_onto_the_shelf(client, db, people):
     assert scalar(db, 'SELECT notes FROM wishlist WHERE book_id = ?', movie) == "the director's cut"
     assert scalar(db, 'SELECT COUNT(*) FROM library_videos WHERE id = ?', movie) == 0   # wished, unshelved
     page = client.get('/wishlist/view').get_data(as_text=True)
-    assert 'Movies <span' in page and 'Alien' in page and 'Add to Movies' in page
+    assert 'Movies and shows <span' in page and 'Alien' in page and 'Add to Movies &amp; TV' in page
     assert client.get('/videos/').get_data(as_text=True).count('>Alien<') == 0
 
     r = client.post(f'/wishlist/move_to_library/{movie}')

@@ -18,7 +18,7 @@ from utils.database import get_db
 reviews_blueprint = Blueprint('reviews', __name__, template_folder='templates')
 
 # The floating [+ Review] menu: one entry per type, each opening the search
-FAB_LABELS = {media.BOOK: 'Book', media.VIDEO: 'Movie', media.RECORD: 'Album'}
+FAB_LABELS = {media.BOOK: 'Book', media.VIDEO: 'Movie or show', media.RECORD: 'Album'}
 
 
 def _type(value):

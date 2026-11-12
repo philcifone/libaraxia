@@ -61,3 +61,51 @@ def test_library_export_has_kind_and_season(client, db, people):
     by_title = {r['Title']: r for r in rows}
     assert (by_title['The Wire']['Kind'], by_title['The Wire']['Season']) == ('tv', 'Season 1')
     assert (by_title['Heat']['Kind'], by_title['Heat']['Season']) == ('movie', '')
+
+
+# --- wording: "Movies & TV" for the section, per kind for an item -------------------
+
+def test_section_and_kind_words():
+    section = media.media_labels(media.VIDEO)
+    assert section['section'] == 'Movies & TV' and section['kind'] is None
+    assert media.SECTION_NAMES[media.VIDEO] == 'Movies & TV'
+    tv = media.media_labels(media.VIDEO, 'tv')
+    assert (tv['Noun'], tv['creator'], tv['by'], tv['section']) == ('TV Show', 'Creator', 'created by', 'Movies & TV')
+    movie = media.media_labels(media.VIDEO, 'movie')
+    assert (movie['Noun'], movie['creator']) == ('Movie', 'Director')
+    # A kind means nothing to the other types
+    assert media.media_labels(media.RECORD, 'tv')['Noun'] == 'Album'
+
+
+def test_grid_and_switch_say_movies_and_tv(client, db, people):
+    add_video(db, people['alice'], 'Heat')
+    login(client, 'alice')
+    page = client.get('/videos/').get_data(as_text=True)
+    assert 'My Movies &amp; TV' in page
+    assert '>Movies &amp; TV<' in page                       # the Books | Movies & TV | Music switch
+    assert 'Search your 1 movie or show' in page
+
+
+def test_tv_item_pages_say_tv_show(client, db, people):
+    vid = add_video(db, people['alice'], 'The Wire', 'tv', 'Season 1')
+    login(client, 'alice')
+    page = client.get(f'/videos/{vid}').get_data(as_text=True)
+    assert 'created by' in page and 'About this Show' in page and 'Edit TV Show' in page
+    assert 'Remove from Movies &amp; TV' in page
+    edit = client.get(f'/videos/edit/{vid}').get_data(as_text=True)
+    assert 'Edit TV Show</h1>' in edit and '>Creator</label>' in edit
+
+
+def test_movie_item_pages_keep_movie_words(client, db, people):
+    vid = add_video(db, people['alice'], 'Heat')
+    login(client, 'alice')
+    page = client.get(f'/videos/{vid}').get_data(as_text=True)
+    assert 'directed by' in page and 'Edit Movie' in page and 'TV Show' not in page
+
+
+def test_feed_words_a_tv_show(client, db, people):
+    """The feed's rows carry the kind, so a friend's new box set reads right."""
+    add_video(db, people['carol'], 'The Wire', 'tv')
+    login(client, 'alice')
+    page = client.get('/feed/activity').get_data(as_text=True)
+    assert 'added a new TV show' in page

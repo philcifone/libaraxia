@@ -864,7 +864,7 @@ def test_profile_stats_same_blocks_for_every_type(client, db, people):
     assert stats.count(' hidden>') == 5
     assert 'data-stats-kind="all" aria-pressed="true"' in stats
     assert 'data-kind="all" data-view="overview">' in stats
-    for words in ('Books owned', 'Movies owned', 'Hours watched', 'Pages read', 'Top authors', 'Top directors'):
+    for words in ('Books owned', 'Movies and shows owned', 'Hours watched', 'Pages read', 'Top authors', 'Top directors'):
         assert words in stats
     assert 'href="/base/library/alice"' in stats and 'href="/videos/user/alice"' in stats
     assert 'tab-library' not in page                     # the old Library tab is gone

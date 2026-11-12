@@ -107,7 +107,7 @@ def rate_review(book_id):
 
     # Fetch book details and existing read data
     book_query = '''
-        SELECT id, title, author, cover_image_url, media_type FROM books WHERE id = ?
+        SELECT id, title, author, cover_image_url, media_type, video_kind FROM books WHERE id = ?
     '''
     book = conn.execute(book_query, (book_id,)).fetchone()
 
@@ -157,7 +157,7 @@ def rate_review(book_id):
         read_data=read_data,
         sessions=sessions,
         prefill=prefill,
-        m=media.media_labels(media.media_type_of(book)),
+        m=media.item_labels(book),
         # Reached from the Reviews section: its crumb, and saving goes back there
         from_reviews=request.args.get('from') == 'reviews',
     )

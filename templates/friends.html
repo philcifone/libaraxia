@@ -43,7 +43,7 @@
                     {# What's on their shelves; each count opens that section #}
                     <p class="text-sm text-content-secondary">
                         {%- for kind, count, one, many in [('book', friend.books, 'book', 'books'),
-                                                           ('video', friend.movies, 'movie', 'movies'),
+                                                           ('video', friend.movies, 'movie or show', 'movies and shows'),
                                                            ('record', friend.albums, 'album', 'albums')] %}
                         {%- if not loop.first %} · {% endif %}
                         <a href="{{ shelf_url(kind, 'friend', friend.username) }}" class="hover:text-accent">{{ count }} {{ one if count == 1 else many }}</a>

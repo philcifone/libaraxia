@@ -220,11 +220,11 @@ def check_duplicates():
 @login_required
 def move_to_library(book_id):
     """You got it: a wishlist item moves onto your shelf (the Library for a
-    book, Movies for a movie, Vinyls for a record), marked want to read /
+    book, Movies & TV for a video, Music for a record), marked want to read /
     watch / listen."""
     conn = get_db()
     entry = conn.execute("""
-        SELECT b.media_type FROM wishlist w JOIN books b ON b.id = w.book_id
+        SELECT b.media_type, b.video_kind FROM wishlist w JOIN books b ON b.id = w.book_id
         WHERE w.user_id = ? AND w.book_id = ?
     """, (current_user.id, book_id)).fetchone()
 
@@ -232,7 +232,7 @@ def move_to_library(book_id):
         flash("That isn't on your wishlist.", "error")
         return redirect(url_for("wishlist.view_wishlist"))
     kind = media.media_type_of(entry)
-    m = media.media_labels(kind)
+    m = media.item_labels(entry)     # "TV Show added ..." for a box set
 
     try:
         existing = conn.execute("""
@@ -275,8 +275,8 @@ def remove_from_wishlist(book_id):
     removed = conn.execute(
         "DELETE FROM wishlist WHERE user_id = ? AND book_id = ?",
         (current_user.id, book_id)).rowcount
-    book = conn.execute("SELECT added_by, media_type FROM books WHERE id = ?", (book_id,)).fetchone()
-    m = media.media_labels(media.media_type_of(book) if book else media.BOOK)
+    book = conn.execute("SELECT added_by, media_type, video_kind FROM books WHERE id = ?", (book_id,)).fetchone()
+    m = media.item_labels(book) if book else media.media_labels(media.BOOK)
     noun = m["Noun"]
 
     shelved_as_read = False
@@ -378,8 +378,8 @@ def quick_add_to_wishlist(book_id):
     if not can_view_book(conn, current_user, book_id):
         flash("Book not found.", "error")
         return redirect(request.referrer or url_for("base.index"))
-    row = conn.execute("SELECT media_type FROM books WHERE id = ?", (book_id,)).fetchone()
-    noun = media.media_labels(media.media_type_of(row) if row else media.BOOK)["Noun"]
+    row = conn.execute("SELECT media_type, video_kind FROM books WHERE id = ?", (book_id,)).fetchone()
+    noun = (media.item_labels(row) if row else media.media_labels(media.BOOK))["Noun"]
     try:
         conn.execute("""
             INSERT INTO wishlist (user_id, book_id)

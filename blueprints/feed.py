@@ -21,6 +21,7 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.video_kind,
             b.created_at,
             b.genre,
             b.added_by,
@@ -53,6 +54,7 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.video_kind,
             b.genre,
             u.username,
             'wishlist_added' as activity_type
@@ -82,6 +84,7 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.video_kind,
             u.username,
             'collection_added' as activity_type
         FROM collections c
@@ -117,6 +120,7 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.video_kind,
             u.username,
             'review_added' as activity_type
         FROM read_data r
@@ -153,6 +157,7 @@ def activity_feed():
             'author': book['author'],
             'cover_image_url': book['cover_image_url'],
             'media_type': book['media_type'],
+            'video_kind': book['video_kind'],
             'genre': book['genre'],
             'username': book['username'],
             'user_id': book['added_by'],
@@ -177,6 +182,7 @@ def activity_feed():
             'author': wishlist_item['author'],
             'cover_image_url': wishlist_item['cover_image_url'],
             'media_type': wishlist_item['media_type'],
+            'video_kind': wishlist_item['video_kind'],
             'genre': wishlist_item['genre'],
             'username': wishlist_item['username'],
             'user_id': wishlist_item['user_id'],
@@ -202,6 +208,7 @@ def activity_feed():
             'author': collection['author'],
             'cover_image_url': collection['cover_image_url'],
             'media_type': collection['media_type'],
+            'video_kind': collection['video_kind'],
             'username': collection['username'],
             'user_id': collection['user_id'],
             'status': collection['status'],
@@ -226,6 +233,7 @@ def activity_feed():
             'author': review['author'],
             'cover_image_url': review['cover_image_url'],
             'media_type': review['media_type'],
+            'video_kind': review['video_kind'],
             'username': review['username'],
             'user_id': review['user_id'],
             'rating': review['rating'],
