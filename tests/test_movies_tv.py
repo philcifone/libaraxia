@@ -53,6 +53,11 @@ def test_card_json_carries_kind_and_season(db, people):
     rows = db.execute('SELECT * FROM library_videos WHERE id = ?', (vid,)).fetchall()
     card = card_json(db, people['bob'], rows)[0]
     assert (card['video_kind'], card['season']) == ('tv', 'Season 1')
+    # Worded as the first page's cards are (script.js createBookCard)
+    assert (card['by'], card['season_short']) == ('created by', 'S1')
+    db.execute('UPDATE books SET owned = 0 WHERE id = ?', (vid,))
+    rows = db.execute('SELECT * FROM library_videos WHERE id = ?', (vid,)).fetchall()
+    assert card_json(db, people['bob'], rows)[0]['format'] is None
 
 
 def test_library_export_has_kind_and_season(client, db, people):
@@ -209,12 +214,12 @@ def test_season_short():
     assert media.season_short(None) == ''
 
 
-def test_grid_badges_tv_and_shows_its_season_in_list_view(client, db, people):
+def test_grid_shows_tv_and_its_season_in_list_view_only(client, db, people):
     add_video(db, people['alice'], 'The Wire', 'tv', 'Season 2')
     add_video(db, people['alice'], 'Heat')
     login(client, 'alice')
     page = client.get('/videos/').get_data(as_text=True)
-    assert page.count('class="tv-badge') == 1
+    assert 'tv-badge' not in page            # no badge on the cover: the title says it
     assert '<span class="book-season"> · TV, S2</span>' in page      # hidden in grid view by CSS
     assert 'created by Someone' in page and 'directed by Someone' in page
 
@@ -387,3 +392,55 @@ def test_bulk_menu_offers_kind_on_movies_and_tv_only(client, db, people):
     assert 'data-action="kind"' in client.get('/videos/').get_data(as_text=True)
     assert 'data-action="kind"' not in client.get('/base/index').get_data(as_text=True)
     assert 'data-action="kind"' not in client.get('/records/').get_data(as_text=True)
+
+
+# --- an unshelved movie or album has no format ----------------------------------------
+
+def test_shown_format_is_none_for_unshelved_video_and_record(db, people):
+    vid = add_video(db, people['alice'], 'Heat')
+    row = lambda: db.execute('SELECT * FROM books WHERE id = ?', (vid,)).fetchone()
+    assert media.shown_format(row()) == 'DVD'
+    db.execute('UPDATE books SET owned = 0 WHERE id = ?', (vid,))
+    assert media.shown_format(row()) is None
+    db.execute("UPDATE books SET media_type = 'record', format = 'LP' WHERE id = ?", (vid,))
+    assert media.shown_format(row()) is None
+    # An unshelved audiobook is still an audiobook
+    db.execute("UPDATE books SET media_type = 'book', format = 'Audiobook' WHERE id = ?", (vid,))
+    assert media.shown_format(row()) == 'Audiobook'
+
+
+def test_add_unshelved_saves_no_format(client, db, people):
+    login(client, 'alice')
+    page = client.get('/videos/add').get_data(as_text=True)
+    assert 'class="when-owned space-y-2"' in page        # hidden by CSS while "Not on my shelf" is ticked
+    client.post('/videos/add', data=tv_form(not_owned='1'))
+    row = db.execute("SELECT owned, format FROM books WHERE title = 'The Wire'").fetchone()
+    assert tuple(row) == (0, None)
+    client.post('/videos/add', data=tv_form(title='Heat'))
+    assert db.execute("SELECT format FROM books WHERE title = 'Heat'").fetchone()[0] == 'DVD'
+
+
+def test_unshelved_item_page_and_edit_show_no_format_but_keep_it(client, db, people):
+    vid = add_video(db, people['alice'], 'Heat', fmt='VHS')
+    db.execute('UPDATE books SET owned = 0 WHERE id = ?', (vid,))
+    db.commit()
+    login(client, 'alice')
+    page = client.get(f'/videos/{vid}').get_data(as_text=True)
+    assert 'Cartridge' not in page
+    edit = client.get(f'/videos/edit/{vid}').get_data(as_text=True)
+    assert 'id="format"' not in edit
+    client.post(f'/videos/edit/{vid}', data=tv_form(title='Heat', video_kind='movie', format='DVD'))
+    assert db.execute('SELECT format FROM books WHERE id = ?', (vid,)).fetchone()[0] == 'VHS'
+    # "I own it now" brings it back
+    client.post(f'/books/ownership/{vid}', data={'owned': '1'})
+    assert 'Cartridge' in client.get(f'/videos/{vid}').get_data(as_text=True)
+
+
+def test_wishlist_entries_keep_their_format(client, db, people):
+    """Wishing for the 4K is wishing for a copy: Format stays on the wishlist's form."""
+    login(client, 'alice')
+    page = client.get('/wishlist/add?type=video').get_data(as_text=True)
+    assert 'id="format"' in page and 'id="not_owned"' not in page
+    client.post('/wishlist/add', data=tv_form(media_type='video', format='VHS'))
+    row = db.execute("SELECT * FROM books WHERE title = 'The Wire'").fetchone()
+    assert media.shown_format(row) == 'VHS'

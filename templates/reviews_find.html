@@ -46,7 +46,7 @@
                             {% if r.author %}<span class="block text-sm text-content-secondary truncate">{{ r.author }}</span>{% endif %}
                             <span class="block text-xs text-content-secondary">
                                 {%- if r.added_by == current_user.id %}Yours{% else %}{{ r.owner }}'s (household){% endif -%}
-                                {%- if r.format %}, {{ r.format|format_label }}{% endif -%}
+                                {%- if r|item_format %}, {{ (r|item_format)|format_label }}{% endif -%}
                                 {%- if not r.owned %}, unshelved{% elif r.removed_at %}, removed{% endif -%}
                             </span>
                         </span>

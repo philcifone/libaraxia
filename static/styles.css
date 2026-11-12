@@ -1314,7 +1314,6 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    small cover) and says it after the creator instead ("· TV, S2") */
 .book-season { display: none; }
 [data-view="list"] .book-season { display: inline; }
-[data-view="list"] .tv-badge { display: none; }
 [data-view="list"] .book-meta {
     display: flex;
     flex-wrap: wrap;
@@ -2740,6 +2739,9 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
 .when-tv { display: none; }
 form:has(input[name="video_kind"][value="tv"]:checked) .when-tv { display: revert; }
 form:has(input[name="video_kind"][value="tv"]:checked) .when-movie { display: none; }
+/* Add's "Not on my shelf" hides Format: an unshelved item has no copy, so no
+   format (media.shown_format) */
+form:has(#not_owned:checked) .when-owned { display: none; }
 
 /* The genre picker */
 .bulk-list {

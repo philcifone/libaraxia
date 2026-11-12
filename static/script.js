@@ -426,7 +426,11 @@ class InfiniteScroll {
                             ${this.escapeHtml(book.title)}
                         </h3>
                         <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
-                            ${book.author ? 'by ' + this.escapeHtml(book.author) : '&nbsp;'}
+                            ${book.author ? this.escapeHtml(book.by || 'by') + ' ' + this.escapeHtml(book.author) : '&nbsp;'}${
+                                // List view only (styles.css): "· TV, S2", as _book_grid.html
+                                book.video_kind === 'tv'
+                                    ? `<span class="book-season"> · TV${book.season_short ? ', ' + this.escapeHtml(book.season_short) : ''}</span>`
+                                    : ''}
                         </p>
                     </div>
                     <div class="book-meta">

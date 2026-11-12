@@ -254,6 +254,8 @@ class Section:
         # Kept across a re-shown form too: "I don't own this", and where
         # saving goes next (then=review: the review page, ROADMAP 13)
         values['not_owned'] = bool(form.get('not_owned'))
+        if values['not_owned']:
+            values['format'] = None    # unshelved: no copy, so no format
         values['then'] = 'review' if form.get('then') == 'review' else ''
         # A cover saved by the lookup, kept across a re-shown form
         cover = form.get('existing_cover_url')
@@ -446,8 +448,10 @@ def make_blueprint(section: Section) -> Blueprint:
 
         def page(values, status=200):
             # Worded by the kind on the form (a re-shown POST) or the row's
+            # unshelved: _item_fields leaves Format out
             return render_template('media_form.html', video=row, values=values,
                                    m=section.item_m(values), formats=section.formats,
+                                   unshelved=not row['owned'],
                                    **_book_tools_context(conn, row)), status
 
         if request.method == 'GET':
@@ -456,6 +460,9 @@ def make_blueprint(section: Section) -> Blueprint:
             return page(values)
 
         values, errors = section.form_values(request.form)
+        if not row['owned']:
+            # The form had no Format; keep the stored one for "I own it now"
+            values['format'] = row['format']
         if errors:
             for error in errors:
                 flash(error, 'error')

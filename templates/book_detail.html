@@ -24,8 +24,10 @@
             {# A format with an icon (utils/media.FORMAT_ICONS: VHS, DVD,
                audiobook, LP, CD, cassette): title on the left, the icon on
                the right, since no grid shows a format badge. Anything else
-               (a plain book, an EP): the title centred. #}
-            {% set format_icon = book['format']|format_icon %}
+               (a plain book, an EP): the title centred. An unshelved movie or
+               album has no format (media.shown_format): no copy, no icon. #}
+            {% set shown_format = book|item_format %}
+            {% set format_icon = shown_format|format_icon %}
             {# px: the title and icon sit well in from the card's sides #}
             <header class="mb-8 px-3 md:px-6 {{ 'flex items-center justify-between gap-6' if format_icon else 'text-center' }}">
                 <div class="min-w-0">
@@ -39,7 +41,7 @@
                 </div>
                 {% if format_icon %}
                 <span class="shrink-0 text-content-secondary" role="img"
-                      aria-label="{{ book['format']|format_label }}" title="{{ book['format']|format_label }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
+                      aria-label="{{ shown_format|format_label }}" title="{{ shown_format|format_label }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
                 {% endif %}
             </header>
 
@@ -66,7 +68,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {% if m.type == 'record' %}
                             {% set details = [
-                                ('Format', book['format']|format_label),
+                                ('Format', shown_format|format_label),
                                 (m.publisher, book['publisher']),
                                 (m.year, book['publish_year']),
                                 (m.length, runtime),
@@ -75,7 +77,7 @@
                             ] %}
                             {% elif m.type == 'video' %}
                             {% set details = [
-                                ('Format', book['format']|format_label),
+                                ('Format', shown_format|format_label),
                                 (m.publisher, book['publisher']),
                                 (m.year, book['publish_year']),
                                 (m.length, runtime),
@@ -95,7 +97,7 @@
                                 ('Genre', book['genre'])
                             ] %}
                             {% endif %}
-                            {% for item in details %}
+                            {% for item in details if item[0] != 'Format' or item[1] %}
                             <div class="space-y-1">
                                 <span class="label text-sm pb-1">{{ item[0] }}</span>
                                 <p class="text-content-primary font-medium break-words">{{ item[1] }}</p>

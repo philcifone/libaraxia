@@ -112,7 +112,7 @@
                         {% if row.author %}<p class="text-sm text-content-secondary truncate">{{ lm.by }} {{ row.author }}</p>{% endif %}
                         <p class="mt-2 text-sm font-semibold {{ 'text-accent' if row.verdict in ('yours', 'household') else 'text-content-primary' }}">
                             {{- verdict_label(row) -}}
-                            <span class="font-normal text-content-secondary"> &middot; {{ lm.Noun }}{% if row.format %}, {{ row.format|format_label }}{% endif %}</span>
+                            <span class="font-normal text-content-secondary"> &middot; {{ lm.Noun }}{% if row|item_format %}, {{ (row|item_format)|format_label }}{% endif %}</span>
                         </p>
                         {% set mine = [] %}
                         {% if row.status %}{% set _ = mine.append(lm.status_labels[row.status]) %}{% endif %}

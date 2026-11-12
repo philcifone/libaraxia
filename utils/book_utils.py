@@ -853,10 +853,14 @@ def card_json(conn, viewer_id, books):
             'cover_image_url': b['cover_image_url'] if upload_exists(b['cover_image_url']) else None,
             'removed': b['removed_at'] is not None,
             'not_owned': not b['owned'],
-            'format': b['format'],
-            # Videos (15.1): 'tv' or None (a movie), and a TV set's season text
+            'format': media.shown_format(b),      # none for an unshelved movie or album
+            # Videos (15.1): 'tv' or None (a movie), and a TV set's season text;
+            # `by` ("directed by", "created by") and `season_short` ("S2") are
+            # worded here, as _book_grid.html words them, so the card can't drift
             'video_kind': b['video_kind'],
             'season': b['season'],
+            'by': media.item_labels(b)['by'],
+            'season_short': media.season_short(b['season']) if b['video_kind'] == media.TV else None,
             'year': b['publish_year'],
             'status': media.STATUS_LABELS.get(status, status) if status else None,
             'rating': mark.get('rating'),

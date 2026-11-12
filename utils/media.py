@@ -123,6 +123,21 @@ FORMAT_ICONS = {
 }
 
 
+def shown_format(row):
+    """The format to show for an item (the `item_format` filter): none for an
+    unshelved movie or album. A format is a physical copy's, and an
+    unshelved item has no copy. The column keeps what was stored, so "I own
+    it now" brings it back. An unshelved book keeps its format: Audiobook
+    is how you read it, not a copy you own.
+    """
+    keys = row.keys()
+    fmt = row['format'] if 'format' in keys else None
+    unshelved = 'owned' in keys and row['owned'] == 0
+    if unshelved and 'media_type' in keys and row['media_type'] in (VIDEO, RECORD):
+        return None
+    return fmt
+
+
 def format_icon(fmt):
     """Icon name for a stored format, '' when it has none (the `format_icon` filter)."""
     return FORMAT_ICONS.get(fmt, '')

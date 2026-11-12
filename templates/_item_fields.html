@@ -84,8 +84,12 @@
         </select>
     </div>
     {% else %}
+    {# No format for an unshelved movie or album (media.shown_format): hidden
+       while Add's "Not on my shelf" is ticked (styles.css .when-owned), and
+       left out of an unshelved item's edit page, which keeps what's stored #}
     <div class="grid grid-cols-2 gap-4">
-        <div class="space-y-2">
+        {% if not unshelved %}
+        <div class="when-owned space-y-2">
             <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>
             <select id="format" name="format"
                     class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent">
@@ -94,6 +98,7 @@
                 {% endfor %}
             </select>
         </div>
+        {% endif %}
         {{ field('catalog_number', 'Catalogue no.', values.catalog_number) }}
     </div>
     {% endif %}
