@@ -779,3 +779,55 @@ def test_only_the_importer_can_undo_and_the_bulk_routes_refuse_the_action(db, pe
         bulk.undo(db, who(bob), report['edit_id'])
     with pytest.raises(bulk.BulkError):
         bulk.plan(db, who(alice), 'goodreads', {}, [1])
+
+
+def test_a_goodreads_title_with_the_subtitle_matches_your_book(db, people):
+    # Found on Phil's prod copy (2026-11-11): a different edition (no ISBN
+    # match) whose Goodreads title carries the subtitle Libaraxia keeps apart
+    alice = people['alice']
+    lobster = add_book(db, alice, 'Consider the Lobster', 'David Foster Wallace')
+    water = add_book(db, alice, 'This Is Water', 'David Foster Wallace')
+    no_subtitle = add_book(db, alice, 'Bluets', 'Maggie Nelson')
+    db.execute("UPDATE books SET subtitle = 'And Other Essays', isbn = '9780759514928' WHERE id = ?", (lobster,))
+    db.execute("UPDATE books SET subtitle = 'Some Thoughts, Delivered on a Significant Occasion, about Living "
+               "a Compassionate Life' WHERE id = ?", (water,))
+    db.commit()
+    p = staged(db, alice,
+               row('Consider the Lobster and Other Essays', author='David Foster Wallace', isbn13='="9780316156110"'),
+               row('This Is Water: Some Thoughts, Delivered on a Significant Occasion, about Living a '
+                   'Compassionate Life', 'to-read', author='David Foster Wallace'),
+               row('Bluets: A Novel in Fragments', author='Maggie Nelson'),
+               row('Consider Phlebas', author='David Foster Wallace'))
+    assert [(r.book and r.book['id'], r.kind) for r in p.rows] == [
+        (lobster, 'shelf'), (water, 'shelf'), (no_subtitle, 'shelf'), (None, 'none')]
+    assert p.rows[1].box == 'want_nothing' and p.rows[1].reason == 'you own it now'
+
+
+def test_author_forms_that_still_match(db, people):
+    # Also from Phil's prod copy: Jr., name order, co-authors, a subtitle
+    # stored in the title. Title and an author must still both agree.
+    alice = people['alice']
+    books = {
+        'cradle': add_book(db, alice, "Cat's Cradle", 'Kurt Vonnegut'),
+        'three': add_book(db, alice, 'The Three-Body Problem', 'Cixin Liu'),
+        'biblio': add_book(db, alice, 'Bibliostyle', 'Nina Freudenberger, Sadie Stein'),
+        'monsters': add_book(db, alice, 'Invisible Monsters: A Novel', 'Chuck Palahniuk'),
+    }
+    p = staged(db, alice,
+               row('Cat’s Cradle', author='Kurt Vonnegut Jr.'),
+               row('The Three-Body Problem (Remembrance of Earth’s Past, #1)', author='Liu Cixin'),
+               row('Bibliostyle: How We Live at Home with Books', author='Nina Freudenberger'),
+               row('Invisible Monsters', 'to-read', author='Chuck Palahniuk'),
+               row("Cat's Cradle", author='Someone Else'),
+               row('Invisible', author='Chuck Palahniuk'))
+    assert [r.book and r.book['id'] for r in p.rows] == [
+        books['cradle'], books['three'], books['biblio'], books['monsters'], None, None]
+
+
+def test_author_keys():
+    from utils.book_matching import _author_keys
+    assert _author_keys('Kurt Vonnegut Jr.') == ['kurt vonnegut']
+    assert _author_keys('Liu Cixin') == _author_keys('Cixin Liu')
+    assert _author_keys('Nina Freudenberger, Sadie Stein') == [
+        'freudenberger nina sadie stein', 'freudenberger nina', 'sadie stein']
+    assert _author_keys('') == []

@@ -15,13 +15,35 @@ from models import get_library_members
 from utils.book_utils import _normalise, isbn_variants
 
 
-def _title_key(title, author):
-    """Normalised "title|author" key. Goodreads appends the series to titles
-    ("Leviathan Wakes (The Expanse, #1)"), the APIs don't, so a trailing
-    parenthetical is ignored on both sides."""
-    title = re.sub(r'\s*\([^()]*\)\s*$', '', title or '')
-    title, author = _normalise(title), _normalise(author)
-    return f'{title}|{author}' if title and author else None
+NAME_SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
+
+
+def _title_part(title):
+    """Normalised title. Goodreads appends the series to titles ("Leviathan
+    Wakes (The Expanse, #1)"), the APIs don't, so a trailing parenthetical is
+    ignored on both sides."""
+    return _normalise(re.sub(r'\s*\([^()]*\)\s*$', '', title or ''))
+
+
+def _author_keys(author):
+    """Every form of an author field a match may use: the whole name and each
+    co-author's ("Nina Freudenberger, Sadie Stein"), each as its words sorted
+    without Jr./Sr./III, so "Kurt Vonnegut Jr." == "Kurt Vonnegut" and
+    "Liu Cixin" == "Cixin Liu" (found on Phil's prod copy, ROADMAP 14b)."""
+    names = [author or ''] + re.split(r'\s*(?:,|;|&|\band\b)\s*', author or '')
+    keys = []
+    for name in names:
+        words = [w for w in _normalise(name).split() if w not in NAME_SUFFIXES]
+        key = ' '.join(sorted(words))
+        if key and key not in keys:
+            keys.append(key)
+    return keys
+
+
+def _title_keys(title, author):
+    """Normalised "title|author" keys, one per form of the author."""
+    title = _title_part(title)
+    return [f'{title}|{a}' for a in _author_keys(author)] if title else []
 
 
 def _isbn_keys(*isbns):
@@ -73,14 +95,23 @@ class BookIndex:
 
     def add(self, book):
         """Index a book row (needs id, isbn, title, author, removed_at, whose,
-        is_wishlist_entry)."""
+        is_wishlist_entry; subtitle if it has one)."""
         book = dict(book)
         self.by_id[book['id']] = book
         rank = self._RANK[(book['whose'], book['removed_at'] is not None)]
         keys = [(self._by_isbn, k) for k in _isbn_keys(book['isbn'])]
-        title_key = _title_key(book['title'], book['author'])
-        if title_key:
-            keys.append((self._by_title, title_key))
+        # Under the title alone and with its subtitle: Goodreads puts the
+        # subtitle in the title ("Consider the Lobster and Other Essays",
+        # "This Is Water: Some Thoughts, ..."), the lookups split it off
+        # and before a colon, for a title stored with its subtitle in it
+        # ("Invisible Monsters: A Novel")
+        titles = [book['title']]
+        if book.get('subtitle'):
+            titles.append(f"{book['title']} {book['subtitle']}")
+        if ':' in (book['title'] or ''):
+            titles.append(book['title'].split(':', 1)[0])
+        for title in titles:
+            keys += [(self._by_title, k) for k in _title_keys(title, book['author'])]
         for table, key in keys:
             current = table.get(key)
             if current is None or rank < current[0]:
@@ -89,10 +120,15 @@ class BookIndex:
     def match(self, isbns=(), title='', author=''):
         """ISBN first (any form of any ISBN given), then title + author."""
         hits = [self._by_isbn[k] for k in _isbn_keys(*isbns) if k in self._by_isbn]
-        if not hits:
-            key = _title_key(title, author)
-            if key and key in self._by_title:
-                hits = [self._by_title[key]]
+        # The whole title (which also finds a book stored as title + subtitle),
+        # then the part before a colon, for a book stored without its subtitle
+        candidates = [title]
+        if ':' in (title or ''):
+            candidates.append(title.split(':', 1)[0])
+        for candidate in candidates:
+            if hits:
+                break
+            hits = [self._by_title[k] for k in _title_keys(candidate, author) if k in self._by_title]
         if not hits:
             return None, None
         _, book = min(hits, key=lambda hit: hit[0])
