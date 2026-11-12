@@ -108,7 +108,8 @@ def test_delete_needs_csrf_token(app, client, db, people):
     login(client, 'alice')
     app.config['WTF_CSRF_ENABLED'] = True
     try:
-        assert client.post(f'/books/delete/{book}').status_code == 400
+        # Refused: a form post without a token goes back with a flash (14c)
+        assert client.post(f'/books/delete/{book}').status_code == 302
     finally:
         app.config['WTF_CSRF_ENABLED'] = False
     assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', book) == 1
