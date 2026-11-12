@@ -404,9 +404,14 @@
 
                     <!-- Add/Edit Session Form (Hidden by default) -->
                     <div id="session-form-container" class="hidden bg-primary rounded-lg p-4 mb-4 border-2 border-accent">
-                        <form action="{{ url_for('read.manage_session', book_id=book.id) }}" method="POST">
+                        {# No dates is allowed (read long ago) but asked first (book_detail.js, 14c) #}
+                        <form action="{{ url_for('read.manage_session', book_id=book.id) }}" method="POST"
+                              data-submit="saveSession"
+                              data-undated-add="Add a {{ m.session|lower }} with no dates?"
+                              data-undated-edit="Save this {{ m.session|lower }} with no dates?">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="session_id" id="form_session_id" value=""/>
+                            <input type="hidden" name="undated" id="form_undated" value=""/>
 
                             <h4 class="font-medium text-content-primary mb-4" id="session-form-title"
                                 data-add-title="Add New {{ m.session }}" data-edit-title="Edit {{ m.session }}">Add New {{ m.session }}</h4>
