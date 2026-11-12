@@ -1,7 +1,7 @@
 # Fable Shelf Theme Spec
 
-Status: DRAFT for tightening. Not on the ROADMAP yet; if it goes ahead it becomes a
-numbered phase there.
+Status: DONE 2026-11-11 (commits 136af66, e7936a8; see ROADMAP-ARCHIVE, Phase 10). Was a
+draft; kept for the record.
 
 ## Goal
 

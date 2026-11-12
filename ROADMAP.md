@@ -11,10 +11,10 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | # | Phase | Status |
 |---|---|---|
 | 0–8F | Design refresh, prod upkeep, data foundations and correctness, access, Goodreads import, page structure, design polish, physical media (movies, music), ownership and formats, collections, Do I have this?, cover quality | Done 2026-11-02 to 2026-11-08, [archive](docs/ROADMAP-ARCHIVE.md) |
-| 10 | More styles: Shelf (with the movie rack), Outrun, font choice | Done 2026-11-08, [archive](docs/ROADMAP-ARCHIVE.md#phase-10-more-styles) |
+| 10 | More styles: Shelf (with the movie rack), Outrun, font choice; Shelf polish | Done 2026-11-08 (polish 2026-11-11), [archive](docs/ROADMAP-ARCHIVE.md#phase-10-more-styles) |
 | 11–13b | Shelves hub and Friends page, profile and stats, reading goals, Reviews section, Do I have this? across all types | Done 2026-11-08 to 2026-11-09, [archive](docs/ROADMAP-ARCHIVE.md#phase-11-shelves-one-home-for-every-section) |
 | 14a | Bulk edit: select on every grid, eight actions, review, undo | Done 2026-11-11, [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit) |
-| 14b | [Granular Goodreads import](#phase-14-bulk-edit-and-granular-import) | Next: re-spec first. Was Phase 9 |
+| 14b | [Granular Goodreads import](#phase-14-bulk-edit-and-granular-import) | In progress (spec approved 2026-11-11). Was Phase 9 |
 | 15 | [Movies & TV, lending, cover crop](#phase-15-movies--tv-lending-cover-crop) | After 14 |
 | 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Last: screenshots of the finished app |
 
@@ -54,7 +54,17 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 14a (bulk edit) is done: [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit).
 
 ### 14b Granular Goodreads import 🟢
-- [ ] Re-spec after 14a ships (outline in the spec, section 16): staging table, review grid with a destination per row, conflicts per field (keep yours by default), wishlist-then-read as its own outcome defaulting to Ask, shelf mapping, undoable, and "import everything with the defaults" still one click. Covers still come from the `cover_jobs` fetch.
+**Spec: [docs/GOODREADS-IMPORT-SPEC.md](docs/GOODREADS-IMPORT-SPEC.md)** (approved 2026-11-11; brief: [docs/GOODREADS-IMPORT-BRIEF.md](docs/GOODREADS-IMPORT-BRIEF.md)). Branch `phase-14b-goodreads-import`, worktree `../libaraxia-import` (set up 2026-11-11). Claude does the git work: commits each step on the branch once Phil approves it, merges into `main` at M1/M2 when Phil says; Phil pushes (spec section 14, "Git").
+- **To start a step**, in a fresh session (replace N with the next unticked step; the first sentence only when the previous step was approved):
+  > Step N-1 is approved: commit it on the branch first. Then Phase 14b, step N: granular Goodreads import. Read docs/GOODREADS-IMPORT-SPEC.md in full, then CLAUDE.md, ROADMAP.md (14b), and BULK-EDIT-SPEC.md sections 2, 3, 9 and 14 (where they differ, the Goodreads spec's section 14 wins). Work in the worktree ../libaraxia-import on branch phase-14b-goodreads-import, following the spec's section 14 pipeline. Build step N only. Where the spec and the code disagree, stop and tell me. Leave step N uncommitted; stop and report when it's done.
+- [x] Re-spec after 14a (replaces BULK-EDIT-SPEC section 16).
+- [ ] 1. Parser: `goodreads_id` and `shelves` from `parse_row`.
+- [ ] 2. Migration 032 (staging, imports, rows). **Merge point M1.**
+- [ ] 3. `utils/goodreads_plan.py` stage + plan, headless (boxes, fill, choices).
+- [ ] 4. Apply and undo, headless (provenance, bulk journal).
+- [ ] 5. Routes and the review page; old route removed.
+- [ ] 6. Provenance in the UI: From Goodreads filter, book page note.
+- [ ] 7. Dry run on a prod copy (Phil), wrap-up. **Merge point M2.**
 
 ---
 
@@ -121,7 +131,7 @@ From Phil, 2026-11-08: for a portfolio, not commercial or public use.
 
 Not scheduled; pick up only when Phil asks.
 - Outrun: angled card and button corners via `clip-path` (it also clips borders and focus outlines, so draw those inside the shape). Animations: none yet; any added must respect `prefers-reduced-motion`.
-- Audiobookshelf integration for audiobooks (CLAUDE.md, product direction).
+- Audiobookshelf integration for audiobooks (docs/ARCHITECTURE.md, product direction).
 
 ## Not planned
 

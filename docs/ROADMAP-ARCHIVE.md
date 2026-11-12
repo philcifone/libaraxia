@@ -809,6 +809,8 @@ Built 2026-11-08 (Phil pulled it forward). `data-style="outrun"`, a shape block 
 
 **Done when:** each style renders every page in its modes at phone and desktop widths with a clean sweep; Shelf shows books on shelves and VHS in the rack.
 
+**Shelf polish (done 2026-11-10/11):** one restrained pass over the Shelf style from `docs/archive/FABLE-SHELF-THEME-SPEC.md`: cast shadows, square joins, a lit ledge edge, the left panel, rack sheen and shelf trim (`136af66`), then the bookcase's top and right side (`e7936a8`). Phil: looks really good; finished, nothing further planned.
+
 ---
 
 ## Phase 11: Shelves, one home for every section
