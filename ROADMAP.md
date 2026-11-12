@@ -15,9 +15,9 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 11–13b | Shelves hub and Friends page, profile and stats, reading goals, Reviews section, Do I have this? across all types | Done 2026-11-08 to 2026-11-09, [archive](docs/ROADMAP-ARCHIVE.md#phase-11-shelves-one-home-for-every-section) |
 | 14a | Bulk edit: select on every grid, eight actions, review, undo | Done 2026-11-11, [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit) |
 | 14b | Granular Goodreads import, site and personal backups, "Unshelved" | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import) |
-| 14c | [Tweaks after 14b](#14c-tweaks-after-14b-phil-2026-11-12-) | Next |
+| 14c | [Tweaks after 14b](#14c-tweaks-after-14b-phil-2026-11-12-) | Built on branch `phase-14c-tweaks`; one look to confirm, then merge |
 | 15 | [Movies & TV, lending, cover crop](#phase-15-movies--tv-lending-cover-crop) | After 14 |
-| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Last: screenshots of the finished app |
+| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Last: a final layout pass and a code review, then screenshots of the finished app |
 
 **Numbering:** the old Phase 9 is now 14 (2026-11-08), so the open phases run in order after the finished ones. 11 was once the archive fork (dropped, see Not planned); the number is reused. On 2026-11-09 the portfolio phase moved from 15 to 16 so it stays last.
 
@@ -70,12 +70,14 @@ Noted while testing 14b; after its wrap-up, before Phase 15.
 - [x] **Add pages check your own library first:** the duplicate notice on Add Book / Movie / Album only appears after the online lookup answers, and the page points to Do I Have This? for checking the shelf. Run the local check (Do I Have This?'s, `utils/have.py`) as soon as a barcode or ISBN is scanned or typed, before going online, so cataloguing at home on the Add page is enough. Check it uses `book_matching`'s subtitle and author rules from 14b.
 
 **14c follow-ups (Phil, 2026-11-12, after the first pass):**
-- [x] **Shelf style, take two:** heading cards set in a small bookcase like the grid's (frame, back wall, ledge, the case's outside faces), not a box; the item page's cover keeps its box and stands in a bookcase of its own.
+- [x] **Shelf style, take two:** heading cards set in a small bookcase like the grid's (frame, back wall, ledge, the case's outside faces), not a box; the item page's cover keeps its box (its own bookcase was tried and dropped).
 - [x] **Settings for everyone:** the gear opens Settings for every user, with Library and Account (from the profile) and an Admin tab (the old Admin Settings, as-is) for admins only. The profile keeps profile things, with Stats as its own tab.
 - [x] **Cyclers in a row of their own:** style, accent and font below the first icons, shown and hidden by a toggle right of the light/dark toggle.
 - [x] **Shelf depth and boxes everywhere:** the small bookcases get the grid's ledge and inner panel; the item page's box stands on a deeper shelf with the spine on its own edge; every cover in the Shelf style is a box (rows, feed, wishlist, reviews, Do I Have This?); feed cards and notification sections are bookcases.
 - [x] **Placeholders:** titled everywhere (Collections showed a bare binding), cover-shaped at one row height (Reviews squeezed them into w-14), words never split mid-letter; the small size's CSS had never shipped (Tailwind dropped it).
 - [x] **Collisions:** usernames can't be a page's name or a case twin (migration 033); no page renders an element id twice.
+- [x] **Feed:** long reviews clamped with Read more (one made a card ~9,000px tall on a phone); notification sections as bookcases.
+- [ ] **Item page cards as bookcases** (built and committed in `2e3015d`, waiting on Phil's look): the details, Household Reviews and your-info cards are `.case-card`; the cover is a free box. Keep, or revert that commit.
 
 ## Phase 15: Movies & TV, lending, cover crop
 
@@ -115,6 +117,15 @@ For fetched covers with borders, scans of a whole sleeve and phone photos taken 
 ## Phase 16: Portfolio: README, showcase site, demo
 
 From Phil, 2026-11-08: for a portfolio, not commercial or public use.
+
+### 16.0 Final layout pass 🟠
+Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app- and style-wide over the pages that grew piece by piece and still read as stacked cards: Activity Feed, Notifications, Friends, Wishlist, Settings and Admin, the review pages, Do I Have This?. Spacing, widths (the 4xl / 7xl mix), card nesting, headings, phone layouts, and the Shelf bookcase look where it belongs (in Shelf it's on headings, the feed, notifications and the item page so far). Check all four styles in both modes.
+- [ ] Walk every page at phone and desktop width in each style; list what's off; fix in one pass.
+- [ ] Feed: the dismiss X and the like/comment row sit in fixed corners; give them a place in the layout.
+
+### 16.0b Code review 🟠
+The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.
+- [ ] Run the review, triage, fix.
 
 ### 16.1 README and screenshots 🟠
 - [ ] Retake the README screenshots in every style (Negative Earth, OG, Shelf, Outrun) and both modes, from an **anonymised copy** of the DB (rename other users, clear their emails, bios, avatars and review text), never the live one. Bring the README up to date (sections, Do I Have This?, reviews, styles).
