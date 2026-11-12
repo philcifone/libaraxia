@@ -16,7 +16,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 14a | Bulk edit: select on every grid, eight actions, review, undo | Done 2026-11-11, [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit) |
 | 14b | Granular Goodreads import, site and personal backups, "Unshelved" | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import) |
 | 14c | Tweaks after 14b: CSRF, undated sessions, Settings for everyone, profile tabs, cyclers, Shelf bookcases and boxed covers, username collisions | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14c-tweaks-after-14b) |
-| 15 | [Movies & TV, cover crop](#phase-15-movies--tv-cover-crop) | Next (15.3 done; lending moved to 17.1) |
+| 15 | [Movies & TV, cover crop](#phase-15-movies--tv-cover-crop) | Done on its branch (15.1 and 15.3); to merge and archive. Lending moved to 17.1 |
 | 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | A final layout pass and a code review, then screenshots of the finished app |
 | 17 | [Future roadmap](#phase-17-future-roadmap) | After the portfolio; shown on the showcase site as what's next |
 
@@ -65,7 +65,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 
 From Phil, 2026-11-09 (loose notes, sorted). The format icons from the same note (turntable for LP, disc-2 for CD, cassette-tape for Cassette on the Music grid) were done the same day, in `_format_icon.html`.
 
-### 15.1 Movies & TV 🟠
+### 15.1 Movies & TV 🟢 (done 2026-11-12, branch phase-15-movies-tv)
 Decided 2026-11-09 (Phil). Today a TV season box set is a video row like any film, so the section says "Movies" about things that aren't. Same physical object (a DVD or tape), same statuses (watched / want to watch), same shelf: it doesn't get its own media type, which would mean another view, blueprint section, statuses, stats tab and lookup for one distinction. Renaming the section back to "Video" was the other option: less work, but no movie/TV filter.
 - [x] **Migration 034** (030 was planned here, but 031-033 shipped first; keep numbers in order): `books.video_kind` (`'movie'` / `'tv'`; NULL means movie, so existing rows need no backfill) and `books.season` (free text: "Season 2", "Complete series"). A lookup table for the kinds, like `media_types`, if it stays in step with `utils/media.py`; a CHECK is fine for two values. Fold it into `create_database.sql` and the ledger. Check `library_videos` (and the other views) expose the new columns; the export and `card_json` carry them. Done: a `video_kinds` lookup table (`movie`, `tv`; `media.VIDEO_KINDS`, test-checked); the app stores NULL for a movie (`media.video_kind`), so a movie has one spelling. The export appends Kind and Season.
 - [x] **UI wording:** the section is **"Movies & TV"** (sidebar, headings, flashes, feed, the Books | Movies | Music switch if it fits at phone width, else "Movies" there only), through `media.media_labels()`. Code, URLs and the DB keep "video". Item wording per kind where it reads oddly ("Add TV show", "Director" becomes "Creator" for TV). Done: the switch fits at 375 px in all four styles, so it says Movies & TV too. Section words are "movie or show" / "movies and shows"; an item's page, edit form, flashes and feed lines use its kind's (`media.KIND_WORDS`, `item_labels`).
