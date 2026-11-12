@@ -8,8 +8,16 @@ the caller then just shows the form with the barcode filled in.
        a few a minute) turns a UPC/EAN into a product title such as
        "Jaws [VHS]", the brand (the studio/distributor) and sleeve photos.
     2. The title is cleaned of tape noise ("[VHS]", "Widescreen", "(1975)").
-    3. TMDb (needs TMDB_API_KEY in .env; optional) finds the film by title
-       and year: director, runtime, synopsis, genre, poster.
+    3. TMDb (needs TMDB_API_KEY in .env; optional) finds the film or TV
+       show by title and year: director (a show's creators), runtime,
+       synopsis, genre, poster. Movies and TV are searched together
+       (/search/multi, ROADMAP 15.1); a box set's "Season 2" is taken off
+       the title first (split_season) and fills the form's Season.
+
+Each result says its kind ('movie' / 'tv'), which fills the form's Kind.
+TMDb numbers movies and shows separately, so a picked id travels with its
+kind. A show's runtime is left empty: which episodes a set holds isn't
+known, and a per-episode figure would read as the whole set's.
 
 Merging keeps what belongs to the tape from UPCitemdb (studio, barcode,
 sleeve photo first) and the film data from TMDb. TMDb also serves the
@@ -129,6 +137,43 @@ def clean_title(raw):
     return title or raw.strip(), year
 
 
+# A box set's season in a product title: "The Wire: The Complete First
+# Season", "Friends - Season 3", "Twin Peaks Complete Series". Matched from
+# the season words to the end of the title.
+_ORDINALS = {'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5, 'sixth': 6,
+             'seventh': 7, 'eighth': 8, 'ninth': 9, 'tenth': 10}
+_SEASON_RE = re.compile(
+    r'[\s:,\-\u2013]*\b(?:the\s+)?(?:'
+    r'complete\s+(?P<series>series)'
+    r'|(?:complete\s+)?(?P<ord>' + '|'.join(_ORDINALS) + r'|\d+(?:st|nd|rd|th))\s+season'
+    # a range, unless it's a disc count ("Season 1 - 5 Disc Set")
+    r'|seasons?\s+(?P<num>\d+(?:\s*[-\u2013]\s*\d+(?!\s*-?\s*discs?\b))?)'
+    r')\b.*$', re.IGNORECASE)
+
+
+def split_season(title):
+    """("The Wire: The Complete First Season") -> ("The Wire", "Season 1").
+
+    The title without its season words, and the season as the form stores
+    it ("Season 2", "Seasons 1-3", "Complete series"), or None when the
+    title names no season (then it's returned unchanged)."""
+    title = title or ''
+    found = _SEASON_RE.search(title)
+    if not found or found.start() == 0:
+        return title, None
+    if found.group('series'):
+        season = 'Complete series'
+    elif found.group('ord'):
+        word = found.group('ord').lower()                  # 'first', or '2nd'
+        number = _ORDINALS.get(word) or int(word[:-2])
+        season = f'Season {number}'
+    else:
+        number = re.sub(r'\s+', '', found.group('num'))    # '2', or a range '1-3'
+        is_range = any(dash in number for dash in '-\u2013')
+        season = f"{'Seasons' if is_range else 'Season'} {number}"
+    return title[:found.start()].strip(' :,-\u2013'), season
+
+
 # ------------------------------------------------------------ sources
 
 def upcitemdb(barcode):
@@ -155,35 +200,45 @@ def upcitemdb(barcode):
 
 
 def tmdb_search(query, year=None, limit=8):
-    """Films matching a title, for the Add Movie page's Search tab: a list of
-    {'id', 'title', 'year', 'poster'} (poster is a small TMDb image URL,
-    shown through /books/thumbnail), best match first. [] without a key."""
+    """Movies and TV shows matching a title, for the Add page's Search tab
+    and Do I have this?: a list of {'id', 'kind', 'title', 'year', 'poster'}
+    (kind 'movie' / 'tv'; poster a small TMDb image URL, shown through
+    /books/thumbnail), best match first. [] without a key.
+
+    One /search/multi call, in TMDb's own order (people are dropped). A
+    year puts that year's results first rather than filtering: a tape's
+    year is often the video release, not the film's."""
     if not query or not tmdb_key():
         return []
-    params = {'query': query, 'include_adult': 'false'}
-    if year:
-        params['year'] = year
-    results = (_tmdb('/search/movie', **params) or {}).get('results') or []
-    films = []
-    for r in results[:limit]:
-        if not isinstance(r.get('id'), int):
+    results = (_tmdb('/search/multi', query=query, include_adult='false') or {}).get('results') or []
+    found = []
+    for r in results:
+        kind = {'movie': media.MOVIE, 'tv': media.TV}.get(r.get('media_type'))
+        if not kind or not isinstance(r.get('id'), int):
             continue
-        release = r.get('release_date') or ''
-        films.append({
+        # Movies have a title and release date, shows a name and first air date
+        release = (r.get('release_date') if kind == media.MOVIE else r.get('first_air_date')) or ''
+        found.append({
             'id': r['id'],
-            'title': r.get('title') or '',
+            'kind': kind,
+            'title': (r.get('title') if kind == media.MOVIE else r.get('name')) or '',
             'year': int(release[:4]) if release[:4].isdigit() else None,
             'poster': f"{TMDB_THUMBS}{r['poster_path']}" if r.get('poster_path') else None,
         })
-    return films
+    if year:
+        found.sort(key=lambda f: f['year'] != year)       # stable: TMDb's order otherwise
+    return found[:limit]
 
 
-def tmdb_details(movie_id, fallback_title=''):
-    """Film data for one TMDb id: director, year, runtime, synopsis, genre,
-    poster. None if TMDb doesn't answer."""
+def tmdb_details(tmdb_id, fallback_title='', kind=None):
+    """Data for one TMDb id: director (a show's creators), year, runtime,
+    synopsis, genre, poster and 'kind'. `kind` 'tv' asks TMDb's TV numbering
+    (tmdb_tv_details), anything else its movies. None if TMDb doesn't answer."""
     if not tmdb_key():
         return None
-    movie = _tmdb(f"/movie/{int(movie_id)}", append_to_response='credits')
+    if kind == media.TV:
+        return tmdb_tv_details(tmdb_id, fallback_title)
+    movie = _tmdb(f"/movie/{int(tmdb_id)}", append_to_response='credits')
     if not movie:
         return None
     crew = (movie.get('credits') or {}).get('crew') or []
@@ -198,26 +253,44 @@ def tmdb_details(movie_id, fallback_title=''):
         'description': (movie.get('overview') or '').strip(),
         'genre': genres[0] if genres else '',
         'poster': f"{TMDB_IMAGES}{movie['poster_path']}" if movie.get('poster_path') else None,
+        'kind': media.MOVIE,
     }
 
 
-def tmdb_movie(title, year=None):
-    """Film data for a title (and year, if known), or None.
+def tmdb_tv_details(show_id, fallback_title=''):
+    """A TV show's data, the same keys as a film's: its creators in
+    'director' (the form's Creator), the first air year, no runtime (see the
+    module docstring). None if TMDb doesn't answer."""
+    show = _tmdb(f"/tv/{int(show_id)}")
+    if not show:
+        return None
+    creators = [c.get('name') for c in show.get('created_by') or [] if c.get('name')]
+    genres = [g.get('name') for g in show.get('genres') or [] if g.get('name')]
+    aired = show.get('first_air_date') or ''
+    return {
+        'title': show.get('name') or fallback_title,
+        'director': ', '.join(creators[:2]),
+        'year': int(aired[:4]) if aired[:4].isdigit() else None,
+        'runtime': None,
+        'description': (show.get('overview') or '').strip(),
+        'genre': genres[0] if genres else '',
+        'poster': f"{TMDB_IMAGES}{show['poster_path']}" if show.get('poster_path') else None,
+        'kind': media.TV,
+    }
 
-    Tries with the year first, then without: a tape's "(1985)" is often
-    the video release, not the film's."""
+
+def tmdb_movie(title, year=None, kind=None):
+    """Movie or TV data for a title (and year, if known), or None: TMDb's
+    best match of either kind (tmdb_search). `kind` 'tv' (the title named a
+    season) prefers a show when there is one."""
     if not title or not tmdb_key():
         return None
-    results = []
-    if year:
-        results = ((_tmdb('/search/movie', query=title, year=year, include_adult='false') or {})
-                   .get('results') or [])
-    if not results:
-        results = ((_tmdb('/search/movie', query=title, include_adult='false') or {})
-                   .get('results') or [])
+    results = tmdb_search(title, year)
+    if kind == media.TV:
+        results = [r for r in results if r['kind'] == media.TV] or results
     if not results:
         return None
-    return tmdb_details(results[0]['id'], title)
+    return tmdb_details(results[0]['id'], title, results[0]['kind'])
 
 
 # ------------------------------------------------------------ the lookup
@@ -240,6 +313,9 @@ def _merge(barcode, upc, film):
     upc = upc or {}
     film = film or {}
     cleaned, year = clean_title(upc.get('title'))
+    cleaned, season = split_season(cleaned)
+    # TMDb's kind, else a season in the product's name makes it TV
+    kind = film.get('kind') or (media.TV if season else media.MOVIE)
     details = {
         'barcode': media.normalize_barcode(barcode) if barcode else '',
         'title': film.get('title') or cleaned or '',
@@ -250,23 +326,26 @@ def _merge(barcode, upc, film):
         'genre': film.get('genre') or '',
         'description': film.get('description') or upc.get('description') or '',
         'format': media.DEFAULT_VIDEO_FORMAT,
+        'video_kind': kind,
+        'season': season if kind == media.TV and season else '',
     }
     # Sleeve photos of this tape first, then the film's poster
     covers = list(upc.get('images') or []) + ([film['poster']] if film.get('poster') else [])
     return details, covers
 
 
-def lookup(barcode=None, title=None, year=None, tmdb_id=None):
-    """Pre-fill for the Add Movie form: by barcode (UPCitemdb, then TMDb on
-    the cleaned title), by title (TMDb only), or by a TMDb id picked from
-    the Search tab's results.
+def lookup(barcode=None, title=None, year=None, tmdb_id=None, kind=None):
+    """Pre-fill for the Add Movie or Show form: by barcode (UPCitemdb, then
+    TMDb on the cleaned title), by title (TMDb only), or by a TMDb id picked
+    from the Search tab's results (`kind` 'tv' for a show's id).
 
     Returns {'found': bool, 'details': {...}, 'sources': [...], 'cover': path
     or None}. `cover` is a saved file under static/uploads; the form sends
     it back as existing_cover_url, which process_image re-checks.
     """
+    kind = media.TV if kind == media.TV else media.MOVIE
     if tmdb_id:
-        key = ('tmdb', int(tmdb_id))
+        key = ('tmdb', kind, int(tmdb_id))
     elif barcode:
         key = ('barcode', media.normalize_barcode(barcode))
     else:
@@ -278,10 +357,11 @@ def lookup(barcode=None, title=None, year=None, tmdb_id=None):
         if upc:
             sources.append('UPCitemdb')
         if tmdb_id:
-            film = tmdb_details(tmdb_id)
+            film = tmdb_details(tmdb_id, kind=kind)
         else:
             query, query_year = (clean_title(upc['title']) if upc else (title, year))
-            film = tmdb_movie(query, query_year or year)
+            query, season = split_season(query)
+            film = tmdb_movie(query, query_year or year, media.TV if season else None)
         if film:
             sources.append('TMDb')
         details, covers = _merge(barcode, upc, film)

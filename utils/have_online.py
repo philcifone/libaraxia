@@ -86,13 +86,24 @@ def score_text(query, title, creator=''):
     return round(score, 3)
 
 
-def candidate(kind, source, title, creator='', year=None, thumb=None, detail='', ids=None):
+def candidate(kind, source, title, creator='', year=None, thumb=None, detail='', ids=None,
+              video_kind=None):
     """One candidate, before scoring. `ids` is what its add page looks up:
     {'isbn'}, {'tmdb_id'}, {'discogs'} or {'mbid'}, plus 'barcode' for a
-    scanned code."""
+    scanned code. `video_kind` ('movie' / 'tv', 15.1) words a video's type
+    label and, for TV, goes into its add links as ?kind=tv."""
     return {'type': kind, 'source': source, 'title': title or '', 'creator': creator or '',
             'year': year or None, 'thumb': thumb or None, 'detail': detail or '',
-            'ids': ids or {}, 'score': 0.0}
+            'ids': ids or {}, 'score': 0.0, 'video_kind': video_kind}
+
+
+def _tmdb_ids(found, **extra):
+    """A TMDb result's add-page ids: its id, and kind=tv for a show (TMDb
+    numbers movies and shows apart; the add page then starts on TV)."""
+    ids = {'tmdb_id': found['id'], **extra}
+    if found.get('kind') == media.TV:
+        ids['kind'] = media.TV
+    return ids
 
 
 def rank(cands):
@@ -133,7 +144,7 @@ def movies_by_text(q):
     if not media_lookup.tmdb_key():
         return []
     return [candidate(media.VIDEO, 'tmdb', f['title'], '', f.get('year'), f.get('poster'),
-                      ids={'tmdb_id': f['id']})
+                      ids=_tmdb_ids(f), video_kind=f.get('kind'))
             for f in media_lookup.tmdb_search(q, limit=SOURCE_LIMIT)]
 
 
@@ -190,17 +201,23 @@ def movie_by_barcode(ean):
     if not upc or not upc.get('title'):
         return []
     title, year = media_lookup.clean_title(upc['title'])
-    films = media_lookup.tmdb_search(title, year, limit=1) if media_lookup.tmdb_key() and title else []
+    # A box set's "Season 2" would keep TMDb from finding the show (15.1)
+    title, season = media_lookup.split_season(title)
+    films = media_lookup.tmdb_search(title, year) if media_lookup.tmdb_key() and title else []
+    if season:
+        films = [f for f in films if f['kind'] == media.TV] or films
     if films:
         f = films[0]
         c = candidate(media.VIDEO, 'tmdb', f['title'], '', f.get('year'), f.get('poster'),
-                      ids={'tmdb_id': f['id'], 'barcode': ean})
+                      ids=_tmdb_ids(f, barcode=ean), video_kind=f.get('kind'))
         c['score'] = BARCODE_SCORES['named']
         return [c]
     if _MUSIC_CATEGORY.search(upc.get('category') or ''):
         return []
     c = candidate(media.VIDEO, 'upcitemdb', title or upc['title'], upc.get('brand'), year,
-                  next(iter(upc.get('images') or []), None), ids={'barcode': ean})
+                  next(iter(upc.get('images') or []), None),
+                  ids={'barcode': ean, **({'kind': media.TV} if season else {})},
+                  video_kind=media.TV if season else None)
     c['score'] = BARCODE_SCORES['product_only']
     return [c]
 
@@ -283,7 +300,17 @@ def lookup(kind, value, query):
     shown = ([ranked['best']] if ranked['best'] else []) + [c for g in ranked['groups'] for c in g['items']]
     for c in shown:
         c.update(links(c, query))
-        c['type_label'] = media.media_labels(c['type'])['Noun']
+        # "TV Show" / "Movie" for a video whose kind is known (15.1)
+        c['type_label'] = media.media_labels(c['type'], c.get('video_kind'))['Noun']
+    best_type = ranked['best']['type'] if ranked['best'] else None
+    for g in ranked['groups']:
+        # A group's heading is its section's ("Movies and shows" can hold
+        # both kinds); a TV show in it says so on its line
+        plural = media.media_labels(g['type'])['plural']
+        g['heading'] = f'Other {plural}' if g['type'] == best_type else plural.capitalize()
+        for c in g['items']:
+            if c.get('video_kind') == media.TV and not c['detail']:
+                c['detail'] = 'TV'
     # TMDb's and Discogs' terms ask for a credit wherever their data is shown
     credits = sorted({c['source'] for c in shown} & {'tmdb', 'discogs'})
     return {**ranked, 'status': status, 'credits': credits}

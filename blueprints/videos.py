@@ -27,11 +27,13 @@ def _add_context(values):
 
 
 def _lookup_url(args):
-    """?tmdb_id= (a film picked on Do I have this?): look it up on load."""
+    """?tmdb_id= (a film or show picked on Do I have this?, &kind=tv for a
+    show): look it up on load."""
     tmdb_id = args.get('tmdb_id', type=int)
     if not tmdb_id or tmdb_id < 1 or not media_lookup.tmdb_key():
         return None
-    return url_for('videos.lookup', tmdb_id=tmdb_id)
+    kind = media.video_kind(args.get('kind'))
+    return url_for('videos.lookup', tmdb_id=tmdb_id, **({'kind': kind} if kind else {}))
 
 
 VIDEOS = Section(
@@ -52,7 +54,8 @@ def lookup():
 
     ?barcode= asks UPCitemdb, then TMDb on the title it found; ?title= (and
     &year=) asks TMDb only, for tapes without a barcode; ?tmdb_id= is a film
-    picked from the Search tab (/videos/search). Always answers 200
+    picked from the Search tab (/videos/search), &kind=tv for a show (TMDb
+    numbers them apart). Always answers 200
     with {"success", "found", "details", "sources", "cover"}: not finding
     anything is normal for VHS, and the form is filled in by hand then.
     """
@@ -60,13 +63,14 @@ def lookup():
     title = (request.args.get('title') or '').strip()[:200]
     year = request.args.get('year', type=int)
     tmdb_id = request.args.get('tmdb_id', type=int)
+    kind = media.video_kind(request.args.get('kind'))
     if barcode and not media.normalize_barcode(barcode):
         return jsonify({'success': False, 'error': "That barcode isn't a valid UPC or EAN."}), 400
     if not barcode and not title and not tmdb_id:
         return jsonify({'success': False, 'error': 'Give a barcode or a title.'}), 400
     try:
         result = media_lookup.lookup(barcode=barcode or None, title=title or None, year=year,
-                                     tmdb_id=tmdb_id)
+                                     tmdb_id=tmdb_id, kind=kind)
     except Exception:
         current_app.logger.exception('Video lookup failed')
         return jsonify({'success': False, 'error': 'The lookup failed. Fill the form in by hand.'}), 500
@@ -77,8 +81,9 @@ def lookup():
 @login_required
 @limiter.limit('120 per hour')
 def search():
-    """The Add Movie page's Search tab: films matching ?q= on TMDb, to pick
-    one from (then /videos/lookup?tmdb_id= fills the form). Needs
+    """The Add Movie or Show page's Search tab: movies and TV shows matching
+    ?q= on TMDb, each with its kind, to pick one from (then
+    /videos/lookup?tmdb_id=&kind= fills the form). Needs
     TMDB_API_KEY; without it the tab says so and this answers an error."""
     query = (request.args.get('q') or '').strip()[:200]
     if not media_lookup.tmdb_key():

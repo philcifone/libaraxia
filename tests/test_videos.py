@@ -518,9 +518,11 @@ def test_clean_title(raw, expected):
 UPC_REPLY = {'code': 'OK', 'items': [{'title': 'Jaws (1975) [VHS]', 'brand': 'MCA Home Video',
                                       'description': 'Shark film on tape',
                                       'images': ['https://example.com/sleeve.jpg']}]}
-TMDB_SEARCH = {'results': [{'id': 578, 'title': 'Jaws', 'release_date': '1975-06-20',
+# /search/multi (15.1): movies and shows together, people dropped
+TMDB_SEARCH = {'results': [{'id': 578, 'media_type': 'movie', 'title': 'Jaws', 'release_date': '1975-06-20',
                             'poster_path': '/jaws.jpg'},
-                           {'id': 'junk'}]}
+                           {'id': 31, 'media_type': 'person', 'name': 'Jaws Fan'},
+                           {'id': 'junk', 'media_type': 'movie'}]}
 TMDB_MOVIE = {'title': 'Jaws', 'release_date': '1975-06-20', 'runtime': 124,
               'overview': 'A great white shark...', 'genres': [{'name': 'Thriller'}],
               'poster_path': '/jaws.jpg',
@@ -537,7 +539,7 @@ def fake_sources(monkeypatch):
         calls.append((url, params or {}, headers))
         if url == media_lookup.UPCITEMDB_URL:
             return UPC_REPLY if params['upc'] == UPC else {'items': []}
-        if url.endswith('/search/movie'):
+        if url.endswith('/search/multi'):
             return TMDB_SEARCH if params['query'] == 'Jaws' else {'results': []}
         if url.endswith('/movie/578'):
             return TMDB_MOVIE
@@ -566,7 +568,9 @@ def test_lookup_barcode_merges_upc_and_tmdb(app, monkeypatch, fake_sources):
     assert covers == ['https://example.com/sleeve.jpg', 'https://image.tmdb.org/t/p/w500/jaws.jpg']
     assert result['cover'] == 'uploads/cover_test.jpg'
     assert calls[0][1] == {'upc': UPC}                 # UPC-A sent as 12 digits
-    assert calls[1][1]['query'] == 'Jaws' and calls[1][1]['year'] == 1975
+    # One multi search; the year ranks results instead of filtering them
+    assert calls[1][0].endswith('/search/multi') and calls[1][1]['query'] == 'Jaws'
+    assert 'year' not in calls[1][1] and d['video_kind'] == 'movie'
 
 
 def test_lookup_without_tmdb_key_uses_upc_only(app, monkeypatch, fake_sources):
@@ -640,8 +644,8 @@ def test_movie_search_route_lists_films(client, people, monkeypatch, fake_source
     assert r.status_code == 400 and 'TMDb' in r.get_json()['error']
     monkeypatch.setenv('TMDB_API_KEY', 'k' * 32)
     data = client.get('/videos/search?q=Jaws').get_json()
-    assert data['results'] == [{'id': 578, 'title': 'Jaws', 'year': 1975,
-                                'poster': 'https://image.tmdb.org/t/p/w185/jaws.jpg'}]   # junk row dropped
+    assert data['results'] == [{'id': 578, 'kind': 'movie', 'title': 'Jaws', 'year': 1975,
+                                'poster': 'https://image.tmdb.org/t/p/w185/jaws.jpg'}]   # person, junk dropped
     assert client.get('/videos/search?q=J').get_json()['results'] == []
 
 

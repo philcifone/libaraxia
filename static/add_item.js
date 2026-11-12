@@ -101,10 +101,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
-    // Apply a lookup result: {fields: {id: value}, cover, remoteCover}.
-    // Returns how many fields changed.
+    // Movies & TV's Kind radios (15.1). They start on Movie, a default rather
+    // than your choice, so a lookup may set them until you click one yourself.
+    const kindRadios = root.querySelectorAll('input[name="video_kind"]');
+    kindRadios.forEach(r => r.addEventListener('change', () => { root.dataset.kindTouched = '1'; }));
+
+    function setKind(kind) {
+        if (!kindRadios.length || !kind || root.dataset.kindTouched) return false;
+        const radio = [...kindRadios].find(r => r.value === kind);
+        if (!radio || radio.checked) return false;
+        radio.checked = true;
+        return true;
+    }
+
+    // Apply a lookup result: {fields: {id: value}, kind, cover, remoteCover}.
+    // Returns how many fields changed. Kind goes first: Season only shows for TV.
     function apply(result) {
-        let n = 0;
+        let n = setKind(result.kind) ? 1 : 0;
         for (const [id, value] of Object.entries(result.fields || {})) {
             if (setField(id, value)) n++;
         }
@@ -213,10 +226,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const MOVIE = {
         searchUrl: q => `/videos/search?q=${enc(q)}`,
 
+        // Movies and TV together (15.1): each result says which, and its
+        // kind goes with its id (TMDb numbers movies and shows apart)
         results(data) {
             if (!data.success) throw new Error(data.error || 'The search failed.');
             return (data.results || []).map(r => ({
-                title: r.title, line: r.year ? String(r.year) : '', thumb: r.poster, id: r.id,
+                title: r.title, thumb: r.poster, id: r.id, kind: r.kind,
+                line: [r.kind === 'tv' ? 'TV' : 'Movie', r.year].filter(Boolean).join(' · '),
             }));
         },
 
@@ -228,7 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         async pick(result) {
-            return MOVIE.form(await getJSON(`/videos/lookup?tmdb_id=${enc(result.id)}`));
+            const kind = result.kind === 'tv' ? '&kind=tv' : '';
+            return MOVIE.form(await getJSON(`/videos/lookup?tmdb_id=${enc(result.id)}${kind}`));
         },
 
         async code(code) {
@@ -251,7 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 fields: {
                     title: d.title, author: d.author, publisher: d.publisher, year: d.year,
                     runtime_minutes: d.runtime_minutes, genre: d.genre, description: d.description,
+                    season: d.season,
                 },
+                kind: d.video_kind,
                 cover: data.cover || null,
                 sources: data.sources || [],
             };

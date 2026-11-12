@@ -79,8 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>`;
 
     for (const group of data.groups || []) {
-        const label = group.items[0].type_label;
-        const heading = group.type === best.type ? `Other ${label.toLowerCase()}s` : `${label}s`;
+        // The server words it ("Other movies and shows", "Albums")
+        const heading = group.heading;
         html += `<p class="mt-5 text-sm font-semibold text-content-secondary">${escapeHtml(heading)}</p>
             <ul class="mt-2 space-y-2">${group.items.map(c => `
                 <li class="flex gap-3 bg-primary border border-card rounded-lg p-3">

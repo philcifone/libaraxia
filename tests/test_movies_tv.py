@@ -10,6 +10,8 @@ people: alice (admin) + bob share a household; carol is alice's friend.
 import csv
 import io
 
+import pytest
+
 from conftest import login
 from utils import media
 from utils.book_utils import card_json
@@ -235,3 +237,115 @@ def test_kind_filter_only_with_both_kinds(client, db, people):
     login(client, 'alice')
     assert 'id="kind"' not in client.get('/videos/').get_data(as_text=True)
     assert 'id="kind"' not in client.get('/records/').get_data(as_text=True)
+
+
+# --- lookup: TMDb movies and TV together, the kind fills Kind ------------------------
+
+from utils import have_online, media_lookup               # noqa: E402  (grouped with their tests)
+
+WIRE = {'id': 1438, 'media_type': 'tv', 'name': 'The Wire', 'first_air_date': '2002-06-02',
+        'poster_path': '/wire.jpg'}
+WIRE_FILM = {'id': 5, 'media_type': 'movie', 'title': 'The Wire', 'release_date': '1991-01-01'}
+WIRE_SHOW = {'name': 'The Wire', 'first_air_date': '2002-06-02', 'overview': 'Baltimore.',
+             'created_by': [{'name': 'David Simon'}], 'genres': [{'name': 'Crime'}],
+             'episode_run_time': [60], 'number_of_seasons': 5, 'poster_path': '/wire.jpg'}
+WIRE_UPC = {'items': [{'title': 'The Wire: The Complete First Season [DVD]', 'brand': 'HBO',
+                       'images': [], 'category': 'Media > DVDs & Videos'}]}
+WIRE_EAN = '0026359238222'      # a valid EAN-13 (check digit), standing in for the box's code
+
+
+@pytest.fixture
+def tmdb(monkeypatch):
+    """Canned TMDb (and UPCitemdb) replies by URL; `calls` records what was asked."""
+    calls = []
+
+    def fake_json(url, params=None, headers=None):
+        calls.append((url, params or {}))
+        if url == media_lookup.UPCITEMDB_URL:
+            return WIRE_UPC
+        if url.endswith('/search/multi'):
+            # The film comes first in TMDb's order, so a season must pick the show
+            return {'results': [WIRE_FILM, WIRE, {'id': 9, 'media_type': 'person', 'name': 'x'}]} \
+                if params['query'] == 'The Wire' else {'results': []}
+        if url.endswith('/tv/1438'):
+            return WIRE_SHOW
+        return None
+    monkeypatch.setenv('TMDB_API_KEY', 'k' * 32)
+    monkeypatch.setattr(media_lookup, '_get_json', fake_json)
+    monkeypatch.setattr(media_lookup.book_utils, 'save_best_cover', lambda urls: None)
+    media_lookup._cache.clear()
+    return calls
+
+
+@pytest.mark.parametrize('title, expected', [
+    ('The Wire: The Complete First Season', ('The Wire', 'Season 1')),
+    ('Friends - Season 3', ('Friends', 'Season 3')),
+    ('Sex and the City 2nd Season', ('Sex and the City', 'Season 2')),
+    ('The Sopranos Seasons 1-3', ('The Sopranos', 'Seasons 1-3')),
+    ('The Wire: Season 1 - 5 Disc Set', ('The Wire', 'Season 1')),       # a disc count, not a range
+    ('Twin Peaks Complete Series', ('Twin Peaks', 'Complete series')),
+    ('Season of the Witch', ('Season of the Witch', None)),              # a film's own title
+    ('Jaws', ('Jaws', None)),
+])
+def test_split_season(title, expected):
+    assert media_lookup.split_season(title) == expected
+
+
+def test_search_lists_movies_and_tv_with_their_kind(app, tmdb):
+    with app.app_context():
+        found = media_lookup.tmdb_search('The Wire')
+        assert [(f['kind'], f['title'], f['year']) for f in found] == [
+            ('movie', 'The Wire', 1991), ('tv', 'The Wire', 2002)]           # the person is dropped
+        # A year ranks rather than filters
+        assert [f['kind'] for f in media_lookup.tmdb_search('The Wire', 2002)] == ['tv', 'movie']
+    assert [url.rsplit('/', 2)[-2:] for url, _ in tmdb] == [['search', 'multi']] * 2
+
+
+def test_lookup_a_picked_show(client, people, tmdb):
+    login(client, 'alice')
+    data = client.get('/videos/lookup?tmdb_id=1438&kind=tv').get_json()
+    d = data['details']
+    assert data['found'] and tmdb[-1][0].endswith('/tv/1438')
+    assert (d['title'], d['author'], d['year'], d['genre'], d['video_kind']) == \
+        ('The Wire', 'David Simon', 2002, 'Crime', 'tv')
+    assert d['runtime_minutes'] == ''           # a set's total isn't known: left empty
+
+
+def test_lookup_a_box_set_by_barcode(app, tmdb):
+    """UPCitemdb's product name has the season; it's taken off for the search
+    (which then prefers the show) and fills Season."""
+    with app.app_context():
+        d = media_lookup.lookup(barcode=WIRE_EAN)['details']
+    assert (d['title'], d['author'], d['video_kind'], d['season'], d['publisher']) == \
+        ('The Wire', 'David Simon', 'tv', 'Season 1', 'HBO')
+    assert any(p.get('query') == 'The Wire' for url, p in tmdb if url.endswith('/search/multi'))
+
+
+def test_search_route_says_the_kind(client, people, tmdb):
+    login(client, 'alice')
+    results = client.get('/videos/search?q=The+Wire').get_json()['results']
+    assert {(r['id'], r['kind']) for r in results} == {(5, 'movie'), (1438, 'tv')}
+
+
+def test_have_online_tv_candidate(client, people, monkeypatch):
+    """Do I have this?: a TMDb show is a "TV Show", its add links carry
+    kind=tv, and the add page starts on TV and looks the show up as one."""
+    monkeypatch.setattr(media_lookup, 'tmdb_key', lambda: 'k')
+    monkeypatch.setattr(media_lookup, 'tmdb_search', lambda q, year=None, limit=8: [
+        {'id': 1438, 'kind': 'tv', 'title': 'The Wire', 'year': 2002, 'poster': None},
+        {'id': 5, 'kind': 'movie', 'title': 'The Wire Movie', 'year': 1991, 'poster': None}])
+    for name in ('books_by_text', 'music_by_text'):
+        monkeypatch.setattr(have_online, name, lambda q: [])
+    login(client, 'alice')
+    data = client.get('/have/online?q=the+wire').get_json()
+    best = data['best']
+    assert (best['title'], best['type_label']) == ('The Wire', 'TV Show')
+    assert best['shelf_url'] == '/videos/add?tmdb_id=1438&kind=tv'
+    assert best['wishlist_url'] == '/wishlist/add?type=video&tmdb_id=1438&kind=tv'
+    group = data['groups'][0]
+    assert group['heading'] == 'Other movies and shows'
+    assert group['items'][0]['type_label'] == 'Movie' and 'kind=' not in group['items'][0]['shelf_url']
+
+    page = client.get(best['shelf_url']).get_data(as_text=True)
+    assert 'data-lookup-url="/videos/lookup?tmdb_id=1438&amp;kind=tv"' in page
+    assert 'name="video_kind" value="tv" checked' in page and 'Add a TV Show</h1>' in page
