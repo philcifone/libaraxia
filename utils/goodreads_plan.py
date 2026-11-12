@@ -27,6 +27,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from io import StringIO
 
 from models import can_view_book, other_users_with_book_data
@@ -950,3 +951,45 @@ ACTION = Action(
     describe=lambda p: 'Goodreads import', summary=lambda p, n: 'Goodreads import',
     key=lambda b: None, label=lambda k, p: '', same_text=lambda p: '',
     after_undo=_after_undo)
+
+
+# ------------------------------------------------------------------ provenance (the book page)
+
+def _wrote_words(wrote, outcome):
+    words = []
+    for part in wrote:
+        if part.startswith('sessions:'):
+            n = int(part.split(':', 1)[1])
+            words.append(f'{n} reading session{"" if n == 1 else "s"}')
+        elif part == 'wishlist':
+            words.append('wishlist entry' if outcome == 'wishlist' else 'off your wishlist')
+        else:
+            words.append({'book': 'the book', 'status': 'status', 'rating': 'rating', 'review': 'review',
+                          'review_appended': 'Goodreads review below yours'}.get(part, part))
+    return words
+
+
+def _day(timestamp):
+    """'2026-11-14 10:02:03' -> '14 Nov 2026'."""
+    try:
+        return datetime.strptime(str(timestamp)[:10], '%Y-%m-%d').strftime('%-d %b %Y')
+    except ValueError:
+        return str(timestamp)
+
+
+def provenance(conn, user_id, book_id):
+    """What the user's Goodreads imports did to a book, latest first, one
+    line each: "From your Goodreads import, 14 Nov 2026: review, rating,
+    2 reading sessions." Only the user's own imports, never undone ones."""
+    lines = []
+    for r in conn.execute('''
+            SELECT i.created_at, r.outcome, r.wrote FROM goodreads_rows r
+            JOIN goodreads_imports i ON i.id = r.import_id
+            WHERE r.book_id = ? AND i.user_id = ? AND i.undone_at IS NULL
+            ORDER BY i.id DESC, r.line''', (book_id, user_id)):
+        words = _wrote_words(json.loads(r['wrote'] or '[]'), r['outcome'])
+        if words:
+            lines.append(f"From your Goodreads import, {_day(r['created_at'])}: {', '.join(words)}.")
+        else:
+            lines.append(f"Matched by your Goodreads import, {_day(r['created_at'])}; nothing added.")
+    return lines

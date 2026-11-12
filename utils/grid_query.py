@@ -30,7 +30,18 @@ VIEWS = {f'{kind}:{scope}': (kind, scope) for kind in (media.BOOK, media.VIDEO, 
 VIEWS['book:search'] = (media.BOOK, 'search')     # Search pages too (step 7)
 
 
-def books_query(owner_ids, args, data_user):
+def from_goodreads(args, viewer_id):
+    """SQL fragment and params for ?from=goodreads (ROADMAP 14b): books an
+    import of the viewer's matched or wrote, not undone. Always the viewer's
+    own provenance, never the shelf owner's, so a friend's grid can't show
+    what their import touched."""
+    if args.get('from') != 'goodreads' or viewer_id is None:
+        return '', []
+    return (' AND EXISTS (SELECT 1 FROM goodreads_rows gr JOIN goodreads_imports gi ON gi.id = gr.import_id'
+            ' WHERE gr.book_id = b.id AND gi.user_id = ? AND gi.undone_at IS NULL)'), [viewer_id]
+
+
+def books_query(owner_ids, args, data_user, viewer_id=None):
     """(SQL, params) for the Books grid: books on the shelves of `owner_ids`,
     narrowed by the search and filters in `args` (the query string).
 
@@ -38,6 +49,8 @@ def books_query(owner_ids, args, data_user):
     its LIMIT. `data_user` is whose statuses, ratings and tags the status,
     rating and tag filters and the search's tag matching use (the entries in
     view: you on your own and the household's shelves, the friend on theirs).
+    `viewer_id` is who is looking (From Goodreads is always theirs); it
+    defaults to `data_user`.
     """
     marks = ','.join('?' * len(owner_ids))
     query = f'SELECT b.* FROM library_books b WHERE b.added_by IN ({marks})'
@@ -72,7 +85,8 @@ def books_query(owner_ids, args, data_user):
         query += (" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id"
                   f" AND t.user_id = ? AND t.tag_name IN ({tag_marks}))")
         params += [data_user, *tags]
-    return query, params
+    gr_sql, gr_params = from_goodreads(args, data_user if viewer_id is None else viewer_id)
+    return query + gr_sql, params + gr_params
 
 
 def search_query(conn, member_ids, args, viewer_id):
@@ -118,7 +132,8 @@ def search_query(conn, member_ids, args, viewer_id):
             query += (' AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id'
                       f' AND t.user_id = ? AND t.tag_name IN ({tag_marks}))')
             params += [viewer_id, *wanted]
-    return query, params, match_sql, match_params
+    gr_sql, gr_params = from_goodreads(args, viewer_id)
+    return query + gr_sql, params + gr_params, match_sql, match_params
 
 
 def _args(args):
@@ -164,7 +179,7 @@ def view_ids(conn, user, view, args):
         order_sql, order_params = sorting.order_by(sort_by, sort_order, user.id)
         rows = conn.execute(query + order_sql, [*params, *order_params]).fetchall()
     elif kind == media.BOOK:
-        query, params = books_query(owner_ids, args, user.id)
+        query, params = books_query(owner_ids, args, user.id, user.id)
         sort_by, sort_order = sorting.choice(args, media.BOOK)
         order_sql, order_params = sorting.order_by(sort_by, sort_order, user.id)
         rows = conn.execute(query + order_sql, [*params, *order_params]).fetchall()

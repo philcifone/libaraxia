@@ -499,6 +499,13 @@
                     {% endif %}
                 </div>
 
+                {# What your Goodreads imports did here (ROADMAP 14b): your own only #}
+                {% if goodreads_notes %}
+                <div class="mb-6 space-y-1 text-sm text-content-secondary">
+                    {% for note in goodreads_notes %}<p>{{ note }}</p>{% endfor %}
+                </div>
+                {% endif %}
+
                 {% if read_data %}
                 {% if read_data['rating'] %}{# a review can have no rating #}
                 <div class="grid sm:grid-cols-2 gap-8 mb-6">

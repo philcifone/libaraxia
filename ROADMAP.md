@@ -63,7 +63,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 - [x] 3. `utils/goodreads_plan.py` stage + plan, headless (boxes, fill, choices).
 - [x] 4. Apply and undo, headless (provenance, bulk journal).
 - [x] 5. Routes and the review page; old route removed.
-- [ ] 6. Provenance in the UI: From Goodreads filter, book page note.
+- [x] 6. Provenance in the UI: From Goodreads filter, book page note.
 - [ ] 7. Dry run on a prod copy (Phil), wrap-up. **Merge point M2.**
 
 ---

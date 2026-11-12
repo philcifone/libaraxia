@@ -708,9 +708,16 @@ def render_item_page(conn, book):
             ORDER BY MAX(rs.date_completed) DESC, u.username ASC
         """, [id] + library_member_ids + [current_user.id]).fetchall()
 
+    # What your Goodreads imports did to this book (ROADMAP 14b): yours only
+    goodreads_notes = []
+    if media.media_type_of(book) == media.BOOK:
+        from utils.goodreads_plan import provenance
+        goodreads_notes = provenance(conn, current_user.id, id)
+
     return render_template(
         "book_detail.html",
         book=book,
+        goodreads_notes=goodreads_notes,
         read_data=read_data,
         latest_session=latest_session,
         reading_sessions=reading_sessions,

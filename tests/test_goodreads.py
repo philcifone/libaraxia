@@ -493,3 +493,93 @@ def test_the_old_one_pass_import_route_is_gone(client, db, people):
                     content_type='multipart/form-data')
     assert r.status_code in (404, 405)
     assert scalar(db, 'SELECT COUNT(*) FROM books') == 0
+
+
+# --- provenance in the UI (ROADMAP 14b step 6) --------------------------------------
+
+def grid_titles(client, url):
+    """Titles on a Books grid page, via its JSON (infinite scroll's) form."""
+    r = client.get(url, headers={'X-Requested-With': 'XMLHttpRequest'})
+    assert r.status_code == 200
+    return sorted(b['title'] for b in r.get_json()['books'])
+
+
+def test_from_goodreads_filter_shows_what_your_imports_touched(client, db, people):
+    alice = people['alice']
+    add_book(db, alice, 'Already Mine', 'Some Author')
+    add_book(db, alice, 'Never Imported', 'Some Author')
+    run(client, 'alice', row('Already Mine', my_rating='4'), row('Read Elsewhere'),
+        row('Mine After All'), choices=[([4], 'library')])
+    # Owned and on the shelf: the default Show
+    assert grid_titles(client, '/base/index?from=goodreads') == ['Already Mine', 'Mine After All']
+    # Read Elsewhere came in not owned: under Show: Not owned / Everything
+    assert grid_titles(client, '/base/index?from=goodreads&show=not_owned') == ['Read Elsewhere']
+    assert grid_titles(client, '/base/index?from=goodreads&show=all') == \
+           ['Already Mine', 'Mine After All', 'Read Elsewhere']
+    assert 'Never Imported' in grid_titles(client, '/base/index')
+    # It counts as a filter (the match count, not "Search your N books")
+    page = client.get('/base/index?from=goodreads').get_data(as_text=True)
+    assert '2 books match' in page and 'id="from_goodreads"' in page
+
+    # Bulk edit's "select all in this view" names the same books
+    from types import SimpleNamespace
+    from utils import grid_query
+    ids = grid_query.view_ids(db, SimpleNamespace(id=alice), 'book:mine', 'from=goodreads&show=all')
+    assert sorted(scalar(db, 'SELECT title FROM books WHERE id = ?', i) for i in ids) == \
+           ['Already Mine', 'Mine After All', 'Read Elsewhere']
+
+
+def test_from_goodreads_is_only_ever_your_own_imports(client, db, people, monkeypatch):
+    from utils import goodreads_plan
+    monkeypatch.setattr(goodreads_plan, 'delete_image_file', lambda path: None)
+    alice = people['alice']
+    shared = add_book(db, alice, 'Shared Shelf', 'Some Author')
+    run(client, 'alice', row('Shared Shelf', my_rating='5'))
+    client.post('/auth/logout')
+    # bob shares alice's shelf but has imported nothing
+    login(client, 'bob')
+    assert grid_titles(client, '/base/shared-library?from=goodreads') == []
+    assert 'Shared Shelf' in grid_titles(client, '/base/shared-library')
+    client.post('/auth/logout')
+
+    # An undone import no longer counts
+    report = run(client, 'alice', row('Undone Later'))
+    assert 'Undone Later' in grid_titles(client, '/base/index?from=goodreads&show=all')
+    client.post(f"/bulk/{report['edit_id']}/undo", json={'banner': False})
+    assert grid_titles(client, '/base/index?from=goodreads&show=all') == ['Shared Shelf']
+    assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', shared) == 1
+
+
+def test_book_page_says_what_your_import_did_and_only_to_you(client, db, people, monkeypatch):
+    from utils import goodreads_plan
+    monkeypatch.setattr(goodreads_plan, 'delete_image_file', lambda path: None)
+    alice = people['alice']
+    filled = add_book(db, alice, 'Filled', 'Some Author')
+    matched = add_book(db, alice, 'Matched', 'Some Author')
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, matched))
+    db.execute("INSERT INTO reading_sessions (user_id, book_id) VALUES (?, ?)", (alice, matched))
+    db.commit()
+    run(client, 'alice', row('Filled', my_rating='4', my_review='Good', read_count='2', date_read='2020/01/01'),
+        row('Matched'))
+    day = db.execute("SELECT created_at FROM goodreads_imports").fetchone()[0][:10]
+    from datetime import datetime
+    day = datetime.strptime(day, '%Y-%m-%d').strftime('%-d %b %Y')
+
+    page = client.get(f'/books/book/{filled}').get_data(as_text=True)
+    assert f'From your Goodreads import, {day}: status, rating, review, 2 reading sessions.' in page
+    page = client.get(f'/books/book/{matched}').get_data(as_text=True)
+    assert f'Matched by your Goodreads import, {day}; nothing added.' in page
+    client.post('/auth/logout')
+    for other in ('bob', 'carol'):              # household, friend
+        login(client, other)
+        page = client.get(f'/books/book/{filled}')
+        assert page.status_code == 200 and 'Goodreads import' not in page.get_data(as_text=True)
+        client.post('/auth/logout')
+
+
+def test_provenance_words_for_created_wishlist_and_appended_reviews(db, people):
+    from utils.goodreads_plan import _wrote_words
+    assert _wrote_words(['book', 'wishlist'], 'wishlist') == ['the book', 'wishlist entry']
+    assert _wrote_words(['wishlist', 'status', 'sessions:1'], 'decided') == \
+           ['off your wishlist', 'status', '1 reading session']
+    assert _wrote_words(['review_appended'], 'filled') == ['Goodreads review below yours']
