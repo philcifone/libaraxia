@@ -126,7 +126,10 @@ def review_text(review):
 def parse_row(row):
     """One CSV row as a dict of clean values, plus the decided status:
     'read', 'currently reading', 'did not finish', 'wishlist' or None
-    (an unknown custom exclusive shelf and no sign of having read it)."""
+    (an unknown custom exclusive shelf and no sign of having read it).
+    `collections` is the shelves today's importer turns into collections;
+    `shelves` is every shelf, raw, and `goodreads_id` the export's Book Id
+    (both for the granular import, ROADMAP 14b)."""
     get = lambda key: row.get(key) or ''
     exclusive = clean_text(get('Exclusive Shelf')).lower()
     shelves = [s.strip().lower() for s in get('Bookshelves').split(',') if s.strip()]
@@ -156,6 +159,15 @@ def parse_row(row):
         if shelf not in status_shelves and shelf not in custom:
             custom.append(shelf)
 
+    # Every shelf the row is on, status shelves included (ROADMAP 14b): the
+    # review page filters by them and goodreads_rows keeps them, so a later
+    # shelf filter or mapping needs no re-import. Order kept, duplicates
+    # dropped; the exclusive shelf last when Bookshelves didn't list it.
+    all_shelves = []
+    for shelf in shelves + ([exclusive] if exclusive else []):
+        if shelf not in all_shelves:
+            all_shelves.append(shelf)
+
     rating = goodreads_int(get('My Rating'))
     return {
         'title': clean_text(get('Title')),
@@ -174,6 +186,10 @@ def parse_row(row):
         'collections': custom,
         'audiobook': (any(s in AUDIOBOOK_SHELVES for s in shelves)
                       or clean_text(get('Binding')).lower() in AUDIO_BINDINGS),
+        # Goodreads' stable id for the book (the export's Book Id), so a
+        # re-import can match a book that was retitled or re-ISBN'd here.
+        'goodreads_id': clean_text(get('Book Id')) or None,
+        'shelves': all_shelves,
     }
 
 
