@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
+{#- Site backups (utils/backups.py): back up now, and per backup restore,
+    download the database, delete. -#}
+
+{% block title %}Backups - Admin{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% macro when(b) -%}{{ b.created_at.strftime('%-d %b %Y, %H:%M') }}{%- endmacro %}
+
+{% block content %}
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 space-y-6">
+        {{ crumbs([('Admin Settings', url_for('admin.settings'))], 'Backups') }}
+
+        <div>
+            <h1 class="text-3xl font-display text-content-primary mb-2">Backups</h1>
+            <p class="text-content-secondary text-sm">
+                A backup is the whole site as it was: every user's books, reading history, reviews,
+                collections and settings, and the cover and avatar files. Restoring one puts all of that
+                back for everyone, so anything done since is replaced.
+            </p>
+        </div>
+
+        <section class="bg-secondary rounded-lg p-5 card flex flex-wrap items-center gap-4">
+            <form method="POST" action="{{ url_for('admin.backup_create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-5 py-2 bg-accent hover:bg-accent-hover text-on-accent font-bold rounded-lg btn">Back up now</button>
+            </form>
+            <p class="text-sm text-content-secondary flex-1 min-w-[16rem]">
+                Backups stay until you delete them. Each user's own library backups (Profile, before Goodreads
+                imports) are separate and only change that user's data.
+            </p>
+        </section>
+
+        {% if not backups %}
+        <section class="bg-secondary rounded-lg p-12 text-center card">
+            <p class="text-content-secondary text-lg">No backups yet.</p>
+        </section>
+        {% else %}
+        <section class="bg-secondary rounded-lg card divide-y divide-rule" aria-label="Backups">
+            {% for b in backups %}
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
+                <div class="flex-1 min-w-[14rem]">
+                    <p class="text-content-primary font-medium">{{ when(b) }}{% if loop.first %} <span class="text-sm text-content-secondary">(newest)</span>{% endif %}</p>
+                    <p class="text-sm text-content-secondary">
+                        {{ b.kind_label }}{% if b.by %}, {{ b.by }}{% endif %}
+                        · {{ b.counts.books }} items, {{ b.counts.users }} users, {{ b.files }} files
+                        · {{ '%.1f'|format(b.db_bytes / 1048576) }} MB database
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <form method="POST" action="{{ url_for('admin.backup_restore', name=b.name) }}"
+                          data-confirm="Restore the backup from {{ when(b) }}? The whole site goes back to how it was then, for every user: anything added, changed or imported since is replaced. This can't be undone.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Restore</button>
+                    </form>
+                    <a href="{{ url_for('admin.backup_download', name=b.name) }}" class="text-sm text-accent underline">Download database</a>
+                    <form method="POST" action="{{ url_for('admin.backup_delete', name=b.name) }}"
+                          data-confirm="Delete the backup from {{ when(b) }}? Its copy of the database and its {{ b.files }} files go for good.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="px-3 py-2 text-content-secondary hover:text-accent btn" aria-label="Delete the backup from {{ when(b) }}">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+        <p class="text-sm text-content-secondary">
+            Stored on the server in <code class="break-all">{{ where }}</code> (set <code>BACKUP_DIR</code> to move them).
+            They live on the same disk as the library, so they protect against mistakes, not against losing the disk:
+            keep your own copies or snapshots of that folder too. The download is the database only; the covers are in
+            each backup's folder.
+        </p>
+    </div>
+{% endblock %}

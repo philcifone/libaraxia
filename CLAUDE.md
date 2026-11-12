@@ -35,6 +35,7 @@ pytest                                    # about a second; CI runs it on every 
 - **Unowned books** (`added_by IS NULL`) appear in no library view. Handle `None` wherever `added_by` is used.
 - **Audiobooks** are `format = 'Audiobook'` (a plain book is NULL), usually not owned, never in page totals.
 - **Grid filters** live in `utils/grid_query.py` (Books) and `Section.filtered` (Movies, Music). Change them there, or bulk edit's "select all in this view" stops matching the page.
+- **Goodreads provenance:** `goodreads_rows` records what each imported CSV line did to which book (`book_id` SET NULL). It drives the From Goodreads filter, the book page note and the next import's Book Id match, so keep it when merging or deleting books. Imports undo through the bulk journal (`bulk_edits.action = 'goodreads'`).
 - There is no `activities` table; the feed is built from `read_data` / `collections` / `wishlist` at query time (`collections.quiet = 1`, set by bulk edit, hides a status from it). Some templates read rows positionally (`book[0]`), so don't reorder `SELECT *` columns.
 - **UI names vs code names:** the UI says "Movies" (VHS shown as "Cartridge") and "Music" (an item is an "album"); code, URLs and the DB say `video`, `VHS` and `record`. Wording per type comes from `media.media_labels()` (`m` in templates). "Shelf" is what you own; "collection" is a status or custom list.
 

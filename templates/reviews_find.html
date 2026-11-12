@@ -5,7 +5,7 @@
    a plain GET search (no script) over what you may review: your shelf, your
    not-owned and removed items, and your household's shelf, never anyone
    else's (utils/reviews.find). A result opens its review page. Nothing
-   found: "Add it as not owned" opens the add page with "I don't own this"
+   found: "Add it as unshelved" opens the add page with "Not on my shelf"
    ticked and ?then=review, so saving lands on the review page. #}
 
 {% block title %}Review {{ m.a }} {{ m.noun }} - libaraxia{% endblock %}
@@ -47,7 +47,7 @@
                             <span class="block text-xs text-content-secondary">
                                 {%- if r.added_by == current_user.id %}Yours{% else %}{{ r.owner }}'s (household){% endif -%}
                                 {%- if r.format %}, {{ r.format|format_label }}{% endif -%}
-                                {%- if not r.owned %}, not owned{% elif r.removed_at %}, removed{% endif -%}
+                                {%- if not r.owned %}, unshelved{% elif r.removed_at %}, removed{% endif -%}
                             </span>
                         </span>
                         <span class="shrink-0 text-sm text-accent font-semibold">{{ 'Edit review' if r.reviewed else 'Review' }}</span>
@@ -59,12 +59,12 @@
             <p class="mt-3 text-xs text-content-secondary">Showing the first {{ limit }}: add a word to narrow it down.</p>
             {% endif %}
             <p class="mt-6 text-sm text-content-secondary text-center">
-                Not the one? <a href="{{ add_url }}" class="underline hover:text-accent">Add it as not owned</a> and review it.
+                Not the one? <a href="{{ add_url }}" class="underline hover:text-accent">Add it as unshelved</a> and review it.
             </p>
             {% else %}
             <div class="bg-secondary rounded-lg p-6 card text-center space-y-4">
                 <p class="text-content-primary">No {{ m.noun }} matching "{{ term }}" in your {{ m.plural }} or your household's.</p>
-                <a href="{{ add_url }}" class="inline-block bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 rounded-lg btn">Add it as not owned</a>
+                <a href="{{ add_url }}" class="inline-block bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 rounded-lg btn">Add it as unshelved</a>
                 <p class="text-xs text-content-secondary">For something you {{ m.verb_past }} but don't have: it stays off your shelf, and saving takes you to its review.</p>
             </div>
             {% endif %}

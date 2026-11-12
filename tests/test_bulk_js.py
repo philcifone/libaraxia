@@ -193,7 +193,7 @@ def test_now_text_shows_the_value_the_action_changes():
     assert call('nowText', 'genre', item) == '(no genre)'
     assert call('nowText', 'status', item) == 'Read'
     assert call('nowText', 'format', item) == 'Audiobook'
-    assert call('nowText', 'owned', item) == 'Not owned'
+    assert call('nowText', 'owned', item) == 'Unshelved'
     assert call('nowText', 'restore', item) == 'Removed'
     assert call('nowText', 'shelf', item) == 'In Jazz, Keep'
     assert call('nowText', 'tag', item) == 'No tags'

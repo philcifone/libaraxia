@@ -2077,6 +2077,13 @@ img.book-cover-img:not([data-loaded]) {
   font-weight: 700;
 }
 
+
+    .tab-button.\!active {
+  color: rgb(var(--accent-text)) !important;
+  border-bottom-color: rgb(var(--accent)) !important;
+  font-weight: 700 !important;
+}
+
 /* Sidebar links: active page gets accent text + 2px accent underline */
 
 .nav-link {
@@ -2101,6 +2108,14 @@ img.book-cover-img:not([data-loaded]) {
   border-bottom: 3px solid rgb(var(--accent));
   background-color: rgb(var(--accent) / .1);
   font-weight: 500;
+}
+
+
+    [data-style="classic"] .tab-button.\!active {
+  color: rgb(var(--ink)) !important;
+  border-bottom: 3px solid rgb(var(--accent)) !important;
+  background-color: rgb(var(--accent) / .1) !important;
+  font-weight: 500 !important;
 }
 
 [data-style="classic"] .nav-link.nav-active {
@@ -2490,10 +2505,6 @@ img.book-cover-img:not([data-loaded]) {
   margin-left: 0.5rem;
 }
 
-.ml-4 {
-  margin-left: 1rem;
-}
-
 .ml-auto {
   margin-left: auto;
 }
@@ -2844,6 +2855,14 @@ img.book-cover-img:not([data-loaded]) {
   min-width: 12rem;
 }
 
+.min-w-\[14rem\] {
+  min-width: 14rem;
+}
+
+.min-w-\[16rem\] {
+  min-width: 16rem;
+}
+
 .max-w-2xl {
   max-width: 42rem;
 }
@@ -2974,10 +2993,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .animate-spin {
   animation: spin 1s linear infinite;
-}
-
-.cursor-not-allowed {
-  cursor: not-allowed;
 }
 
 .cursor-pointer {
@@ -3113,6 +3128,11 @@ img.book-cover-img:not([data-loaded]) {
        column-gap: 1rem;
 }
 
+.gap-x-6 {
+  -moz-column-gap: 1.5rem;
+       column-gap: 1.5rem;
+}
+
 .gap-x-8 {
   -moz-column-gap: 2rem;
        column-gap: 2rem;
@@ -3244,6 +3264,10 @@ img.book-cover-img:not([data-loaded]) {
   overflow-wrap: break-word;
 }
 
+.break-all {
+  word-break: break-all;
+}
+
 .rounded {
   border-radius: var(--r);
 }
@@ -3353,11 +3377,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .border-transparent {
   border-color: transparent;
-}
-
-.border-yellow-600 {
-  --tw-border-opacity: 1;
-  border-color: rgb(var(--yellow) / var(--tw-border-opacity, 1));
 }
 
 .border-yellow-700 {
@@ -3511,6 +3530,11 @@ img.book-cover-img:not([data-loaded]) {
   padding: 2rem;
 }
 
+.px-0 {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
 .px-1 {
   padding-left: 0.25rem;
   padding-right: 0.25rem;
@@ -3628,6 +3652,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .pb-24 {
   padding-bottom: 6rem;
+}
+
+.pb-28 {
+  padding-bottom: 7rem;
 }
 
 .pb-3 {
@@ -3866,11 +3894,6 @@ img.book-cover-img:not([data-loaded]) {
   color: rgb(var(--rule) / var(--tw-text-opacity, 1));
 }
 
-.text-green-400 {
-  --tw-text-opacity: 1;
-  color: rgb(var(--green) / var(--tw-text-opacity, 1));
-}
-
 .text-green-500 {
   --tw-text-opacity: 1;
   color: rgb(var(--green) / var(--tw-text-opacity, 1));
@@ -3902,11 +3925,6 @@ img.book-cover-img:not([data-loaded]) {
 }
 
 .text-white {
-  --tw-text-opacity: 1;
-  color: rgb(var(--ink) / var(--tw-text-opacity, 1));
-}
-
-.text-yellow-100 {
   --tw-text-opacity: 1;
   color: rgb(var(--ink) / var(--tw-text-opacity, 1));
 }
@@ -4072,8 +4090,17 @@ img.book-cover-img:not([data-loaded]) {
   overflow: hidden;
 }
 
+#description.\!expanded {
+  max-height: none;
+}
+
 #description.expanded {
   max-height: none;
+}
+
+#description.\!expanded + button svg {
+  --tw-rotate: 180deg;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
 #description.expanded + button svg {
@@ -7004,6 +7031,111 @@ html:has(.bulk-sheet[open]) {
   }
 }
 
+/* ---------- Goodreads import review (ROADMAP 14b, templates/goodreads_review.html) ----------
+   Rows in boxes, a checkbox each; the selection bar is bulk edit's (.bulk-bar). */
+
+html[data-gr-bar="on"] body {
+  padding-bottom: 5rem;
+}
+
+/* the last row clears the bar */
+
+.gr-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: .35rem .75rem;
+  align-items: start;
+  padding: .6rem .25rem;
+  cursor: pointer;
+}
+
+.gr-row[hidden], .gr-box[hidden] {
+  display: none;
+}
+
+.gr-row.is-selected {
+  box-shadow: inset 4px 0 0 rgb(var(--accent));
+  background: rgb(var(--paper));
+}
+
+.gr-row .gr-tick {
+  margin-top: .2rem;
+  grid-column: 1;
+}
+
+.gr-cover {
+  grid-column: 2;
+  width: 2.5rem;
+  height: 3.75rem;
+  -o-object-fit: cover;
+     object-fit: cover;
+  border: 1px solid rgb(var(--rule));
+}
+
+.gr-main {
+  grid-column: 3;
+  min-width: 0;
+}
+
+.gr-row:not(:has(.gr-cover)) .gr-main {
+  grid-column: 2 / 4;
+}
+
+.gr-title {
+  overflow-wrap: anywhere;
+}
+
+.gr-details, .gr-reason {
+  font-size: .85rem;
+  color: rgb(var(--muted));
+  overflow-wrap: anywhere;
+}
+
+.gr-adds {
+  font-size: .85rem;
+  color: rgb(var(--accent-text));
+  overflow-wrap: anywhere;
+}
+
+.gr-choice {
+  grid-column: 4;
+  width: auto;
+  min-width: 11rem;
+  cursor: pointer;
+}
+
+.gr-preview-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: .85rem;
+  margin-top: .4rem;
+  padding: .5rem .75rem;
+  background: rgb(var(--paper));
+  border-left: 3px solid rgb(var(--rule-strong));
+}
+
+/* A phone: title line, details line, then the select across the row */
+
+@media (max-width: 639px) {
+  .gr-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .gr-cover {
+    display: none;
+  }
+
+  .gr-main, .gr-row:not(:has(.gr-cover)) .gr-main {
+    grid-column: 2;
+  }
+
+  .gr-choice {
+    grid-column: 2;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 :root[data-style="outrun"] .hover\:text-accent:hover {
   text-shadow: 0 0 8px rgb(var(--accent) / .55);
 }
@@ -7383,6 +7515,10 @@ html:has(.bulk-sheet[open]) {
 
   .sm\:flex-nowrap {
     flex-wrap: nowrap;
+  }
+
+  .sm\:items-center {
+    align-items: center;
   }
 
   .sm\:gap-2 {

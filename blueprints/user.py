@@ -6,7 +6,7 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
-from utils import bulk, media, reviews, shelves
+from utils import bulk, media, reviews, shelves, personal_backups
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
@@ -156,6 +156,8 @@ def profile(username):
                          if is_own_profile else None),
         # Recent bulk edits (ROADMAP 14), yours only, with their Undo
         bulk_history=bulk.recent(conn, current_user) if is_own_profile else [],
+        library_backups=personal_backups.list_backups(current_user.id) if is_own_profile else [],
+        backups_max=personal_backups.MAX_MANUAL,
     )
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])
@@ -582,51 +584,220 @@ def delete_account_self():
     return redirect(url_for('auth.login'))
 
 
+# --- Personal library backups (utils/personal_backups.py) --------------------
+# Your own data only; the site backups are the admin's (blueprints/admin.py).
+
+def _backups_back():
+    """The Goodreads import page offers "Back up my library" too."""
+    if request.form.get('back') == 'goodreads':
+        return redirect(url_for('user.import_goodreads_page'))
+    return redirect(url_for('user.profile', username=current_user.username) + '#library-backups')
+
+
+@user_blueprint.route('/backups/create', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def personal_backup_create():
+    from utils import personal_backups
+    try:
+        made = personal_backups.create(get_db(), current_user.id, current_user.username)
+    except personal_backups.PersonalBackupError as e:
+        flash(str(e), 'error')
+        return _backups_back()
+    c = made['counts']
+    flash(f"Library backed up: {c['books']} items, {c['statuses']} statuses, {c['reviews']} reviews, "
+          f"{c['sessions']} sessions, {c['wishlist']} wishlist entries.", 'success')
+    return _backups_back()
+
+
+@user_blueprint.route('/backups/<name>/restore', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def personal_backup_restore(name):
+    from utils import personal_backups
+    try:
+        r = personal_backups.restore(get_db(), current_user.id, name)
+    except personal_backups.PersonalBackupError as e:
+        current_app.logger.exception(f'Personal restore {name} for {current_user.username} failed')
+        flash(str(e), 'error')
+        return _backups_back()
+    current_app.logger.warning(f"{current_user.username} restored their library from {name}")
+    when = r['restored']['created_at'].strftime('%-d %b %Y, %H:%M')
+    parts = [f"Your library is back to {when}."]
+    if r['books_removed']:
+        parts.append(f"{r['books_removed']} item(s) added since were removed.")
+    if r['books_back']:
+        parts.append(f"{r['books_back']} deleted item(s) came back.")
+    if r['kept']:
+        parts.append("Kept, because others have data on them: " + '; '.join(
+            f"{title} ({', '.join(users)})" for title, users in r['kept'][:5])
+            + (f" and {len(r['kept']) - 5} more" if len(r['kept']) > 5 else '') + '.')
+    if r['given_away']:
+        parts.append(f"{len(r['given_away'])} item(s) you've given to someone since stay with them.")
+    if r['skipped']:
+        parts.append(f"{r['skipped']} status(es), review(s) or session(s) couldn't come back: their book is gone.")
+    flash(' '.join(parts), 'success')
+    return _backups_back()
+
+
+@user_blueprint.route('/backups/<name>/delete', methods=['POST'])
+@login_required
+def personal_backup_delete(name):
+    from utils import personal_backups
+    try:
+        personal_backups.delete(current_user.id, name)
+    except personal_backups.PersonalBackupError as e:
+        flash(str(e), 'error')
+        return _backups_back()
+    flash('Backup deleted.', 'success')
+    return _backups_back()
+
+
+# --- Goodreads import (ROADMAP 14b, utils/goodreads_plan.py) -----------------
+# Upload -> review (nothing written) -> choose per row -> apply -> result,
+# with undo through the bulk journal (POST /bulk/<id>/undo).
+
+def _wants_json():
+    return request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+
 @user_blueprint.route('/import_goodreads_page')
 @login_required
 def import_goodreads_page():
-    """Display the Goodreads import page with instructions"""
-    return render_template('goodreads_import.html')
+    """The upload page, with how the import works. Says so if an upload is
+    still waiting for its review."""
+    from utils import goodreads_plan, personal_backups
+    return render_template('goodreads_import.html',
+                           waiting=goodreads_plan.has_staging(get_db(), current_user),
+                           last_backup=personal_backups.latest(current_user.id))
 
-@user_blueprint.route('/import_goodreads', methods=['POST'])
+
+@user_blueprint.route('/import_goodreads/plan', methods=['POST'])
 @login_required
-@limiter.limit("3 per hour")
-def import_goodreads():
-    """Import a Goodreads CSV export (logic in utils/goodreads.py).
+@limiter.limit("10 per hour")
+def import_goodreads_plan():
+    """Read an uploaded export into the review's staging. Writes nothing else."""
+    from utils import goodreads_plan
+    from utils.goodreads import decode_csv, ImportFileError
 
-    Returns the full report: an outcome for every row of the file, so the
-    result screen can account for all of them.
-    """
-    from utils.goodreads import decode_csv, import_goodreads as run_import, ImportFileError, OUTCOMES
+    def refuse(message, status=400):
+        if _wants_json():
+            return jsonify({'success': False, 'error': message}), status
+        flash(message, 'error')
+        return redirect(url_for('user.import_goodreads_page'))
 
     file = request.files.get('goodreads_csv')
     if not file or not file.filename:
-        return jsonify({'success': False, 'message': 'No file selected.'}), 400
+        return refuse('Choose your Goodreads export first.')
     if not file.filename.lower().endswith('.csv'):
-        return jsonify({'success': False, 'message': 'The file must be a .csv export.'}), 400
-
+        return refuse('The file must be a .csv export.')
     text, encoding = decode_csv(file.read())
     conn = get_db()
     try:
-        report = run_import(conn, current_user.id, text)
-        conn.commit()
+        count = goodreads_plan.stage(conn, current_user, text, secure_filename(file.filename) or 'export.csv')
     except ImportFileError as e:
         conn.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 400  # written for the user
+        return refuse(str(e))                   # written for the user
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Goodreads upload failed')
+        return refuse('That file could not be read. Check that it is a Goodreads CSV export.', 500)
+    current_app.logger.info(f'Goodreads upload by {current_user.username}: {count} rows ({encoding})')
+    if encoding != 'utf-8-sig' and encoding != 'utf-8':
+        flash(f"The file wasn't UTF-8; it was read as {encoding}. Check accented titles.", 'warning')
+    review = url_for('user.import_goodreads_review')
+    if _wants_json():
+        return jsonify({'success': True, 'url': review, 'rows': count, 'encoding': encoding})
+    return redirect(review)
+
+
+@user_blueprint.route('/import_goodreads/review')
+@login_required
+def import_goodreads_review():
+    """The review: every row of the upload in its box, with its choice."""
+    from utils import goodreads_plan
+    plan = goodreads_plan.plan(get_db(), current_user)
+    if plan is None:
+        flash('Upload your export first.', 'info')
+        return redirect(url_for('user.import_goodreads_page'))
+    return render_template('goodreads_review.html', plan=plan, boxes=goodreads_plan.BOXES,
+                           choices=goodreads_plan.CHOICES)
+
+
+def _plan_counts(plan):
+    """What the page updates after a choice: the Import button and the fingerprint."""
+    return {'fingerprint': plan.fingerprint, 'will_write': plan.will_write, 'undecided': plan.undecided}
+
+
+@user_blueprint.route('/import_goodreads/choose', methods=['POST'])
+@login_required
+def import_goodreads_choose():
+    """Save a choice for some rows: JSON {lines: [...], choice}."""
+    from utils import goodreads_plan
+    body = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        result = goodreads_plan.choose(conn, current_user, body.get('lines'), body.get('choice'))
+    except goodreads_plan.PlanError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Goodreads choice failed')
+        return jsonify({'success': False, 'error': 'That choice could not be saved.'}), 500
+    plan = result['plan']
+    saved = set(result['saved'])
+    rows = {r.line: {'choice': r.choice, 'adds': r.adds, 'writes': r.writes, 'preview': r.preview}
+            for r in plan.rows if r.line in saved}
+    return jsonify({'success': True, 'saved': result['saved'], 'refused': result['refused'],
+                    'rows': rows, **_plan_counts(plan)})
+
+
+@user_blueprint.route('/import_goodreads/apply', methods=['POST'])
+@login_required
+@limiter.limit("3 per hour")
+def import_goodreads_apply():
+    """Import what the review shows: JSON {fingerprint}. Returns the result,
+    one outcome per row of the file."""
+    from utils import goodreads_plan, personal_backups
+    body = request.get_json(silent=True) or {}
+    conn = get_db()
+    # Your library, as it is, before the import writes (utils/personal_backups.py).
+    # No backup, no import: it's the way back if the undo isn't enough.
+    try:
+        personal_backups.create(conn, current_user.id, current_user.username, 'goodreads')
+    except personal_backups.PersonalBackupError:
+        current_app.logger.exception('Backup before the Goodreads import failed')
+        return jsonify({'success': False, 'error': "Couldn't back up your library before importing, so "
+                        "nothing was imported. Try again; if it keeps failing, tell your admin."}), 500
+    try:
+        report = goodreads_plan.apply(conn, current_user, body.get('fingerprint'))
+    except goodreads_plan.StalePlan as e:
+        conn.rollback()
+        flash(str(e), 'warning')
+        return jsonify({'success': False, 'stale': True, 'error': str(e)}), 409
+    except goodreads_plan.PlanError as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception:
         conn.rollback()
         current_app.logger.exception('Goodreads import failed')
-        return jsonify({'success': False,
-                        'message': 'The import failed. Check that the file is a Goodreads CSV export.'}), 500
-
+        return jsonify({'success': False, 'error': 'The import failed. Nothing was saved.'}), 500
     current_app.logger.info(f"Goodreads import by {current_user.username}: "
                             f"{report['total_rows']} rows, {report['outcomes']}")
-    # Books only, as the result screen words it; the job it starts does all types
+    # Books only, as the result words it; the job it starts does all types
     covers = conn.execute("SELECT COUNT(*) " + missing_cover_sql(owner=True, types=('book',)),
                           (current_user.id,)).fetchone()[0]
-    return jsonify({'success': True, 'encoding': encoding,
-                    'outcome_labels': list(OUTCOMES.items()),  # a list: jsonify sorts dict keys
-                    'covers_missing': covers, **report})
+    return jsonify({'success': True, 'covers_missing': covers, **report})
+
+
+@user_blueprint.route('/import_goodreads/discard', methods=['POST'])
+@login_required
+def import_goodreads_discard():
+    """Start over: the waiting upload goes."""
+    from utils import goodreads_plan
+    goodreads_plan.discard(get_db(), current_user)
+    flash('Upload discarded. Nothing was imported.', 'info')
+    return redirect(url_for('user.import_goodreads_page'))
 
 
 # --- households: invite / accept / decline / remove (utils/households.py) ----

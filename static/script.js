@@ -60,7 +60,8 @@ function toggleFilters(open) {
 // The filter-panel fields. Clearing removes only these, so the search term,
 // shared-library member and sort survive.
 // show_removed: the old name of `show`, still in some bookmarks
-const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'page', 'csrf_token'];
+// from: From Goodreads (ROADMAP 14b), books only
+const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'from', 'page', 'csrf_token'];
 
 function clearFilters() {
     const params = new URLSearchParams(window.location.search);
@@ -86,6 +87,9 @@ function readFilterState() {
     document.querySelectorAll('#filter-form input[name="tags[]"]:checked').forEach(tag => {
         state.push({ key: `tag=${tag.value}`, label: 'Tag', value: tag.value });
     });
+    if (document.getElementById('from_goodreads')?.checked) {
+        state.push({ key: 'from=goodreads', label: 'From', value: 'Goodreads' });
+    }
     return state;
 }
 
@@ -385,7 +389,7 @@ class InfiniteScroll {
         // Not-owned and removed items only appear when Show asks for them,
         // and are marked so they can't pass for something on the shelf
         const removedBadge = book.not_owned
-            ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Not owned</span>'
+            ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Unshelved</span>'
             : book.removed
             ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>'
             : '';

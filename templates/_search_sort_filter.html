@@ -156,7 +156,7 @@
                     </div>
                 </div>
 
-                <!-- Show (8B.3): what's on the shelf by default; not owned (read,
+                <!-- Show (8B.3): what's on the shelf by default; unshelved (read,
                      watched, listened to but never had) and removed (had it, it
                      left) only when asked for, and badged on the cards -->
                 {% set show = show_choice(request.args) %}
@@ -171,6 +171,20 @@
                         {% endfor %}
                     </select>
                 </div>
+
+                {# From Goodreads (ROADMAP 14b): books your Goodreads imports matched or
+                   added, owned or not. Books only, and not on a friend's shelf (it is
+                   always your own imports, utils/grid_query.from_goodreads). #}
+                {% if not m and not search_action %}
+                <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">
+                    <input type="checkbox" name="from" value="goodreads" id="from_goodreads"
+                           data-change="filtersChanged"
+                           {% if request.args.get('from') == 'goodreads' %}checked{% endif %}
+                           class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
+                    From Goodreads
+                    <span class="text-content-secondary">(combine with Show: Everything to include unshelved books)</span>
+                </label>
+                {% endif %}
 
                 <!-- Tags Section -->
                 {% if filter_options.tags %}

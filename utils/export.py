@@ -1,7 +1,11 @@
 """CSV exports of one user's data: the library CSV and the "export my data" ZIP.
 
-Everything here is scoped to one user: books they own, plus books they have
-their own data on (status, rating/review, sessions, tags, shelves).
+Everything here is scoped to one user: books they own, their household's
+shelf (Phil, 2026-11-12), and books they have their own data on (status,
+rating/review, sessions, tags, shelves). The library CSV's first column,
+Section, says which: "Yours", "Shared (<owner>)" or "Your data on others'
+items". Only the user's own status, rating and so on are in it, never a
+household member's.
 """
 import csv
 import io
@@ -20,7 +24,7 @@ def _csv(header, rows):
 
 
 LIBRARY_HEADER = [
-    'Book ID', 'Title', 'Subtitle', 'Author', 'Publisher', 'Year', 'ISBN', 'Pages', 'Genre',
+    'Section', 'Book ID', 'Title', 'Subtitle', 'Author', 'Publisher', 'Year', 'ISBN', 'Pages', 'Genre',
     'Owner', 'You Own It', 'Removed From Library', 'Removed Note',
     'Reading Status', 'Date Added to Collection', 'Date Started', 'Date Completed', 'Reread Count',
     'Rating', 'Review', 'Tags', 'Custom Collections',
@@ -36,10 +40,19 @@ LIBRARY_HEADER = [
 TYPE_COLUMNS = ['Type', 'Format']
 
 
+SECTION_YOURS, SECTION_OTHERS = 'Yours', "Your data on others' items"
+
+
 def library_rows(conn, user_id):
-    """One row per book the user owns or has their own data on (wishlist excluded)."""
+    """One row per item: the user's own, then their household's shelf, then
+    others' items they have data on; by title within each. Wishlist entries
+    (the user's, or a household member's) are left out."""
+    from models import get_library_members
+    household = [m for m in get_library_members(user_id, conn) if m != user_id]
+    params = {'u': user_id, **{f'h{i}': m for i, m in enumerate(household)}}
+    in_household = ', '.join(f':h{i}' for i in range(len(household))) or 'NULL'
     rows = conn.execute('''
-        SELECT b.id, b.title, b.subtitle, b.author, b.publisher, b.publish_year, b.isbn,
+        SELECT b.id, b.added_by, b.title, b.subtitle, b.author, b.publisher, b.publish_year, b.isbn,
                b.page_count, b.genre, owner.username AS owner, b.added_by = :u AND b.owned = 1 AS own,
                b.removed_at, b.removed_note,
                b.media_type, b.format, b.barcode, b.catalog_number, b.runtime_minutes,
@@ -61,11 +74,22 @@ def library_rows(conn, user_id):
           AND (b.added_by = :u
                OR c.book_id IS NOT NULL OR r.book_id IS NOT NULL
                OR EXISTS (SELECT 1 FROM reading_sessions s WHERE s.book_id = b.id AND s.user_id = :u)
-               OR EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = :u))
-        ORDER BY LOWER(b.title)
-    ''', {'u': user_id}).fetchall()
+               OR EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id AND t.user_id = :u)
+               -- the household's shelf: owned, not removed, not a wishlist entry
+               OR (b.added_by IN (%s) AND b.owned = 1 AND b.removed_at IS NULL
+                   AND NOT EXISTS (SELECT 1 FROM wishlist w2
+                                   WHERE w2.book_id = b.id AND w2.user_id = b.added_by)))
+    ''' % in_household, params).fetchall()
+
+    def section(r):
+        if r['added_by'] == user_id:
+            return 0, SECTION_YOURS
+        if r['added_by'] in household:
+            return 1, f"Shared ({r['owner']})"
+        return 2, SECTION_OTHERS
+    rows = sorted(rows, key=lambda r: (section(r), (r['title'] or '').lower()))
     return [[
-        r['id'], r['title'], r['subtitle'], r['author'], r['publisher'], r['publish_year'], r['isbn'],
+        section(r)[1], r['id'], r['title'], r['subtitle'], r['author'], r['publisher'], r['publish_year'], r['isbn'],
         r['page_count'], r['genre'], r['owner'] or '', 'yes' if r['own'] else 'no',
         r['removed_at'] or '', r['removed_note'] or '',
         r['status'] or NO_STATUS_LABEL.get(r['media_type'], 'Unread'), r['status_added'], r['started'], r['completed'], r['reads'] or 0,

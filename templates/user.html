@@ -582,6 +582,48 @@
         </section>
         {% endif %}
 
+        {# Library backups (utils/personal_backups.py): your own data only #}
+        {% if is_own_profile %}
+        <section id="library-backups" class="bg-secondary rounded-xl p-6 card">
+            <h2 class="text-2xl font-display text-content-primary mb-1">Library backups</h2>
+            <p class="text-sm text-content-secondary mb-4 max-w-3xl">
+                A backup of your own library: the items you added and their covers, and your statuses, ratings, reviews,
+                reading sessions, wishlist, tags, collections and goals. Restoring one puts all of that back as it was and
+                never changes anyone else's data. Libaraxia also backs up before every Goodreads import.
+            </p>
+            <form method="POST" action="{{ url_for('user.personal_backup_create') }}" class="mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 rounded-lg">Back up my library</button>
+                <span class="text-sm text-content-secondary ml-2">Up to {{ backups_max }} of your own; delete one to make another.</span>
+            </form>
+            {% if library_backups %}
+            <ul class="divide-y divide-rule">
+                {% for b in library_backups %}
+                {% set when = b.created_at.strftime('%-d %b %Y, %H:%M') %}
+                <li class="flex flex-wrap items-center gap-x-4 gap-y-2 py-2">
+                    <div class="flex-1 min-w-[14rem]">
+                        <span class="text-content-primary">{{ when }}</span>
+                        <span class="block text-sm text-content-secondary">{{ b.kind_label }} · {{ b.counts.books }} items, {{ b.counts.reviews }} reviews, {{ b.counts.sessions }} sessions</span>
+                    </div>
+                    <form method="POST" action="{{ url_for('user.personal_backup_restore', name=b.name) }}"
+                          data-confirm="Put your library back to {{ when }}? Your items, statuses, ratings, reviews, sessions, wishlist, tags, collections and goals go back to how they were then. Items you added since are removed, except ones someone else has data on. Nobody else's data changes. This can't be undone.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline px-3 py-1 text-sm">Restore</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('user.personal_backup_delete', name=b.name) }}"
+                          data-confirm="Delete the backup from {{ when }}? It can't be brought back.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn px-3 py-1 text-sm text-content-secondary hover:text-accent" aria-label="Delete the backup from {{ when }}">Delete</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-content-secondary">No backups yet.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
         <!-- Account: export everything, deactivate or delete -->
         <section id="account" class="bg-secondary rounded-xl p-6 card">
             <h2 class="text-2xl font-display text-content-primary mb-4">Account</h2>

@@ -13,7 +13,7 @@
             {%- set details = [] -%}
             {%- if row.owner and row.added_by != current_user.id %}{% set _ = details.append(row.owner ~ "'s") %}{% endif -%}
             {%- if row.status %}{% set _ = details.append(labels_for(row).status_labels[row.status]|lower) %}{% endif -%}
-            {%- set _ = details.append('not owned' if row.owned == 0 else 'removed') -%}
+            {%- set _ = details.append('unshelved' if row.owned == 0 else 'removed') -%}
             <a href="{{ item_url(row) }}" class="underline hover:text-accent">{{ row.title }}</a> ({{ details|join(', ') }}){{ ', ' if not loop.last }}
         {%- endfor %}
         {%- if off_shelf.count > off_shelf.rows|length %} and {{ off_shelf.count - off_shelf.rows|length }} more{% endif %}.

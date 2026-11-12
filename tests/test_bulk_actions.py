@@ -76,9 +76,9 @@ def test_owned_and_the_notes(conn, people, who):
     conn.execute('UPDATE books SET owned = 0 WHERE id = ?', (b,))
     p = bulk.plan(conn, who['alice'], 'owned', {'owned': 0}, [a, b])
     assert (p.changes, p.same) == (1, 1)
-    assert p.notes == ['Not owned items leave your shelf. Reviews, ratings and history stay.']
+    assert p.notes == ['Unshelved items leave your shelf. Reviews, ratings and history stay.']
     r = run(conn, who['alice'], 'owned', {'owned': 0}, [a, b])
-    assert (col(conn, a, 'owned'), r.summary) == (0, 'Marked not owned on 1 item')
+    assert (col(conn, a, 'owned'), r.summary) == (0, 'Marked unshelved on 1 item')
     run(conn, who['alice'], 'owned', {'owned': 1}, [a, b])
     assert (col(conn, a, 'owned'), col(conn, b, 'owned')) == (1, 1)
     assert bulk.ACTIONS['owned'].describe({'owned': 1}) == 'Mark as owned'

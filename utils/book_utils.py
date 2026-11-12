@@ -744,7 +744,7 @@ def save_best_cover(urls: Iterable[str]) -> Optional[str]:
 # listened to but never had; `removed_at` is a copy you had that left.
 SHOW_CHOICES = (
     ('', 'On the shelf'),
-    ('not_owned', 'Not owned'),
+    ('not_owned', 'Unshelved'),
     ('removed', 'Removed'),
     ('all', 'Everything'),
 )
@@ -766,7 +766,7 @@ def is_narrowed(args):
     household member), so its count isn't "all your books". The search box
     only puts the count in its placeholder when it isn't; when it is, the line
     under the box counts the matches (both in _search_sort_filter.html)."""
-    keys = ('search_term', 'genre', 'format', 'read_status', 'rating', 'member')
+    keys = ('search_term', 'genre', 'format', 'read_status', 'rating', 'member', 'from')
     return (any(args.get(k) for k in keys) or bool(args.getlist('tags[]'))
             or show_choice(args) != '')
 

@@ -266,7 +266,7 @@ def _owned_params(conn, user, params):
         return {'owned': 1}
     if value in (0, False, '0'):
         return {'owned': 0}
-    raise BulkError('Choose owned or not owned first.')
+    raise BulkError('Choose owned or unshelved first.')
 
 
 def _owned_plan(conn, user, book, params):
@@ -293,13 +293,13 @@ def _owned_restore(conn, user, book_id, before, after, params):
 
 
 def _owned_name(value):
-    return 'Owned' if value else 'Not owned'
+    return 'Owned' if value else 'Unshelved'
 
 
 def _owned_notes(rows, params):
     notes = []
     if not params['owned'] and any(r.outcome == 'change' for r in rows):
-        notes.append('Not owned items leave your shelf. Reviews, ratings and history stay.')
+        notes.append('Unshelved items leave your shelf. Reviews, ratings and history stay.')
     # The single-item route also puts a removed item back; a bulk edit says what it
     # writes and nothing else, so removal is left as it is
     if any(r.removed and r.outcome in ('change', 'same') for r in rows):
@@ -628,6 +628,7 @@ class Action:
     notes: callable = _no_notes
     owner_only: bool = False         # item edits: the owner or an admin; marks: anyone who can view it
     prepare: callable = None         # (conn, user, params) -> params, once per apply
+    after_undo: callable = None      # (conn, user, edit_id), inside undo's transaction (the Goodreads import)
 
 
 def _genre_name(value):
@@ -733,6 +734,11 @@ def _ids(ids):
 
 
 def _action(key):
+    if key == 'goodreads':
+        # The Goodreads import journals here so its undo is a bulk undo
+        # (ROADMAP 14b). Imported late: goodreads_plan imports this module.
+        from utils.goodreads_plan import ACTION
+        return ACTION
     if key not in ACTIONS:
         raise BulkError('That bulk action is not available.')
     return ACTIONS[key]
@@ -899,6 +905,8 @@ def undo(conn, user, edit_id):
         conn.execute('DELETE FROM user_collections WHERE collection_id = ? AND user_id = ? AND NOT EXISTS '
                      '(SELECT 1 FROM collection_books WHERE collection_id = ?)',
                      (params['shelf_id'], user.id, params['shelf_id']))
+    if act.after_undo:
+        act.after_undo(conn, user, edit_id)
     conn.execute('UPDATE bulk_edits SET undone_at = CURRENT_TIMESTAMP WHERE id = ?', (edit_id,))
     conn.commit()
     if not restored:

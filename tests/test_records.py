@@ -346,9 +346,9 @@ def test_removing_a_listened_wishlist_record_keeps_it(client, db, people):
     db.commit()
     login(client, 'alice')
     client.post(f'/wishlist/remove/{record}')
-    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', record) == 1   # not owned, not removed (8B.3)
+    assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', record) == 1   # unshelved, not removed (8B.3)
     assert scalar(db, """SELECT COUNT(*) FROM collection_books cb JOIN user_collections uc USING (collection_id)
-                         WHERE uc.name = 'Listened to but not owned' AND cb.book_id = ?""", record) == 1
+                         WHERE uc.name = 'Listened to, unshelved' AND cb.book_id = ?""", record) == 1
 
 
 # --- MusicBrainz -----------------------------------------------------------------

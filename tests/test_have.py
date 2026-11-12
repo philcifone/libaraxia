@@ -38,7 +38,7 @@ def test_not_owned_shows_your_status_and_rating(client, db, people):
     db.commit()
     login(client, 'alice')
     html = page(client, 'circe')                           # by title
-    assert "You don&#39;t own this" in html and 'Not owned' in html
+    assert 'It is in your records, not on your shelf.' in html and 'Unshelved' in html
     assert 'You: Read, rated 4/5' in html
 
 

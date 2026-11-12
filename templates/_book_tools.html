@@ -22,11 +22,11 @@
                   class="flex flex-col sm:flex-row sm:items-center gap-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if book['owned'] %}
-                <p class="flex-1 text-sm text-content-secondary">Never owned it (an audiobook, an ebook, a library copy)? It leaves your shelf; your status, review and history stay.</p>
+                <p class="flex-1 text-sm text-content-secondary">Not on your shelf (an audiobook, an ebook, a library copy, or one you haven't catalogued yet)? It leaves your shelf; your status, review and history stay.</p>
                 <input type="hidden" name="owned" value="0">
-                <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Mark It Not Owned</button>
+                <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Mark It Unshelved</button>
                 {% else %}
-                <p class="flex-1 text-sm text-content-secondary">Marked <strong class="text-content-primary">not owned</strong>: off your shelf, still in your stats and reviews.</p>
+                <p class="flex-1 text-sm text-content-secondary">Marked <strong class="text-content-primary">unshelved</strong>: off your shelf, still in your stats and reviews.</p>
                 <input type="hidden" name="owned" value="1">
                 <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">I Own It Now</button>
                 {% endif %}

@@ -393,12 +393,12 @@ def make_blueprint(section: Section) -> Blueprint:
         new_id = section.insert(conn, values, cover, current_user.id, owned=owned)
         conn.commit()
         if values['then'] == 'review':
-            flash(f"'{values['title']}' added{'' if owned else ' as not owned'}. Now your review.", 'success')
+            flash(f"'{values['title']}' added{'' if owned else ' as unshelved'}. Now your review.", 'success')
             return redirect(url_for('read.rate_review', book_id=new_id, **{'from': 'reviews'}))
         if owned:
             flash(f"'{values['title']}' added to your {section.m['plural']}.", 'success')
         else:
-            flash(f"'{values['title']}' added as not owned, so it isn't on your {section.m['shelf']}. "
+            flash(f"'{values['title']}' added as unshelved, so it isn't on your {section.m['shelf']}. "
                   f"Rate and review it here.", 'success')
         return redirect(url_for(section.endpoint('show'), id=new_id))
 

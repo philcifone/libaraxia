@@ -43,7 +43,7 @@ def library_page(template, owner_ids, data_user, **extra):
 
     conn = get_db()
     # The filters live in utils/grid_query.py, shared with bulk edit's selection of a view
-    query, params = grid_query.books_query(owner_ids, request.args, data_user)
+    query, params = grid_query.books_query(owner_ids, request.args, data_user, current_user.id)
 
     total_count = conn.execute(query.replace("SELECT b.*", "SELECT COUNT(b.id)", 1), params).fetchone()[0]
     order_sql, order_params = sorting.order_by(sort_by, sort_order, data_user)
