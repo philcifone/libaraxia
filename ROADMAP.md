@@ -69,6 +69,11 @@ Noted while testing 14b; after its wrap-up, before Phase 15.
 - [x] **Tabs instead of stacked cards** on the Profile and Admin Settings (Phil, 2026-11-12). Profile (own): e.g. Overview (bio, goal, stats), Reviews/activity, Library (exports, Goodreads import, library backups, recent bulk edits), Account (settings, appearance, delete). Admin: Users, Households, Maintenance (backups, covers, orphaned images, unowned books). The tab in the URL hash, so links that land on a section today (`#library-backups`, `#bulk-edits`, `#account`, `#book-tools`-style anchors) open the right tab; works without JS (all sections shown); keyboard and ARIA tabs pattern; same look in all four styles.
 - [x] **Add pages check your own library first:** the duplicate notice on Add Book / Movie / Album only appears after the online lookup answers, and the page points to Do I Have This? for checking the shelf. Run the local check (Do I Have This?'s, `utils/have.py`) as soon as a barcode or ISBN is scanned or typed, before going online, so cataloguing at home on the Add page is enough. Check it uses `book_matching`'s subtitle and author rules from 14b.
 
+**14c follow-ups (Phil, 2026-11-12, after the first pass):**
+- [x] **Shelf style, take two:** heading cards set in a small bookcase like the grid's (frame, back wall, ledge, the case's outside faces), not a box; the item page's cover keeps its box and stands in a bookcase of its own.
+- [ ] **Settings for everyone:** the gear opens Settings for every user, with Library and Account (from the profile) and an Admin tab (the old Admin Settings, as-is) for admins only. The profile keeps profile things, with Stats as its own tab.
+- [ ] **Cyclers in a row of their own:** style, accent and font below the first icons, shown and hidden by a toggle right of the light/dark toggle.
+
 ## Phase 15: Movies & TV, lending, cover crop
 
 From Phil, 2026-11-09 (loose notes, sorted). The format icons from the same note (turntable for LP, disc-2 for CD, cassette-tape for Cassette on the Music grid) were done the same day, in `_format_icon.html`.

@@ -1733,16 +1733,64 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     border-right: 6px solid rgb(var(--shelf-front));
 }
 
-/* Page titles sit on a ledge */
-:root[data-style="shelf"] .page-heading {
-    border-bottom: 0;
-    padding-bottom: calc(.75rem + 12px);
-    background-image: var(--ledge-paint);
-    background-size: 100% 12px;
-    background-position: bottom;
+/* ---- Shelf: small bookcases (ROADMAP 14c) ----
+   Each page's heading card and the item page's cover are set in a small
+   bookcase like the grid's: a wooden frame round the back wall (no frame
+   along the bottom: the ledge is the bottom), a ledge across the bottom,
+   shade inside, and the case's outside top and right faces going back at
+   45 degrees in wood, as on the grid. The heading's text and icon are
+   untouched. On the item page the cover keeps its own 3D box, standing on
+   the ledge inside the case. */
+:root[data-style="shelf"] :is(.page-heading, .cover-stand) {
+    --frame: 8px;
+    --ledge-h: 12px;
+    --case-run: 10px;               /* how far the outside faces go back */
+    position: relative;
+    margin-top: var(--case-run);    /* room for the top face; the side overhangs the gutter */
+    border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
+    border-bottom-width: 0;
+    border-radius: 0;
+    background-color: rgb(var(--shelf-back));
+    background-image:
+        var(--ledge-paint),
+        /* the wall darkens toward the shelf, as in the grid */
+        linear-gradient(to bottom, transparent calc(100% - var(--ledge-h) - 22px),
+                        rgb(0 0 0 / .12) calc(100% - var(--ledge-h)));
+    background-size: 100% var(--ledge-h), 100% 100%;
+    background-position: bottom, 0 0;
     background-repeat: no-repeat;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    box-shadow: inset 0 0 20px rgb(0 0 0 / .18), var(--sh-lg);
+}
+:root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
+:root[data-style="shelf"] .cover-stand {
+    --frame: 10px;
+    --ledge-h: 14px;
+    --case-run: 12px;
+    /* room round the cover: its box's top and right faces (--box-depth)
+       and a little wall on every side */
+    padding: calc(var(--box-depth) + 14px) calc(var(--box-depth) + 14px) var(--ledge-h) 14px;
+}
+/* The case's outside: top face (lit) and right face (in shade) */
+:root[data-style="shelf"] :is(.page-heading, .cover-stand)::before,
+:root[data-style="shelf"] :is(.page-heading, .cover-stand)::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    top: calc(-1 * (var(--frame) + var(--case-run)));
+}
+:root[data-style="shelf"] :is(.page-heading, .cover-stand)::before {    /* top */
+    left: calc(-1 * var(--frame));
+    width: calc(100% + 2 * var(--frame) + var(--case-run));
+    height: var(--case-run);
+    background: linear-gradient(to top, rgb(0 0 0 / .06), transparent), rgb(var(--case-top, var(--shelf-top)));
+    clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
+}
+:root[data-style="shelf"] :is(.page-heading, .cover-stand)::after {     /* right side */
+    left: calc(100% + var(--frame));
+    width: var(--case-run);
+    height: calc(100% + var(--frame) + var(--case-run));
+    background: rgb(var(--case-side, var(--shelf-side)));
+    clip-path: polygon(0 var(--case-run), 100% 0, 100% calc(100% - var(--case-run)), 0 100%);
 }
 
 /* Buttons: gently raised (a light top edge and a soft shadow), with a
@@ -1792,32 +1840,12 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35));
 }
 
-/* An item's page: the cover stands on its own short ledge */
+/* The cover on the item page: a 3D box like the grid's (top and right
+   faces meeting at the far corner), standing on the case's ledge. Pages
+   for a book, a case's edge for movies and music. .cover-box is
+   display: contents everywhere but here. */
 :root[data-style="shelf"] .cover-stand {
-    position: relative;
-    padding-bottom: 14px;
-}
-:root[data-style="shelf"] .cover-stand::after {
-    content: "";
-    position: absolute;
-    left: -14px; right: -14px; bottom: 0;
-    height: 14px;
-    background-image: var(--ledge-paint);
-    box-shadow: 0 6px 10px -4px rgb(0 0 0 / .35);
-}
-:root[data-style="shelf"] .cover-stand > img,
-:root[data-style="shelf"] .cover-stand > .no-cover {
-    border-radius: var(--cover-r);
-    box-shadow: 4px 6px 12px rgb(0 0 0 / .3);
-}
-
-/* Boxes off the bookcase (ROADMAP 14c): the item page's cover and each
-   page's heading card get the bookcase's 3D box, a top face and a right
-   face meeting at the far corner (the same skews as .shelf-grid's boxes),
-   lit from above and the left. The heading card keeps its ledge along the
-   bottom; its text and icon are untouched. Colours: pages for a book and
-   for a paper heading, a case's edge for movies and music. */
-:root[data-style="shelf"] :is(.page-heading, .cover-stand) {
+    --box-depth: 12px;
     --box-top: 226 224 218;
     --box-side: 196 193 186;
 }
@@ -1825,44 +1853,33 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --box-top: 218 219 222;
     --box-side: 184 186 191;
 }
-:root[data-style="shelf"][data-mode="dark"] :is(.page-heading, .cover-stand) {
+:root[data-style="shelf"][data-mode="dark"] .cover-stand {
     --box-top: 178 174 166;
     --box-side: 146 142 135;
 }
 @media (prefers-color-scheme: dark) {
-    :root[data-style="shelf"]:not([data-mode="light"]) :is(.page-heading, .cover-stand) {
+    :root[data-style="shelf"]:not([data-mode="light"]) .cover-stand {
         --box-top: 178 174 166;
         --box-side: 146 142 135;
     }
 }
-:root[data-style="shelf"] .page-heading {
-    --box-depth: 8px;
-    position: relative;
-    border-radius: 0;               /* square where a face joins the front */
-    margin-top: var(--box-depth);   /* room for the top face; the side overhangs the gutter,
-                                       so the card stays as wide as the tabs under it */
-}
-:root[data-style="shelf"] .cover-stand { --box-depth: 12px; }
-:root[data-style="shelf"] .cover-stand .cover-box {
-    display: block;
-    position: relative;
-}
-:root[data-style="shelf"] .cover-stand .cover-box > img { display: block; }
+:root[data-style="shelf"] .cover-stand .cover-box { display: block; position: relative; }
+:root[data-style="shelf"] .cover-stand .cover-box > img { display: block; border-radius: 0 0 0 var(--cover-r); }
 /* overflow: visible for the faces; the title clamps itself (as on the bookcase) */
 :root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover) {
     position: relative;
     overflow: visible;
     border-radius: 0 0 0 var(--cover-r);
+    box-shadow: 0 2px 2px -1px rgb(0 0 0 / .4);
 }
-:root[data-style="shelf"] .cover-stand .cover-box > img { border-radius: 0 0 0 var(--cover-r); }
-:root[data-style="shelf"] :is(.page-heading, .cover-stand .cover-box, .cover-stand .no-cover)::before,
-:root[data-style="shelf"] :is(.page-heading, .cover-stand .cover-box, .cover-stand .no-cover)::after {
+:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::before,
+:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::after {
     content: "";
     position: absolute;
     pointer-events: none;
     transform-origin: 0 100%;
 }
-:root[data-style="shelf"] :is(.page-heading, .cover-stand .cover-box, .cover-stand .no-cover)::before {   /* right side */
+:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::before {   /* right side */
     top: 0;
     left: 100%;
     width: var(--box-depth);
@@ -1871,24 +1888,13 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     box-shadow: 4px 0 4px rgb(0 0 0 / .2);
     transform: skewY(-45deg);
 }
-:root[data-style="shelf"] :is(.page-heading, .cover-stand .cover-box, .cover-stand .no-cover)::after {    /* top */
+:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::after {    /* top */
     bottom: 100%;
     left: 0;
     width: 100%;
     height: var(--box-depth);
     background: rgb(var(--box-top));
     transform: skewX(-45deg);
-}
-/* The heading card's border is part of its front: the faces start outside it */
-:root[data-style="shelf"] .page-heading::before {
-    top: calc(-1 * var(--bw-card));
-    left: calc(100% + var(--bw-card));
-    height: calc(100% + 2 * var(--bw-card));
-}
-:root[data-style="shelf"] .page-heading::after {
-    bottom: calc(100% + var(--bw-card));
-    left: calc(-1 * var(--bw-card));
-    width: calc(100% + 2 * var(--bw-card));
 }
 
 /* Covers on cards (wishlist) and in the feed: square corners like a book */
