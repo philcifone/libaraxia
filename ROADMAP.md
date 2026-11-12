@@ -60,7 +60,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 - [x] Re-spec after 14a (replaces BULK-EDIT-SPEC section 16).
 - [x] 1. Parser: `goodreads_id` and `shelves` from `parse_row`.
 - [x] 2. Migration 032 (staging, imports, rows). **Merge point M1.**
-- [ ] 3. `utils/goodreads_plan.py` stage + plan, headless (boxes, fill, choices).
+- [x] 3. `utils/goodreads_plan.py` stage + plan, headless (boxes, fill, choices).
 - [ ] 4. Apply and undo, headless (provenance, bulk journal).
 - [ ] 5. Routes and the review page; old route removed.
 - [ ] 6. Provenance in the UI: From Goodreads filter, book page note.

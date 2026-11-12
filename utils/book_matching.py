@@ -51,7 +51,11 @@ class BookIndex:
         self.user_id = user_id
         self._by_isbn = {}
         self._by_title = {}
-        members = [m for m in get_library_members(user_id) if m != user_id]
+        # Every indexed book by id: the Goodreads import's Book Id memory may
+        # only point at a book this index could have matched (ROADMAP 14b)
+        self.by_id = {}
+        # The caller's connection, so the index works outside a request too
+        members = [m for m in get_library_members(user_id, conn) if m != user_id]
         marks = ','.join('?' * len(members)) or 'NULL'
         # Own books: everything you added, wishlist entries included (the
         # caller decides what a wishlist entry means). Household: only books
@@ -71,6 +75,7 @@ class BookIndex:
         """Index a book row (needs id, isbn, title, author, removed_at, whose,
         is_wishlist_entry)."""
         book = dict(book)
+        self.by_id[book['id']] = book
         rank = self._RANK[(book['whose'], book['removed_at'] is not None)]
         keys = [(self._by_isbn, k) for k in _isbn_keys(book['isbn'])]
         title_key = _title_key(book['title'], book['author'])
