@@ -5172,7 +5172,7 @@ dialog::backdrop {
    untouched. On the item page the cover keeps its own 3D box, standing on
    the ledge inside the case. */
 
-:root[data-style="shelf"] :is(.page-heading, .cover-stand) {
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card) {
   --frame: 8px;
   --case-run: 10px;
   /* how far the outside faces go back */
@@ -5230,6 +5230,24 @@ dialog::backdrop {
   padding-bottom: calc(.75rem + var(--ledge-h));
 }
 
+/* Activity feed cards (14c follow-up, a trial: revert this commit if it's
+   too much): each card is a small bookcase too; the corner buttons and the
+   like / comment row stay inside it, above the ledge (pb-16 leaves room).
+   The cover stands as a book: square, with the bookcase's drop shadow. */
+
+:root[data-style="shelf"] .feed-card {
+  --ledge-top: 12px;
+  --ledge-front: 10px;
+  margin-top: calc(1.5rem + var(--case-run));
+  /* space-y-6 plus the top face, which the case rule replaced */
+}
+
+:root[data-style="shelf"] .feed-card :is(.feed-cover, .no-cover) {
+  border-radius: 0 0 0 var(--cover-r);
+  box-shadow: none;
+  filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35));
+}
+
 :root[data-style="shelf"] .cover-stand {
   --frame: 10px;
   --case-run: 12px;
@@ -5245,15 +5263,15 @@ dialog::backdrop {
 
 /* The case's outside: top face (lit) and right face (in shade) */
 
-:root[data-style="shelf"] :is(.page-heading, .cover-stand)::before,
-:root[data-style="shelf"] :is(.page-heading, .cover-stand)::after {
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::before,
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::after {
   content: "";
   position: absolute;
   pointer-events: none;
   top: calc(-1 * (var(--frame) + var(--case-run)));
 }
 
-:root[data-style="shelf"] :is(.page-heading, .cover-stand)::before {
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::before {
   /* top */
   left: calc(-1 * var(--frame));
   width: calc(100% + 2 * var(--frame) + var(--case-run));
@@ -5262,7 +5280,7 @@ dialog::backdrop {
   clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
 
-:root[data-style="shelf"] :is(.page-heading, .cover-stand)::after {
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::after {
   /* right side */
   left: calc(100% + var(--frame));
   width: var(--case-run);
