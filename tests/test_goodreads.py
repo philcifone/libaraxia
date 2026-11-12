@@ -325,3 +325,48 @@ def test_audiobook_row_matching_a_book_you_own_leaves_it_alone(client, db, peopl
     book = add_book(db, people['carol'], title='Already Mine', author='Some Author')
     run(client, 'carol', row('Already Mine', bookshelves='audiobook'))
     assert db.execute('SELECT format, owned FROM books WHERE id = ?', (book,)).fetchone()[:] == (None, 1)
+
+
+# --- parser fields for the granular import (ROADMAP 14b step 1) ---------------
+
+def test_parse_row_keeps_the_goodreads_book_id():
+    # Book Id is Goodreads' stable id for the book: the next import matches
+    # on it even after the book is retitled or re-ISBN'd here.
+    from utils.goodreads import parse_row
+    assert parse_row(row('Dune', book_id='234225'))['goodreads_id'] == '234225'
+    assert parse_row(row('Dune', book_id='  234225 '))['goodreads_id'] == '234225'
+    assert parse_row(row('Dune'))['goodreads_id'] is None
+    # An export without the column at all still parses
+    bare = {'Title': 'Dune', 'Author': 'Frank Herbert', 'Exclusive Shelf': 'read'}
+    assert parse_row(bare)['goodreads_id'] is None
+
+
+def test_parse_row_keeps_every_shelf_raw():
+    # Unlike `collections`, `shelves` keeps the status shelves too, so the
+    # review page can filter by any shelf in the file and the provenance
+    # records what Goodreads said. Order kept, duplicates and blanks dropped,
+    # the exclusive shelf last if the Bookshelves column didn't list it.
+    from utils.goodreads import parse_row
+    r = parse_row(row('Dune', bookshelves='Sci-Fi,  2019-challenge, read,,sci-fi'))
+    assert r['shelves'] == ['sci-fi', '2019-challenge', 'read']
+    assert r['collections'] == ['sci-fi', '2019-challenge']
+
+    assert parse_row(row('Wanted', shelf='to-read'))['shelves'] == ['to-read']
+    assert parse_row(row('Gave Up', shelf='dnf', bookshelves='dnf, kindle'))['shelves'] == ['dnf', 'kindle']
+    # An unknown exclusive shelf with no reading recorded: the "Not sure" box
+    unsure = parse_row(row('Maybe', shelf='Kindle-Deals', read_count='0'))
+    assert unsure['status'] is None and unsure['shelves'] == ['kindle-deals']
+    assert parse_row({'Title': 'Bare'})['shelves'] == []
+
+
+def test_parse_row_new_fields_change_nothing_else():
+    # Step 1 adds two keys and must not move any existing value
+    from utils.goodreads import parse_row
+    r = parse_row(row('Dune', book_id='1', bookshelves='audiobook, re-read', my_rating='4',
+                      date_read='2021/06/30', isbn13='="9780441172719"'))
+    assert set(r) == {'title', 'author', 'isbns', 'publisher', 'year', 'pages', 'rating',
+                      'review', 'private_notes', 'date_read', 'date_added', 'read_count',
+                      'status', 'collections', 'audiobook', 'goodreads_id', 'shelves'}
+    assert (r['status'], r['rating'], r['date_read'], r['audiobook'], r['isbns'],
+            r['collections']) == ('read', 4, '2021-06-30', True, ['9780441172719'],
+                                  ['audiobook', 're-read'])
