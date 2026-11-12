@@ -80,6 +80,13 @@ class Section:
         values: a video's kind picks "TV show" or "movie" (media.KIND_WORDS)."""
         return media.item_labels({**dict(values), 'media_type': self.media_type})
 
+    def kind_arg(self, args):
+        """An add page's ?kind=tv (the add button's TV entry): {'video_kind':
+        'tv'} to start the form on TV, or {} (the form's default, Movie)."""
+        if self.media_type == media.VIDEO and media.video_kind(args.get('kind')):
+            return {'video_kind': media.TV}
+        return {}
+
     def pick_format(self, fmt):
         return fmt if fmt in self.formats else self.default_format
 
@@ -227,6 +234,11 @@ class Section:
             'genre': (form.get('genre') or '').strip() or None,
             'description': (form.get('description') or '').strip() or None,
         }
+        # Movie or TV (15.1): 'tv' or None (a movie); the season is kept for
+        # TV only, so switching a set back to Movie drops it
+        kind = media.video_kind(form.get('video_kind')) if self.media_type == media.VIDEO else None
+        values['video_kind'] = kind
+        values['season'] = ((form.get('season') or '').strip()[:100] or None) if kind == media.TV else None
         if not values['title']:
             errors.append('A title is needed.')
         # Keep what was typed when the barcode didn't validate, so it can be fixed
@@ -252,12 +264,12 @@ class Section:
         cur = conn.execute('''
             INSERT INTO books (title, subtitle, author, publisher, publish_year, runtime_minutes,
                                format, barcode, catalog_number, genre, description, cover_image_url,
-                               page_count, added_by, media_type, owned)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)
+                               page_count, added_by, media_type, owned, video_kind, season)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
         ''', (values['title'], values['subtitle'], values['author'], values['publisher'],
               values['publish_year'], values['runtime_minutes'], values['format'], values['barcode'],
               values['catalog_number'], values['genre'], values['description'], cover, owner_id,
-              self.media_type, 1 if owned else 0))
+              self.media_type, 1 if owned else 0, values.get('video_kind'), values.get('season')))
         return cur.lastrowid
 
     def add_page(self, values, duplicates=(), status=200, destination='shelf'):
@@ -275,6 +287,10 @@ class Section:
                          other_add_url=url_for('books.add_book'), notes=None)
         code = values.get('barcode_input') or ''
         cover = values.get('existing_cover_url')
+        # "Add a Movie or Show" until a kind is known (?kind=, or a re-shown
+        # form), then "Add a TV Show" / "Add a Movie"
+        if 'video_kind' in values:
+            m = self.item_m(values)
         context = dict(active_method='search', search_enabled=True, tmdb=False)
         context.update(self.add_context(values))
         return render_template(
@@ -370,6 +386,7 @@ def make_blueprint(section: Section) -> Blueprint:
                        if section.has_barcode else '')
             values = {'format': section.pick_format(request.args.get('format')),
                       'barcode_input': barcode,
+                      **section.kind_arg(request.args),
                       # From Do I have this? (13b): a title, or an id to look up
                       **media.add_prefill(request.args),
                       'lookup_url': section.lookup_url(request.args),
@@ -452,11 +469,12 @@ def make_blueprint(section: Section) -> Blueprint:
         conn.execute('''
             UPDATE books SET title = ?, subtitle = ?, author = ?, publisher = ?, publish_year = ?,
                    runtime_minutes = ?, format = ?, barcode = ?, catalog_number = ?, genre = ?,
-                   description = ?, cover_image_url = ?
+                   description = ?, cover_image_url = ?, video_kind = ?, season = ?
             WHERE id = ? AND media_type = ?
         ''', (values['title'], values['subtitle'], values['author'], values['publisher'],
               values['publish_year'], values['runtime_minutes'], values['format'], values['barcode'],
-              values['catalog_number'], values['genre'], values['description'], cover, id, m_type))
+              values['catalog_number'], values['genre'], values['description'], cover,
+              values['video_kind'], values['season'], id, m_type))
         conn.commit()
         flash(f"{section.item_m(values)['Noun']} updated.", 'success')
         return redirect(url_for(section.endpoint('show'), id=id))

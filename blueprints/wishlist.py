@@ -149,6 +149,7 @@ def _add_media(section):
         barcode = media.normalize_barcode(request.args.get("barcode")) if section.has_barcode else None
         values = {"format": section.pick_format(request.args.get("format")),
                   "barcode_input": barcode or "",
+                  **section.kind_arg(request.args),
                   # From Do I have this? (ROADMAP 13b): a title, or an id to look up
                   **media.add_prefill(request.args),
                   "lookup_url": section.lookup_url(request.args)}
@@ -156,6 +157,7 @@ def _add_media(section):
 
     values, errors = section.form_values(request.form)
     values["notes"] = request.form.get("notes", "")
+    noun = section.item_m(values)["noun"]       # "TV show" for a box set
     if errors:
         for error in errors:
             flash(error, "error")
@@ -178,7 +180,7 @@ def _add_media(section):
     cover = cover_crop.crop_or_flash(request.form, [request.form.get("existing_cover_url")]) or process_image(
         request.files.get("image"), request.form.get("existing_cover_url"))
     book_id = section.insert(conn, values, cover, current_user.id)
-    return _add_wishlist_row(conn, book_id, section.m["Noun"])
+    return _add_wishlist_row(conn, book_id, section.item_m(values)["Noun"])
 
 
 def _add_wishlist_row(conn, book_id, noun):

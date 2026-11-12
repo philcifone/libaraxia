@@ -8,12 +8,15 @@
 {% block body_class %}bg-primary text-content-primary p-6{% endblock %}
 
 {% block content %}
-    {# Add buttons. Movies: one per format (the form opens with it picked);
+    {# Add buttons. Movies & TV: one per format (the form opens with it picked)
+       and one for TV;
        Vinyls: one (the format is picked on the form). Then the wishlist. #}
     {% set add_endpoint = m.bp ~ '.add_' ~ m.item %}
     {% if m.type == 'video' %}
+    {# TV show (15.1): the form opens on Kind TV, format as usual #}
     {% set fab_items=[('Cartridge', url_for(add_endpoint, format='VHS')),
                       ('DVD', url_for(add_endpoint, format='DVD')),
+                      ('TV show', url_for(add_endpoint, kind='tv')),
                       ('Wishlist', url_for('wishlist.add_to_wishlist', type=m.type))] %}
     {% else %}
     {% set fab_items=[(m.Noun, url_for(add_endpoint)),

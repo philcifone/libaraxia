@@ -93,7 +93,8 @@ def test_tv_item_pages_say_tv_show(client, db, people):
     assert 'created by' in page and 'About this Show' in page and 'Edit TV Show' in page
     assert 'Remove from Movies &amp; TV' in page
     edit = client.get(f'/videos/edit/{vid}').get_data(as_text=True)
-    assert 'Edit TV Show</h1>' in edit and '>Creator</label>' in edit
+    assert 'Edit TV Show</h1>' in edit and '<span class="when-tv">Creator</span>' in edit
+    assert 'name="video_kind" value="tv" checked' in edit and 'value="Season 1"' in edit
 
 
 def test_movie_item_pages_keep_movie_words(client, db, people):
@@ -109,3 +110,82 @@ def test_feed_words_a_tv_show(client, db, people):
     login(client, 'alice')
     page = client.get('/feed/activity').get_data(as_text=True)
     assert 'added a new TV show' in page
+
+
+# --- the form: Kind and Season on add and edit --------------------------------------
+
+def tv_form(**overrides):
+    data = {'title': 'The Wire', 'author': 'David Simon', 'publisher': 'HBO', 'year': '2002',
+            'runtime_minutes': '', 'format': 'DVD', 'barcode': '', 'catalog_number': '',
+            'genre': 'Crime', 'description': '', 'video_kind': 'tv', 'season': 'Season 1'}
+    data.update(overrides)
+    return data
+
+
+def test_add_page_offers_kind_and_season(client, people):
+    login(client, 'alice')
+    page = client.get('/videos/add').get_data(as_text=True)
+    assert 'name="video_kind" value="movie" checked' in page        # Movie is the default
+    assert 'id="season"' in page and 'class="when-tv"' in page      # shown by CSS for TV only
+    assert '<span class="when-movie">Director</span><span class="when-tv">Creator</span>' in page
+    tv = client.get('/videos/add?kind=tv').get_data(as_text=True)
+    assert 'Add a TV Show</h1>' in tv and 'name="video_kind" value="tv" checked' in tv
+    # Music has neither
+    music = client.get('/records/add').get_data(as_text=True)
+    assert 'video_kind' not in music and 'id="season"' not in music
+
+
+def test_add_tv_round_trip(client, db, people):
+    login(client, 'alice')
+    r = client.post('/videos/add', data=tv_form())
+    assert r.status_code == 302
+    row = db.execute("SELECT * FROM books WHERE title = 'The Wire'").fetchone()
+    assert (row['media_type'], row['video_kind'], row['season']) == ('video', 'tv', 'Season 1')
+    page = client.get(r.headers['Location']).get_data(as_text=True)
+    assert 'added to your TV shows' in page
+
+    # Edit: back to a movie drops the season; NULL is how a movie is stored
+    r = client.post(f"/videos/edit/{row['id']}", data=tv_form(video_kind='movie', season='Season 1'))
+    assert r.status_code == 302
+    again = db.execute('SELECT video_kind, season FROM books WHERE id = ?', (row['id'],)).fetchone()
+    assert tuple(again) == (None, None)
+    r = client.post(f"/videos/edit/{row['id']}", data=tv_form(season='Complete series'))
+    again = db.execute('SELECT video_kind, season FROM books WHERE id = ?', (row['id'],)).fetchone()
+    assert tuple(again) == ('tv', 'Complete series')
+
+
+def test_unknown_kind_is_a_movie(client, db, people):
+    login(client, 'alice')
+    client.post('/videos/add', data=tv_form(video_kind='anime'))
+    assert tuple(db.execute("SELECT video_kind, season FROM books WHERE title = 'The Wire'").fetchone()) == (None, None)
+
+
+def test_reshown_form_keeps_the_kind(client, people):
+    """A refused submit (no title) shows the form again on TV with the season."""
+    login(client, 'alice')
+    r = client.post('/videos/add', data=tv_form(title=''))
+    page = r.get_data(as_text=True)
+    assert r.status_code == 400
+    assert 'name="video_kind" value="tv" checked' in page and 'value="Season 1"' in page
+    assert 'Add a TV Show</h1>' in page
+
+
+def test_wishlist_add_keeps_the_kind(client, db, people):
+    login(client, 'alice')
+    r = client.post('/wishlist/add', data=tv_form(media_type='video'))
+    assert r.status_code == 302
+    row = db.execute("SELECT video_kind, season FROM books WHERE title = 'The Wire'").fetchone()
+    assert tuple(row) == ('tv', 'Season 1')
+    assert 'TV Show added to your wishlist' in client.get('/wishlist/view').get_data(as_text=True)
+
+
+def test_records_never_get_a_kind(client, db, people):
+    login(client, 'alice')
+    client.post('/records/add', data={'title': 'Pony', 'author': 'Orville Peck', 'format': 'LP',
+                                      'video_kind': 'tv', 'season': 'x'})
+    assert tuple(db.execute("SELECT video_kind, season FROM books WHERE title = 'Pony'").fetchone()) == (None, None)
+
+
+def test_add_button_has_a_tv_entry(client, db, people):
+    login(client, 'alice')
+    assert '/videos/add?kind=tv' in client.get('/videos/').get_data(as_text=True)

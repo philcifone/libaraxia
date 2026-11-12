@@ -10,9 +10,11 @@
    notes (the wishlist's note field). The add page's lookups fill these
    fields by id (add_item.js). #}
 
-{% macro field(name, label, value, type='text', required=false, hint='', attrs='') %}
+{# tv_label: a video's label when Kind is TV ("Creator"); `label` is then
+   the movie's, and CSS shows the one that fits (.when-tv, styles.css) #}
+{% macro field(name, label, value, type='text', required=false, hint='', attrs='', tv_label='') %}
 <div class="space-y-2">
-    <label for="{{ name }}" class="block text-sm font-medium text-content-secondary">{{ label }}{% if hint %} <span class="text-xs italic">({{ hint }})</span>{% endif %}</label>
+    <label for="{{ name }}" class="block text-sm font-medium text-content-secondary">{% if tv_label %}<span class="when-movie">{{ label }}</span><span class="when-tv">{{ tv_label }}</span>{% else %}{{ label }}{% endif %}{% if hint %} <span class="text-xs italic">({{ hint }})</span>{% endif %}</label>
     <input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value if value is not none else '' }}" {% if required %}required{% endif %} {{ attrs|safe }}
            class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none">
 </div>
@@ -23,9 +25,32 @@
 {% set year = values.publish_year if values.publish_year is defined and values.publish_year else values.year %}
 
 <div class="space-y-4">
+    {% if m.type == 'video' %}
+    {# Movie or TV (ROADMAP 15.1). Season, and the TV words on other labels,
+       show while TV is picked: pure CSS (form:has(...) in styles.css, "Movies
+       & TV form"), so it works without a script and on a re-shown form.
+       add_item.js sets the kind from a lookup. #}
+    {% set is_tv = values.video_kind == 'tv' %}
+    <div class="grid grid-cols-2 gap-4">
+        <fieldset class="space-y-2">
+            <legend class="block text-sm font-medium text-content-secondary">Kind</legend>
+            <div class="kind-choice">
+                <label class="kind-radio text-content-primary"><input type="radio" name="video_kind" value="movie" {% if not is_tv %}checked{% endif %}> Movie</label>
+                <label class="kind-radio text-content-primary"><input type="radio" name="video_kind" value="tv" {% if is_tv %}checked{% endif %}> TV</label>
+            </div>
+        </fieldset>
+        <div class="when-tv">
+            {{ field('season', 'Season', values.season, hint='optional', attrs='maxlength="100" placeholder="Season 2"') }}
+        </div>
+    </div>
+    {% endif %}
     {{ field('title', 'Title', values.title, required=true) }}
     {{ field('subtitle', 'Subtitle' if is_book else 'Subtitle or edition', values.subtitle, hint='optional') }}
+    {% if m.type == 'video' %}
+    {{ field('author', m.kind_words.movie.creator, values.author, tv_label=m.kind_words.tv.creator) }}
+    {% else %}
     {{ field('author', m.creator, values.author, required=is_book) }}
+    {% endif %}
     <div class="grid grid-cols-2 gap-4">
         {% if not is_book %}
         {{ field('year', m.year, year, type='number', attrs='min="1880" max="2100"') }}

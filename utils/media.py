@@ -337,6 +337,8 @@ def media_labels(media_type, kind=None):
             'no_status': NO_STATUS_LABEL[media_type],
             'bp': BLUEPRINTS[media_type], 'item': ITEMS[media_type], 'home': HOMES[media_type],
             'formats': FORMATS.get(media_type, ()),
+            # Both kinds' words, for the form that switches between them
+            'kind_words': KIND_WORDS if media_type == VIDEO else {},
             'has_barcode': HAS_BARCODE[media_type]}
 
 

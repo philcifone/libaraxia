@@ -7097,6 +7097,44 @@ html:has(.bulk-sheet[open]) {
   accent-color: rgb(var(--accent));
 }
 
+/* Movies & TV form (ROADMAP 15.1, _item_fields.html): Kind is two radios as
+   tall as the text inputs beside them. .when-tv (the Season field, "Creator")
+   shows only while TV is picked and .when-movie ("Director") only while it
+   isn't; :has() reads the radios, so no script is needed. `revert` gives each
+   element back its own display (a div block, a span inline). */
+
+.kind-choice {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-height: 2.75rem;
+}
+
+.kind-radio {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+}
+
+.kind-radio input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: rgb(var(--accent));
+}
+
+.when-tv {
+  display: none;
+}
+
+form:has(input[name="video_kind"][value="tv"]:checked) .when-tv {
+  display: revert;
+}
+
+form:has(input[name="video_kind"][value="tv"]:checked) .when-movie {
+  display: none;
+}
+
 /* The genre picker */
 
 .bulk-list {
