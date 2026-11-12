@@ -122,7 +122,9 @@ class Section:
         the query string. The parameter names are the Library's
         (search_term, genre, read_status, rating, tags[], show), so
         the shared header search and filter panel (_search_sort_filter.html)
-        work here too; `format` is the sections' own. Status, rating and tag
+        work here too; `format` is the sections' own, `kind` (movie / tv)
+        Movies & TV's. Bulk edit's "select all in this view" runs this too
+        (grid_query.view_ids), so a filter added here is matched there. Status, rating and tag
         filters are the viewer's own, as on the Library pages."""
         marks = ','.join('?' * len(owner_ids))
         # self.view is one of our own view names, never request input
@@ -141,6 +143,12 @@ class Section:
         if args.get('format'):
             sql += " AND b.format = ?"
             params.append(args.get('format'))
+        # Movies & TV's Kind (15.1): NULL is a movie
+        kind = args.get('kind')
+        if self.media_type == media.VIDEO and kind == media.TV:
+            sql += " AND b.video_kind = 'tv'"
+        elif self.media_type == media.VIDEO and kind == media.MOVIE:
+            sql += " AND (b.video_kind IS NULL OR b.video_kind != 'tv')"
         if args.get('read_status'):
             sql += " AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)"
             params += [viewer_id, args.get('read_status')]

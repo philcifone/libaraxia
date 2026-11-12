@@ -61,7 +61,8 @@ function toggleFilters(open) {
 // shared-library member and sort survive.
 // show_removed: the old name of `show`, still in some bookmarks
 // from: From Goodreads (ROADMAP 14b), books only; gr_shelf: one Goodreads shelf (14c)
-const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'from', 'gr_shelf', 'page', 'csrf_token'];
+// kind: Movies & TV's movie / tv (15.1)
+const FILTER_PARAMS = ['genre', 'format', 'kind', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'from', 'gr_shelf', 'page', 'csrf_token'];
 
 function clearFilters() {
     const params = new URLSearchParams(window.location.search);
@@ -74,7 +75,7 @@ function clearFilters() {
 // (tags are one entry each). Empty fields are left out: they're the default.
 function readFilterState() {
     const fields = [
-        ['genre', 'Genre'], ['format', 'Format'], ['read_status', 'Status'],
+        ['genre', 'Genre'], ['format', 'Format'], ['kind', 'Kind'], ['read_status', 'Status'],
         ['rating', 'Rating'], ['show', 'Show'],
     ];
     const state = [];

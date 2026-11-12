@@ -82,6 +82,14 @@ def video_kind(value):
     return TV if (value or '').strip().lower() == TV else None
 
 
+def season_short(text):
+    """A season for tight spaces (the grid's list view): 'Season 2' -> 'S2',
+    'Seasons 1-3' -> 'S1-3'; anything else ('Complete series') as typed."""
+    text = (text or '').strip()
+    found = re.fullmatch(r'(?i)seasons?\s*(\d+(?:\s*[-\u2013]\s*\d+)?)', text)
+    return 'S' + re.sub(r'\s+', '', found.group(1)) if found else text
+
+
 def kind_of(row):
     """'tv' or 'movie' for a video row (or dict); None for a book or album,
     or a row selected without the column."""

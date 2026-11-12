@@ -71,6 +71,8 @@ def seed(db, people, kind):
                                   created_at='2024-02-20 10:00:00')),
     ]
     for title, owner, cols in rows:
+        if kind == media.VIDEO and title in ('Beta Cookbook', 'Bob Cooking'):
+            cols = {**cols, 'video_kind': 'tv', 'season': 'Season 1'}     # 15.1's Kind filter
         ids[title] = put(db, owner, title, kind, **cols)
 
     def status(user, title, st):
@@ -140,6 +142,10 @@ def queries(kind):
         'sort_by=rating&sort_order=desc',        # the viewer's ratings, unrated last
         'sort_by=finished&sort_order=desc',      # the viewer's sessions
         'sort_by=bogus&sort_order=sideways',     # unknown sort falls back to title
+        'kind=tv',                               # Movies & TV only; ignored elsewhere
+        'kind=movie',                            # NULL is a movie
+        'kind=tv&show=all&sort_by=author',
+        'kind=bogus',
         f'genre=fiction&read_status={s1}&sort_by=created_at&sort_order=desc',
         'show=all&search_term=zeta&sort_by=publish_year',
     ]

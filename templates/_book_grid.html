@@ -22,6 +22,10 @@
                         {% elif book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
                         {% endif %}
+                        {# A TV box set (15.1); the corner opposite the badges above and bulk select's box #}
+                        {% if book.video_kind == 'tv' %}
+                        <span class="tv-badge absolute top-2 right-2 z-10 px-2 py-0.5 text-xs font-bold bg-primary-bg text-content-primary border border-card rounded-pill" title="TV">TV</span>
+                        {% endif %}
                         {% if book.cover_image_url|upload_exists %}
                         {# cover-box: the Shelf style draws the cover as a 3D box on it;
                            display: contents (no box at all) everywhere else #}
@@ -44,7 +48,9 @@
                             {{ book['title'] }}
                         </h3>
                         <p class="book-author text-content-secondary text-xs sm:text-sm italic truncate">
-                            {% if book['author'] %}{{ m.by if m else 'by' }} {{ book['author'] }}{% else %}&nbsp;{% endif %}
+                            {% if book['author'] %}{{ labels_for(book).by }} {{ book['author'] }}{% else %}&nbsp;{% endif %}
+                            {#- List view only (styles.css), in place of the cover's TV badge: "TV" and the season, "S2" for "Season 2" #}
+                            {%- if book.video_kind == 'tv' %}<span class="book-season"> · TV{% if book.season %}, {{ book.season|season_short }}{% endif %}</span>{% endif %}
                         </p>
                     </div>
                     {# List view only: year, your status, your rating #}

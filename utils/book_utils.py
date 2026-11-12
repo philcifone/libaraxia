@@ -766,7 +766,7 @@ def is_narrowed(args):
     household member), so its count isn't "all your books". The search box
     only puts the count in its placeholder when it isn't; when it is, the line
     under the box counts the matches (both in _search_sort_filter.html)."""
-    keys = ('search_term', 'genre', 'format', 'read_status', 'rating', 'member', 'from', 'gr_shelf')
+    keys = ('search_term', 'genre', 'format', 'kind', 'read_status', 'rating', 'member', 'from', 'gr_shelf')
     return (any(args.get(k) for k in keys) or bool(args.getlist('tags[]'))
             or show_choice(args) != '')
 
@@ -936,6 +936,14 @@ def get_filter_options(owner_ids, media_type='book', data_user=None):
         # Books: no Format filter until there's an audiobook to tell apart
         if media_type == media.BOOK and len(options['formats']) < 2:
             options['formats'] = []
+    if media_type == media.VIDEO:
+        # Movies & TV's Kind filter (15.1), once the shelves have both kinds
+        has_tv, has_movie = conn.execute(f'''
+            SELECT COALESCE(MAX(video_kind = 'tv'), 0),
+                   COALESCE(MAX(video_kind IS NULL OR video_kind != 'tv'), 0)
+            FROM {view} WHERE added_by IN ({placeholders})
+        ''', owner_ids).fetchone()
+        options['kinds'] = list(media.VIDEO_KINDS) if has_tv and has_movie else []
     return options
 
 

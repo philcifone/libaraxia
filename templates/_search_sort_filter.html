@@ -123,6 +123,22 @@
                     </div>
                     {% endif %}
 
+                    {% if filter_options.kinds %}
+                    <!-- Kind Filter (Movies & TV, 15.1): only once the shelf has both -->
+                    <div class="space-y-2">
+                        <label for="kind" class="block text-sm font-medium text-content-secondary">Kind</label>
+                        <select name="kind" id="kind"
+                                data-change="filtersChanged"
+                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
+                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
+                            <option value="">Movies and TV</option>
+                            {% for k in filter_options.kinds %}
+                            <option value="{{ k }}" {% if request.args.get('kind') == k %}selected{% endif %}>{{ 'Movies' if k == 'movie' else 'TV' }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
                     <!-- Status Filter -->
                     <div class="space-y-2">
                         <label for="read_status" class="block text-sm font-medium text-content-secondary">{{ m.status_label if m else 'Read Status' }}</label>

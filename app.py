@@ -264,6 +264,7 @@ def create_app():
     app.add_template_global(shelf_url, 'shelf_url')
     app.add_template_global(media.SECTION_NAMES, 'SECTION_NAMES')
     app.add_template_global(media.SECTION_WORDS, 'SECTION_WORDS')
+    app.add_template_filter(media.season_short, 'season_short')
     app.add_template_global(media.item_labels, 'labels_for')
 
     # List view's status and rating columns (_book_grid.html, ROADMAP 7.2b):

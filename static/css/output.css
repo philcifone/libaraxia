@@ -4590,6 +4590,21 @@ dialog::backdrop {
   white-space: normal;
 }
 
+/* A TV set (15.1): list view drops the cover's TV badge (too big for its
+   small cover) and says it after the creator instead ("· TV, S2") */
+
+.book-season {
+  display: none;
+}
+
+[data-view="list"] .book-season {
+  display: inline;
+}
+
+[data-view="list"] .tv-badge {
+  display: none;
+}
+
 [data-view="list"] .book-meta {
   display: flex;
   flex-wrap: wrap;

@@ -189,3 +189,49 @@ def test_records_never_get_a_kind(client, db, people):
 def test_add_button_has_a_tv_entry(client, db, people):
     login(client, 'alice')
     assert '/videos/add?kind=tv' in client.get('/videos/').get_data(as_text=True)
+
+
+# --- the grid: TV badge, Kind filter, season in list view ---------------------------
+
+def grid_titles(page):
+    import re
+    return re.findall(r'<h3 class="book-title[^"]*">\s*(.*?)\s*</h3>', page)
+
+
+def test_season_short():
+    assert media.season_short('Season 2') == 'S2'
+    assert media.season_short('season 12') == 'S12'
+    assert media.season_short('Seasons 1-3') == 'S1-3'
+    assert media.season_short('Seasons 1 – 3') == 'S1–3'
+    assert media.season_short('Complete series') == 'Complete series'
+    assert media.season_short(None) == ''
+
+
+def test_grid_badges_tv_and_shows_its_season_in_list_view(client, db, people):
+    add_video(db, people['alice'], 'The Wire', 'tv', 'Season 2')
+    add_video(db, people['alice'], 'Heat')
+    login(client, 'alice')
+    page = client.get('/videos/').get_data(as_text=True)
+    assert page.count('class="tv-badge') == 1
+    assert '<span class="book-season"> · TV, S2</span>' in page      # hidden in grid view by CSS
+    assert 'created by Someone' in page and 'directed by Someone' in page
+
+
+def test_kind_filter(client, db, people):
+    add_video(db, people['alice'], 'The Wire', 'tv', 'Season 2')
+    add_video(db, people['alice'], 'Heat')
+    add_video(db, people['alice'], 'Alien', 'movie')       # stored by hand as 'movie': still a movie
+    login(client, 'alice')
+    page = client.get('/videos/').get_data(as_text=True)
+    assert 'id="kind"' in page and '<option value="tv"' in page        # both kinds on the shelf
+    assert grid_titles(client.get('/videos/?kind=tv').get_data(as_text=True)) == ['The Wire']
+    assert grid_titles(client.get('/videos/?kind=movie').get_data(as_text=True)) == ['Alien', 'Heat']
+    # Narrowed: the count moves out of the placeholder
+    assert 'Search your 3' not in client.get('/videos/?kind=tv').get_data(as_text=True)
+
+
+def test_kind_filter_only_with_both_kinds(client, db, people):
+    add_video(db, people['alice'], 'Heat')
+    login(client, 'alice')
+    assert 'id="kind"' not in client.get('/videos/').get_data(as_text=True)
+    assert 'id="kind"' not in client.get('/records/').get_data(as_text=True)
