@@ -9,8 +9,57 @@ from utils.database import get_db
 USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]{3,30}$')
 USERNAME_RULES = 'Username must be 3-30 characters: letters, numbers, dots, dashes or underscores.'
 
+USERNAME_RESERVED = 'That name is used by a page of the site; please pick another.'
+USERNAME_TAKEN = 'Username is already taken'
+
+
 def is_valid_username(username):
     return bool(username) and USERNAME_PATTERN.match(username) is not None
+
+
+def username_shadows_route(username):
+    """True if a page at /user/<username> (or any other route that takes a
+    username) would be some other route instead: /user/settings is Settings,
+    not the profile of a user called "settings" (Phil, 2026-11-12: a value a
+    user picks must never collide with how the site works).
+
+    Read from the live URL map, so a route added later is covered without
+    keeping a list. Checked in both cases since names are unique ignoring
+    case (migration 033)."""
+    from flask import current_app
+    from werkzeug.exceptions import HTTPException
+    from werkzeug.routing import RequestRedirect
+    adapter = current_app.url_map.bind('localhost')
+    for rule in current_app.url_map.iter_rules():
+        if rule.arguments != {'username'}:
+            continue
+        for name in {username, username.lower()}:
+            path = rule.rule.replace('<username>', name)
+            # Any method: a POST-only page (/user/update_email) doesn't break
+            # the GET profile today, but would the day it gains a GET.
+            for method in ('GET', 'POST'):
+                try:
+                    endpoint, _ = adapter.match(path, method=method)
+                except RequestRedirect:
+                    return True
+                except HTTPException:       # nothing answers this method here: no clash
+                    continue
+                if endpoint != rule.endpoint:
+                    return True
+    return False
+
+
+def username_error(conn, username, user_id=None):
+    """Why `username` can't be used (for a new user, or user_id renaming
+    themselves), or None. One place for the three ways a name is chosen:
+    registration, Settings and admin's Add user."""
+    if not is_valid_username(username):
+        return USERNAME_RULES
+    if username_shadows_route(username):
+        return USERNAME_RESERVED
+    taken = conn.execute('SELECT 1 FROM users WHERE username = ? COLLATE NOCASE AND id IS NOT ?',
+                         (username, user_id)).fetchone()
+    return USERNAME_TAKEN if taken else None
 
 
 # Appearance settings (see the Themes section in static/styles.css).

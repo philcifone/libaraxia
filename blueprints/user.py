@@ -10,7 +10,7 @@ from utils import bulk, media, reviews, shelves, personal_backups
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
-from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES, ACCENTS, FONTS
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, username_error, THEME_STYLES, THEME_MODES, ACCENTS, FONTS
 from werkzeug.utils import secure_filename
 import bcrypt
 import os
@@ -267,16 +267,11 @@ def update_username():
         if not new_username:
             return jsonify({'success': False, 'message': 'Username cannot be empty'}), 400
 
-        # Username validation
-        if not is_valid_username(new_username):
-            return jsonify({'success': False, 'message': USERNAME_RULES}), 400
-
+        # Rules, names the site's own pages use, and taken (ignoring case)
         conn = get_db()
-        # Check if username is already taken by another user
-        existing_user = conn.execute('SELECT id FROM users WHERE username = ? AND id != ?',
-                                    (new_username, current_user.id)).fetchone()
-        if existing_user:
-            return jsonify({'success': False, 'message': 'Username is already taken'}), 400
+        problem = username_error(conn, new_username, current_user.id)
+        if problem:
+            return jsonify({'success': False, 'message': problem}), 400
 
         # Update username
         conn.execute('UPDATE users SET username = ? WHERE id = ?', (new_username, current_user.id))

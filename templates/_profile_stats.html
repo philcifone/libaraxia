@@ -91,7 +91,7 @@
 </div>
 {%- endmacro %}
 
-<section id="stats" class="bg-secondary rounded-xl overflow-hidden card"
+<section class="bg-secondary rounded-xl overflow-hidden card"
          data-stats data-view="overview" data-kind="{{ 'all' if multi else type_stats[0][0].type }}" aria-label="Statistics">
     <div class="flex" role="tablist" aria-label="Statistics view">
         {% for key, label in [('overview', 'Overview'), ('insights', 'Insights')] %}

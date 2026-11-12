@@ -7,7 +7,7 @@ from datetime import datetime
 from utils.database import get_db
 from utils import households
 from utils.book_utils import missing_cover_sql
-from models import admin_required, is_valid_username, USERNAME_RULES
+from models import admin_required, username_error
 from utils.accounts import removal_context, deactivate_account, delete_account, AccountError
 from PIL import Image
 
@@ -101,20 +101,13 @@ def create_user():
         flash("Password must be at least 6 characters", "error")
         return redirect(url_for('user.settings', _anchor='users'))
 
-    if not is_valid_username(username):
-        flash(USERNAME_RULES, "error")
+    conn = get_db()
+    problem = username_error(conn, username)
+    if problem:
+        flash(problem, "error")
         return redirect(url_for('user.settings', _anchor='users'))
 
-    conn = get_db()
     try:
-        # Check if username already exists
-        existing_user = conn.execute(
-            'SELECT id FROM users WHERE username = ?', (username,)
-        ).fetchone()
-
-        if existing_user:
-            flash(f"Username '{username}' already exists", "error")
-            return redirect(url_for('user.settings', _anchor='users'))
 
         # Check if email already exists
         existing_email = conn.execute(

@@ -1,4 +1,6 @@
 """Registration, login, and every page loading."""
+import re
+
 import pytest
 
 from conftest import add_book, add_review, add_user, login, scalar
@@ -79,6 +81,16 @@ def test_security_headers(client):
 SKIP = {'static', 'admin.backup_download', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'records.lookup', 'videos.search'}
 
 
+def duplicate_ids(html):
+    """Element ids used more than once on a page. Ids are what URL hashes,
+    the page tabs (common.js initTabs), labels and getElementById find, so a
+    second element with the same id (two partials that both chose
+    "library", say) silently takes over or hides the first."""
+    from collections import Counter
+    ids = Counter(re.findall(r'<[a-zA-Z][^>]*?\sid="([^"]+)"', html))
+    return sorted(i for i, n in ids.items() if n > 1)
+
+
 def test_every_page_loads(app, client, db, people):
     """Every GET route answers without a server error, as an admin with real-ish
     data, and every HTML page closes the tags it opens (see test_layout.py)."""
@@ -106,6 +118,7 @@ def test_every_page_loads(app, client, db, people):
         assert r.status_code < 400, f'{url} -> {r.status_code}'
         if r.status_code == 200 and r.mimetype == 'text/html':
             assert unbalanced_tags(r.get_data(as_text=True)) == [], url
+            assert duplicate_ids(r.get_data(as_text=True)) == [], url
         checked.append(url)
     assert len(checked) > 35
 
@@ -134,6 +147,7 @@ def test_every_page_loads(app, client, db, people):
         r = client.get(url)
         assert r.status_code < 400, url
         assert unbalanced_tags(r.get_data(as_text=True)) == [], url
+        assert duplicate_ids(r.get_data(as_text=True)) == [], url
 
 
 def test_every_template_page_extends_base():

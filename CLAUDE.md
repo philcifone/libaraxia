@@ -66,8 +66,9 @@ No per-item privacy settings. Household members who aren't friends see each othe
 - **Server-side URL fetches** go through `book_utils._get_public()` / `_fetch_image()` (public-IP check on every redirect). **Remote images** in the browser go through `coverSrc(url)`.
 - **Escape everything** put into `innerHTML` (`escapeHtml()` or `textContent`; `encodeURIComponent` for URL segments).
 - **Reusing an existing book record** goes through `utils/book_matching.py`; never match against all of `books`.
+- **User-chosen values never share a namespace with the site.** No route segment, element id, URL hash, query key or storage key may be both fixed by code and choosable by a user (a user called `settings` vs `/user/settings`). Build ids from numeric ids or fixed keys, never names; a new fixed route beside `<username>` is reserved automatically. Tests assert on markers (`data-*`, hrefs), not on words a user's data could also contain.
 - Don't return `str(e)` to clients; log it and return a generic message.
-- Passwords use raw `bcrypt`. Usernames match `^[A-Za-z0-9_.-]{3,30}$` (`models.is_valid_username`). Rate limits are per-route `@limiter.limit()` (no global default), in-memory per worker.
+- Passwords use raw `bcrypt`. Usernames go through `models.username_error` (rules, not a page name, unique ignoring case). Rate limits are per-route `@limiter.limit()` (no global default), in-memory per worker.
 
 ## Code conventions
 
