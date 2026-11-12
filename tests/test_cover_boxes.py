@@ -50,21 +50,27 @@ def test_spine_is_inside_the_box():
     assert 'inset 6px 0 0 rgb(var(--accent))' in rule
 
 
-def test_item_page_box_stands_on_its_shelf():
-    """The box's far corner lands on the top face, as on the grid: the
-    shelf is deeper than the box and the box stands in from its front."""
-    stand = CSS[CSS.index(':root[data-style="shelf"] .cover-stand {\n    --frame: 10px;'):]
-    stand = stand[:stand.index('}')]
-    top = int(re.search(r'--ledge-top: (\d+)px', stand).group(1))
-    sink = int(re.search(r'--sink: (\d+)px', stand).group(1))
-    depth = int(re.search(r':root\[data-style="shelf"\] \.cover-stand \{ --box-depth: (\d+)px; \}', CSS).group(1))
-    assert depth < sink < top
+def test_item_page_cover_is_a_box_without_a_bookcase():
+    """The details card is the bookcase; the cover in it is a free box
+    (its own bookcase was tried and dropped, Phil 2026-11-12)."""
+    assert ':is(.page-heading, .case-card)' in CSS and '.cover-stand, .case-card' not in CSS
+    stand = CSS[CSS.index(':root[data-style="shelf"] .cover-stand {\n    --box-depth'):]
+    assert 'padding: var(--box-depth) var(--box-depth) 0 0' in stand[:stand.index('}')]
+    detail = (ROOT / 'templates/book_detail.html').read_text()
+    assert detail.count('case-card') == 3          # details, household reviews, your info
 
 
 def test_feed_and_notifications_are_bookcases(client, db, people):
     login(client, 'alice')
     assert 'class="case-card' in client.get('/friends/notifications_page').get_data(as_text=True)
     assert 'case-card' in (ROOT / 'templates/activity_feed.html').read_text()
+
+
+def test_feed_reviews_are_clamped():
+    """A long review printed in full made one feed card ~9,000px tall on a
+    phone: it gets Read more like the item page's."""
+    feed = (ROOT / 'templates/activity_feed.html').read_text()
+    assert 'data-read-more>' in feed and 'id="feed-review-{{ loop.index }}" class="read-more-text' in feed
 
 
 def test_no_stray_tokens_in_styles_css():

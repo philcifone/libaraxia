@@ -1738,14 +1738,14 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 }
 
 /* ---- Shelf: small bookcases (ROADMAP 14c) ----
-   Each page's heading card and the item page's cover are set in a small
+   Each page's heading card, and the cards marked .case-card (feed,
+   notifications, the item page's details and reviews), are set in a small
    bookcase like the grid's: a wooden frame round the back wall (no frame
    along the bottom: the ledge is the bottom), a ledge across the bottom,
    shade inside, and the case's outside top and right faces going back at
    45 degrees in wood, as on the grid. The heading's text and icon are
-   untouched. On the item page the cover keeps its own 3D box, standing on
-   the ledge inside the case. */
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card) {
+   untouched. */
+:root[data-style="shelf"] :is(.page-heading, .case-card) {
     --frame: 8px;
     --case-run: 10px;               /* how far the outside faces go back */
     /* The ledge as on the grid (follow-up, Phil 2026-11-12: "more depth"):
@@ -1797,48 +1797,38 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     box-shadow: inset 0 0 20px rgb(0 0 0 / .18), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
-/* Activity feed and notification cards (.case-card, 14c follow-up): each
+/* Activity feed and notification cards, and the item page's details and
+   review cards (.case-card, 14c follow-up): each
    card is a small bookcase too; the corner buttons and the like / comment
    row stay inside it, above the ledge (pb-16 leaves room). Their covers
    are boxes like every other (below). */
 :root[data-style="shelf"] .case-card {
     --ledge-top: 12px;
     --ledge-front: 10px;
-    margin-top: calc(1.5rem + var(--case-run));    /* space-y-6 plus the top face, which the case rule replaced */
 }
+/* In a stacked list (feed, notifications) the case rule's margin replaced
+   space-y-6's: put the gap back, plus room for the top face */
+:root[data-style="shelf"] .space-y-6 > .case-card + .case-card,
+:root[data-style="shelf"] .space-y-6 > * + .case-card { margin-top: calc(1.5rem + var(--case-run)); }
 /* Room for the ledge; the feed's cards already keep 4rem (pb-16) for the
    like / comment row in their bottom corner */
 :root[data-style="shelf"] .case-card:not(.pb-16) { padding-bottom: calc(1.5rem + var(--ledge-h)); }
-:root[data-style="shelf"] .cover-stand {
-    --frame: 10px;
-    --case-run: 12px;
-    /* In the grid's proportions to the box (Phil: the box overhung the
-       shelf): the top face about 2.5 boxes deep, the box standing in from
-       its front edge, so its far corner lands on the shelf, not past it */
-    --ledge-top: 22px;
-    --ledge-front: 12px;
-    --sink: 14px;
-    /* room round the cover: its box's top and right faces (--box-depth)
-       and a little wall on every side */
-    padding: calc(var(--box-depth) + 14px) calc(var(--box-depth) + 14px)
-             calc(var(--ledge-h) - var(--sink)) calc(14px + var(--side-w));
-}
 /* The case's outside: top face (lit) and right face (in shade) */
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::before,
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::after {
+:root[data-style="shelf"] :is(.page-heading, .case-card)::before,
+:root[data-style="shelf"] :is(.page-heading, .case-card)::after {
     content: "";
     position: absolute;
     pointer-events: none;
     top: calc(-1 * (var(--frame) + var(--case-run)));
 }
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::before {    /* top */
+:root[data-style="shelf"] :is(.page-heading, .case-card)::before {    /* top */
     left: calc(-1 * var(--frame));
     width: calc(100% + 2 * var(--frame) + var(--case-run));
     height: var(--case-run);
     background: linear-gradient(to top, rgb(0 0 0 / .06), transparent), rgb(var(--case-top, var(--shelf-top)));
     clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::after {     /* right side */
+:root[data-style="shelf"] :is(.page-heading, .case-card)::after {     /* right side */
     left: calc(100% + var(--frame));
     width: var(--case-run);
     height: calc(100% + var(--frame) + var(--case-run));
@@ -1964,8 +1954,13 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 /* Rows of thumbnails: room above for the top faces */
 :root[data-style="shelf"] .shelf-row { padding-top: var(--box-depth); padding-right: var(--box-depth); }
 
-/* The item page's cover: deeper, on the bookcase's deeper ledge */
-:root[data-style="shelf"] .cover-stand { --box-depth: 9px; }
+/* The item page's cover: a deeper box, standing free in the details card
+(a bookcase of its own was tried and dropped, Phil 2026-11-12); room above
+and to the right for its faces */
+:root[data-style="shelf"] .cover-stand {
+    --box-depth: 9px;
+    padding: var(--box-depth) var(--box-depth) 0 0;
+}
 :root[data-style="shelf"] .cover-stand:is([data-media="video"], [data-media="record"]) {
     --box-top: 218 219 222;
     --box-side: 184 186 191;

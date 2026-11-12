@@ -186,8 +186,12 @@
                                     {% endif %}
 
                                     {% if activity.comment %}
-                                        <div class="bg-primary/50 rounded-lg p-4 mt-3">
-                                            <p class="text-content-primary italic whitespace-pre-wrap">"{{ activity.comment }}"</p>
+                                        {# Clamped with Read more (common.js): a long review printed in full
+                                           made one card thousands of pixels tall on a phone #}
+                                        <div class="bg-primary/50 rounded-lg p-4 mt-3" data-read-more>
+                                            <p id="feed-review-{{ loop.index }}" class="read-more-text text-content-primary italic whitespace-pre-wrap">"{{ activity.comment }}"</p>
+                                            <button type="button" class="read-more-toggle" data-click="toggleReadMore"
+                                                    aria-controls="feed-review-{{ loop.index }}" aria-expanded="false" hidden>Read more</button>
                                         </div>
                                     {% endif %}
                                 {% endif %}
