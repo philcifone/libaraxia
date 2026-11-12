@@ -196,6 +196,8 @@
             </div>
 
             {% set size_word = 'Pages' if m.type == 'book' else 'Hours' %}
+            {# A shelf with TV says so (15.1): a show's creator isn't a director #}
+            {% set creators = 'Directors and creators' if s.has_tv else m.creator ~ 's' %}
             {% set tiles = [
                 (noun ~ ' owned', '{:,}'.format(s.owned)),
                 (done_label, '{:,}'.format(s.done)),
@@ -206,7 +208,7 @@
                 ('Of the shelf ' ~ m.verb_past, s.done_pct ~ '%'),
                 ('Average rating', (s.avg_rating ~ ' ★') if s.avg_rating else '–'),
                 ('Reviews', s.reviews),
-                (m.creator ~ 's on the shelf', s.creators),
+                (creators ~ ' on the shelf', s.creators),
             ] %}
             {% if s.not_owned %}{% set tiles = tiles + [('Unshelved', s.not_owned)] %}{% endif %}
             <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
@@ -217,6 +219,14 @@
                 </div>
                 {% endfor %}
             </dl>
+            {% if s.has_tv %}
+            {# Movies & TV split (15.1): counts only, hours stay one number above #}
+            {% macro kinds(what) -%}
+                {%- for k in ('movie', 'tv') %}{% set n = s.by_kind[k][what] %}{% set w = m.kind_words[k] %}
+                {{- '{:,}'.format(n) }} {{ w.noun if n == 1 else w.plural }}{{ ' and ' if loop.first }}{% endfor -%}
+            {%- endmacro %}
+            <p class="text-sm text-content-secondary mb-4" data-kind-split>On the shelf: {{ kinds('owned') }}. {{ done_label }}: {{ kinds('done') }}.</p>
+            {% endif %}
             {% if s.longest or s.top_shelf_genre %}
             <dl class="grid md:grid-cols-2 gap-3 sm:gap-4 mb-8">
                 {% if s.longest %}
@@ -295,7 +305,7 @@
             <div class="grid md:grid-cols-2 gap-4">
                 {% for title, items, empty in [
                     ('Top genres', s.top_genres, 'No genres on what you ' ~ m.verb_past ~ ' yet.'),
-                    ('Top ' ~ m.creator|lower ~ 's', s.top_creators, 'Nothing ' ~ m.verb_past ~ ' yet.'),
+                    ('Top ' ~ creators|lower, s.top_creators, 'Nothing ' ~ m.verb_past ~ ' yet.'),
                 ] %}
                 <div class="bg-primary rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">{{ title }}</h3>

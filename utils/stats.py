@@ -137,6 +137,22 @@ def type_stats(conn, user_id, kind, today=None):
         GROUP BY r.rating
     ''')}
     s['ratings'] = [{'stars': n, 'count': spread.get(n, 0)} for n in range(5, 0, -1)]
+
+    # Movies & TV (15.1): owned and watched per kind, NULL being a movie. A
+    # split of the counts only; hours stay one number.
+    if kind == media.VIDEO:
+        split = {k: {'owned': 0, 'done': 0} for k in media.VIDEO_KINDS}
+        for r in rows(f'''
+            WITH {shelf_cte}
+            SELECT 'owned' AS what, CASE WHEN b.video_kind = 'tv' THEN 'tv' ELSE 'movie' END AS k,
+                   COUNT(*) AS count FROM shelf b GROUP BY k
+            UNION ALL
+            SELECT 'done', CASE WHEN b.video_kind = 'tv' THEN 'tv' ELSE 'movie' END AS k,
+                   COUNT(*) FROM done b GROUP BY k
+        '''):
+            split[r['k']][r['what']] = r['count']
+        s['by_kind'] = split
+        s['has_tv'] = bool(split[media.TV]['owned'] or split[media.TV]['done'])
     s['rated'] = sum(spread.values())
     s['by_month'] = by_month(conn, user_id, kind, today)
     return s

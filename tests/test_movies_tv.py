@@ -349,3 +349,31 @@ def test_have_online_tv_candidate(client, people, monkeypatch):
     page = client.get(best['shelf_url']).get_data(as_text=True)
     assert 'data-lookup-url="/videos/lookup?tmdb_id=1438&amp;kind=tv"' in page
     assert 'name="video_kind" value="tv" checked' in page and 'Add a TV Show</h1>' in page
+
+
+# --- stats: hours stay one number, a by-kind split of the counts ---------------------
+
+def test_stats_split_by_kind(client, db, people):
+    alice = people['alice']
+    wire = add_video(db, alice, 'The Wire', 'tv', 'Season 1')
+    heat = add_video(db, alice, 'Heat')
+    add_video(db, alice, 'Alien')
+    db.execute('UPDATE books SET runtime_minutes = 60 WHERE id IN (?, ?)', (wire, heat))
+    for vid in (wire, heat):
+        db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'watched')", (alice, vid))
+    db.commit()
+    from utils.stats import type_stats
+    s = type_stats(db, alice, media.VIDEO)
+    assert s['by_kind'] == {'movie': {'owned': 2, 'done': 1}, 'tv': {'owned': 1, 'done': 1}}
+    assert s['size_done'] == 2                                 # one number of hours, both kinds
+    login(client, 'alice')
+    page = client.get('/user/alice').get_data(as_text=True)
+    assert 'On the shelf: 2 movies and 1 TV show. Watched: 1 movie and 1 TV show.' in page
+    assert 'Directors and creators on the shelf' in page and 'Top directors and creators' in page
+
+
+def test_stats_without_tv_say_nothing_new(client, db, people):
+    add_video(db, people['alice'], 'Heat')
+    login(client, 'alice')
+    page = client.get('/user/alice').get_data(as_text=True)
+    assert 'data-kind-split' not in page and 'Directors on the shelf' in page
