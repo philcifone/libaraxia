@@ -16,7 +16,7 @@ The detailed map of Libaraxia: every blueprint, utility module, table, template 
 - **user** (`/user`): profiles, stats, inline settings (email/username/bio/password/avatar), library CSV export and "export my data" ZIP, Profile → Account (deactivate/delete own account), **Goodreads CSV import** (available to every user, not admin-only; logic in `utils/goodreads.py`), household invite/accept/decline/remove/leave (logic in `utils/households.py`).
 - **read** (`/read`): ratings/reviews and reading sessions (dates started/completed).
 - **tags** (`/tags`): per-user tags.
-- **admin** (`/admin`): user management (deactivate/delete dialog), avatar management, orphaned image cleanup, unowned books (reassign), bulk cover fetch, household (library) membership.
+- **admin** (`/admin`): site backups (`/admin/backups`: back up, restore, download the database, delete; `utils/backups.py`), user management (deactivate/delete dialog), avatar management, orphaned image cleanup, unowned books (reassign), bulk cover fetch, household (library) membership.
 - **feed** (`/feed`): activity feed of friends' reviews/updates, likes, dismissals.
 - **wishlist** (`/wishlist`): your wishlist (`/view`: books and movies, with Books / Movies / Both tabs, `?show=`), adding (`/add?type=book|video`: the shared `add_item.html` with a note field), moving items onto the shelf (Library or Movies), friends' wishlists.
 - **friends** (`/friends`): friend requests, friend list, notifications page, user search API.
@@ -44,6 +44,7 @@ The detailed map of Libaraxia: every blueprint, utility module, table, template 
 - **music_lookup.py**: Add Vinyl pre-fill from MusicBrainz (User-Agent with contact, 1 request/s per process, 6 h cache, `Busy` on 503) and Cover Art Archive covers.
 - **media_lookup.py**: Add Video pre-fill: UPCitemdb (barcode) then TMDb (title), through the SSRF guard; `clean_title` strips tape noise. Optional; manual entry is the main path.
 - **have_online.py**: Do I have this?'s online candidates on "Not here" (ROADMAP 13b): the three sources at once in a small thread pool (a source past `DEADLINE` is left out, its thread fills the caches), `score_text` / `rank`, and each candidate's add links. Downloads nothing; thumbnails go through `coverSrc`.
+- **backups.py**: site backups from Admin → Backups (`admin.backups_page`), added before shipping 14b. A backup is a folder in `BACKUP_DIR` (default `backups/` beside the database) named by time: `library.db` (SQLite online backup), `uploads/` (hard links to the covers and avatars, copies across filesystems; safe because upload files are never rewritten in place), `meta.json` (kind, who, migrations, counts). `create` / `list_backups` / `latest` / `restore` / `delete` / `folder` (validates names from URLs). `restore` refuses a backup with migrations this code doesn't know, brings an older one up to date on a scratch copy with `manage.apply_migration`, backs up the current state first (kind `before_restore`), copies into the live DB with the online backup API (the route closes its own connection first) and links back missing upload files without deleting any. The Goodreads import backs up (kind `goodreads`) before writing and refuses if it can't. Automatic kinds are pruned to the newest `KEEP_AUTOMATIC` (5); manual ones stay.
 - **book_matching.py**: finding an existing book to attach a user's data to (`BookIndex`, `own_book_for_wishlist`). Only the user's own books and their household's shelf are searched, never anyone else's.
 - **households.py**: household invites, joining, leaving and owner hand-over (see Access Model).
 - **email_utils.py**: verification tokens (random, stored in `email_verification_tokens`) and sending via Flask-Mail.
@@ -96,6 +97,7 @@ Read via python-dotenv from `.env`:
 - **DISCOGS_TOKEN**: optional, Discogs personal access token (discogs.com/settings/developers) for Add Album's search (`utils/discogs_lookup.py`). Without it, MusicBrainz only.
 - **MUSICBRAINZ_CONTACT**: contact in the MusicBrainz User-Agent (an email is best; default the GitHub URL).
 - **FLASK_ENV**: `development` or `production`.
+- **BACKUP_DIR**: where `utils/backups.py` keeps site backups (default `backups/` beside the database file). Never under `static/`. On prod, put it on the same filesystem as the uploads folder so covers are hard-linked rather than copied.
 - **DATABASE_PATH**: SQLite file used by `utils/database.py` and `manage.py` (default `library.db` in the project directory).
 - **ALLOW_REGISTRATION**: `False` closes self-registration once the first user exists (default `True`).
 - **TRUSTED_PROXY_COUNT**: number of reverse proxies to trust for `X-Forwarded-*` (default 0 = off).

@@ -751,3 +751,96 @@ def remove_library_member():
 
     return redirect(url_for('admin.settings'))
 
+
+
+# --- Backups (utils/backups.py): the whole site, database and covers --------
+
+@admin_blueprint.route("/backups")
+@login_required
+@admin_required
+def backups_page():
+    from utils import backups
+    return render_template('admin/backups.html', backups=backups.list_backups(),
+                           keep=backups.KEEP_AUTOMATIC, where=backups.backup_dir())
+
+
+def _back_to():
+    """Where a backup form came from: the Goodreads import page offers
+    "Back up now" too, and should land back there."""
+    if request.form.get('back') == 'goodreads':
+        return url_for('user.import_goodreads_page')
+    return url_for('admin.backups_page')
+
+
+@admin_blueprint.route("/backups/create", methods=["POST"])
+@login_required
+@admin_required
+def backup_create():
+    from utils import backups
+    try:
+        made = backups.create('manual', current_user.username)
+    except backups.BackupError as e:
+        current_app.logger.exception('Backup failed')
+        flash(str(e), 'error')
+        return redirect(_back_to())
+    current_app.logger.info(f"Admin {current_user.username} made backup {made['name']}")
+    flash(f"Backed up: {made['counts']['books']} items, {made['counts']['users']} users, "
+          f"{made['files']} cover and avatar files.", 'success')
+    return redirect(_back_to())
+
+
+@admin_blueprint.route("/backups/<name>/restore", methods=["POST"])
+@login_required
+@admin_required
+def backup_restore(name):
+    from utils import backups
+    from utils.database import close_db
+    who = current_user.username
+    # The copy into the live database needs every lock: let go of this
+    # request's connection (the login check already used it)
+    close_db()
+    try:
+        result = backups.restore(name, who)
+    except backups.BackupError as e:
+        current_app.logger.exception(f'Restore of backup {name} failed')
+        flash(str(e), 'error')
+        return redirect(url_for('admin.backups_page'))
+    when = result['restored']['created_at'].strftime('%-d %b %Y, %H:%M')
+    current_app.logger.warning(f"Admin {who} restored backup {name}; current state saved as "
+                               f"{result['safety']['name']}")
+    note = f" Brought up to date with {len(result['migrated'])} migration(s)." if result['migrated'] else ''
+    files = f" {result['files']} missing cover/avatar file(s) put back." if result['files'] else ''
+    flash(f"Restored the backup from {when}.{files}{note} What was there before is the newest backup "
+          "in the list, if you need it back.", 'success')
+    return redirect(url_for('admin.backups_page'))
+
+
+@admin_blueprint.route("/backups/<name>/delete", methods=["POST"])
+@login_required
+@admin_required
+def backup_delete(name):
+    from utils import backups
+    try:
+        backups.delete(name)
+    except backups.BackupError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('admin.backups_page'))
+    current_app.logger.info(f"Admin {current_user.username} deleted backup {name}")
+    flash('Backup deleted.', 'success')
+    return redirect(url_for('admin.backups_page'))
+
+
+@admin_blueprint.route("/backups/<name>/download")
+@login_required
+@admin_required
+def backup_download(name):
+    """The backup's database file (not the covers: those are many files;
+    copy the backup folder for those)."""
+    from flask import abort, send_file
+    from utils import backups
+    try:
+        path = backups.folder(name)
+    except backups.BackupError:
+        abort(404)
+    return send_file(os.path.join(path, backups.DB_FILE), as_attachment=True,
+                     download_name=f'libaraxia-{name}.db', mimetype='application/vnd.sqlite3')

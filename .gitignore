@@ -71,3 +71,6 @@ docs/skeuomorphic-inspo.jpg
 
 # Local files waiting to be sorted and deleted by hand (not docs/archive)
 /archive/
+
+# Site backups (utils/backups.py), beside the database by default
+backups/

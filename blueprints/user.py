@@ -595,9 +595,10 @@ def _wants_json():
 def import_goodreads_page():
     """The upload page, with how the import works. Says so if an upload is
     still waiting for its review."""
-    from utils import goodreads_plan
+    from utils import goodreads_plan, backups
     return render_template('goodreads_import.html',
-                           waiting=goodreads_plan.has_staging(get_db(), current_user))
+                           waiting=goodreads_plan.has_staging(get_db(), current_user),
+                           last_backup=backups.latest() if current_user.is_admin else None)
 
 
 @user_blueprint.route('/import_goodreads/plan', methods=['POST'])
@@ -686,9 +687,17 @@ def import_goodreads_choose():
 def import_goodreads_apply():
     """Import what the review shows: JSON {fingerprint}. Returns the result,
     one outcome per row of the file."""
-    from utils import goodreads_plan
+    from utils import goodreads_plan, backups
     body = request.get_json(silent=True) or {}
     conn = get_db()
+    # The whole site, as it is, before the import writes (utils/backups.py).
+    # No backup, no import: it's the way back if the undo isn't enough.
+    try:
+        backups.create('goodreads', current_user.username)
+    except backups.BackupError:
+        current_app.logger.exception('Backup before the Goodreads import failed')
+        return jsonify({'success': False, 'error': "Couldn't back up before importing, so nothing was "
+                        "imported. Try again; if it keeps failing, tell your admin."}), 500
     try:
         report = goodreads_plan.apply(conn, current_user, body.get('fingerprint'))
     except goodreads_plan.StalePlan as e:

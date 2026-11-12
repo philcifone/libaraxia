@@ -64,9 +64,21 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 - [x] 4. Apply and undo, headless (provenance, bulk journal).
 - [x] 5. Routes and the review page; old route removed.
 - [x] 6. Provenance in the UI: From Goodreads filter, book page note.
+- [x] 6b. Site backups before shipping (Phil, 2026-11-12): Admin → Backups (back up now; per backup restore, download the database, delete), "Back up first" on the import page, and an automatic backup before every import (no backup, no import). `utils/backups.py`. **Prod:** set `BACKUP_DIR` (e.g. `/var/lib/libaraxia/backups`, beside the uploads, outside the repo) before M2 is pushed.
+- [ ] 6c. "Not owned" becomes **"Unshelved"** in the UI (Phil, 2026-11-12): covers never-had and have-it-but-not-scanned-yet. Wording only (grid badge, Show filter, stats tile, bulk radio, `media.py` labels, book page and Book tools, Goodreads page); `books.owned` unchanged.
 - [ ] 7. Dry run on a prod copy (Phil), wrap-up. **Merge point M2.**
 
 ---
+
+### 14c Tweaks after 14b (Phil, 2026-11-12) 🟠
+Noted while testing 14b; after its wrap-up, before Phase 15.
+- [ ] **Goodreads shelves card** on the Collections tab: read-only lists built from `goodreads_rows.shelves` (kept by every import), labelled as from Goodreads, with "make this a collection" per shelf. No auto-created collections.
+- [ ] **Shelf style: cards.** The shelf look (bottom border, box) on each page's heading card, leaving its text and icon exactly as they are; the same box look on the covers on the detail pages (`[media]_details`). Maybe every card.
+- [ ] **Header icons** right of the light/dark toggle: mop-sparkles (Lucide) cycles the style, a palette cycles the accent, a "T" cycles the fonts.
+- [ ] **Rounded corners** on the crop tool and bulk edit in the shelf and original (house) styles.
+- [ ] **CSRF on stale pages** (Phil hit "bad/expired CSRF token" deleting a reading session on prod): Flask-WTF tokens expire after an hour (`WTF_CSRF_TIME_LIMIT` unset), and a token from before a re-login via remember-me no longer matches. Set `WTF_CSRF_TIME_LIMIT = None` (still bound to the session) and add a `CSRFError` handler that flashes "That page was out of date, try again" and goes back, instead of the bare 400.
+- [ ] **Undated reading sessions:** several sessions with no dates must stay possible (books read long ago). But `manage_session` saves a session with both dates empty on any Save, which is how This Is Water got a stray one (prod, 41 s after a dated one). Ask before saving one with no dates ("Add a reading session with no dates?"), don't refuse it.
+- [ ] **Add pages check your own library first:** the duplicate notice on Add Book / Movie / Album only appears after the online lookup answers, and the page points to Do I Have This? for checking the shelf. Run the local check (Do I Have This?'s, `utils/have.py`) as soon as a barcode or ISBN is scanned or typed, before going online, so cataloguing at home on the Add page is enough. Check it uses `book_matching`'s subtitle and author rules from 14b.
 
 ## Phase 15: Movies & TV, lending, cover crop
 

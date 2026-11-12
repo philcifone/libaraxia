@@ -26,8 +26,27 @@
         <ol class="numbered list-decimal list-inside space-y-2 text-content-secondary">
             <li><strong class="text-content-primary">Upload your export.</strong> Nothing is saved yet.</li>
             <li><strong class="text-content-primary">Review it.</strong> Every row is sorted into a few boxes, each saying what will happen. Change anything you like, a row at a time or a whole selection.</li>
-            <li><strong class="text-content-primary">Import.</strong> You can undo the whole import for 30 days (on the result, or in Profile, Recent bulk edits).</li>
+            <li><strong class="text-content-primary">Import.</strong> Libaraxia backs up the site first. You can undo the whole import for 30 days (on the result, or in Profile, Recent bulk edits).</li>
         </ol>
+    </section>
+
+    {# A backup first (utils/backups.py): admins can make and restore them #}
+    <section class="bg-secondary rounded-xl card p-6 space-y-3 border-l-4 border-accent">
+        <h2 class="text-2xl font-display text-content-primary">Back up first</h2>
+        {% if current_user.is_admin %}
+        <p class="text-content-secondary">An import can write hundreds of books at once. Back up the site before you import, so you can put everything back as it was if the result isn't what you wanted. Libaraxia also backs up by itself when you press Import.</p>
+        <p class="text-content-primary">{% if last_backup %}Last backup: {{ last_backup.created_at.strftime('%-d %b %Y, %H:%M') }} ({{ last_backup.kind_label|lower }}).{% else %}No backups yet.{% endif %}</p>
+        <div class="flex flex-wrap items-center gap-4">
+            <form method="POST" action="{{ url_for('admin.backup_create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="back" value="goodreads">
+                <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold">Back up now</button>
+            </form>
+            <a href="{{ url_for('admin.backups_page') }}" class="text-accent underline">All backups</a>
+        </div>
+        {% else %}
+        <p class="text-content-secondary">Libaraxia backs up the whole site when you press Import, and you can undo the import yourself for 30 days. If something goes badly wrong, your admin can restore that backup, which puts the whole site back as it was before the import.</p>
+        {% endif %}
     </section>
 
     <section class="bg-secondary rounded-xl card p-6 space-y-4">
