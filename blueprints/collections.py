@@ -1,10 +1,12 @@
+import json
 import sqlite3
 
-from flask import abort, current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify
+from flask import abort, current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify, session
 from utils.database import get_db
 from flask_login import login_required, current_user
 from models import can_view_book
-from utils import media, shelves, sorting
+from utils import bulk, goodreads, media, shelves, sorting
+from utils.rate_limiting import limiter
 
 collections_blueprint = Blueprint('collections', __name__, template_folder='templates')
 
@@ -46,12 +48,70 @@ def view_collections():
         JOIN collection_books cb ON cb.collection_id = uc.collection_id
         WHERE uc.user_id = ? GROUP BY uc.media_type''', (current_user.id,)).fetchall():
         counts[t] = counts.get(t, 0) + n
+    # Goodreads shelves card (14c): Books only, your own imports
+    gr_shelves = goodreads.custom_shelves(conn, current_user.id) if media_type == media.BOOK else []
+    taken = {s['label'] for s in custom}
+    for shelf in gr_shelves:
+        shelf['has_collection'] = shelf['name'] in taken
+        shelf['open_url'] = url_for('base.index', gr_shelf=shelf['name'], show='all')
     return render_template('collections.html',
+                           gr_shelves=gr_shelves,
                            media_type=media_type,
                            m=media.media_labels(media_type),
                            tabs=[(t, shelves.SECTION_NAMES[t], counts.get(t, 0)) for t in TABS],
                            status_shelves=shelves.status_shelves(conn, current_user.id, media_type),
                            custom_shelves=custom)
+
+def _per_user():
+    return f'user:{current_user.id}' if current_user.is_authenticated else request.remote_addr
+
+
+@collections_blueprint.route('/goodreads_shelf', methods=['POST'])
+@login_required
+@limiter.limit('60 per hour', key_func=_per_user)
+def goodreads_shelf():
+    """The Goodreads shelves card (ROADMAP 14c): put a custom Goodreads
+    shelf's books in a collection. mode=new makes one (named `name`, the
+    shelf's name by default), mode=add uses `collection_id`; books already
+    in it are skipped. Written through the bulk journal ('shelf_add'), so
+    the banner on the collection's page can undo it, and so can Profile's
+    Recent bulk edits."""
+    conn = get_db()
+    back = url_for('collections.view_collections', type=media.BOOK)
+    shelf = (request.form.get('shelf') or '').strip().lower()
+    ids = goodreads.shelf_book_ids(conn, current_user.id, shelf) if shelf else []
+    if not ids:
+        flash('No books from your Goodreads imports are on that shelf.', 'error')
+        return redirect(back)
+
+    if request.form.get('mode') == 'new':
+        params = {'media_type': media.BOOK, 'new_shelf': (request.form.get('name') or shelf).strip()}
+    else:
+        params = {'media_type': media.BOOK, 'shelf_id': request.form.get('collection_id', type=int)}
+    try:
+        plan = bulk.plan(conn, current_user, 'shelf_add', params, ids)
+        if not plan.changes:
+            flash(f'All {len(ids)} are already in {plan.params["shelf_name"]}.', 'info')
+            return redirect(url_for('collections.view_custom_collection', collection_id=plan.params['shelf_id']))
+        result = bulk.apply(conn, current_user, 'shelf_add', params, ids, plan.fingerprint)
+    except bulk.BulkError as e:
+        flash(str(e), 'error')
+        return redirect(back)
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Goodreads shelf to collection failed')
+        flash('Something went wrong. Nothing was changed.', 'error')
+        return redirect(back)
+
+    edit = conn.execute('SELECT params FROM bulk_edits WHERE id = ?', (result.edit_id,)).fetchone() \
+        if result.edit_id else None
+    if edit is None:
+        flash(result.summary, 'info')
+        return redirect(back)
+    session['bulk_result'] = {'edit_id': result.edit_id, 'summary': result.summary}
+    shelf_id = json.loads(edit['params'])['shelf_id']
+    return redirect(url_for('collections.view_custom_collection', collection_id=shelf_id))
+
 
 @collections_blueprint.route('/collections/create', methods=['POST'])
 @login_required

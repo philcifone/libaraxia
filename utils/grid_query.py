@@ -32,13 +32,23 @@ VIEWS['book:search'] = (media.BOOK, 'search')     # Search pages too (step 7)
 
 def from_goodreads(args, viewer_id):
     """SQL fragment and params for ?from=goodreads (ROADMAP 14b): books an
-    import of the viewer's matched or wrote, not undone. Always the viewer's
+    import of the viewer's matched or wrote, not undone; ?gr_shelf= narrows
+    it to one Goodreads shelf (14c). Always the viewer's
     own provenance, never the shelf owner's, so a friend's grid can't show
     what their import touched."""
-    if args.get('from') != 'goodreads' or viewer_id is None:
+    shelf = (args.get('gr_shelf') or '').strip().lower()
+    if (args.get('from') != 'goodreads' and not shelf) or viewer_id is None:
         return '', []
-    return (' AND EXISTS (SELECT 1 FROM goodreads_rows gr JOIN goodreads_imports gi ON gi.id = gr.import_id'
-            ' WHERE gr.book_id = b.id AND gi.user_id = ? AND gi.undone_at IS NULL)'), [viewer_id]
+    sql = (' AND EXISTS (SELECT 1 FROM goodreads_rows gr JOIN goodreads_imports gi ON gi.id = gr.import_id'
+           ' WHERE gr.book_id = b.id AND gi.user_id = ? AND gi.undone_at IS NULL')
+    params = [viewer_id]
+    if shelf:
+        # ?gr_shelf=audiobook (14c, the Collections page's Goodreads shelves
+        # card): one shelf of the row's comma-joined list. instr, not LIKE,
+        # so a "_" in a shelf name is not a wildcard.
+        sql += " AND instr(',' || gr.shelves || ',', ',' || ? || ',') > 0"
+        params.append(shelf)
+    return sql + ')', params
 
 
 def books_query(owner_ids, args, data_user, viewer_id=None):

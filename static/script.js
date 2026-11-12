@@ -60,8 +60,8 @@ function toggleFilters(open) {
 // The filter-panel fields. Clearing removes only these, so the search term,
 // shared-library member and sort survive.
 // show_removed: the old name of `show`, still in some bookmarks
-// from: From Goodreads (ROADMAP 14b), books only
-const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'from', 'page', 'csrf_token'];
+// from: From Goodreads (ROADMAP 14b), books only; gr_shelf: one Goodreads shelf (14c)
+const FILTER_PARAMS = ['genre', 'format', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'from', 'gr_shelf', 'page', 'csrf_token'];
 
 function clearFilters() {
     const params = new URLSearchParams(window.location.search);
@@ -89,6 +89,10 @@ function readFilterState() {
     });
     if (document.getElementById('from_goodreads')?.checked) {
         state.push({ key: 'from=goodreads', label: 'From', value: 'Goodreads' });
+    }
+    const grShelf = document.getElementById('gr_shelf');
+    if (grShelf?.checked) {
+        state.push({ key: `gr_shelf=${grShelf.value}`, label: 'Goodreads shelf', value: grShelf.value });
     }
     return state;
 }

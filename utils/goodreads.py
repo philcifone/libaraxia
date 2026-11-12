@@ -208,3 +208,49 @@ def add_sessions(conn, user_id, book_id, dates):
 def add_wishlist(conn, user_id, book_id, notes, added_at):
     conn.execute('INSERT INTO wishlist (user_id, book_id, notes, added_at) '
                  'VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))', (user_id, book_id, notes or None, added_at))
+
+
+# ------------------------------------------------------------------ custom shelves (ROADMAP 14c)
+
+def _status_shelf(name):
+    """A shelf that is already a status or the wishlist here: read,
+    currently-reading, to-read, and the did-not-finish names."""
+    return name in READ_SHELVES or name in WISHLIST_SHELVES or name in DNF_SHELVES
+
+
+def _shelf_rows(conn, user_id):
+    """(shelf, book_id) for every custom shelf of every row of the user's
+    imports that reached a book and wasn't undone. goodreads_rows.shelves
+    is the row's shelves, lowercased and comma-joined (parse_row); a
+    Goodreads shelf name can't hold a comma."""
+    rows = conn.execute("""
+        SELECT gr.shelves, gr.book_id FROM goodreads_rows gr
+        JOIN goodreads_imports gi ON gi.id = gr.import_id
+        JOIN books b ON b.id = gr.book_id
+        WHERE gi.user_id = ? AND gi.undone_at IS NULL
+          AND gr.shelves IS NOT NULL AND gr.shelves != ''
+          AND b.media_type = 'book'
+    """, (user_id,)).fetchall()
+    for row in rows:
+        for shelf in row['shelves'].split(','):
+            if shelf and not _status_shelf(shelf):
+                yield shelf, row['book_id']
+
+
+def custom_shelves(conn, user_id):
+    """The user's custom Goodreads shelves, for the Collections page's card:
+    [{'name', 'count'}], biggest first. Count is distinct books."""
+    books = {}
+    for shelf, book_id in _shelf_rows(conn, user_id):
+        books.setdefault(shelf, set()).add(book_id)
+    return sorted(({'name': name, 'count': len(ids)} for name, ids in books.items()),
+                  key=lambda s: (-s['count'], s['name']))
+
+
+def shelf_book_ids(conn, user_id, shelf):
+    """The ids of the books on one custom shelf, oldest import line first."""
+    ids = []
+    for name, book_id in _shelf_rows(conn, user_id):
+        if name == shelf and book_id not in ids:
+            ids.append(book_id)
+    return ids
