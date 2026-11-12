@@ -1743,8 +1743,17 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    the ledge inside the case. */
 :root[data-style="shelf"] :is(.page-heading, .cover-stand) {
     --frame: 8px;
-    --ledge-h: 12px;
     --case-run: 10px;               /* how far the outside faces go back */
+    /* The ledge as on the grid (follow-up, Phil 2026-11-12: "more depth"):
+       a top face seen from above, darker at the back, and a front edge with
+       a lit line along its top and a shaded one along its bottom. */
+    --ledge-top: 10px;
+    --ledge-front: 8px;
+    --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
+    /* The inside of the left panel, in view from above and to the right:
+       a strip half as wide as the top face is tall, with the top face
+       running back into it on the grid's 1:2 slant. */
+    --side-w: calc(var(--ledge-top) / 2);
     position: relative;
     margin-top: var(--case-run);    /* room for the top face; the side overhangs the gutter */
     border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
@@ -1752,23 +1761,48 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     border-radius: 0;
     background-color: rgb(var(--shelf-back));
     background-image:
-        var(--ledge-paint),
+        /* front edge: lit arris, then a shaded bottom pixel */
+        linear-gradient(to bottom, rgb(255 255 255 / .2) 0 1px, transparent 1px calc(100% - 1px),
+                        rgb(0 0 0 / .2) calc(100% - 1px)),
+        /* top face: darker at the back */
+        linear-gradient(to bottom, rgb(0 0 0 / .16), transparent),
+        /* left panel: the top face's wedge, then the strip above it */
+        conic-gradient(from 26.57deg at 0 calc(100% - var(--ledge-front)),
+                       rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
+        linear-gradient(to bottom, rgb(var(--shelf-side)) 0 calc(100% - var(--ledge-front)), transparent 0),
+        /* the ledge's two faces */
+        linear-gradient(to bottom, rgb(var(--shelf-top)) 0 var(--ledge-top), rgb(var(--shelf-front)) var(--ledge-top)),
         /* the wall darkens toward the shelf, as in the grid */
         linear-gradient(to bottom, transparent calc(100% - var(--ledge-h) - 22px),
                         rgb(0 0 0 / .12) calc(100% - var(--ledge-h)));
-    background-size: 100% var(--ledge-h), 100% 100%;
-    background-position: bottom, 0 0;
+    background-size:
+        100% var(--ledge-front),
+        100% var(--ledge-top),
+        var(--side-w) 100%,
+        var(--side-w) 100%,
+        100% var(--ledge-h),
+        100% 100%;
+    background-position:
+        bottom,
+        0 calc(100% - var(--ledge-front)),
+        0 0,
+        0 0,
+        bottom,
+        0 0;
     background-repeat: no-repeat;
     box-shadow: inset 0 0 20px rgb(0 0 0 / .18), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
 :root[data-style="shelf"] .cover-stand {
     --frame: 10px;
-    --ledge-h: 14px;
     --case-run: 12px;
+    --ledge-top: 16px;
+    --ledge-front: 12px;
+    --sink: 9px;                    /* the box stands this far into the top face, as on the grid */
     /* room round the cover: its box's top and right faces (--box-depth)
        and a little wall on every side */
-    padding: calc(var(--box-depth) + 14px) calc(var(--box-depth) + 14px) var(--ledge-h) 14px;
+    padding: calc(var(--box-depth) + 14px) calc(var(--box-depth) + 14px)
+             calc(var(--ledge-h) - var(--sink)) calc(14px + var(--side-w));
 }
 /* The case's outside: top face (lit) and right face (in shade) */
 :root[data-style="shelf"] :is(.page-heading, .cover-stand)::before,
