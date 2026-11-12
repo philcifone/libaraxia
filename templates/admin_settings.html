@@ -22,131 +22,22 @@
                 <div class="text-sm font-medium text-content-secondary mb-2">Admin Users</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.admin_users }}</div>
             </div>
-            <div class="bg-secondary rounded- p-6 card">
+            <div class="bg-secondary rounded-lg p-6 card">
                 <div class="text-sm font-medium text-content-secondary mb-2">Total Books</div>
                 <div class="text-3xl font-bold text-content-primary">{{ stats.total_books }}</div>
             </div>
         </div>
 
-        <!-- Maintenance Section -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 card">
-            <h2 class="text-xl font-semibold text-content-primary mb-4">Maintenance</h2>
-
-            <!-- Backups (utils/backups.py) -->
-            <div class="mb-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
-                <div>
-                    <h3 class="text-content-primary font-medium mb-1">Backups</h3>
-                    <p class="text-sm text-content-secondary">Back up the whole site (database, covers and avatars), and restore, download or delete a backup</p>
-                </div>
-                <a href="{{ url_for('admin.backups_page') }}"
-                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
-                    Manage
-                </a>
+        {# Tabs (ROADMAP 14c): Users, Households, Maintenance; the tab in the URL
+           hash, all panels stacked without JS (common.js, initTabs) #}
+        <div data-tabs>
+            <div class="bg-secondary rounded-xl overflow-hidden card flex items-stretch mb-8" role="tablist" aria-label="Admin settings" hidden>
+                {% for key, label in [('users', 'Users'), ('households', 'Households'), ('maintenance', 'Maintenance')] %}
+                <button type="button" role="tab" id="tab-{{ key }}" aria-controls="{{ key }}" aria-selected="false" class="tab">{{ label }}</button>
+                {% endfor %}
             </div>
 
-            <!-- Orphaned Images -->
-            <div class="flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
-                <div>
-                    <h3 class="text-content-primary font-medium mb-1">Orphaned Images</h3>
-                    <p class="text-sm text-content-secondary">Find and cleanup image files that are no longer referenced in the database</p>
-                </div>
-                <a href="{{ url_for('admin.orphaned_images') }}"
-                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
-                    Manage
-                </a>
-            </div>
-
-            <!-- Covers: placeholder cleanup and bulk fetch -->
-            <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
-                <div>
-                    <h3 class="text-content-primary font-medium mb-1">Covers</h3>
-                    <p class="text-sm text-content-secondary">Clear downloaded "image not available" placeholders, and fetch covers for books that have none</p>
-                </div>
-                <a href="{{ url_for('admin.placeholder_covers') }}"
-                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
-                    Manage
-                </a>
-            </div>
-
-            <!-- Unowned Books -->
-            <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
-                <div>
-                    <h3 class="text-content-primary font-medium mb-1">Unowned Books{% if stats.unowned_books %} ({{ stats.unowned_books }}){% endif %}</h3>
-                    <p class="text-sm text-content-secondary">Books with no owner (e.g. after a user was deleted). They show in no library until reassigned.</p>
-                </div>
-                <a href="{{ url_for('admin.unowned_books') }}"
-                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
-                    Manage
-                </a>
-            </div>
-        </div>
-
-        <!-- Shared Library Groups -->
-        <div class="bg-secondary rounded-lg p-6 mb-8 card">
-            <h2 class="text-xl font-semibold text-content-primary mb-4">Shared Library Groups</h2>
-            <p class="text-sm text-content-secondary mb-6">
-                Users can add friends to their shared library via friend profiles. This panel shows all active library groups for monitoring and removal if needed.
-            </p>
-
-            {% if libraries %}
-                <!-- Existing Library Groups -->
-                <div class="space-y-4">
-                    {% for lib_id, members in libraries.items() %}
-                    <div class="bg-primary rounded-lg p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-medium text-content-primary">Shared Library #{{ lib_id }}</h3>
-                            <span class="text-sm text-content-secondary">{{ members|length }} member(s)</span>
-                        </div>
-                        <div class="space-y-2">
-                            {% for member in members %}
-                            <div class="flex items-center justify-between p-3 bg-secondary rounded-lg card">
-                                <div class="flex items-center gap-3">
-                                    {% if member.avatar_url|upload_exists %}
-                                        <img src="{{ url_for('static', filename=member.avatar_url) }}"
-                                             alt="{{ member.username }}"
-                                             class="h-10 w-10 rounded-full object-cover">
-                                    {% else %}
-                                        <div class="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold">
-                                            {{ member.username[0].upper() }}
-                                        </div>
-                                    {% endif %}
-                                    <div>
-                                        <div class="text-sm font-medium text-content-primary">{{ member.username }}</div>
-                                        <div class="text-xs text-content-secondary">
-                                            {% if member.added_by_username %}
-                                                Added by {{ member.added_by_username }}
-                                            {% else %}
-                                                Member
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                <form method="POST" action="{{ url_for('admin.remove_library_member') }}"
-                                      data-confirm="{{ ("Remove " ~ member.username ~ " from this shared library?") }}">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <input type="hidden" name="user_id" value="{{ member.user_id }}">
-                                    <button type="submit"
-                                            class="text-red-400 hover:text-red-300 text-sm px-3 py-1 border-red-400/50 rounded hover:bg-red-900/20 btn btn-outline">
-                                        Remove
-                                    </button>
-                                </form>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="bg-primary rounded-lg p-6 text-center">
-                    <svg class="w-12 h-12 mx-auto text-content-secondary mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                    </svg>
-                    <p class="text-content-secondary mb-2">No shared library groups yet</p>
-                    <p class="text-xs text-content-secondary">Users can create shared libraries by adding friends on their profile pages</p>
-                </div>
-            {% endif %}
-        </div>
-
+            <div role="tabpanel" id="users" aria-labelledby="tab-users">
         <!-- Create/Edit User Panel -->
         <div class="bg-secondary rounded-lg p-6 mb-8 card" id="user-form-panel">
             <div class="flex items-center justify-between mb-4">
@@ -377,6 +268,131 @@
             </div>
         </div>
 
+            </div>
+
+            <div role="tabpanel" id="households" aria-labelledby="tab-households">
+        <!-- Shared Library Groups -->
+        <div class="bg-secondary rounded-lg p-6 mb-8 card">
+            <h2 class="text-xl font-semibold text-content-primary mb-4">Shared Library Groups</h2>
+            <p class="text-sm text-content-secondary mb-6">
+                Users can add friends to their shared library via friend profiles. This panel shows all active library groups for monitoring and removal if needed.
+            </p>
+
+            {% if libraries %}
+                <!-- Existing Library Groups -->
+                <div class="space-y-4">
+                    {% for lib_id, members in libraries.items() %}
+                    <div class="bg-primary rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-medium text-content-primary">Shared Library #{{ lib_id }}</h3>
+                            <span class="text-sm text-content-secondary">{{ members|length }} member(s)</span>
+                        </div>
+                        <div class="space-y-2">
+                            {% for member in members %}
+                            <div class="flex items-center justify-between p-3 bg-secondary rounded-lg card">
+                                <div class="flex items-center gap-3">
+                                    {% if member.avatar_url|upload_exists %}
+                                        <img src="{{ url_for('static', filename=member.avatar_url) }}"
+                                             alt="{{ member.username }}"
+                                             class="h-10 w-10 rounded-full object-cover">
+                                    {% else %}
+                                        <div class="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold">
+                                            {{ member.username[0].upper() }}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <div class="text-sm font-medium text-content-primary">{{ member.username }}</div>
+                                        <div class="text-xs text-content-secondary">
+                                            {% if member.added_by_username %}
+                                                Added by {{ member.added_by_username }}
+                                            {% else %}
+                                                Member
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <form method="POST" action="{{ url_for('admin.remove_library_member') }}"
+                                      data-confirm="{{ ("Remove " ~ member.username ~ " from this shared library?") }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="user_id" value="{{ member.user_id }}">
+                                    <button type="submit"
+                                            class="text-red-400 hover:text-red-300 text-sm px-3 py-1 border-red-400/50 rounded hover:bg-red-900/20 btn btn-outline">
+                                        Remove
+                                    </button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-primary rounded-lg p-6 text-center">
+                    <svg class="w-12 h-12 mx-auto text-content-secondary mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <p class="text-content-secondary mb-2">No shared library groups yet</p>
+                    <p class="text-xs text-content-secondary">Users can create shared libraries by adding friends on their profile pages</p>
+                </div>
+            {% endif %}
+        </div>
+            </div>
+
+            <div role="tabpanel" id="maintenance" aria-labelledby="tab-maintenance">
+        <!-- Maintenance Section -->
+        <div class="bg-secondary rounded-lg p-6 mb-8 card">
+            <h2 class="text-xl font-semibold text-content-primary mb-4">Maintenance</h2>
+
+            <!-- Backups (utils/backups.py) -->
+            <div class="mb-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
+                <div>
+                    <h3 class="text-content-primary font-medium mb-1">Backups</h3>
+                    <p class="text-sm text-content-secondary">Back up the whole site (database, covers and avatars), and restore, download or delete a backup</p>
+                </div>
+                <a href="{{ url_for('admin.backups_page') }}"
+                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
+                    Manage
+                </a>
+            </div>
+
+            <!-- Orphaned Images -->
+            <div class="flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
+                <div>
+                    <h3 class="text-content-primary font-medium mb-1">Orphaned Images</h3>
+                    <p class="text-sm text-content-secondary">Find and cleanup image files that are no longer referenced in the database</p>
+                </div>
+                <a href="{{ url_for('admin.orphaned_images') }}"
+                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
+                    Manage
+                </a>
+            </div>
+
+            <!-- Covers: placeholder cleanup and bulk fetch -->
+            <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
+                <div>
+                    <h3 class="text-content-primary font-medium mb-1">Covers</h3>
+                    <p class="text-sm text-content-secondary">Clear downloaded "image not available" placeholders, and fetch covers for books that have none</p>
+                </div>
+                <a href="{{ url_for('admin.placeholder_covers') }}"
+                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
+                    Manage
+                </a>
+            </div>
+
+            <!-- Unowned Books -->
+            <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
+                <div>
+                    <h3 class="text-content-primary font-medium mb-1">Unowned Books{% if stats.unowned_books %} ({{ stats.unowned_books }}){% endif %}</h3>
+                    <p class="text-sm text-content-secondary">Books with no owner (e.g. after a user was deleted). They show in no library until reassigned.</p>
+                </div>
+                <a href="{{ url_for('admin.unowned_books') }}"
+                   class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
+                    Manage
+                </a>
+            </div>
+        </div>
+            </div>
+        </div>
     </div>
 {% endblock %}
 

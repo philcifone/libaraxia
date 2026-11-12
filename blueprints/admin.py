@@ -664,7 +664,7 @@ def add_library_member():
 
     if not user_id:
         flash("User ID is required", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('admin.settings', _anchor='households'))
 
     conn = get_db()
     try:
@@ -672,7 +672,7 @@ def add_library_member():
         user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('admin.settings', _anchor='households'))
 
         # Check if user is already in a library
         existing = conn.execute(
@@ -681,7 +681,7 @@ def add_library_member():
 
         if existing:
             flash(f"User '{user['username']}' is already in a library group", "warning")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('admin.settings', _anchor='households'))
 
         # If no library_id provided, create a new library, with this user as
         # its owner (every household has one; see utils/households.py)
@@ -710,7 +710,7 @@ def add_library_member():
         current_app.logger.error(f"Error adding library member: {str(e)}")
         flash("Error adding user to library", "error")
 
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('admin.settings', _anchor='households'))
 
 
 @admin_blueprint.route("/remove_library_member", methods=["POST"])
@@ -722,7 +722,7 @@ def remove_library_member():
 
     if not user_id:
         flash("User ID is required", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('admin.settings', _anchor='households'))
 
     conn = get_db()
     try:
@@ -733,7 +733,7 @@ def remove_library_member():
 
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('admin.settings', _anchor='households'))
 
         # Remove from library (hands ownership on / dissolves a household of one)
         if households.leave(conn, user_id):
@@ -749,7 +749,7 @@ def remove_library_member():
         current_app.logger.error(f"Error removing library member: {str(e)}")
         flash("Error removing user from library", "error")
 
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('admin.settings', _anchor='households'))
 
 
 

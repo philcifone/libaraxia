@@ -10,7 +10,7 @@
 
 {% block content %}
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 space-y-6">
-        {{ crumbs([('Admin Settings', url_for('admin.settings'))], 'Backups') }}
+        {{ crumbs([('Admin Settings', url_for('admin.settings', _anchor='maintenance'))], 'Backups') }}
 
         <div>
             <h1 class="text-3xl font-display text-content-primary mb-2">Backups</h1>

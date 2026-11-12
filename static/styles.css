@@ -596,6 +596,8 @@
 
     html {
         background-color: rgb(var(--paper));
+        /* An #anchor lands below the fixed top bar (h-16), not under it */
+        scroll-padding-top: 5rem;
     }
 
     body {
@@ -1021,8 +1023,15 @@
     .tab + .tab {
         border-left: 1px solid rgb(var(--rule));
     }
+    /* Page tabs (common.js initTabs, ROADMAP 14c): a hidden panel stays
+       hidden whatever display its classes give it */
+    [data-tabs] [role="tabpanel"][hidden],
+    [data-tabs] [role="tablist"][hidden] {
+        display: none !important;
+    }
     .tab-active,
-    .tab-button.active {
+    .tab-button.active,
+    [data-tabs] .tab[aria-selected="true"] {
         color: rgb(var(--accent-text));
         border-bottom-color: rgb(var(--accent));
         font-weight: 700;
@@ -1041,7 +1050,8 @@
     /* Classic keeps the original details: filled active tab, plain labels */
     [data-style="classic"] .tab + .tab { border-left: 0; }
     [data-style="classic"] .tab-active,
-    [data-style="classic"] .tab-button.active {
+    [data-style="classic"] .tab-button.active,
+    [data-style="classic"] [data-tabs] .tab[aria-selected="true"] {
         color: rgb(var(--ink));
         border-bottom: 3px solid rgb(var(--accent));
         background-color: rgb(var(--accent) / .1);
