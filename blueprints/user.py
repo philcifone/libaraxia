@@ -6,7 +6,7 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
-from utils import bulk, media, reviews, shelves
+from utils import bulk, media, reviews, shelves, personal_backups
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
@@ -156,6 +156,8 @@ def profile(username):
                          if is_own_profile else None),
         # Recent bulk edits (ROADMAP 14), yours only, with their Undo
         bulk_history=bulk.recent(conn, current_user) if is_own_profile else [],
+        library_backups=personal_backups.list_backups(current_user.id) if is_own_profile else [],
+        backups_max=personal_backups.MAX_MANUAL,
     )
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])
@@ -582,6 +584,76 @@ def delete_account_self():
     return redirect(url_for('auth.login'))
 
 
+# --- Personal library backups (utils/personal_backups.py) --------------------
+# Your own data only; the site backups are the admin's (blueprints/admin.py).
+
+def _backups_back():
+    """The Goodreads import page offers "Back up my library" too."""
+    if request.form.get('back') == 'goodreads':
+        return redirect(url_for('user.import_goodreads_page'))
+    return redirect(url_for('user.profile', username=current_user.username) + '#library-backups')
+
+
+@user_blueprint.route('/backups/create', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def personal_backup_create():
+    from utils import personal_backups
+    try:
+        made = personal_backups.create(get_db(), current_user.id, current_user.username)
+    except personal_backups.PersonalBackupError as e:
+        flash(str(e), 'error')
+        return _backups_back()
+    c = made['counts']
+    flash(f"Library backed up: {c['books']} items, {c['statuses']} statuses, {c['reviews']} reviews, "
+          f"{c['sessions']} sessions, {c['wishlist']} wishlist entries.", 'success')
+    return _backups_back()
+
+
+@user_blueprint.route('/backups/<name>/restore', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def personal_backup_restore(name):
+    from utils import personal_backups
+    try:
+        r = personal_backups.restore(get_db(), current_user.id, current_user.username, name)
+    except personal_backups.PersonalBackupError as e:
+        current_app.logger.exception(f'Personal restore {name} for {current_user.username} failed')
+        flash(str(e), 'error')
+        return _backups_back()
+    current_app.logger.warning(f"{current_user.username} restored their library from {name}")
+    when = r['restored']['created_at'].strftime('%-d %b %Y, %H:%M')
+    parts = [f"Your library is back to {when}."]
+    if r['books_removed']:
+        parts.append(f"{r['books_removed']} item(s) added since were removed.")
+    if r['books_back']:
+        parts.append(f"{r['books_back']} deleted item(s) came back.")
+    if r['kept']:
+        parts.append("Kept, because others have data on them: " + '; '.join(
+            f"{title} ({', '.join(users)})" for title, users in r['kept'][:5])
+            + (f" and {len(r['kept']) - 5} more" if len(r['kept']) > 5 else '') + '.')
+    if r['given_away']:
+        parts.append(f"{len(r['given_away'])} item(s) you've given to someone since stay with them.")
+    if r['skipped']:
+        parts.append(f"{r['skipped']} status(es), review(s) or session(s) couldn't come back: their book is gone.")
+    parts.append('What you had before is the newest backup in the list.')
+    flash(' '.join(parts), 'success')
+    return _backups_back()
+
+
+@user_blueprint.route('/backups/<name>/delete', methods=['POST'])
+@login_required
+def personal_backup_delete(name):
+    from utils import personal_backups
+    try:
+        personal_backups.delete(current_user.id, name)
+    except personal_backups.PersonalBackupError as e:
+        flash(str(e), 'error')
+        return _backups_back()
+    flash('Backup deleted.', 'success')
+    return _backups_back()
+
+
 # --- Goodreads import (ROADMAP 14b, utils/goodreads_plan.py) -----------------
 # Upload -> review (nothing written) -> choose per row -> apply -> result,
 # with undo through the bulk journal (POST /bulk/<id>/undo).
@@ -595,10 +667,10 @@ def _wants_json():
 def import_goodreads_page():
     """The upload page, with how the import works. Says so if an upload is
     still waiting for its review."""
-    from utils import goodreads_plan, backups
+    from utils import goodreads_plan, personal_backups
     return render_template('goodreads_import.html',
                            waiting=goodreads_plan.has_staging(get_db(), current_user),
-                           last_backup=backups.latest() if current_user.is_admin else None)
+                           last_backup=personal_backups.latest(current_user.id))
 
 
 @user_blueprint.route('/import_goodreads/plan', methods=['POST'])
@@ -687,17 +759,17 @@ def import_goodreads_choose():
 def import_goodreads_apply():
     """Import what the review shows: JSON {fingerprint}. Returns the result,
     one outcome per row of the file."""
-    from utils import goodreads_plan, backups
+    from utils import goodreads_plan, personal_backups
     body = request.get_json(silent=True) or {}
     conn = get_db()
-    # The whole site, as it is, before the import writes (utils/backups.py).
+    # Your library, as it is, before the import writes (utils/personal_backups.py).
     # No backup, no import: it's the way back if the undo isn't enough.
     try:
-        backups.create('goodreads', current_user.username)
-    except backups.BackupError:
+        personal_backups.create(conn, current_user.id, current_user.username, 'goodreads')
+    except personal_backups.PersonalBackupError:
         current_app.logger.exception('Backup before the Goodreads import failed')
-        return jsonify({'success': False, 'error': "Couldn't back up before importing, so nothing was "
-                        "imported. Try again; if it keeps failing, tell your admin."}), 500
+        return jsonify({'success': False, 'error': "Couldn't back up your library before importing, so "
+                        "nothing was imported. Try again; if it keeps failing, tell your admin."}), 500
     try:
         report = goodreads_plan.apply(conn, current_user, body.get('fingerprint'))
     except goodreads_plan.StalePlan as e:

@@ -19,9 +19,10 @@ file. It must not be inside static/, which is served to the browser.
 A backup is of the whole site, every user, so restoring one is an admin's
 call: everything anyone did after it is replaced. Before a restore the
 current state is backed up (kind "before_restore"), so a restore can be
-undone by restoring that one. The Goodreads import takes a backup of kind
-"goodreads" before it writes (blueprints/user.py). Automatic backups are
-pruned to the newest KEEP_AUTOMATIC; manual ones stay until deleted.
+undone by restoring that one. Automatic backups are pruned to the newest
+KEEP_AUTOMATIC; manual ones stay until deleted. Each user's own library
+backups, which the Goodreads import takes, are utils/personal_backups.py
+("goodreads" here is only for site backups made before that existed).
 
 A backup made before a migration is restored and then brought up to date
 with the same runner as `manage.py migrate`. One made by newer code (it has

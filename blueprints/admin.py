@@ -764,14 +764,6 @@ def backups_page():
                            keep=backups.KEEP_AUTOMATIC, where=backups.backup_dir())
 
 
-def _back_to():
-    """Where a backup form came from: the Goodreads import page offers
-    "Back up now" too, and should land back there."""
-    if request.form.get('back') == 'goodreads':
-        return url_for('user.import_goodreads_page')
-    return url_for('admin.backups_page')
-
-
 @admin_blueprint.route("/backups/create", methods=["POST"])
 @login_required
 @admin_required
@@ -782,11 +774,11 @@ def backup_create():
     except backups.BackupError as e:
         current_app.logger.exception('Backup failed')
         flash(str(e), 'error')
-        return redirect(_back_to())
+        return redirect(url_for('admin.backups_page'))
     current_app.logger.info(f"Admin {current_user.username} made backup {made['name']}")
     flash(f"Backed up: {made['counts']['books']} items, {made['counts']['users']} users, "
           f"{made['files']} cover and avatar files.", 'success')
-    return redirect(_back_to())
+    return redirect(url_for('admin.backups_page'))
 
 
 @admin_blueprint.route("/backups/<name>/restore", methods=["POST"])

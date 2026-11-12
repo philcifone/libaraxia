@@ -475,7 +475,7 @@ def test_export_marks_videos(app, db, people):
         text = library_csv(get_db(), people['alice'])
     lines = text.splitlines()
     assert lines[0].endswith('Type,Format,Barcode,Catalogue Number,Runtime (min)')
-    assert any(line.startswith('2,Jaws') and f'video,VHS,{EAN}' in line for line in lines)
+    assert any(line.startswith('Yours,2,Jaws') and f'video,VHS,{EAN}' in line for line in lines)
     assert any('Dune' in line and line.rstrip().endswith('book,,,,') for line in lines)
 
 

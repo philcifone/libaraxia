@@ -153,42 +153,10 @@ def test_admin_backs_up_restores_downloads_and_deletes(client, db, people, uploa
     assert name not in [b['name'] for b in backups.list_backups()]
 
 
-def test_back_up_now_from_the_goodreads_page(client, db, people):
-    login(client, 'alice')
-    page = client.get('/user/import_goodreads_page').get_data(as_text=True)
-    assert 'Back up first' in page and 'No backups yet' in page
-    r = client.post('/admin/backups/create', data={'back': 'goodreads'})
-    assert r.headers['Location'].endswith('/user/import_goodreads_page')
-    assert 'Last backup' in client.get('/user/import_goodreads_page').get_data(as_text=True)
-
-
-def test_goodreads_page_tells_non_admins_who_can_restore(client, db, people):
-    login(client, 'bob')
-    page = client.get('/user/import_goodreads_page').get_data(as_text=True)
-    assert 'your admin can restore' in page and 'Back up now' not in page
-
-
-def test_goodreads_import_backs_up_first(client, db, people, monkeypatch):
+def test_goodreads_import_takes_no_site_backup(client, db, people):
+    """The import backs up the user's own library (test_personal_backups.py),
+    not the whole site."""
     from test_goodreads import run, row
     from utils import backups
     run(client, 'bob', row('Dune'))
-    made = backups.latest()
-    assert made['kind'] == 'goodreads' and made['by'] == 'bob'
-    # The backup is from before the import wrote anything
-    copy = sqlite3.connect(os.path.join(backups.folder(made['name']), 'library.db'))
-    assert copy.execute("SELECT COUNT(*) FROM books WHERE title = 'Dune'").fetchone()[0] == 0
-    copy.close()
-
-
-def test_goodreads_import_refuses_without_a_backup(client, db, people, monkeypatch):
-    from test_goodreads import upload, fingerprint, csv_text, row
-    from utils import backups
-
-    def broken(*a, **kw):
-        raise backups.BackupError('disk full')
-    monkeypatch.setattr(backups, 'create', broken)
-    login(client, 'bob')
-    upload(client, csv_text(row('Dune')))
-    r = client.post('/user/import_goodreads/apply', json={'fingerprint': fingerprint(client)})
-    assert r.status_code == 500 and 'nothing was imported' in r.get_json()['error']
-    assert scalar(db, "SELECT COUNT(*) FROM books WHERE title = 'Dune'") == 0
+    assert backups.list_backups() == []
