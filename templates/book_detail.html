@@ -19,7 +19,7 @@
         {% endif %}
 
         <!-- Main Book Content Section -->
-        <div class="bg-secondary rounded-xl p-4 md:p-8 mb-8 card">
+        <div class="case-card bg-secondary rounded-xl p-4 md:p-8 mb-8 card">
             <!-- Book Header -->
             {# A format with an icon (utils/media.FORMAT_ICONS: VHS, DVD,
                audiobook, LP, CD, cassette): title on the left, the icon on
@@ -46,11 +46,13 @@
             <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
                 <!-- Book Cover Section -->
                 <div class="space-y-4">
-                    <div class="cover-stand w-72 md:w-full max-w-[300px] mx-auto">{# cover-stand: a ledge in the Shelf style #}
+                    {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
+                       like the grid's (.cover-box, display: contents elsewhere; 14c) #}
+                    <div class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="{{ m.type }}">
                         {% if book.cover_image_url|upload_exists %}
-                            <img src="{{ url_for('static', filename=book['cover_image_url']) }}"
+                            <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                                 alt="{{ book['title'] }} Cover"
-                                class="w-full rounded-lg shadow-lg">
+                                class="w-full rounded-lg shadow-lg"></span>
                         {% else %}
                             {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
@@ -261,7 +263,7 @@
         <!-- Household Reviews Section -->
         {% if household_reviews and not in_wishlist %}
         <div class="max-w-4xl mx-auto px-4 py-6">
-            <div class="bg-secondary rounded-lg p-4 md:p-6 card">
+            <div class="case-card bg-secondary rounded-lg p-4 md:p-6 card">
                 <h2 class="text-xl md:text-2xl font-display text-content-primary mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5 md:w-6 md:h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
@@ -314,7 +316,7 @@
         <!-- Reading Info Section (Hidden for wishlist books) -->
         {% if not in_wishlist %}
         <div class="max-w-4xl mx-auto px-4 py-8">
-            <div class="bg-secondary rounded-lg p-6 space-y-8 card">
+            <div class="case-card bg-secondary rounded-lg p-6 space-y-8 card">
                 <h2 class="text-2xl font-display text-content-primary text-center">
                     {{ current_user.username.capitalize() }}'s {{ m.info_heading }}
                 </h2>
@@ -404,9 +406,14 @@
 
                     <!-- Add/Edit Session Form (Hidden by default) -->
                     <div id="session-form-container" class="hidden bg-primary rounded-lg p-4 mb-4 border-2 border-accent">
-                        <form action="{{ url_for('read.manage_session', book_id=book.id) }}" method="POST">
+                        {# No dates is allowed (read long ago) but asked first (book_detail.js, 14c) #}
+                        <form action="{{ url_for('read.manage_session', book_id=book.id) }}" method="POST"
+                              data-submit="saveSession"
+                              data-undated-add="Add a {{ m.session|lower }} with no dates?"
+                              data-undated-edit="Save this {{ m.session|lower }} with no dates?">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="session_id" id="form_session_id" value=""/>
+                            <input type="hidden" name="undated" id="form_undated" value=""/>
 
                             <h4 class="font-medium text-content-primary mb-4" id="session-form-title"
                                 data-add-title="Add New {{ m.session }}" data-edit-title="Edit {{ m.session }}">Add New {{ m.session }}</h4>

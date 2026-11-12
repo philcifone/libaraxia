@@ -474,7 +474,7 @@ def test_import_is_undone_through_the_bulk_route_and_listed_on_the_profile(clien
     monkeypatch.setattr(goodreads_plan, 'delete_image_file', lambda path: None)
     report = run(client, 'alice', row('Undo Me'), row('Wanted', 'to-read'))
     assert report['summary'] == 'Goodreads import: 1 added as unshelved, 1 to your wishlist'
-    profile = client.get('/user/alice').get_data(as_text=True)
+    profile = client.get('/user/settings').get_data(as_text=True)
     assert report['summary'] in profile
     r = client.post(f"/bulk/{report['edit_id']}/undo", json={'banner': False})
     assert r.status_code == 200 and r.get_json()['restored'] == 2

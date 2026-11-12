@@ -44,7 +44,7 @@ if (searchInput && searchResults) {
                             } else {
                                 actionHtml = `<form method="POST" action="/friends/send_request/${userPath}" class="inline">
                                     <input type="hidden" name="csrf_token" value="${escapeHtml(getCSRFToken())}">
-                                    <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent text-sm btn">
+                                    <button type="submit" class="px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent text-sm btn rounded-lg">
                                         Add Friend
                                     </button>
                                 </form>`;

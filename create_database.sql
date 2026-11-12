@@ -29,6 +29,8 @@ CREATE TABLE users (
     accent TEXT NOT NULL DEFAULT 'green',   -- models.ACCENTS (migration 026)
     font TEXT NOT NULL DEFAULT 'theme'      -- models.FONTS (migration 028)
 );
+-- Unique ignoring case too: "Phil" and "phil" would look the same (migration 033)
+CREATE UNIQUE INDEX idx_users_username_nocase ON users(username COLLATE NOCASE);
 
 CREATE TABLE email_verification_tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -458,4 +460,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('028_font.sql'),
     ('029_reading_goals.sql'),
     ('031_bulk_edits.sql'),
-    ('032_goodreads_import.sql');
+    ('032_goodreads_import.sql'),
+    ('033_username_nocase.sql');

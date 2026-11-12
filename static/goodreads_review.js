@@ -102,7 +102,7 @@ function grRowMatches(row, filter) {
         actions.replaceChildren(...allowed.map(choice => {
             const b = document.createElement('button');
             b.type = 'button';
-            b.className = 'btn bg-accent hover:bg-accent-hover text-on-accent px-3 py-1.5 text-sm font-bold';
+            b.className = 'btn rounded-lg bg-accent hover:bg-accent-hover text-on-accent px-3 py-1.5 text-sm font-bold';
             b.textContent = labels[choice] || choice;
             b.dataset.click = 'grChooseSelected';
             b.dataset.choice = choice;
@@ -286,7 +286,7 @@ function grRowMatches(row, filter) {
         const undo = data.edit_id ? `
             <div class="flex flex-wrap items-center gap-3">
                 <button type="button" data-click="grUndo" data-edit-id="${Number(data.edit_id)}"
-                        class="btn btn-outline bg-primary hover:bg-primary-hover text-content-primary px-4 py-2">Undo this import</button>
+                        class="btn btn-outline rounded-lg bg-primary hover:bg-primary-hover text-content-primary px-4 py-2">Undo this import</button>
                 <p id="gr-undo-message" class="text-sm text-content-secondary">Undo is here and in Profile, Recent bulk edits, for 30 days.</p>
             </div>` : '';
         const covers = data.covers_missing ? `
@@ -294,7 +294,7 @@ function grRowMatches(row, filter) {
                 <p class="text-sm text-content-secondary mb-2">${plural(data.covers_missing, 'book')} of yours ha${data.covers_missing === 1 ? 's' : 've'} an ISBN but no cover.
                     Fetching runs in the background (a second or two per book); you can leave this page and follow it in the corner.</p>
                 <button type="button" data-click="grFetchCovers"
-                        class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2">Fetch covers for ${plural(data.covers_missing, 'book')}</button>
+                        class="btn rounded-lg bg-accent hover:bg-accent-hover text-on-accent px-4 py-2">Fetch covers for ${plural(data.covers_missing, 'book')}</button>
                 <p id="gr-cover-message" class="text-sm text-content-secondary mt-2"></p>
             </div>` : '';
 

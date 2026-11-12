@@ -7,7 +7,9 @@ These helpers only ever look at the user's own books and their household's
 library, in that order. Anything else means a new book record.
 
 Used by the Goodreads import (`utils/goodreads.py`) and the wishlist add
-routes (`blueprints/wishlist.py`).
+routes (`blueprints/wishlist.py`); `same_book` and `isbn_matches` are the
+same rules for the Add page's duplicate check (`book_utils.find_duplicates`,
+ROADMAP 14c).
 """
 import re
 
@@ -44,6 +46,60 @@ def _title_keys(title, author):
     """Normalised "title|author" keys, one per form of the author."""
     title = _title_part(title)
     return [f'{title}|{a}' for a in _author_keys(author)] if title else []
+
+
+def stored_title_forms(title, subtitle=None):
+    """The titles a stored book answers to: under the title alone and with
+    its subtitle (Goodreads puts the subtitle in the title, "Consider the
+    Lobster and Other Essays", "This Is Water: Some Thoughts, ...", the
+    lookups split it off), and before a colon, for a title stored with its
+    subtitle in it ("Invisible Monsters: A Novel")."""
+    titles = [title]
+    if subtitle:
+        titles.append(f"{title} {subtitle}")
+    if ':' in (title or ''):
+        titles.append(title.split(':', 1)[0])
+    return titles
+
+
+def wanted_title_forms(title):
+    """The titles to look for: the whole title (which also finds a book
+    stored as title + subtitle), then the part before a colon, for a book
+    stored without its subtitle."""
+    candidates = [title]
+    if ':' in (title or ''):
+        candidates.append(title.split(':', 1)[0])
+    return candidates
+
+
+def same_book(stored, title, author='', subtitle=''):
+    """Whether a stored book (a row with title, author, subtitle) is the one
+    described by title / author / subtitle, by the 14b rules above: subtitle
+    and colon forms, a trailing series ignored, Jr. and name order and
+    co-authors. With no author on either side the title alone decides (the
+    Add page's duplicate check, which asks before a typed author exists)."""
+    stored_titles = stored_title_forms(stored['title'], _get(stored, 'subtitle'))
+    wanted = wanted_title_forms(title)
+    if subtitle:
+        wanted.insert(1, f"{title} {subtitle}")
+    if not _author_keys(author) or not _author_keys(stored['author']):
+        have = {_title_part(t) for t in stored_titles} - {''}
+        return any(_title_part(t) in have for t in wanted)
+    have = {k for t in stored_titles for k in _title_keys(t, stored['author'])}
+    return any(k in have for t in wanted for k in _title_keys(t, author))
+
+
+def _get(row, key):
+    """row[key] for a dict or sqlite3.Row that may not have the column."""
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return None
+
+
+def isbn_matches(a, b):
+    """Two ISBNs name the same book in any of their 10/13 forms."""
+    return bool(set(_isbn_keys(a)) & set(_isbn_keys(b)))
 
 
 def _isbn_keys(*isbns):
@@ -100,17 +156,7 @@ class BookIndex:
         self.by_id[book['id']] = book
         rank = self._RANK[(book['whose'], book['removed_at'] is not None)]
         keys = [(self._by_isbn, k) for k in _isbn_keys(book['isbn'])]
-        # Under the title alone and with its subtitle: Goodreads puts the
-        # subtitle in the title ("Consider the Lobster and Other Essays",
-        # "This Is Water: Some Thoughts, ..."), the lookups split it off
-        # and before a colon, for a title stored with its subtitle in it
-        # ("Invisible Monsters: A Novel")
-        titles = [book['title']]
-        if book.get('subtitle'):
-            titles.append(f"{book['title']} {book['subtitle']}")
-        if ':' in (book['title'] or ''):
-            titles.append(book['title'].split(':', 1)[0])
-        for title in titles:
+        for title in stored_title_forms(book['title'], book.get('subtitle')):
             keys += [(self._by_title, k) for k in _title_keys(title, book['author'])]
         for table, key in keys:
             current = table.get(key)
@@ -120,12 +166,7 @@ class BookIndex:
     def match(self, isbns=(), title='', author=''):
         """ISBN first (any form of any ISBN given), then title + author."""
         hits = [self._by_isbn[k] for k in _isbn_keys(*isbns) if k in self._by_isbn]
-        # The whole title (which also finds a book stored as title + subtitle),
-        # then the part before a colon, for a book stored without its subtitle
-        candidates = [title]
-        if ':' in (title or ''):
-            candidates.append(title.split(':', 1)[0])
-        for candidate in candidates:
+        for candidate in wanted_title_forms(title):
             if hits:
                 break
             hits = [self._by_title[k] for k in _title_keys(candidate, author) if k in self._by_title]

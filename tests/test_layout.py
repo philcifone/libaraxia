@@ -2,6 +2,7 @@
 
 The visual checks (light/dark, House/Classic, 390px and desktop) are done in a
 headless browser; these tests pin the specific causes found that way."""
+import os
 import pathlib
 import re
 from html.parser import HTMLParser
@@ -178,7 +179,7 @@ def test_cards_and_filled_buttons_use_the_components():
 
 def test_sidebar_has_the_mode_shortcut(client, db, people):
     """7.1: Mode can be switched from the sidebar on any page, without a trip
-    to the profile. Same buttons and endpoint as Profile -> Appearance."""
+    to the profile. Same buttons and endpoint as Settings -> Account -> Appearance."""
     db.execute("UPDATE users SET color_mode = 'dark' WHERE id = ?", (people['bob'],))
     db.commit()
     login(client, 'bob')
@@ -290,7 +291,7 @@ def test_every_field_and_button_has_a_name(client, db, people):
     login(client, 'alice')
     pages = ['/base/index', '/books/add', f'/books/edit/{book}', f'/books/book/{book}', '/wishlist/view',
              '/user/alice', f'/read/rate_review/{book}', '/collections/collections', '/feed/activity',
-             '/friends/notifications_page', '/admin/settings', '/user/import_goodreads_page']
+             '/friends/notifications_page', '/user/settings', '/user/import_goodreads_page']
     problems = {}
     for url in pages:
         parser = _Names()
@@ -450,11 +451,11 @@ def test_search_row_sits_under_the_tabs(client, people):
 
 
 def test_accent_colour_is_saved_and_on_every_page(client, db, people):
-    """8B.5: Profile -> Appearance -> Accent. Saved per user, put on <html
+    """8B.5: Settings -> Account -> Appearance -> Accent. Saved per user, put on <html
     data-accent>, House style only (the picker hides under Classic)."""
     login(client, 'bob')
     assert 'data-accent="green"' in client.get('/base/index').get_data(as_text=True)
-    page = client.get('/user/bob').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-accent-picker' in page and page.count('data-kind="accent"') == 7
     r = client.post('/user/update_theme', json={'accent': 'blue'})
     assert r.status_code == 200 and r.get_json()['accent'] == 'blue'
@@ -483,7 +484,7 @@ def test_pages_share_the_heading_card(client, db, people):
     login(client, 'alice')                                      # admin
     for url, name in [('/feed/activity', 'Activity Feed'), ('/friends/notifications_page', 'Notifications'),
                       ('/wishlist/view', 'Wishlist'), ('/collections/collections', 'Collections'),
-                      ('/admin/settings', 'Admin Settings')]:
+                      ('/user/settings', 'Settings')]:
         page = client.get(url, follow_redirects=True).get_data(as_text=True)
         h1 = re.search(r'<h1 class="flex items-center justify-center gap-3[^"]*">(.*?)</h1>', page, re.S)
         assert h1 and '<svg' in h1.group(1) and name in h1.group(1), url
@@ -508,7 +509,7 @@ def test_style_names_and_classic_accents(client, db, people):
     """Styles show as Negative Earth / OG (keys unchanged), and Classic takes
     the accent too, through its own --acc-l shades."""
     login(client, 'alice')
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'Negative Earth' in page and '>OG<' in page.replace('\n', '').replace(' ', '')
     css = pathlib.Path('static/styles.css').read_text()
     assert '[data-accent-picker] { display: none; }' not in css
@@ -546,7 +547,7 @@ def test_outrun_style_is_dark_only_with_neon_accents(client, db, people):
     login(client, 'alice')
     r = client.post('/user/update_theme', json={'style': 'outrun'})
     assert r.status_code == 200
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-style="outrun"' in page
     assert page.count('data-mode-picker') == 2          # sidebar + Appearance
     assert 'data-outrun-note' in page and 'data-font-picker' in page
@@ -586,10 +587,10 @@ def test_shelf_style_bookcase(client, db, people):
 
 
 def test_font_choice_saved_and_on_the_page(client, db, people):
-    """Font (Profile -> Appearance): saved per user, on <html data-font>,
+    """Font (Settings -> Account -> Appearance): saved per user, on <html data-font>,
     each choice has a CSS block and self-hosted OFL files; unknown is refused."""
     login(client, 'alice')
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-font="theme"' in page and 'data-kind="font"' in page
     assert client.post('/user/update_theme', json={'font': 'comic-sans'}).status_code == 400
     assert client.post('/user/update_theme', json={'font': 'garamond'}).status_code == 200
@@ -821,15 +822,10 @@ def test_friends_page_and_notifications_under_the_welcome(client, db, people):
     page = client.get('/friends/').get_data(as_text=True)
     head = page[page.index('Welcome,'):page.index('<!-- Navigation -->')]
     assert 'aria-label="Notifications, 1 waiting"' in head
-    assert 'href="/admin/settings"' not in head          # carol isn't an admin
+    assert 'href="/user/settings"' in head               # the gear: Settings, for everyone (14c)
     nav = page[page.index('<!-- Navigation -->'):]
     nav = nav[:nav.index('</nav>')]
-    assert 'notifications' not in nav and 'Admin Settings' not in nav
-    # An admin gets the gear there instead of a nav entry
-    login(client, 'alice')
-    page = client.get('/friends/').get_data(as_text=True)
-    head = page[page.index('Welcome,'):page.index('<!-- Navigation -->')]
-    assert 'href="/admin/settings"' in head
+    assert 'notifications' not in nav and 'Settings' not in nav
 
 
 def test_shelf_coverless_titles_break_between_words():
@@ -879,7 +875,7 @@ def test_appearance_card_and_two_mode_buttons(client, db, people):
     Mode is Light | Dark plus a "Follow system" link (hidden by CSS while
     following). 'system' stays the stored default and a valid choice."""
     login(client, 'alice')
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     card = page[page.index('<details class="appearance-card'):]
     card = card[:card.index('</details>')]
     assert 'id="appearance-settings" data-theme-picker' in card
@@ -936,3 +932,66 @@ def test_dead_cover_links_get_the_placeholder_everywhere(client, db, people, sta
     cards = client.get('/base/index?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()['books']
     covers = {c['title']: c['cover_image_url'] for c in cards}
     assert covers == {'Gone Book': None, 'Here Book': 'uploads/here.jpg'}
+
+
+def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
+    """The Shelf style draws the item page's cover as a 3D box (14c): the
+    image sits in .cover-box and the stand says which kind of item it is."""
+    import os
+    from conftest import add_book, login
+    os.makedirs(static_root / 'uploads', exist_ok=True)
+    (static_root / 'uploads' / 'c.jpg').write_bytes(b'x')
+    book = add_book(db, people['alice'], cover='uploads/c.jpg')
+    login(client, 'alice')
+    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="book"' in html
+    assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
+
+
+def test_buttons_take_the_styles_corners():
+    """.btn has no radius of its own: every button gets a rounded-* utility
+    (radius tokens: rounded in OG and Shelf, square in Negative Earth and
+    Outrun), and the crop tool and bulk edit use the tokens (ROADMAP 14c)."""
+    import glob, re
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pat = re.compile(r'class(?:Name)?\s*=\s*["\']([^"\']*)["\']')
+    missing = []
+    for path in glob.glob(f'{root}/templates/**/*.html', recursive=True) + glob.glob(f'{root}/static/*.js'):
+        for n, line in enumerate(open(path, encoding='utf-8'), 1):
+            for classes in pat.findall(line):
+                words = classes.split()
+                if 'btn' in words and not any(w.startswith('rounded') for w in words) and '{{' not in classes:
+                    missing.append(f'{os.path.relpath(path, root)}:{n}')
+    assert missing == []
+    css = open(f'{root}/static/styles.css', encoding='utf-8').read()
+    assert '.bulk-sheet { border-radius: var(--r-xl)' in css
+    assert '.crop-dialog .crop-stage, .crop-dialog .crop-panel { border-radius: var(--r-xl); }' in css
+
+
+def _css_selectors(text):
+    """Every rule's selectors in a stylesheet, whitespace-normalised."""
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
+    found, buf = set(), ''
+    for ch in text:
+        if ch == '{':
+            sel = ' '.join(buf.split())
+            if sel and not sel.startswith('@'):
+                found |= {' '.join(part.split()) for part in sel.split(',')}
+            buf = ''
+        elif ch in '};':
+            buf = ''
+        else:
+            buf += ch
+    return found
+
+
+def test_every_rule_in_styles_css_ships_in_output_css():
+    """Tailwind drops a component rule whose class it can't find in the
+    templates, and a class written as `no-cover-{{ size }}` can't be found:
+    the small placeholder's rule had silently never shipped (14c). Every
+    selector in styles.css must reach the committed output.css (safelist
+    the class in tailwind.config.js, or run npm run build:css)."""
+    src = _css_selectors((ROOT / 'static/styles.css').read_text())
+    out = _css_selectors((ROOT / 'static/css/output.css').read_text())
+    keyframe_steps = re.compile(r'^(from|to|[\d.]+%)$')
+    assert sorted(s for s in src - out if not keyframe_steps.match(s)) == []

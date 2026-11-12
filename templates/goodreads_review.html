@@ -22,12 +22,12 @@
 {% macro import_bar(where) -%}
 <div class="gr-import-bar flex flex-wrap items-center gap-3">
     <button type="button" data-click="grImport" data-gr-import
-            class="btn bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold">
+            class="btn rounded-lg bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold">
         Import {{ plan.will_write }}{% if plan.undecided %}, leave {{ plan.undecided }} undecided{% endif %}
     </button>
     <form method="POST" action="{{ url_for('user.import_goodreads_discard') }}" data-confirm="Discard this upload? Nothing has been imported from it.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline bg-primary hover:bg-primary-hover text-content-primary px-4 py-2">Start over</button>
+        <button type="submit" class="btn btn-outline rounded-lg bg-primary hover:bg-primary-hover text-content-primary px-4 py-2">Start over</button>
     </form>
     <a href="{{ url_for('user.import_goodreads_page') }}" class="bulk-link">Cancel</a>
     {% if where == 'top' %}<p class="text-sm text-content-secondary basis-full">Undecided rows are not imported; they come back here the next time you upload an export.</p>{% endif %}
@@ -43,7 +43,7 @@
      data-books-url="{{ url_for('base.index', **{'from': 'goodreads', 'show': 'all'}) }}"
      data-fingerprint="{{ plan.fingerprint }}"
      data-choice-labels="{{ choices|tojson|forceescape }}">
-    {{ crumbs([('Profile', url_for('user.profile', username=current_user.username)),
+    {{ crumbs([('Settings', url_for('user.settings', _anchor='library')),
                ('Goodreads Import', url_for('user.import_goodreads_page'))], 'Review', class='') }}
 
     {{ page_heading('library', 'Import from Goodreads', subtitle=plan.filename, class='') }}

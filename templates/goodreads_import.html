@@ -9,7 +9,7 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
-    {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Goodreads Import', class='') }}
+    {{ crumbs([('Settings', url_for('user.settings', _anchor='library'))], 'Goodreads Import', class='') }}
 
     {{ page_heading('library', 'Import from Goodreads', subtitle='Your reading history from a Goodreads CSV export', class='') }}
 
@@ -17,7 +17,7 @@
     <section class="bg-secondary rounded-xl card p-5 flex flex-wrap items-center gap-4">
         <p class="flex-1 min-w-0 text-content-primary">You have an import waiting for review. Nothing from it has been imported yet.</p>
         <a href="{{ url_for('user.import_goodreads_review') }}"
-           class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 font-bold">Back to the review</a>
+           class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 font-bold rounded-lg">Back to the review</a>
     </section>
     {% endif %}
 
@@ -39,9 +39,9 @@
             <form method="POST" action="{{ url_for('user.personal_backup_create') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="back" value="goodreads">
-                <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold">Back up my library</button>
+                <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold rounded-lg">Back up my library</button>
             </form>
-            <a href="{{ url_for('user.profile', username=current_user.username) }}#library-backups" class="text-accent underline">Your backups</a>
+            <a href="{{ url_for('user.settings', _anchor='library-backups') }}" class="text-accent underline">Your backups</a>
         </div>
     </section>
 
@@ -93,7 +93,7 @@
             <label class="flex flex-col gap-1 text-sm text-content-secondary">CSV file
                 <input type="file" name="goodreads_csv" accept=".csv" required class="bulk-field text-content-primary">
             </label>
-            <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 font-bold">Review import</button>
+            <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 font-bold rounded-lg">Review import</button>
         </form>
         <p id="goodreads-uploading" class="text-content-secondary" hidden aria-live="polite">Reading your file...</p>
         <p class="text-sm text-content-secondary">Up to 5000 rows. You can upload 10 times an hour and import 3 times an hour.{% if waiting %} A new upload replaces the one waiting for review.{% endif %}</p>

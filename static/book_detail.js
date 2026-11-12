@@ -30,6 +30,19 @@ registerActions({
 
     hideSessionForm: () => sessionForm().container.classList.add('hidden'),
 
+    // A session with no dates is allowed (books read long ago) but asked
+    // first, so a stray Save doesn't add an empty one (ROADMAP 14c). The
+    // server only saves an undated session with undated=1.
+    saveSession: async (form, event) => {
+        const f = sessionForm();
+        if (f.dateStarted.value || f.dateCompleted.value) return;   // submits as usual
+        event.preventDefault();
+        const message = f.sessionId.value ? form.dataset.undatedEdit : form.dataset.undatedAdd;
+        if (!await confirmDialog(message, { ok: 'Save without dates', danger: false })) return;
+        document.getElementById('form_undated').value = '1';
+        form.submit();
+    },
+
     // data-session-id, data-date-started, data-date-completed
     editSession: el => openSessionForm('edit', el.dataset.sessionId,
                                        el.dataset.dateStarted, el.dataset.dateCompleted),

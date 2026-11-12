@@ -220,6 +220,15 @@ def manage_session(book_id):
             return redirect(url_for('read.rate_review', book_id=book_id))
         return redirect(url_for('books.show_book', id=book_id))
 
+    # No dates at all is allowed (books read long ago), but only when the
+    # page asked and the user said yes (undated=1, ROADMAP 14c). Without it a
+    # stray Save of an empty form would add a blank session.
+    if not date_started_obj and not date_completed_obj and request.form.get('undated') != '1':
+        flash("No dates were entered, so nothing was saved.", 'info')
+        if redirect_to == 'rate_review':
+            return redirect(url_for('read.rate_review', book_id=book_id))
+        return redirect(url_for('books.show_book', id=book_id))
+
     # Update or insert reading session
     if session_id:
         # Update existing session

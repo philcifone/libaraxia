@@ -67,7 +67,8 @@ def add_book():
         on_shelf = [d for d in find_duplicates(conn, current_user.id,
                                                request.form.get("title", ""),
                                                request.form.get("author", ""),
-                                               request.form.get("isbn", ""))
+                                               request.form.get("isbn", ""),
+                                               request.form.get("subtitle", ""))
                     if d["in_library"]]
         if on_shelf and not request.form.get("confirm_duplicate"):
             flash("This looks like a book already on your household's shelf. "
@@ -294,7 +295,8 @@ def check_duplicates():
             get_db(), current_user.id,
             title=(data.get("title") or "").strip(),
             author=(data.get("author") or "").strip(),
-            isbn=(data.get("isbn") or "").strip())
+            isbn=(data.get("isbn") or "").strip(),
+            subtitle=(data.get("subtitle") or "").strip())
     except Exception:
         current_app.logger.exception("Error checking duplicates")
         return jsonify({"success": False, "error": "Couldn't check for duplicates."}), 500

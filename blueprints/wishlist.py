@@ -208,7 +208,8 @@ def check_duplicates():
             get_db(), current_user.id,
             title=(data.get("title") or "").strip(),
             author=(data.get("author") or "").strip(),
-            isbn=(data.get("isbn") or "").strip())
+            isbn=(data.get("isbn") or "").strip(),
+            subtitle=(data.get("subtitle") or "").strip())
     except Exception:
         current_app.logger.exception("Error checking duplicates")
         return jsonify({"success": False, "error": "Couldn't check for duplicates."}), 500

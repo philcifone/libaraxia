@@ -330,8 +330,9 @@ def test_vinyl_on_the_wishlist_then_onto_the_shelf(client, db, people):
     assert scalar(db, 'SELECT COUNT(*) FROM library_records WHERE id = ?', record) == 0   # wished
     page = client.get('/wishlist/view').get_data(as_text=True)
     assert 'Music' in page and 'Add to Music' in page and 'first pressing' in page
-    assert 'Blue' in client.get('/wishlist/view?show=music').get_data(as_text=True)
-    assert 'Blue' not in client.get('/wishlist/view?show=movies').get_data(as_text=True)
+    # The item's own link, not the word: "Blue" is also an accent in the sidebar
+    assert f'/records/{record}' in client.get('/wishlist/view?show=music').get_data(as_text=True)
+    assert f'/records/{record}' not in client.get('/wishlist/view?show=movies').get_data(as_text=True)
     r = client.post(f'/wishlist/move_to_library/{record}')
     assert r.headers['Location'].endswith(f'/records/{record}')
     assert scalar(db, 'SELECT status FROM collections WHERE book_id = ?', record) == 'want to listen'

@@ -184,6 +184,15 @@
                     From Goodreads
                     <span class="text-content-secondary">(combine with Show: Everything to include unshelved books)</span>
                 </label>
+                {# One Goodreads shelf (14c), from the Collections page's card: untick to drop it #}
+                {% if request.args.get('gr_shelf') %}
+                <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">
+                    <input type="checkbox" name="gr_shelf" value="{{ request.args.get('gr_shelf') }}" id="gr_shelf"
+                           data-change="filtersChanged" checked
+                           class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
+                    On the Goodreads shelf "{{ request.args.get('gr_shelf') }}"
+                </label>
+                {% endif %}
                 {% endif %}
 
                 <!-- Tags Section -->

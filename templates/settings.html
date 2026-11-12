@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import page_heading %}
+
+{% block title %}Settings{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% block content %}
+    {# Settings (ROADMAP 14c), the sidebar's gear, for everyone: Library and
+       Account moved off the profile, plus Admin (the old Admin Settings page,
+       unchanged, with its own Users / Households / Maintenance tabs) for
+       admins. The tab is in the URL hash (common.js, initTabs); a hash inside
+       a panel, like #library-backups or #maintenance, opens that panel. #}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+        {{ page_heading('settings', 'Settings', class='mb-8') }}
+
+        {% set tabs = [('library', 'Library'), ('account', 'Account')] %}
+        {% if current_user.is_admin %}{% set tabs = tabs + [('admin', 'Admin')] %}{% endif %}
+        <div data-tabs class="space-y-6">
+            <div class="bg-secondary rounded-xl overflow-hidden card flex items-stretch max-w-4xl mx-auto" role="tablist" aria-label="Settings" hidden>
+                {% for key, label in tabs %}
+                <button type="button" role="tab" id="tab-{{ key }}" aria-controls="{{ key }}" aria-selected="false" class="tab">{{ label }}</button>
+                {% endfor %}
+            </div>
+
+            <div role="tabpanel" id="library" aria-labelledby="tab-library" class="max-w-4xl mx-auto space-y-6">
+                {% include '_settings_library.html' %}
+            </div>
+
+            <div role="tabpanel" id="account" aria-labelledby="tab-account" class="max-w-4xl mx-auto space-y-6">
+                {% include '_settings_account.html' %}
+            </div>
+
+            {% if current_user.is_admin %}
+            <div role="tabpanel" id="admin" aria-labelledby="tab-admin">
+                {% include '_admin_settings.html' %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='user.js') }}"></script>
+{% if current_user.is_admin %}
+<script src="{{ url_for('static', filename='admin_settings.js') }}"></script>
+{% endif %}
+{% endblock %}

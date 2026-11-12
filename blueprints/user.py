@@ -10,7 +10,7 @@ from utils import bulk, media, reviews, shelves, personal_backups
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
-from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, is_valid_username, USERNAME_RULES, THEME_STYLES, THEME_MODES, ACCENTS, FONTS
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, username_error, THEME_STYLES, THEME_MODES, ACCENTS, FONTS
 from werkzeug.utils import secure_filename
 import bcrypt
 import os
@@ -152,13 +152,31 @@ def profile(username):
         in_shared_library=in_shared_library,
         household=household,
         recent_reviews=recent_reviews,
-        account_removal=(removal_context(conn, current_user.id, viewer_is_admin=False)
-                         if is_own_profile else None),
-        # Recent bulk edits (ROADMAP 14), yours only, with their Undo
-        bulk_history=bulk.recent(conn, current_user) if is_own_profile else [],
-        library_backups=personal_backups.list_backups(current_user.id) if is_own_profile else [],
-        backups_max=personal_backups.MAX_MANUAL,
     )
+
+@user_blueprint.route('/settings')
+@login_required
+def settings():
+    """Settings (ROADMAP 14c), the sidebar's gear, for everyone: Library
+    (export, Goodreads import, covers, bulk edits, backups) and Account
+    (sign-in, appearance, export / deactivate / delete), moved off the
+    profile; admins also get the Admin tab (the old Admin Settings)."""
+    conn = get_db()
+    me = dict(conn.execute('SELECT * FROM users WHERE id = ?', (current_user.id,)).fetchone())
+    admin = None
+    if current_user.is_admin:
+        from blueprints.admin import settings_context
+        admin = settings_context(conn)
+    return render_template(
+        'settings.html',
+        user=me,
+        account_removal=removal_context(conn, current_user.id, viewer_is_admin=False),
+        bulk_history=bulk.recent(conn, current_user),
+        library_backups=personal_backups.list_backups(current_user.id),
+        backups_max=personal_backups.MAX_MANUAL,
+        **(admin or {}),
+    )
+
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])
 @login_required
@@ -249,16 +267,11 @@ def update_username():
         if not new_username:
             return jsonify({'success': False, 'message': 'Username cannot be empty'}), 400
 
-        # Username validation
-        if not is_valid_username(new_username):
-            return jsonify({'success': False, 'message': USERNAME_RULES}), 400
-
+        # Rules, names the site's own pages use, and taken (ignoring case)
         conn = get_db()
-        # Check if username is already taken by another user
-        existing_user = conn.execute('SELECT id FROM users WHERE username = ? AND id != ?',
-                                    (new_username, current_user.id)).fetchone()
-        if existing_user:
-            return jsonify({'success': False, 'message': 'Username is already taken'}), 400
+        problem = username_error(conn, new_username, current_user.id)
+        if problem:
+            return jsonify({'success': False, 'message': problem}), 400
 
         # Update username
         conn.execute('UPDATE users SET username = ? WHERE id = ?', (new_username, current_user.id))
@@ -302,7 +315,9 @@ def update_bio():
 
 @user_blueprint.route('/update_theme', methods=['POST'])
 @login_required
-@limiter.limit("60 per hour")
+# The header's cyclers (14c) save on every click, so a few rounds through
+# the styles and fonts would have hit 60: it only writes the user's own row
+@limiter.limit("300 per hour")
 def update_theme():
     """Save the Appearance settings (style, light/dark mode, accent colour, font)."""
     data = request.get_json(silent=True) or {}
@@ -543,7 +558,7 @@ def delete_account_self():
     """Deactivate or delete your own account (see utils/accounts.py)."""
     conn = get_db()
     ctx = removal_context(conn, current_user.id, viewer_is_admin=False)
-    back = redirect(url_for('user.profile', username=current_user.username))
+    back = redirect(url_for('user.settings', _anchor='account'))
     if ctx['last_admin']:
         flash("You're the only admin. Make someone else an admin first.", "error")
         return back
@@ -591,7 +606,7 @@ def _backups_back():
     """The Goodreads import page offers "Back up my library" too."""
     if request.form.get('back') == 'goodreads':
         return redirect(url_for('user.import_goodreads_page'))
-    return redirect(url_for('user.profile', username=current_user.username) + '#library-backups')
+    return redirect(url_for('user.settings', _anchor='library-backups'))
 
 
 @user_blueprint.route('/backups/create', methods=['POST'])

@@ -8,6 +8,21 @@
     <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
         <!--Back Nav-->
         <!-- Profile Info -->
+        {# Profile tabs (ROADMAP 14c): Overview (who, collections, wishlist,
+           friends), Stats and Reviews, for you and your friends; the tab is in
+           the URL hash (common.js, initTabs) and every panel shows without JS.
+           Settings-like things (exports, backups, sign-in, appearance) are on
+           the Settings page (user.settings). A non-friend sees one card. #}
+        {% set tabbed = are_friends %}
+        {% if tabbed %}
+        <div data-tabs class="space-y-6">
+            <div class="bg-secondary rounded-xl overflow-hidden card flex items-stretch" role="tablist" aria-label="Profile" hidden>
+                {% for key, label in [('overview', 'Overview'), ('stats', 'Stats'), ('reviews', 'Reviews')] %}
+                <button type="button" role="tab" id="tab-{{ key }}" aria-controls="{{ key }}" aria-selected="false" class="tab">{{ label }}</button>
+                {% endfor %}
+            </div>
+            <div role="tabpanel" id="overview" aria-labelledby="tab-overview" class="space-y-6">
+        {% endif %}
         <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
             <!-- Header row: avatar | name, bio, friend/household actions -->
             <div class="flex items-start gap-4 sm:gap-6">
@@ -209,161 +224,7 @@
                 </p>
             </div>
             {% endif %}
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 pt-6 border-t border-rule">
-                {% if current_user.id == user['id'] %}
-                <!-- Email (Editable) -->
-                <div class="space-y-2">
-                    <p class="label text-sm pb-1">Email</p>
-                    <div class="flex items-center gap-2 group">
-                        <p id="email-display" class="text-content-primary">{{ user['email'] }}</p>
-                        <input type="email" id="email-input" aria-label="Email" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['email'] }}">
-                        <button id="email-edit-btn" class="text-content-secondary hover:text-accent transition-colors reveal" data-click="editField" data-field="email" title="Edit email">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
-                        </button>
-                        <button id="email-save-btn" class="hidden text-accent hover:text-accent-hover transition-colors" data-click="saveField" data-field="email" title="Save">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                        </button>
-                        <button id="email-cancel-btn" class="hidden text-red-500 hover:text-red-600 transition-colors" data-click="cancelEdit" data-field="email" title="Cancel">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <!-- Changing the email needs the current password (shown while editing) -->
-                    <input type="password" id="email-password-input" autocomplete="current-password"
-                           class="hidden w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                           placeholder="Current password" aria-label="Current password">
-                </div>
-
-                <!-- Username (Editable) -->
-                <div class="space-y-2">
-                    <p class="label text-sm pb-1">Username</p>
-                    <div class="flex items-center gap-2 group">
-                        <p id="username-display" class="text-content-primary">{{ user['username'] }}</p>
-                        <input type="text" id="username-input" aria-label="Username" class="hidden flex-1 px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent" value="{{ user['username'] }}">
-                        <button id="username-edit-btn" class="text-content-secondary hover:text-accent transition-colors reveal" data-click="editField" data-field="username" title="Edit username">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
-                        </button>
-                        <button id="username-save-btn" class="hidden text-accent hover:text-accent-hover transition-colors" data-click="saveField" data-field="username" title="Save">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                        </button>
-                        <button id="username-cancel-btn" class="hidden text-red-500 hover:text-red-600 transition-colors" data-click="cancelEdit" data-field="username" title="Cancel">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Password (Editable) -->
-                <div class="space-y-2">
-                    <p class="label text-sm pb-1">Password</p>
-                    <div class="flex items-center gap-2 group">
-                        <p id="password-display" class="text-content-primary">••••••••</p>
-                        <div id="password-inputs" class="hidden flex-1 space-y-2">
-                            <input type="password" id="current-password-input" aria-label="Current password" placeholder="Current password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                            <input type="password" id="new-password-input" aria-label="New password" placeholder="New password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                            <input type="password" id="confirm-password-input" aria-label="Confirm new password" placeholder="Confirm new password" class="w-full px-3 py-1 bg-primary border border-accent rounded text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                        </div>
-                        <button id="password-edit-btn" class="text-content-secondary hover:text-accent transition-colors reveal" data-click="editPassword" title="Change password">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
-                        </button>
-                        <button id="password-save-btn" class="hidden text-accent hover:text-accent- transition-colors" data-click="savePassword" title="Save">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                        </button>
-                        <button id="password-cancel-btn" class="hidden text-red-500 hover:text-red-600 transition-colors" data-click="cancelPasswordEdit" title="Cancel">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Admin Status -->
-                <div class="space-y-2">
-                    <p class="label text-sm pb-1">Admin Status</p>
-                    <p class="text-content-primary">{{ 'Yes' if user['is_admin'] else 'No' }}</p>
-                </div>
-
-                {% endif %}
-            </div>
         </section>
-
-        {% if is_own_profile %}
-        <!-- Appearance (12.4): its own card, closed by default -->
-        <details class="appearance-card bg-secondary rounded-xl card">
-            <summary class="flex items-center justify-between gap-4 p-4 sm:p-6 cursor-pointer">
-                <h2 class="text-2xl font-display text-content-primary">Appearance</h2>
-                <span class="hidden sm:inline mr-auto text-sm text-content-secondary">Style, mode, font, accent</span>
-            </summary>
-            <div class="px-4 sm:px-6 pb-6 space-y-3" id="appearance-settings" data-theme-picker>
-                    <div class="flex flex-wrap gap-x-8 gap-y-3">
-                        {% for kind, label, options, current in [
-                            ('style', 'Style', theme_styles, theme_style),
-                            ('mode', 'Mode', mode_choices, theme_mode)
-                        ] %}
-                        <div class="flex items-center gap-3"{% if kind == 'mode' %} data-mode-picker{% endif %}>
-                            <span class="text-sm text-content-secondary w-12">{{ label }}</span>
-                            <div class="flex" role="group" aria-label="{{ label }}">
-                                {% for key, name in options.items() %}
-                                <button type="button"
-                                        class="theme-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
-                                        data-kind="{{ kind }}" data-value="{{ key }}"
-                                        aria-pressed="{{ 'true' if key == current else 'false' }}">
-                                    {{ name }}
-                                </button>
-                                {% endfor %}
-                            </div>
-                            {% if kind == 'mode' %}{% include '_follow_system.html' %}{% endif %}
-                        </div>
-                        {% endfor %}
-                        <p data-outrun-note class="text-sm text-content-secondary">Outrun is always dark and has its own fonts, so Mode and Font are hidden.</p>
-                        {# Font: each option in its own face (.font-opt in styles.css); Theme = the style's own #}
-                        <div class="flex items-center gap-3" data-font-picker>
-                            <span class="text-sm text-content-secondary w-12">Font</span>
-                            <div class="flex flex-wrap" role="group" aria-label="Font">
-                                {% for key, name in theme_fonts.items() %}
-                                <button type="button"
-                                        class="theme-opt font-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
-                                        data-kind="font" data-value="{{ key }}"
-                                        aria-pressed="{{ 'true' if key == theme_font else 'false' }}">
-                                    {{ name }}
-                                </button>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {# Accent (8B.5): both styles; Classic shows each swatch's dark shade (styles.css) #}
-                        <div class="flex items-center gap-3" data-accent-picker>
-                            <span class="text-sm text-content-secondary w-12">Accent</span>
-                            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Accent colour">
-                                {% for key, name in theme_accents.items() %}
-                                <button type="button" title="{{ name }}"
-                                        class="theme-opt accent-opt p-1 border border-rule-strong transition-colors"
-                                        data-kind="accent" data-value="{{ key }}"
-                                        aria-pressed="{{ 'true' if key == theme_accent else 'false' }}">
-                                    <span class="accent-swatch block w-5 h-5" data-swatch="{{ key }}" aria-hidden="true"></span>
-                                    <span class="sr-only">{{ name }}</span>
-                                </button>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-            </div>
-        </details>
-        {% endif %}
 
         <!-- Collections (8C): each section's statuses in use, rows that scroll sideways -->
         {% if profile_shelves %}
@@ -384,6 +245,21 @@
                 </div>
                 {% endfor %}
             </div>
+        </section>
+        {% endif %}
+
+        <!-- Wishlist Section -->
+        {# Wishlist (8D): a row per section, each linked to that tab of the wishlist #}
+        {% if wishlist_shelves %}
+        <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-display text-content-primary">
+                    {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
+                </h2>
+                <a href="{{ url_for('wishlist.view_wishlist') if is_own_profile else url_for('wishlist.view_user_wishlist', username=user['username']) }}"
+                   class="text-accent hover:text-accent-hover transition-colors text-sm">View all →</a>
+            </div>
+            {% with shelves=wishlist_shelves, shelf_cols='grid-cols-1' %}{% include '_shelf_rows.html' %}{% endwith %}
         </section>
         {% endif %}
 
@@ -430,21 +306,18 @@
         </section>
         {% endif %}
 
-        <!-- Wishlist Section -->
-        {# Wishlist (8D): a row per section, each linked to that tab of the wishlist #}
-        {% if wishlist_shelves %}
-        <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
-            <div class="flex items-center justify-between gap-4 mb-6">
-                <h2 class="text-2xl font-display text-content-primary">
-                    {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
-                </h2>
-                <a href="{{ url_for('wishlist.view_wishlist') if is_own_profile else url_for('wishlist.view_user_wishlist', username=user['username']) }}"
-                   class="text-accent hover:text-accent-hover transition-colors text-sm">View all →</a>
+        {% if tabbed %}
             </div>
-            {% with shelves=wishlist_shelves, shelf_cols='grid-cols-1', cover_h='h-28' %}{% include '_shelf_rows.html' %}{% endwith %}
+            <div role="tabpanel" id="stats" aria-labelledby="tab-stats" class="space-y-6">
+        <!-- Statistics (12.1): Overview | Insights, then Books | Movies | Music -->
+        {% include '_profile_stats.html' %}
+        {% if not type_stats %}
+        <section class="bg-secondary rounded-xl p-6 card text-center">
+            <p class="text-content-secondary italic">No stats yet.</p>
         </section>
         {% endif %}
-
+            </div>
+            <div role="tabpanel" id="reviews" aria-labelledby="tab-reviews" class="space-y-6">
         <!-- Recently Read/Reviewed Section -->
         {% if are_friends and recent_reviews %}
         <section class="bg-secondary rounded-xl p-6 card">
@@ -465,11 +338,11 @@
                         <!-- Book Cover -->
                         <a href="{{ url_for('books.show_book', id=review.book_id) }}" class="flex-shrink-0" aria-label="{{ review.title }}">
                             {% if review.cover_image_url|upload_exists %}
-                            <img src="{{ url_for('static', filename=review.cover_image_url) }}"
+                            <span class="cover-box"><img src="{{ url_for('static', filename=review.cover_image_url) }}"
                                  alt="{{ review.title }}"
-                                 class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" />
+                                 class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" /></span>
                             {% else %}
-                            {% with title=review.title, size='sm', box='w-20 h-28 rounded-md' %}{% include '_no_cover.html' %}{% endwith %}
+                            {% with title=review.title, size='sm', box='h-32 w-auto aspect-[2/3] rounded-md' %}{% include '_no_cover.html' %}{% endwith %}
                             {% endif %}
                         </a>
 
@@ -522,133 +395,14 @@
         </section>
 
         {% endif %}
-
-        <!-- Statistics (12.1): Overview | Insights, then Books | Movies | Music -->
-        {% include '_profile_stats.html' %}
-
-        <!-- Export/Import Buttons -->
-        {% if is_own_profile %}
-        <div class="flex justify-center gap-4 flex-wrap">
-            <a href="{{ url_for('user.export_library') }}"
-               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                </svg>
-                Export Library to CSV
-            </a>
-
-            <a href="{{ url_for('user.import_goodreads_page') }}"
-               class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                </svg>
-                Import from Goodreads
-            </a>
-
-            <!-- Background job (blueprints/covers.py); progress shows in the corner panel -->
-            <form method="POST" action="{{ url_for('covers.start') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <input type="hidden" name="scope" value="own"/>
-                <input type="hidden" name="next" value="{{ url_for('user.profile', username=current_user.username) }}"/>
-                <button type="submit"
-                        class="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">
-                    Fetch Missing Covers
-                </button>
-            </form>
-        </div>
-
-        {# Recent bulk edits (ROADMAP 14): the last 10 within 30 days, each with Undo #}
-        {% if bulk_history %}
-        <section id="bulk-edits" class="bg-secondary rounded-xl p-6 card">
-            <h2 class="text-2xl font-display text-content-primary mb-1">Recent bulk edits</h2>
-            <p class="text-sm text-content-secondary mb-4">Undo puts back what each edit changed, except items you've changed again since: those keep your later change. Kept for 30 days.</p>
-            <ul class="divide-y divide-rule">
-                {% for edit in bulk_history %}
-                <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
-                    <span class="flex-1 min-w-0">{{ edit.summary }}</span>
-                    <span class="text-sm text-content-secondary">{{ edit.ago }}</span>
-                    {% if edit.undone_at %}
-                    <span class="text-sm text-content-secondary">Undone</span>
-                    {% elif not edit.undoable %}
-                    {# Undo only puts back what still looks as the edit left it: nothing does #}
-                    <span class="text-sm text-content-secondary" title="Every item has changed since, so there is nothing to undo">Changed since</span>
-                    {% else %}
-                    <button type="button" data-click="bulkHistoryUndo" data-edit-id="{{ edit.id }}"
-                            class="btn btn-outline px-3 py-1 text-sm">Undo</button>
-                    {% endif %}
-                </li>
-                {% endfor %}
-            </ul>
+        {% if not recent_reviews %}
+        <section class="bg-secondary rounded-xl p-6 card text-center">
+            <p class="text-content-secondary italic">No reviews yet.</p>
+            {% if is_own_profile %}<a href="{{ url_for('reviews.see_all', which='mine') }}" class="mt-2 inline-block text-accent hover:text-accent-hover text-sm">Your reviews →</a>{% endif %}
         </section>
         {% endif %}
-
-        {# Library backups (utils/personal_backups.py): your own data only #}
-        {% if is_own_profile %}
-        <section id="library-backups" class="bg-secondary rounded-xl p-6 card">
-            <h2 class="text-2xl font-display text-content-primary mb-1">Library backups</h2>
-            <p class="text-sm text-content-secondary mb-4 max-w-3xl">
-                A backup of your own library: the items you added and their covers, and your statuses, ratings, reviews,
-                reading sessions, wishlist, tags, collections and goals. Restoring one puts all of that back as it was and
-                never changes anyone else's data. Libaraxia also backs up before every Goodreads import.
-            </p>
-            <form method="POST" action="{{ url_for('user.personal_backup_create') }}" class="mb-4">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 rounded-lg">Back up my library</button>
-                <span class="text-sm text-content-secondary ml-2">Up to {{ backups_max }} of your own; delete one to make another.</span>
-            </form>
-            {% if library_backups %}
-            <ul class="divide-y divide-rule">
-                {% for b in library_backups %}
-                {% set when = b.created_at.strftime('%-d %b %Y, %H:%M') %}
-                <li class="flex flex-wrap items-center gap-x-4 gap-y-2 py-2">
-                    <div class="flex-1 min-w-[14rem]">
-                        <span class="text-content-primary">{{ when }}</span>
-                        <span class="block text-sm text-content-secondary">{{ b.kind_label }} · {{ b.counts.books }} items, {{ b.counts.reviews }} reviews, {{ b.counts.sessions }} sessions</span>
-                    </div>
-                    <form method="POST" action="{{ url_for('user.personal_backup_restore', name=b.name) }}"
-                          data-confirm="Put your library back to {{ when }}? Your items, statuses, ratings, reviews, sessions, wishlist, tags, collections and goals go back to how they were then. Items you added since are removed, except ones someone else has data on. Nobody else's data changes. This can't be undone.">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline px-3 py-1 text-sm">Restore</button>
-                    </form>
-                    <form method="POST" action="{{ url_for('user.personal_backup_delete', name=b.name) }}"
-                          data-confirm="Delete the backup from {{ when }}? It can't be brought back.">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn px-3 py-1 text-sm text-content-secondary hover:text-accent" aria-label="Delete the backup from {{ when }}">Delete</button>
-                    </form>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-sm text-content-secondary">No backups yet.</p>
-            {% endif %}
-        </section>
-        {% endif %}
-
-        <!-- Account: export everything, deactivate or delete -->
-        <section id="account" class="bg-secondary rounded-xl p-6 card">
-            <h2 class="text-2xl font-display text-content-primary mb-4">Account</h2>
-            <div class="flex flex-wrap gap-4 items-center justify-between">
-                <p class="text-sm text-content-secondary max-w-xl">
-                    Download everything of yours (books, movies and music; reviews, sessions, collections, wishlist) as CSV files,
-                    or deactivate or delete your account.
-                </p>
-                <div class="flex flex-wrap gap-3">
-                    <a href="{{ url_for('user.export_data') }}"
-                       class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-content-primary hover:bg-primary-hover btn btn-outline">
-                        Export My Data (ZIP)
-                    </a>
-                    <button type="button" data-click="showModal" data-target="account-removal-dialog"
-                            class="px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400">
-                        Deactivate or Delete Account…
-                    </button>
-                </div>
             </div>
-        </section>
-        <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 bg-secondary text-content-primary backdrop:bg-black/60 card">
-            {% with ctx=account_removal, is_self=True, action_url=url_for('user.delete_account_self'), export_url=url_for('user.export_data') %}
-            {% include '_account_removal.html' %}
-            {% endwith %}
-        </dialog>
+        </div>
         {% endif %}
     </div>
 {% endblock %}

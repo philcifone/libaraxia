@@ -26,9 +26,9 @@
             <!-- Book Cover -->
             <div class="w-full max-w-[300px] mx-auto">
                 {% if book.cover_image_url|upload_exists %}
-                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" 
+                    <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"
                          alt="{{ m.Noun }} cover"
-                         class="w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]">
+                         class="w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]"></span>
                 {% else %}
                     {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                 {% endif %}
@@ -90,6 +90,8 @@
                                 <div class="flex gap-2 pt-2 justify-center">
                                     <button type="button"
                                             data-click="saveInlineSession" data-book-id="{{ book.id }}"
+                                            data-undated-add="Add a {{ m.session|lower }} with no dates?"
+                                            data-undated-edit="Save this {{ m.session|lower }} with no dates?"
                                             class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm btn">
                                         Save Session
                                     </button>

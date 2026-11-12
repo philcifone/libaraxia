@@ -5,7 +5,7 @@ import sqlite3
 from utils.database import get_db
 from utils.email_utils import send_verification_email, verify_token, resend_verification_email
 from utils.rate_limiting import limiter
-from models import User, is_valid_username, USERNAME_RULES
+from models import User, username_error
 
 auth_blueprint = Blueprint('auth', __name__, template_folder='templates')
 
@@ -24,8 +24,9 @@ def register():
         email = request.form['email']
         password = request.form['password']
 
-        if not is_valid_username(username):
-            flash(USERNAME_RULES, 'danger')
+        problem = username_error(get_db(), username)
+        if problem:
+            flash(problem, 'danger')
             return render_template('register.html', first_run=False)
 
         # Validate password strength

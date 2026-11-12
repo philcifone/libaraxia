@@ -74,7 +74,7 @@ def test_profile_lists_recent_bulk_edits_with_undo(client, db, people, shelves):
     edit_id = client.post('/bulk/apply', json={'action': 'genre', 'params': {'genre': 'SF'}, 'ids': ids,
                                                'fingerprint': fp}).get_json()['edit_id']
     client.get('/base/index')                       # the banner takes the result out of the session
-    html = client.get('/user/alice').get_data(as_text=True)
+    html = client.get('/user/settings').get_data(as_text=True)
     assert 'Recent bulk edits' in html and 'Genre set to SF on 1 item' in html
     assert f'data-edit-id="{edit_id}"' in html and 'just now' in html
 
@@ -82,7 +82,7 @@ def test_profile_lists_recent_bulk_edits_with_undo(client, db, people, shelves):
     r = client.post(f'/bulk/{edit_id}/undo', json={'banner': False})
     assert r.status_code == 200 and r.get_json()['restored'] == 1
     assert 'data-bulk-banner' not in client.get('/base/index').get_data(as_text=True)
-    html = client.get('/user/alice').get_data(as_text=True)
+    html = client.get('/user/settings').get_data(as_text=True)
     assert f'data-edit-id="{edit_id}"' not in html and 'Undone' in html
 
 
@@ -92,7 +92,7 @@ def test_recent_bulk_edits_are_yours_alone(client, db, people, shelves):
     db.commit()
     login(client, 'carol')
     assert 'Alice did this' not in client.get('/user/alice').get_data(as_text=True)
-    assert 'Recent bulk edits' not in client.get('/user/carol').get_data(as_text=True)
+    assert 'Recent bulk edits' not in client.get('/user/settings').get_data(as_text=True)
 
 
 def test_ago():
@@ -115,11 +115,11 @@ def test_an_edit_with_nothing_left_to_undo_offers_no_undo(client, db, people, sh
                                                'fingerprint': fp}).get_json()['edit_id']
     conn_edit = db.execute('SELECT * FROM bulk_edits WHERE id = ?', (edit_id,)).fetchone()
     assert bulk.undoable(db, bulk_user(people['alice']), conn_edit) == 1
-    assert f'data-edit-id="{edit_id}"' in client.get('/user/alice').get_data(as_text=True)
+    assert f'data-edit-id="{edit_id}"' in client.get('/user/settings').get_data(as_text=True)
 
     db.execute("UPDATE books SET genre = 'Fantasy' WHERE id = ?", (book,))      # changed by hand since
     db.commit()
-    html = client.get('/user/alice').get_data(as_text=True)
+    html = client.get('/user/settings').get_data(as_text=True)
     assert f'data-edit-id="{edit_id}"' not in html and 'Changed since' in html
 
 

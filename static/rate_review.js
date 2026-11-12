@@ -40,7 +40,8 @@ registerActions({
                                                    el.dataset.dateStarted, el.dataset.dateCompleted),
 
     // data-book-id. Posted as its own form so the review form isn't submitted.
-    saveInlineSession: el => {
+    // No dates is allowed but asked first, as on the book page (ROADMAP 14c).
+    saveInlineSession: async el => {
         const dateStarted = document.getElementById('inline_date_started').value;
         const dateCompleted = document.getElementById('inline_date_completed').value;
         if (dateStarted && dateCompleted && new Date(dateStarted) > new Date(dateCompleted)) {
@@ -48,6 +49,11 @@ registerActions({
             return;
         }
         const fields = { date_started: dateStarted, date_completed: dateCompleted, redirect_to: 'rate_review' };
+        if (!dateStarted && !dateCompleted) {
+            const message = currentEditingSessionId ? el.dataset.undatedEdit : el.dataset.undatedAdd;
+            if (!await confirmDialog(message, { ok: 'Save without dates', danger: false })) return;
+            fields.undated = '1';
+        }
         if (currentEditingSessionId) fields.session_id = currentEditingSessionId;
         postForm('/read/manage_session/' + encodeURIComponent(el.dataset.bookId), fields);
     },

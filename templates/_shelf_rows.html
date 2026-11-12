@@ -10,11 +10,13 @@
                 A cover with `stars` set gets its `rating` as stars under it
                 (none: "No rating"), and `by` a name under that (Reviews,
                 ROADMAP 13). Those are a <figure> in the row, not a bare img.
-                `named`: a missing cover's placeholder shows the title.
+                A missing cover's placeholder is cover-shaped at the row's
+                height, with the title on it (14c follow-up).
    shelf_cols:  'grid-cols-1 md:grid-cols-2' (default) or 'grid-cols-1'
-   cover_h:     cover height class, default 'h-20'; widths follow the image,
+   cover_h:     cover height class, default 'h-28' (one size everywhere, 14c);
+                widths follow the image,
                 so an album is square and a VHS box tall #}
-{% set cover_h = cover_h or 'h-20' %}
+{% set cover_h = cover_h or 'h-28' %}
 <div class="grid {{ shelf_cols or 'grid-cols-1 md:grid-cols-2' }} gap-4">
     {% for shelf in shelves %}
     <div class="flex items-center gap-2 min-w-0 group">
@@ -37,10 +39,11 @@
                     {% set labelled = c.stars or c.by %}
                     {% if labelled %}<figure class="shelf-figure flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
                     {% if c.cover_image_url|upload_exists %}
-                    <img src="{{ url_for('static', filename=c.cover_image_url) }}" alt="{{ c.title }}"
-                         loading="lazy" class="{{ cover_h }} w-auto max-w-[8rem] rounded shadow-sm">
+                    <span class="cover-box shrink-0"><img src="{{ url_for('static', filename=c.cover_image_url) }}" alt="{{ c.title }}"
+                         loading="lazy" class="{{ cover_h }} w-auto max-w-[8rem] rounded shadow-sm"></span>
                     {% else %}
-                    {% with title=(c.title if c.named else none), size='sm', box='w-14 ' ~ cover_h ~ ' shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {# A cover's shape at the row's height (2:3), titled, whatever the row #}
+                    {% with title=c.title, size='sm', box=cover_h ~ ' w-auto aspect-[2/3] shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                     {% if labelled %}
                     <figcaption class="text-xs leading-tight text-center w-full">

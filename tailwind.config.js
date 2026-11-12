@@ -25,6 +25,10 @@ module.exports = {
     "./templates/**/*.{html,js}",
     "./static/**/*.js",
   ],
+  // Classes only ever written with a variable part (no-cover-{{ size }})
+  // are invisible to the content scan, so their component rules were
+  // dropped from output.css. tests/test_layout.py checks every rule ships.
+  safelist: ['no-cover-sm', 'no-cover-md', 'no-cover-lg'],
   theme: {
     borderRadius: radius,
     boxShadow: shadow,

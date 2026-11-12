@@ -596,6 +596,8 @@
 
     html {
         background-color: rgb(var(--paper));
+        /* An #anchor lands below the fixed top bar (h-16), not under it */
+        scroll-padding-top: 5rem;
     }
 
     body {
@@ -876,7 +878,11 @@
          lg  book page, review page: title and author
          md  grid cards: title and author
          sm  feed and profile thumbnails: title only
-       With no title (shelf-preview strips) it's just the binding. */
+       The type scales with the box (a size container: every caller gives it
+       a width, or a height and an aspect ratio), so a thumbnail and the
+       book page have the same proportions in every style, and words break
+       between words, hyphenated if one still won't fit, never mid-letter
+       (14c follow-up: Reviews' rows printed "Al / as / ka"). */
     .no-cover {
         display: flex;
         flex-direction: column;
@@ -885,7 +891,9 @@
         padding: 1rem .75rem 1rem 1.25rem;
         overflow: hidden;
         text-align: center;
-        overflow-wrap: anywhere;
+        container-type: inline-size;
+        overflow-wrap: break-word;
+        hyphens: auto;
         background: rgb(var(--surface));
         color: rgb(var(--ink));
         border: 1px solid rgb(var(--rule-strong));
@@ -894,7 +902,7 @@
     }
     .no-cover-title {
         @apply font-display;
-        font-size: 1rem;
+        font-size: clamp(.6rem, 10cqw, 1.5rem);
         line-height: 1.2;
         display: -webkit-box;
         -webkit-box-orient: vertical;
@@ -902,7 +910,7 @@
         overflow: hidden;
     }
     .no-cover-author {
-        font-size: .75rem;
+        font-size: clamp(.55rem, 7cqw, .9rem);
         color: rgb(var(--ink-2));
         display: -webkit-box;
         -webkit-box-orient: vertical;
@@ -912,10 +920,8 @@
     /* The wrapper round a grid cover's <img> (_book_grid.html): no box of
        its own, except in the Shelf style's bookcase (the 3D box). */
     .cover-box { display: contents; }
-    .no-cover-lg .no-cover-title { font-size: 1.5rem; }
-    .no-cover-lg .no-cover-author { font-size: .9rem; }
-    .no-cover-sm { padding: .5rem .35rem .5rem .6rem; border-left-width: 4px; }
-    .no-cover-sm .no-cover-title { font-size: .7rem; -webkit-line-clamp: 4; }
+    .no-cover-sm { padding: .4rem .2rem .4rem .4rem; border-left-width: 4px; }
+    .no-cover-sm .no-cover-title { font-size: clamp(.55rem, 14cqw, .8rem); -webkit-line-clamp: 4; }
 
     /* ---- Cover loading skeleton ----
        Grid covers (img.book-cover-img) shimmer until they load; common.js
@@ -1021,8 +1027,15 @@
     .tab + .tab {
         border-left: 1px solid rgb(var(--rule));
     }
+    /* Page tabs (common.js initTabs, ROADMAP 14c): a hidden panel stays
+       hidden whatever display its classes give it */
+    [data-tabs] [role="tabpanel"][hidden],
+    [data-tabs] [role="tablist"][hidden] {
+        display: none !important;
+    }
     .tab-active,
-    .tab-button.active {
+    .tab-button.active,
+    [data-tabs] .tab[aria-selected="true"] {
         color: rgb(var(--accent-text));
         border-bottom-color: rgb(var(--accent));
         font-weight: 700;
@@ -1041,7 +1054,8 @@
     /* Classic keeps the original details: filled active tab, plain labels */
     [data-style="classic"] .tab + .tab { border-left: 0; }
     [data-style="classic"] .tab-active,
-    [data-style="classic"] .tab-button.active {
+    [data-style="classic"] .tab-button.active,
+    [data-style="classic"] [data-tabs] .tab[aria-selected="true"] {
         color: rgb(var(--ink));
         border-bottom: 3px solid rgb(var(--accent));
         background-color: rgb(var(--accent) / .1);
@@ -1723,16 +1737,103 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     border-right: 6px solid rgb(var(--shelf-front));
 }
 
-/* Page titles sit on a ledge */
-:root[data-style="shelf"] .page-heading {
-    border-bottom: 0;
-    padding-bottom: calc(.75rem + 12px);
-    background-image: var(--ledge-paint);
-    background-size: 100% 12px;
-    background-position: bottom;
+/* ---- Shelf: small bookcases (ROADMAP 14c) ----
+   Each page's heading card, and the cards marked .case-card (feed,
+   notifications, the item page's details and reviews), are set in a small
+   bookcase like the grid's: a wooden frame round the back wall (no frame
+   along the bottom: the ledge is the bottom), a ledge across the bottom,
+   shade inside, and the case's outside top and right faces going back at
+   45 degrees in wood, as on the grid. The heading's text and icon are
+   untouched. */
+:root[data-style="shelf"] :is(.page-heading, .case-card) {
+    --frame: 8px;
+    --case-run: 10px;               /* how far the outside faces go back */
+    /* The ledge as on the grid (follow-up, Phil 2026-11-12: "more depth"):
+       a top face seen from above, darker at the back, and a front edge with
+       a lit line along its top and a shaded one along its bottom. */
+    --ledge-top: 10px;
+    --ledge-front: 8px;
+    --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
+    /* The inside of the left panel, in view from above and to the right:
+       a strip half as wide as the top face is tall, with the top face
+       running back into it on the grid's 1:2 slant. */
+    --side-w: calc(var(--ledge-top) / 2);
+    position: relative;
+    margin-top: var(--case-run);    /* room for the top face; the side overhangs the gutter */
+    border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
+    border-bottom-width: 0;
+    border-radius: 0;
+    background-color: rgb(var(--shelf-back));
+    background-image:
+        /* front edge: lit arris, then a shaded bottom pixel */
+        linear-gradient(to bottom, rgb(255 255 255 / .2) 0 1px, transparent 1px calc(100% - 1px),
+                        rgb(0 0 0 / .2) calc(100% - 1px)),
+        /* top face: darker at the back */
+        linear-gradient(to bottom, rgb(0 0 0 / .16), transparent),
+        /* left panel: the top face's wedge, then the strip above it */
+        conic-gradient(from 26.57deg at 0 calc(100% - var(--ledge-front)),
+                       rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
+        linear-gradient(to bottom, rgb(var(--shelf-side)) 0 calc(100% - var(--ledge-front)), transparent 0),
+        /* the ledge's two faces */
+        linear-gradient(to bottom, rgb(var(--shelf-top)) 0 var(--ledge-top), rgb(var(--shelf-front)) var(--ledge-top)),
+        /* the wall darkens toward the shelf, as in the grid */
+        linear-gradient(to bottom, transparent calc(100% - var(--ledge-h) - 22px),
+                        rgb(0 0 0 / .12) calc(100% - var(--ledge-h)));
+    background-size:
+        100% var(--ledge-front),
+        100% var(--ledge-top),
+        var(--side-w) 100%,
+        var(--side-w) 100%,
+        100% var(--ledge-h),
+        100% 100%;
+    background-position:
+        bottom,
+        0 calc(100% - var(--ledge-front)),
+        0 0,
+        0 0,
+        bottom,
+        0 0;
     background-repeat: no-repeat;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    box-shadow: inset 0 0 20px rgb(0 0 0 / .18), var(--sh-lg);
+}
+:root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
+/* Activity feed and notification cards, and the item page's details and
+   review cards (.case-card, 14c follow-up): each
+   card is a small bookcase too; the corner buttons and the like / comment
+   row stay inside it, above the ledge (pb-16 leaves room). Their covers
+   are boxes like every other (below). */
+:root[data-style="shelf"] .case-card {
+    --ledge-top: 12px;
+    --ledge-front: 10px;
+}
+/* In a stacked list (feed, notifications) the case rule's margin replaced
+   space-y-6's: put the gap back, plus room for the top face */
+:root[data-style="shelf"] .space-y-6 > .case-card + .case-card,
+:root[data-style="shelf"] .space-y-6 > * + .case-card { margin-top: calc(1.5rem + var(--case-run)); }
+/* Room for the ledge; the feed's cards already keep 4rem (pb-16) for the
+   like / comment row in their bottom corner */
+:root[data-style="shelf"] .case-card:not(.pb-16) { padding-bottom: calc(1.5rem + var(--ledge-h)); }
+/* The case's outside: top face (lit) and right face (in shade) */
+:root[data-style="shelf"] :is(.page-heading, .case-card)::before,
+:root[data-style="shelf"] :is(.page-heading, .case-card)::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    top: calc(-1 * (var(--frame) + var(--case-run)));
+}
+:root[data-style="shelf"] :is(.page-heading, .case-card)::before {    /* top */
+    left: calc(-1 * var(--frame));
+    width: calc(100% + 2 * var(--frame) + var(--case-run));
+    height: var(--case-run);
+    background: linear-gradient(to top, rgb(0 0 0 / .06), transparent), rgb(var(--case-top, var(--shelf-top)));
+    clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
+}
+:root[data-style="shelf"] :is(.page-heading, .case-card)::after {     /* right side */
+    left: calc(100% + var(--frame));
+    width: var(--case-run);
+    height: calc(100% + var(--frame) + var(--case-run));
+    background: rgb(var(--case-side, var(--shelf-side)));
+    clip-path: polygon(0 var(--case-run), 100% 0, 100% calc(100% - var(--case-run)), 0 100%);
 }
 
 /* Buttons: gently raised (a light top edge and a soft shadow), with a
@@ -1773,33 +1874,135 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     background-repeat: no-repeat;
     background-attachment: local;
 }
-:root[data-style="shelf"] .shelf-row > img,
-:root[data-style="shelf"] .shelf-row > .no-cover,
-:root[data-style="shelf"] .shelf-row > .shelf-figure > img,
-:root[data-style="shelf"] .shelf-row > .shelf-figure > .no-cover {
-    border-radius: var(--cover-r);
+/* ---- Shelf: every cover is a box (14c follow-up, Phil 2026-11-12:
+   "covers should have the box shape on this entire theme") ----
+   The grid's 3D box everywhere a cover is shown: the top of the pages and
+   the fore-edge (a case's edge for movies and music) going back at 45
+   degrees, meeting at the far corner. A picture is wrapped in .cover-box
+   (display: contents in the other styles); a coverless item's .no-cover is
+   the box itself, its spine an inset band so the faces start at the
+   spine's edge, as on the grid. The grid and the bookcases keep their own
+   depths and colours; this is the default for rows, cards and lists.
+   Pictures in form previews (add / edit) and admin pages aren't wrapped,
+   so they stay flat. */
+:root[data-style="shelf"] {
+    --box-depth: 5px;
+    --box-top: 226 224 218;
+    --box-side: 196 193 186;
+    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4);
+    --box-cast: 4px 0 4px rgb(0 0 0 / .2);
+}
+:root[data-style="shelf"][data-mode="dark"] {
+    --box-top: 178 174 166;
+    --box-side: 146 142 135;
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) {
+        --box-top: 178 174 166;
+        --box-side: 146 142 135;
+    }
+}
+:root[data-style="shelf"] .cover-box {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+}
+:root[data-style="shelf"] .cover-box > img {
+    display: block;
+    border-radius: 0 0 0 var(--cover-r);
     box-shadow: none;
-    filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35));
 }
-
-/* An item's page: the cover stands on its own short ledge */
-:root[data-style="shelf"] .cover-stand {
+:root[data-style="shelf"] :is(.cover-box, .no-cover) {
     position: relative;
-    padding-bottom: 14px;
+    border-radius: 0 0 0 var(--cover-r);
+    box-shadow: var(--box-contact);
 }
-:root[data-style="shelf"] .cover-stand::after {
+:root[data-style="shelf"] .no-cover {
+    border: 0;
+    overflow: visible;              /* the faces; title and author clamp themselves */
+    padding-left: calc(6px + .5rem);
+    box-shadow: inset 6px 0 0 rgb(var(--accent)), var(--box-contact);
+}
+:root[data-style="shelf"] .no-cover-sm {
+    padding-left: calc(4px + .25rem);
+    box-shadow: inset 4px 0 0 rgb(var(--accent)), var(--box-contact);
+}
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::before,
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::after {
     content: "";
     position: absolute;
-    left: -14px; right: -14px; bottom: 0;
-    height: 14px;
-    background-image: var(--ledge-paint);
-    box-shadow: 0 6px 10px -4px rgb(0 0 0 / .35);
+    pointer-events: none;
+    transform-origin: 0 100%;       /* bottom-left: the edge on the front */
 }
-:root[data-style="shelf"] .cover-stand > img,
-:root[data-style="shelf"] .cover-stand > .no-cover {
-    border-radius: var(--cover-r);
-    box-shadow: 4px 6px 12px rgb(0 0 0 / .3);
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::before {   /* right side */
+    top: 0;
+    left: 100%;
+    width: var(--box-depth);
+    height: 100%;
+    background: rgb(var(--box-side));
+    box-shadow: var(--box-cast);
+    transform: skewY(-45deg);
 }
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::after {    /* top */
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    height: var(--box-depth);
+    background: rgb(var(--box-top));
+    transform: skewX(-45deg);
+}
+/* Rows of thumbnails: room above for the top faces */
+:root[data-style="shelf"] .shelf-row { padding-top: var(--box-depth); padding-right: var(--box-depth); }
+
+/* The item page's cover: a deeper box, standing free in the details card
+(a bookcase of its own was tried and dropped, Phil 2026-11-12); room above
+and to the right for its faces */
+:root[data-style="shelf"] .cover-stand {
+    --box-depth: 9px;
+    padding: var(--box-depth) var(--box-depth) 0 0;
+}
+:root[data-style="shelf"] .cover-stand:is([data-media="video"], [data-media="record"]) {
+    --box-top: 218 219 222;
+    --box-side: 184 186 191;
+}
+:root[data-style="shelf"][data-mode="dark"] .cover-stand:is([data-media="video"], [data-media="record"]) {
+    --box-top: 168 170 175;
+    --box-side: 136 139 146;
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) .cover-stand:is([data-media="video"], [data-media="record"]) {
+        --box-top: 168 170 175;
+        --box-side: 136 139 146;
+    }
+}
+:root[data-style="shelf"] .cover-stand .cover-box > img { max-width: 100%; height: auto; }
+
+/* Feed and notifications covers: a little deeper than a row's */
+:root[data-style="shelf"] .case-card { --box-depth: 6px; }
+
+/* Wishlist cards: the cover shown whole, standing in the card's top as a
+   box, instead of cropped to fill it */
+:root[data-style="shelf"] .cover-slot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 19rem;
+    padding: calc(var(--box-depth) + 1rem) calc(var(--box-depth) + 1rem) .75rem 1rem;
+    --box-depth: 7px;
+}
+:root[data-style="shelf"] .cover-slot .cover-box > img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(19rem - 1.75rem - 7px);
+    object-fit: contain;
+}
+:root[data-style="shelf"] .cover-slot .no-cover {
+    width: auto;
+    height: 100%;
+    aspect-ratio: 2 / 3;
+}
+:root[data-style="shelf"] .cover-slot[data-media="record"] .no-cover { aspect-ratio: 1; }
 
 /* Covers on cards (wishlist) and in the feed: square corners like a book */
 :root[data-style="shelf"] .wishlist-item img { border-radius: 0; }
@@ -2053,6 +2256,8 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     transition: color .15s;
 }
 .sidebar-icon:hover, .sidebar-icon.is-active { color: rgb(var(--accent-text)); }
+/* The cycler row (14c follow-up): .flex would otherwise beat [hidden] */
+#sidebar-cyclers[hidden] { display: none; }
 .mode-icon-sun { display: none; }
 :root[data-mode="dark"] .mode-icon-sun { display: inline; }
 :root[data-mode="dark"] .mode-icon-moon { display: none; }
@@ -2598,3 +2803,21 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
     .gr-main, .gr-row:not(:has(.gr-cover)) .gr-main { grid-column: 2; }
     .gr-choice { grid-column: 2; width: 100%; min-width: 0; }
 }
+
+/* ---- Corners for the crop tool and bulk edit (ROADMAP 14c) ----
+   Both were drawn square in every style. They take the style's own radius
+   tokens, like the cards beside them: rounded in OG and Shelf, square in
+   Negative Earth and Outrun (whose tokens are 0). Edge-to-edge pieces (the
+   bulk bar, the sheet on a phone) stay square. */
+.crop-dialog .crop-stage, .crop-dialog .crop-panel { border-radius: var(--r-xl); }
+.crop-result, .crop-busy, .crop-thumb, .crop-loupe { border-radius: var(--r-md); }
+.crop-thumb img { border-radius: inherit; }
+.bulk-sheet { border-radius: var(--r-xl); overflow: hidden; }
+.bulk-menu { border-radius: var(--r-lg); overflow: hidden; }
+.bulk-field, .bulk-list, .bulk-drop { border-radius: var(--r-md); }
+.bulk-banner { border-radius: var(--r-xl); }
+@media (max-width: 639px) {
+    .bulk-sheet { border-radius: 0; }
+}
+/* Shelf: the magnifier stays a round glass */
+:root[data-style="shelf"] .crop-loupe { border-radius: 50%; }

@@ -202,6 +202,72 @@ function runAction(element, attribute, event) {
     action(element, event);
 }
 
+// --- Page tabs (ROADMAP 14c) ---------------------------------------------------
+// The ARIA tabs pattern for a page split into sections (Profile, Admin
+// Settings). Markup, all server-rendered:
+//
+//   <div data-tabs>
+//     <div role="tablist" aria-label="..." hidden>
+//       <button type="button" role="tab" id="tab-x" aria-controls="x" class="tab">X</button> ...
+//     </div>
+//     <div role="tabpanel" id="x" aria-labelledby="tab-x"> ... </div> ...
+//   </div>
+//
+// Without JS the tab bar stays hidden and every panel shows, stacked. The
+// open tab is the URL hash (#x); a hash naming something inside a panel
+// (#library-backups) opens that panel and scrolls to it, so old links still
+// land. Arrow keys, Home and End move between tabs (roving tabindex).
+function initTabs(root) {
+    const list = root.querySelector(':scope > [role="tablist"]');
+    if (!list) return;
+    const tabs = [...list.querySelectorAll('[role="tab"]')];
+    const panels = tabs.map(tab => document.getElementById(tab.getAttribute('aria-controls')));
+    if (!tabs.length || panels.includes(null)) return;
+
+    function select(index, { focus = false, remember = false } = {}) {
+        tabs.forEach((tab, i) => {
+            const on = i === index;
+            tab.setAttribute('aria-selected', String(on));
+            tab.tabIndex = on ? 0 : -1;
+            panels[i].hidden = !on;
+        });
+        if (focus) tabs[index].focus();
+        // replaceState: the hash changes without a jump or a history entry
+        if (remember) history.replaceState(null, '', '#' + panels[index].id);
+    }
+
+    // The panel the hash names, or holds; scrolls to an element inside one
+    function fromHash() {
+        const id = decodeURIComponent(window.location.hash.slice(1));
+        const target = id && document.getElementById(id);
+        const index = target ? panels.findIndex(panel => panel.contains(target)) : -1;
+        if (index < 0) return false;
+        select(index);
+        // The browser scrolled while every panel showed: go again, to the
+        // element, or to the tab bar for a panel
+        (target === panels[index] ? root : target).scrollIntoView({ block: 'start' });
+        return true;
+    }
+
+    list.hidden = false;
+    if (!fromHash()) select(0);
+    tabs.forEach((tab, i) => tab.addEventListener('click', () => select(i, { remember: true })));
+    list.addEventListener('keydown', event => {
+        const i = tabs.indexOf(document.activeElement);
+        if (i < 0) return;
+        const next = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i - 1 + tabs.length) % tabs.length,
+                       Home: 0, End: tabs.length - 1 }[event.key];
+        if (next === undefined) return;
+        event.preventDefault();
+        select(next, { focus: true, remember: true });
+    });
+    window.addEventListener('hashchange', fromHash);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-tabs]').forEach(initTabs);
+});
+
 // --- Styled confirm --------------------------------------------------------------
 // A replacement for window.confirm(): a native <dialog> (focus moves into it,
 // Esc cancels) styled as a card. Resolves true for OK, false otherwise.

@@ -27,11 +27,11 @@
                     <div class="group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link">
                         <a href="{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ target_username }}"
                            class="block flex-1">
-                            <div class="aspect-w-3 aspect-h-4 relative">
+                            <div class="cover-slot aspect-w-3 aspect-h-4 relative" data-media="{{ book.media_type }}">
                                 {% if book.cover_image_url|upload_exists %}
-                                <img src="{{ url_for('static', filename=book.cover_image_url) }}"
+                                <span class="cover-box"><img src="{{ url_for('static', filename=book.cover_image_url) }}"
                                      alt="{{ book.title }}"
-                                     class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200" />
+                                     class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200" /></span>
                                 {% else %}
                                 {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
                                 {% endif %}

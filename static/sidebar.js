@@ -98,3 +98,69 @@ document.addEventListener('click', event => {
     const effective = mode === 'system' ? (darkQuery.matches ? 'dark' : 'light') : mode;
     setAppearance('mode', effective === 'dark' ? 'light' : 'dark');
 });
+
+// ---- Header cyclers (ROADMAP 14c): style, accent, font -----------------------
+// Each button steps to the next choice after the one in effect and saves it
+// through setAppearance, the same as Settings -> Account -> Appearance. Its title names
+// what's on now, and a status line announces it to screen readers.
+function cycleLabel(button) {
+    const values = button.dataset.cycleValues.split(',');
+    const names = button.dataset.cycleNames.split(',');
+    const current = document.documentElement.dataset[button.dataset.cycle];
+    const now = names[values.indexOf(current)] || names[0];
+    const label = `${button.dataset.cycleWhat}: ${now}. Click for the next one`;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    return now;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-cycle]').forEach(cycleLabel);
+});
+
+document.addEventListener('click', async event => {
+    const button = event.target.closest('[data-cycle]');
+    if (!button) return;
+    const kind = button.dataset.cycle;
+    const values = button.dataset.cycleValues.split(',');
+    const current = document.documentElement.dataset[kind];
+    const next = values[(values.indexOf(current) + 1) % values.length];
+    await setAppearance(kind, next);
+    const now = cycleLabel(button);
+    let status = document.getElementById('cycle-status');
+    if (!status) {
+        status = document.createElement('p');
+        status.id = 'cycle-status';
+        status.className = 'sr-only';
+        status.setAttribute('aria-live', 'polite');
+        document.body.appendChild(status);
+    }
+    status.textContent = `${button.dataset.cycleWhat}: ${now}`;
+});
+
+// The cycler row is hidden until the sliders button (right of the mode
+// toggle) opens it. Open or closed is remembered per browser; storage can
+// be missing or blocked, and then the row just starts closed.
+const CYCLERS_KEY = 'sidebarCyclersOpen';
+
+function setCyclersOpen(toggle, open) {
+    const row = document.getElementById(toggle.getAttribute('aria-controls'));
+    if (!row) return;
+    row.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', `${open ? 'Hide' : 'Show'} quick appearance buttons`);
+    toggle.classList.toggle('is-active', open);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const toggle = document.querySelector('[data-cyclers-toggle]');
+    if (!toggle) return;
+    let open = false;
+    try { open = localStorage.getItem(CYCLERS_KEY) === '1'; } catch (e) { /* storage blocked */ }
+    setCyclersOpen(toggle, open);
+    toggle.addEventListener('click', () => {
+        const nowOpen = toggle.getAttribute('aria-expanded') !== 'true';
+        setCyclersOpen(toggle, nowOpen);
+        try { localStorage.setItem(CYCLERS_KEY, nowOpen ? '1' : '0'); } catch (e) { /* storage blocked */ }
+    });
+});

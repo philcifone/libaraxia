@@ -766,7 +766,7 @@ def is_narrowed(args):
     household member), so its count isn't "all your books". The search box
     only puts the count in its placeholder when it isn't; when it is, the line
     under the box counts the matches (both in _search_sort_filter.html)."""
-    keys = ('search_term', 'genre', 'format', 'read_status', 'rating', 'member', 'from')
+    keys = ('search_term', 'genre', 'format', 'read_status', 'rating', 'member', 'from', 'gr_shelf')
     return (any(args.get(k) for k in keys) or bool(args.getlist('tags[]'))
             or show_choice(args) != '')
 
@@ -958,42 +958,39 @@ def _normalise(text):
     return re.sub(r'^(the|a|an) ', '', text)
 
 
-def _isbn_digits(isbn):
-    return re.sub(r'[^0-9X]', '', (isbn or '').upper())
-
-
-def find_duplicates(conn, user_id, title, author='', isbn=''):
+def find_duplicates(conn, user_id, title, author='', isbn='', subtitle=''):
     """Books already on the household's shelf or the user's own wishlist
     that look like the one being added.
 
-    Matches on ISBN, or on title + author with case, accents, punctuation and
-    a leading "The/A/An" ignored, so different editions of the same book
-    (one with an ISBN, one without) are caught. A title match with no author
-    on either side still counts. Other people's books outside the household
-    are never searched.
+    Matches on ISBN (any 10/13 form), or on title + author by
+    book_matching's rules (14b, reused here in 14c): case, accents,
+    punctuation and a leading "The/A/An" ignored, the subtitle either split
+    off or in the title, a trailing series dropped, Jr. and name order and
+    co-authors. So different editions of the same book (one with an ISBN,
+    one without) are caught. A title match with no author on either side
+    still counts. Other people's books outside the household are never
+    searched.
     """
+    from utils.book_matching import isbn_matches, same_book
     members = get_library_members(user_id)
     placeholders = ','.join('?' for _ in members)
     candidates = conn.execute(f"""
         WITH shelf AS (SELECT id FROM library_books WHERE added_by IN ({placeholders})),
              wished AS (SELECT book_id AS id FROM wishlist WHERE user_id = ?)
-        SELECT b.id, b.title, b.author, b.isbn, b.removed_at, b.owned,
+        SELECT b.id, b.title, b.subtitle, b.author, b.isbn, b.removed_at, b.owned,
                b.id IN (SELECT id FROM shelf) AS in_library,
                b.id IN (SELECT id FROM wished) AS in_wishlist
         FROM books b
         WHERE b.id IN (SELECT id FROM shelf) OR b.id IN (SELECT id FROM wished)
     """, members + [user_id]).fetchall()
 
-    want_title, want_author, want_isbn = _normalise(title), _normalise(author), _isbn_digits(isbn)
     duplicates = []
     for book in candidates:
         reasons = []
-        if want_isbn and _isbn_digits(book['isbn']) == want_isbn:
+        if isbn and book['isbn'] and isbn_matches(isbn, book['isbn']):
             reasons.append('ISBN')
-        if want_title and _normalise(book['title']) == want_title:
-            have_author = _normalise(book['author'])
-            if not want_author or not have_author or have_author == want_author:
-                reasons.append('title')
+        if _normalise(title) and same_book(book, title, author, subtitle):
+            reasons.append('title')
         if reasons:
             duplicates.append({
                 'id': book['id'],

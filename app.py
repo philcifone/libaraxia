@@ -1,7 +1,7 @@
 from flask import Flask, redirect, request, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import LoginManager, current_user as _current_user
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_mail import Mail
 import os, logging
 from dotenv import load_dotenv
@@ -12,7 +12,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # Custom imports
 from utils.database import get_db, database_path, close_db
-from utils.errors import unauthorized
+from utils.errors import unauthorized, csrf_error
 from blueprints.auth import auth_blueprint
 from blueprints.base import base_blueprint
 from blueprints.books import books_blueprint
@@ -76,6 +76,12 @@ def create_app():
     # Configure CSRF to accept tokens from headers (for AJAX requests)
     app.config['WTF_CSRF_CHECK_DEFAULT'] = True
     app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
+    # Tokens live as long as the session instead of an hour, so a page left
+    # open (a book page, a reading session) still posts (ROADMAP 14c). They
+    # stay bound to the session, which is what stops cross-site posts.
+    app.config['WTF_CSRF_TIME_LIMIT'] = None
+    # A stale token flashes and goes back instead of a bare 400 (utils/errors.py)
+    app.register_error_handler(CSRFError, csrf_error)
 
     # Content-Security-Policy: scripts only from our own files (no inline
     # <script> or onclick=; page scripts are in static/ and markup uses the

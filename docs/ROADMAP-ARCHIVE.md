@@ -974,6 +974,30 @@ From Phil, 2026-11-08 (was Phase 9). Built 2026-11-11 to 2026-11-12 on branch `p
 
 ---
 
+## Phase 14c: Tweaks after 14b
+
+From Phil, 2026-11-12, while testing 14b. Built 2026-11-12 on branch `phase-14c-tweaks` in the main checkout, merged to main 2026-11-12. Grew a second round of follow-ups after the first pass (Settings for everyone, Shelf bookcases and boxed covers, username collisions).
+
+Noted while testing 14b; after its wrap-up, before Phase 15.
+- [x] **Goodreads shelves card** on the Collections tab (Books): one row per custom Goodreads shelf (not read / to-read / currently-reading, which are already statuses and the wishlist), built from `goodreads_rows.shelves` (kept by every import) for rows that reached a book, with its count and three actions: **Make a collection** (new collection named after the shelf, with its books), **Add to a collection** (pick an existing Books collection; books already in it are skipped), **Open in Books** (the grid filtered to that shelf, so bulk edit can do the rest, e.g. Format: Audiobook for an "audiobook" shelf). Both writes go through the bulk journal so they can be undone. Sorted by count, so the big shelves come first. Phil's prod export: audiobook 42, re-read 7, picture-book 3.
+- [x] **Shelf style: cards.** The shelf look (bottom border, box) on each page's heading card, leaving its text and icon exactly as they are; the same box look on the covers on the detail pages (`[media]_details`). Maybe every card.
+- [x] **Header icons** right of the light/dark toggle: mop-sparkles (Lucide) cycles the style, a palette cycles the accent, a "T" cycles the fonts.
+- [x] **Rounded corners** on the crop tool and bulk edit in the shelf and original (house) styles. While there, a quick pass over each style for buttons and cards that don't match their neighbours (rounding, borders); only a few are off.
+- [x] **CSRF on stale pages** (Phil hit "bad/expired CSRF token" deleting a reading session on prod): Flask-WTF tokens expire after an hour (`WTF_CSRF_TIME_LIMIT` unset), and a token from before a re-login via remember-me no longer matches. Set `WTF_CSRF_TIME_LIMIT = None` (still bound to the session) and add a `CSRFError` handler that flashes "That page was out of date, try again" and goes back, instead of the bare 400.
+- [x] **Undated reading sessions:** several sessions with no dates must stay possible (books read long ago). But `manage_session` saves a session with both dates empty on any Save, which is how This Is Water got a stray one (prod, 41 s after a dated one). Ask before saving one with no dates ("Add a reading session with no dates?"), don't refuse it.
+- [x] **Tabs instead of stacked cards** on the Profile and Admin Settings (Phil, 2026-11-12). Profile (own): e.g. Overview (bio, goal, stats), Reviews/activity, Library (exports, Goodreads import, library backups, recent bulk edits), Account (settings, appearance, delete). Admin: Users, Households, Maintenance (backups, covers, orphaned images, unowned books). The tab in the URL hash, so links that land on a section today (`#library-backups`, `#bulk-edits`, `#account`, `#book-tools`-style anchors) open the right tab; works without JS (all sections shown); keyboard and ARIA tabs pattern; same look in all four styles.
+- [x] **Add pages check your own library first:** the duplicate notice on Add Book / Movie / Album only appears after the online lookup answers, and the page points to Do I Have This? for checking the shelf. Run the local check (Do I Have This?'s, `utils/have.py`) as soon as a barcode or ISBN is scanned or typed, before going online, so cataloguing at home on the Add page is enough. Check it uses `book_matching`'s subtitle and author rules from 14b.
+
+**14c follow-ups (Phil, 2026-11-12, after the first pass):**
+- [x] **Shelf style, take two:** heading cards set in a small bookcase like the grid's (frame, back wall, ledge, the case's outside faces), not a box; the item page's cover keeps its box (its own bookcase was tried and dropped).
+- [x] **Settings for everyone:** the gear opens Settings for every user, with Library and Account (from the profile) and an Admin tab (the old Admin Settings, as-is) for admins only. The profile keeps profile things, with Stats as its own tab.
+- [x] **Cyclers in a row of their own:** style, accent and font below the first icons, shown and hidden by a toggle right of the light/dark toggle.
+- [x] **Shelf depth and boxes everywhere:** the small bookcases get the grid's ledge and inner panel; the item page's box stands on a deeper shelf with the spine on its own edge; every cover in the Shelf style is a box (rows, feed, wishlist, reviews, Do I Have This?); feed cards and notification sections are bookcases.
+- [x] **Placeholders:** titled everywhere (Collections showed a bare binding), cover-shaped at one row height (Reviews squeezed them into w-14), words never split mid-letter; the small size's CSS had never shipped (Tailwind dropped it).
+- [x] **Collisions:** usernames can't be a page's name or a case twin (migration 033); no page renders an element id twice.
+- [x] **Feed:** long reviews clamped with Read more (one made a card ~9,000px tall on a phone); notification sections as bookcases.
+- [x] **Item page cards as bookcases** (Phil, 2026-11-12: keep): the details, Household Reviews and your-info cards are `.case-card`; the cover is a free box.
+
 ## Done
 
 ### 2026-11-02: README + screenshots, roadmap

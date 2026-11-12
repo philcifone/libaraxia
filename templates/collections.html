@@ -53,5 +53,63 @@
                 <p class="text-content-secondary text-center italic">No {{ m.noun }} collections yet</p>
             {% endif %}
         </section>
+
+        {# Goodreads shelves (ROADMAP 14c): the custom shelves your Goodreads
+           imports carried (goodreads_rows.shelves), biggest first. Make or add
+           to a collection goes through the bulk journal, so the banner on the
+           collection's page can undo it; Open in Books filters the grid
+           (?gr_shelf=) for bulk edit to do the rest. #}
+        {% if gr_shelves %}
+        <section class="bg-secondary rounded-lg p-4 sm:p-8 mt-8 card" aria-labelledby="gr-shelves-heading">
+            <h2 id="gr-shelves-heading" class="text-2xl font-display text-content-primary mb-2">Goodreads Shelves</h2>
+            <p class="text-sm text-content-secondary mb-6">
+                Your own shelves from Goodreads (not read, currently-reading or to-read, which are already statuses and the wishlist).
+            </p>
+            <ul class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {% for shelf in gr_shelves %}
+                <li class="bg-primary p-4 rounded-lg space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-content-primary text-lg truncate">{{ shelf.name }}</span>
+                        <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm shrink-0"
+                              title="{{ shelf.count }} book{{ '' if shelf.count == 1 else 's' }}">{{ shelf.count }}</span>
+                    </div>
+                    {% if not shelf.has_collection %}
+                    <form action="{{ url_for('collections.goodreads_shelf') }}" method="POST" class="flex flex-wrap gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="shelf" value="{{ shelf.name }}"/>
+                        <input type="hidden" name="mode" value="new"/>
+                        <input type="text" name="name" value="{{ shelf.name }}" required maxlength="60"
+                               aria-label="Name for the new collection from {{ shelf.name }}"
+                               class="flex-1 min-w-[10rem] bg-secondary text-content-primary px-3 py-2 rounded-lg border border-rule-strong focus:border-accent outline-none">
+                        <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 rounded-lg btn">
+                            Make a collection
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if custom_shelves %}
+                    <form action="{{ url_for('collections.goodreads_shelf') }}" method="POST" class="flex flex-wrap gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="shelf" value="{{ shelf.name }}"/>
+                        <input type="hidden" name="mode" value="add"/>
+                        <select name="collection_id" required aria-label="Collection to add the {{ shelf.name }} books to"
+                                class="flex-1 min-w-[10rem] bg-secondary text-content-primary px-3 py-2 rounded-lg border border-rule-strong focus:border-accent outline-none">
+                            {% if not shelf.has_collection %}<option value="">Add to a collection...</option>{% endif %}
+                            {% for c in custom_shelves %}
+                            <option value="{{ c.id }}" {% if c.label == shelf.name %}selected{% endif %}>{{ c.label }} ({{ c.count }})</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="bg-primary hover:bg-primary-hover text-content-primary px-4 py-2 rounded-lg btn btn-outline">
+                            Add
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ shelf.open_url }}" class="inline-block text-sm underline text-content-secondary hover:text-accent">
+                        Open in Books (to bulk edit them)
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
     </main>
 {% endblock %}
