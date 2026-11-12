@@ -302,7 +302,9 @@ def update_bio():
 
 @user_blueprint.route('/update_theme', methods=['POST'])
 @login_required
-@limiter.limit("60 per hour")
+# The header's cyclers (14c) save on every click, so a few rounds through
+# the styles and fonts would have hit 60: it only writes the user's own row
+@limiter.limit("300 per hour")
 def update_theme():
     """Save the Appearance settings (style, light/dark mode, accent colour, font)."""
     data = request.get_json(silent=True) or {}

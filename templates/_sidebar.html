@@ -49,7 +49,7 @@
                full choice, with "Follow system", is at Profile -> Appearance. #}
             {% set waiting = notification_count() %}
             <h2 class="text-xl text-content-primary text-center">Welcome, {{ current_user.username.capitalize() }}!</h2>
-            <div class="sidebar-icons mt-1 flex items-center justify-center gap-3">
+            <div class="sidebar-icons mt-1 flex items-center justify-center">{# no gap: six 36px icons fit the 224px drawer (14c) #}
                 <a href="{{ url_for('friends.notifications_page') }}" title="Notifications"
                    aria-label="Notifications{% if waiting %}, {{ waiting }} waiting{% endif %}"
                    class="sidebar-icon relative shrink-0 {{ 'is-active' if request.endpoint == 'friends.notifications_page' }}">
@@ -68,6 +68,22 @@
                     <span class="mode-icon-moon">{{ icon('moon') }}</span>
                     <span class="mode-icon-sun">{{ icon('sun') }}</span>
                 </button>
+                {# Cyclers (14c): each click moves to the next style, accent or
+                   font and saves it, like Profile -> Appearance (sidebar.js).
+                   data-cycle-values / -names are the choices in order. The font
+                   one is hidden in Outrun, which has its own fonts. #}
+                {% for kind, icon_name, what, choices, extra in [
+                    ('style', 'mop-sparkles', 'Style', theme_styles, ''),
+                    ('accent', 'palette', 'Accent colour', theme_accents, ''),
+                    ('font', 'type', 'Font', theme_fonts, 'data-font-picker')] %}
+                <button type="button" class="sidebar-icon" data-cycle="{{ kind }}" {{ extra }}
+                        data-cycle-what="{{ what }}"
+                        data-cycle-values="{{ choices.keys()|join(',') }}"
+                        data-cycle-names="{{ choices.values()|join(',') }}"
+                        title="{{ what }}: next" aria-label="{{ what }}: switch to the next one">
+                    {{ icon(icon_name) }}
+                </button>
+                {% endfor %}
             </div>
         </div>
 
