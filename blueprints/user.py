@@ -582,51 +582,142 @@ def delete_account_self():
     return redirect(url_for('auth.login'))
 
 
+# --- Goodreads import (ROADMAP 14b, utils/goodreads_plan.py) -----------------
+# Upload -> review (nothing written) -> choose per row -> apply -> result,
+# with undo through the bulk journal (POST /bulk/<id>/undo).
+
+def _wants_json():
+    return request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+
 @user_blueprint.route('/import_goodreads_page')
 @login_required
 def import_goodreads_page():
-    """Display the Goodreads import page with instructions"""
-    return render_template('goodreads_import.html')
+    """The upload page, with how the import works. Says so if an upload is
+    still waiting for its review."""
+    from utils import goodreads_plan
+    return render_template('goodreads_import.html',
+                           waiting=goodreads_plan.has_staging(get_db(), current_user))
 
-@user_blueprint.route('/import_goodreads', methods=['POST'])
+
+@user_blueprint.route('/import_goodreads/plan', methods=['POST'])
 @login_required
-@limiter.limit("3 per hour")
-def import_goodreads():
-    """Import a Goodreads CSV export (logic in utils/goodreads.py).
+@limiter.limit("10 per hour")
+def import_goodreads_plan():
+    """Read an uploaded export into the review's staging. Writes nothing else."""
+    from utils import goodreads_plan
+    from utils.goodreads import decode_csv, ImportFileError
 
-    Returns the full report: an outcome for every row of the file, so the
-    result screen can account for all of them.
-    """
-    from utils.goodreads import decode_csv, import_goodreads as run_import, ImportFileError, OUTCOMES
+    def refuse(message, status=400):
+        if _wants_json():
+            return jsonify({'success': False, 'error': message}), status
+        flash(message, 'error')
+        return redirect(url_for('user.import_goodreads_page'))
 
     file = request.files.get('goodreads_csv')
     if not file or not file.filename:
-        return jsonify({'success': False, 'message': 'No file selected.'}), 400
+        return refuse('Choose your Goodreads export first.')
     if not file.filename.lower().endswith('.csv'):
-        return jsonify({'success': False, 'message': 'The file must be a .csv export.'}), 400
-
+        return refuse('The file must be a .csv export.')
     text, encoding = decode_csv(file.read())
     conn = get_db()
     try:
-        report = run_import(conn, current_user.id, text)
-        conn.commit()
+        count = goodreads_plan.stage(conn, current_user, text, secure_filename(file.filename) or 'export.csv')
     except ImportFileError as e:
         conn.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 400  # written for the user
+        return refuse(str(e))                   # written for the user
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Goodreads upload failed')
+        return refuse('That file could not be read. Check that it is a Goodreads CSV export.', 500)
+    current_app.logger.info(f'Goodreads upload by {current_user.username}: {count} rows ({encoding})')
+    if encoding != 'utf-8-sig' and encoding != 'utf-8':
+        flash(f"The file wasn't UTF-8; it was read as {encoding}. Check accented titles.", 'warning')
+    review = url_for('user.import_goodreads_review')
+    if _wants_json():
+        return jsonify({'success': True, 'url': review, 'rows': count, 'encoding': encoding})
+    return redirect(review)
+
+
+@user_blueprint.route('/import_goodreads/review')
+@login_required
+def import_goodreads_review():
+    """The review: every row of the upload in its box, with its choice."""
+    from utils import goodreads_plan
+    plan = goodreads_plan.plan(get_db(), current_user)
+    if plan is None:
+        flash('Upload your export first.', 'info')
+        return redirect(url_for('user.import_goodreads_page'))
+    return render_template('goodreads_review.html', plan=plan, boxes=goodreads_plan.BOXES,
+                           choices=goodreads_plan.CHOICES)
+
+
+def _plan_counts(plan):
+    """What the page updates after a choice: the Import button and the fingerprint."""
+    return {'fingerprint': plan.fingerprint, 'will_write': plan.will_write, 'undecided': plan.undecided}
+
+
+@user_blueprint.route('/import_goodreads/choose', methods=['POST'])
+@login_required
+def import_goodreads_choose():
+    """Save a choice for some rows: JSON {lines: [...], choice}."""
+    from utils import goodreads_plan
+    body = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        result = goodreads_plan.choose(conn, current_user, body.get('lines'), body.get('choice'))
+    except goodreads_plan.PlanError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception:
+        conn.rollback()
+        current_app.logger.exception('Goodreads choice failed')
+        return jsonify({'success': False, 'error': 'That choice could not be saved.'}), 500
+    plan = result['plan']
+    saved = set(result['saved'])
+    rows = {r.line: {'choice': r.choice, 'adds': r.adds, 'writes': r.writes, 'preview': r.preview}
+            for r in plan.rows if r.line in saved}
+    return jsonify({'success': True, 'saved': result['saved'], 'refused': result['refused'],
+                    'rows': rows, **_plan_counts(plan)})
+
+
+@user_blueprint.route('/import_goodreads/apply', methods=['POST'])
+@login_required
+@limiter.limit("3 per hour")
+def import_goodreads_apply():
+    """Import what the review shows: JSON {fingerprint}. Returns the result,
+    one outcome per row of the file."""
+    from utils import goodreads_plan
+    body = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        report = goodreads_plan.apply(conn, current_user, body.get('fingerprint'))
+    except goodreads_plan.StalePlan as e:
+        conn.rollback()
+        flash(str(e), 'warning')
+        return jsonify({'success': False, 'stale': True, 'error': str(e)}), 409
+    except goodreads_plan.PlanError as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception:
         conn.rollback()
         current_app.logger.exception('Goodreads import failed')
-        return jsonify({'success': False,
-                        'message': 'The import failed. Check that the file is a Goodreads CSV export.'}), 500
-
+        return jsonify({'success': False, 'error': 'The import failed. Nothing was saved.'}), 500
     current_app.logger.info(f"Goodreads import by {current_user.username}: "
                             f"{report['total_rows']} rows, {report['outcomes']}")
-    # Books only, as the result screen words it; the job it starts does all types
+    # Books only, as the result words it; the job it starts does all types
     covers = conn.execute("SELECT COUNT(*) " + missing_cover_sql(owner=True, types=('book',)),
                           (current_user.id,)).fetchone()[0]
-    return jsonify({'success': True, 'encoding': encoding,
-                    'outcome_labels': list(OUTCOMES.items()),  # a list: jsonify sorts dict keys
-                    'covers_missing': covers, **report})
+    return jsonify({'success': True, 'covers_missing': covers, **report})
+
+
+@user_blueprint.route('/import_goodreads/discard', methods=['POST'])
+@login_required
+def import_goodreads_discard():
+    """Start over: the waiting upload goes."""
+    from utils import goodreads_plan
+    goodreads_plan.discard(get_db(), current_user)
+    flash('Upload discarded. Nothing was imported.', 'info')
+    return redirect(url_for('user.import_goodreads_page'))
 
 
 # --- households: invite / accept / decline / remove (utils/households.py) ----

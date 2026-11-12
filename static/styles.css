@@ -2569,3 +2569,32 @@ html:has(.bulk-sheet[open]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
     [data-select="on"] .bulk-check { transition: none; }
 }
+
+/* ---------- Goodreads import review (ROADMAP 14b, templates/goodreads_review.html) ----------
+   Rows in boxes, a checkbox each; the selection bar is bulk edit's (.bulk-bar). */
+html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clears the bar */
+.gr-row {
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: .35rem .75rem;
+    align-items: start; padding: .6rem .25rem; cursor: pointer;
+}
+.gr-row[hidden], .gr-box[hidden] { display: none; }
+.gr-row.is-selected { box-shadow: inset 4px 0 0 rgb(var(--accent)); background: rgb(var(--paper)); }
+.gr-row .gr-tick { margin-top: .2rem; grid-column: 1; }
+.gr-cover { grid-column: 2; width: 2.5rem; height: 3.75rem; object-fit: cover; border: 1px solid rgb(var(--rule)); }
+.gr-main { grid-column: 3; min-width: 0; }
+.gr-row:not(:has(.gr-cover)) .gr-main { grid-column: 2 / 4; }
+.gr-title { overflow-wrap: anywhere; }
+.gr-details, .gr-reason { font-size: .85rem; color: rgb(var(--muted)); overflow-wrap: anywhere; }
+.gr-adds { font-size: .85rem; color: rgb(var(--accent-text)); overflow-wrap: anywhere; }
+.gr-choice { grid-column: 4; width: auto; min-width: 11rem; cursor: pointer; }
+.gr-preview-text {
+    white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; margin-top: .4rem; padding: .5rem .75rem;
+    background: rgb(var(--paper)); border-left: 3px solid rgb(var(--rule-strong));
+}
+/* A phone: title line, details line, then the select across the row */
+@media (max-width: 639px) {
+    .gr-row { grid-template-columns: auto minmax(0, 1fr); }
+    .gr-cover { display: none; }
+    .gr-main, .gr-row:not(:has(.gr-cover)) .gr-main { grid-column: 2; }
+    .gr-choice { grid-column: 2; width: 100%; min-width: 0; }
+}

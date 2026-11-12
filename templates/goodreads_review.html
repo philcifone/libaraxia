@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import crumbs, page_heading %}
+{#- The Goodreads import's review (ROADMAP 14b, docs/GOODREADS-IMPORT-SPEC.md
+    section 7): every row of the upload in its box, with its choice. Nothing
+    is written until Import. Selecting, filters, choices and the result are
+    static/goodreads_review.js; the plan is utils/goodreads_plan.py. -#}
+
+{% block title %}Review Goodreads import{% endblock %}
+{% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
+
+{% set PREVIEW_ROWS = 12 %}
+{% set SUMMARY_BOXES = ('nothing', 'want_nothing') %}
+
+{% macro match_label(row) -%}
+    {%- if row.kind == 'household' -%}{{ row.book.owner }}'s copy
+    {%- elif row.kind == 'wishlist' -%}on your wishlist
+    {%- elif row.kind == 'not_owned' -%}yours, not owned
+    {%- elif row.kind == 'removed' -%}yours, removed
+    {%- else -%}yours{%- endif -%}
+{%- endmacro %}
+
+{% macro import_bar(where) -%}
+<div class="gr-import-bar flex flex-wrap items-center gap-3">
+    <button type="button" data-click="grImport" data-gr-import
+            class="btn bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold">
+        Import {{ plan.will_write }}{% if plan.undecided %}, leave {{ plan.undecided }} undecided{% endif %}
+    </button>
+    <form method="POST" action="{{ url_for('user.import_goodreads_discard') }}" data-confirm="Discard this upload? Nothing has been imported from it.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline bg-primary hover:bg-primary-hover text-content-primary px-4 py-2">Start over</button>
+    </form>
+    <a href="{{ url_for('user.import_goodreads_page') }}" class="bulk-link">Cancel</a>
+    {% if where == 'top' %}<p class="text-sm text-content-secondary basis-full">Undecided rows are not imported; they come back here the next time you upload an export.</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{% block content %}
+<div id="gr-review" class="max-w-5xl mx-auto pt-20 pb-28 px-4 space-y-6"
+     data-choose-url="{{ url_for('user.import_goodreads_choose') }}"
+     data-apply-url="{{ url_for('user.import_goodreads_apply') }}"
+     data-undo-url="{{ url_for('bulk.undo', edit_id=0) }}"
+     data-covers-start-url="{{ url_for('covers.start') }}"
+     data-books-url="{{ url_for('base.index', **{'from': 'goodreads', 'show': 'all'}) }}"
+     data-fingerprint="{{ plan.fingerprint }}"
+     data-choice-labels="{{ choices|tojson|forceescape }}">
+    {{ crumbs([('Profile', url_for('user.profile', username=current_user.username)),
+               ('Goodreads Import', url_for('user.import_goodreads_page'))], 'Review', class='') }}
+
+    {{ page_heading('library', 'Import from Goodreads', subtitle=plan.filename, class='') }}
+
+    <div id="gr-boxes" class="space-y-6">
+        <section class="bg-secondary rounded-xl card p-5 space-y-3">
+            <p class="text-content-primary"><strong>{{ plan.rows|length }} row{{ '' if plan.rows|length == 1 }}{{ 's' if plan.rows|length != 1 }}.</strong>
+                Nothing is saved until you press Import. Your choices are saved as you go.</p>
+            {{ import_bar('top') }}
+        </section>
+
+        {# Filters: client-side over every row on the page #}
+        <section class="bg-secondary rounded-xl card p-4 flex flex-wrap gap-3 items-end" aria-label="Filter rows">
+            <label class="flex flex-col text-sm text-content-secondary gap-1">Box
+                <select id="gr-filter-box" data-change="grFilter" class="bulk-field">
+                    <option value="">All boxes</option>
+                    {% for key, box in boxes.items() if plan.count(key) %}
+                    <option value="{{ key }}">{{ box.title }} ({{ plan.count(key) }})</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col text-sm text-content-secondary gap-1">Goodreads shelf
+                <select id="gr-filter-shelf" data-change="grFilter" class="bulk-field">
+                    <option value="">Any shelf</option>
+                    {% for shelf in plan.shelves() %}<option value="{{ shelf }}">{{ shelf }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col text-sm text-content-secondary gap-1 flex-1 min-w-[12rem]">Title or author
+                <input id="gr-filter-q" type="search" class="bulk-field" autocomplete="off" placeholder="Search titles">
+            </label>
+            <p id="gr-filter-count" class="text-sm text-content-secondary basis-full hidden" aria-live="polite"></p>
+        </section>
+
+        {% for key, box in boxes.items() %}
+        {% set count = plan.count(key) %}
+        {% if count %}
+        {% set summary = key in SUMMARY_BOXES %}
+        <section class="gr-box bg-secondary rounded-xl card p-5" data-box="{{ key }}" aria-labelledby="gr-box-{{ key }}">
+            <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <h2 id="gr-box-{{ key }}" class="text-xl font-display text-content-primary flex-1 min-w-0">
+                    {{ box.title }} <span class="text-content-secondary">({{ count }})</span></h2>
+                {% if box.default and box.default != 'ask' %}
+                <span class="text-sm text-content-secondary">{{ choices[box.default] }}</span>
+                {% endif %}
+            </header>
+            <p class="text-sm text-content-secondary mt-1">{{ box.text }}</p>
+            {% if summary %}
+            <p class="text-sm text-content-primary mt-2">
+                {#- upper on the first letter only: |capitalize would lower "Libaraxia" -#}
+                {%- for reason, n in plan.reasons(key) %}{{ reason[:1]|upper }}{{ reason[1:] }} ({{ n }}){{ ' · ' if not loop.last }}{% endfor -%}
+                {%- set differing = plan.differing(key) -%}
+                {%- if differing %} · {{ differing }} differ{{ 's' if differing == 1 }} from Goodreads, yours kept{% endif -%}
+            </p>
+            {% endif %}
+
+            <div class="flex flex-wrap items-center gap-4 mt-3">
+                <button type="button" data-click="grSelectBox" data-box="{{ key }}" class="bulk-link px-0">Select all in this box</button>
+                {% if summary or count > PREVIEW_ROWS %}
+                <button type="button" data-click="grShowAll" data-box="{{ key }}" class="bulk-link px-0" aria-expanded="false"{% if summary %} data-summary{% endif %}>
+                    {{ 'Show' if summary else 'Show all ' ~ count }}</button>
+                {% endif %}
+            </div>
+
+            <ul class="gr-rows mt-2 divide-y divide-rule">
+                {% for row in plan.rows if row.box == key %}
+                {% set d = row.data %}
+                {% set more = summary or loop.index > PREVIEW_ROWS %}
+                <li class="gr-row" data-line="{{ row.line }}" data-box="{{ key }}"
+                    data-choices="{{ row.choices|join(',') }}" data-shelves="{{ d.shelves|join(',') }}"
+                    data-search="{{ (d.title ~ ' ' ~ d.author) }}"{% if more %} data-more hidden{% endif %}>
+                    <input type="checkbox" class="bulk-tick gr-tick" aria-label="Select {{ d.title or 'line ' ~ row.line }}">
+                    {% if row.book and row.book.cover %}
+                        {% if row.book.cover|upload_exists %}
+                        <img class="gr-cover" src="{{ url_for('static', filename=row.book.cover) }}" alt="" loading="lazy">
+                        {% elif row.book.cover.startswith('http') %}
+                        <img class="gr-cover" data-remote-cover="{{ row.book.cover }}" alt="" loading="lazy">
+                        {% endif %}
+                    {% endif %}
+                    <div class="gr-main">
+                        <p class="gr-title">
+                            <span class="font-semibold text-content-primary">{{ d.title or '(no title)' }}</span>
+                            {% if d.author %}<span class="text-content-secondary"> · {{ d.author }}</span>{% endif %}
+                        </p>
+                        <p class="gr-details">
+                            <span class="font-mono">line {{ row.line }}</span>
+                            {% if row.book %} · <a href="{{ url_for('books.show_book', id=row.book.id) }}" class="text-accent underline">{{ match_label(row) }}</a>{% endif %}
+                            {% if d.shelves %} · {{ d.shelves|join(', ') }}{% endif %}
+                            {% if d.date_read %} · read {{ d.date_read }}{% elif d.date_added %} · added {{ d.date_added }}{% endif %}
+                            {% if d.rating %} · ★{{ d.rating }}{% endif %}
+                            {% if d.review %} · review{% endif %}
+                            {% if d.audiobook %} · audiobook{% endif %}
+                        </p>
+                        <p class="gr-adds"{% if not row.adds %} hidden{% endif %}>adds: <span data-gr-adds>{{ row.adds|join(', ') }}</span></p>
+                        {% if row.reason %}<p class="gr-reason">{{ row.reason[:1]|upper }}{{ row.reason[1:] }}</p>{% endif %}
+                        {% if row.differs %}<p class="gr-reason">Differs, yours kept: {{ row.differs|join('; ') }}</p>{% endif %}
+                        <details class="gr-preview"{% if not row.preview %} hidden{% endif %}>
+                            <summary class="bulk-link px-0 inline">preview the review</summary>
+                            <p class="gr-preview-text" data-gr-preview>{{ row.preview or '' }}</p>
+                        </details>
+                    </div>
+                    {% if row.choices %}
+                    <select class="bulk-field gr-choice" data-change="grChoose" data-was="{{ row.choice }}"
+                            aria-label="What to do with {{ d.title or 'line ' ~ row.line }}">
+                        {% if row.choice == 'ask' %}<option value="ask" selected disabled>Ask</option>{% endif %}
+                        {% for c in row.choices %}
+                        <option value="{{ c }}"{% if c == row.choice %} selected{% endif %}>{{ choices[c] }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+        {% endfor %}
+
+        <section class="bg-secondary rounded-xl card p-5">{{ import_bar('bottom') }}</section>
+    </div>
+
+    {# After Import: the result, built by goodreads_review.js #}
+    <section id="gr-result" class="bg-secondary rounded-xl card p-5 space-y-4" hidden tabindex="-1" aria-live="polite"></section>
+</div>
+
+{# The selection bar: bulk edit's look (styles.css), its own markup #}
+<div id="gr-bar" class="bulk-bar hidden" role="region" aria-label="Selection">
+    <div class="bulk-bar-inner">
+        <p id="gr-count" class="bulk-count" aria-live="polite">0 selected</p>
+        <button type="button" data-click="grClear" class="bulk-link">Clear</button>
+        <div id="gr-actions" class="bulk-actions flex-wrap"></div>
+        <p id="gr-bar-hint" class="bulk-hint hidden"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='bulk.js') }}"></script>
+<script src="{{ url_for('static', filename='goodreads_review.js') }}"></script>
+{% endblock %}

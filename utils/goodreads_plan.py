@@ -201,6 +201,20 @@ class Plan:
     def undecided(self):
         return sum(r.choice == 'ask' for r in self.rows)
 
+    def reasons(self, box):
+        """A summary box's rows by reason, most first: [(reason, count)].
+        "Same book as line N" counts as one reason."""
+        counts = {}
+        for r in self.rows:
+            if r.box == box:
+                reason = 'same book as another row' if r.same_as else (r.reason or 'nothing to add')
+                counts[reason] = counts.get(reason, 0) + 1
+        return sorted(counts.items(), key=lambda kv: -kv[1])
+
+    def differing(self, box):
+        """How many rows of a box differ from Goodreads, yours kept."""
+        return sum(r.box == box and bool(r.differs) for r in self.rows)
+
     def shelves(self):
         """Every Goodreads shelf in the file, most used first, for the filter."""
         counts = {}
@@ -510,9 +524,8 @@ def _classify(row, have):
         if parts:
             row.box = 'fill'
         else:
-            row.box = 'nothing'
-            row.reason = ('in Libaraxia, nothing missing; yours kept' if row.differs
-                          else 'in Libaraxia and nothing missing')
+            # Differences are listed on the row and counted on the box
+            row.box, row.reason = 'nothing', 'in Libaraxia and nothing missing'
 
 
 def plan(conn, user):

@@ -201,7 +201,8 @@ def test_nothing_to_do_rows(db, people):
     p = staged(db, alice, row('Complete', my_rating='5', date_read='2020/01/01'), row(''),
                row('Twice'), row('Twice'))
     complete = by_title(p, 'Complete')
-    assert complete.box == 'nothing' and complete.reason == 'in Libaraxia, nothing missing; yours kept'
+    assert complete.box == 'nothing' and complete.reason == 'in Libaraxia and nothing missing'
+    assert p.differing('nothing') == 1
     assert complete.differs == ['rating: yours ★3, Goodreads ★5']
     untitled = next(r for r in p.rows if r.data['title'] == '')
     assert (untitled.box, untitled.reason) == ('nothing', 'no title')

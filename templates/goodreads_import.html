@@ -1,117 +1,89 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
+{#- Upload a Goodreads export (ROADMAP 14b). The upload only stages the file;
+    the review page (goodreads_review.html) shows every row before anything
+    is written. -#}
 
 {% block title %}Import from Goodreads{% endblock %}
 {% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
 
 {% block content %}
-    <!-- Main Content -->
-    <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
-        <!-- Back Nav -->
-        {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Goodreads Import', class='') }}
+<div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
+    {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Goodreads Import', class='') }}
 
-        <!-- Page Title -->
-        <div class="bg-secondary rounded-xl p-6 card">
-            <h1 class="text-3xl font-bold text-content-primary mb-2">Import from Goodreads</h1>
-            <p class="text-content-secondary">Import your library from a Goodreads CSV export</p>
-        </div>
+    {{ page_heading('library', 'Import from Goodreads', subtitle='Your reading history from a Goodreads CSV export', class='') }}
 
-        <!-- Important Notice -->
-        <div class="bg-yellow-900/20 border-2 border-yellow-600 rounded-xl p-6 shadow-lg">
-            <div class="space-y-2">
-                <h2 class="text-xl font-semibold text-yellow-400">Please Note</h2>
-                <ul class="list-disc list-inside space-y-1 text-yellow-100 ml-4">
-                    <li><strong>Covers aren't in the export.</strong> After the import you can fetch them for your new books in one go (it takes a few seconds per book).</li>
-                    <li><strong>Details come from Goodreads as they are.</strong> Description and genre are empty; edit a book or fetch its details to fill them in.</li>
-                    <li><strong>Books you already have are matched</strong> by ISBN or title and author, only among your own books and your household's. Nobody else's copy is ever used.</li>
-                    <li><strong>Importing again is safe.</strong> Books that already have a reading status or wishlist entry are left as they are, so only new rows are added.</li>
-                    <li><strong>Not imported:</strong> additional authors (mostly translators and illustrators), binding, owned copies and the spoiler flag. Private notes are kept only for wishlist books.</li>
-                </ul>
+    {% if waiting %}
+    <section class="bg-secondary rounded-xl card p-5 flex flex-wrap items-center gap-4">
+        <p class="flex-1 min-w-0 text-content-primary">You have an import waiting for review. Nothing from it has been imported yet.</p>
+        <a href="{{ url_for('user.import_goodreads_review') }}"
+           class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 font-bold">Back to the review</a>
+    </section>
+    {% endif %}
+
+    <section class="bg-secondary rounded-xl card p-6 space-y-3">
+        <h2 class="text-2xl font-display text-content-primary">How it works</h2>
+        <ol class="numbered list-decimal list-inside space-y-2 text-content-secondary">
+            <li><strong class="text-content-primary">Upload your export.</strong> Nothing is saved yet.</li>
+            <li><strong class="text-content-primary">Review it.</strong> Every row is sorted into a few boxes, each saying what will happen. Change anything you like, a row at a time or a whole selection.</li>
+            <li><strong class="text-content-primary">Import.</strong> You can undo the whole import for 30 days (on the result, or in Profile, Recent bulk edits).</li>
+        </ol>
+    </section>
+
+    <section class="bg-secondary rounded-xl card p-6 space-y-4">
+        <h2 class="text-2xl font-display text-content-primary">What happens to your Goodreads data</h2>
+        <dl class="space-y-3">
+            <div class="p-4 bg-primary">
+                <dt class="font-semibold text-content-primary">Books you read, not in Libaraxia</dt>
+                <dd class="text-content-secondary">Come in as read, <em>not owned</em>: in your reading stats and history, findable under Books, Show: Not owned, never on your shelf. Choose "Add to my library" for the ones you do own. <em>Read Count</em> becomes that many reading sessions; Goodreads only keeps the date of the last one.</dd>
             </div>
-        </div>
-
-        <!-- Where Data Goes -->
-        <div class="bg-secondary rounded-xl p-6 space-y-4 card">
-            <h2 class="text-2xl font-semibold text-content-primary mb-4">Where Your Goodreads Data Goes</h2>
-            <dl class="space-y-3">
-                <div class="p-4 bg-primary rounded-lg">
-                    <dt class="text-lg font-semibold text-content-primary"><span class="font-mono text-accent">read</span>, <span class="font-mono text-accent">currently-reading</span></dt>
-                    <dd class="text-content-secondary">Your library, with that reading status. <em>Read Count</em> becomes that many reading sessions; Goodreads only keeps the date of the last one, so earlier reads show as "Date unknown".</dd>
-                </div>
-                <div class="p-4 bg-primary rounded-lg">
-                    <dt class="text-lg font-semibold text-content-primary"><span class="font-mono text-accent">did-not-finish</span>, <span class="font-mono text-accent">dnf</span>, <span class="font-mono text-accent">abandoned</span></dt>
-                    <dd class="text-content-secondary">Your library with the <em>Did Not Finish</em> status. Also recognised: <span class="font-mono">gave-up</span>, <span class="font-mono">unfinished</span>, <span class="font-mono">stopped-reading</span>.</dd>
-                </div>
-                <div class="p-4 bg-primary rounded-lg">
-                    <dt class="text-lg font-semibold text-content-primary"><span class="font-mono text-accent">to-read</span></dt>
-                    <dd class="text-content-secondary">Your wishlist. If you or your household already own the book, it's marked <em>Want to Read</em> instead.</dd>
-                </div>
-                <div class="p-4 bg-primary rounded-lg">
-                    <dt class="text-lg font-semibold text-content-primary">Your other shelves</dt>
-                    <dd class="text-content-secondary">Each one (for example <span class="font-mono">audiobook</span>) becomes a custom collection of the same name.</dd>
-                </div>
-                <div class="p-4 bg-primary rounded-lg">
-                    <dt class="text-lg font-semibold text-content-primary">Ratings and reviews</dt>
-                    <dd class="text-content-secondary">Imported on any shelf, including reviews without a rating. Formatting is turned into plain text with paragraph breaks.</dd>
-                </div>
-            </dl>
-        </div>
-
-        <!-- How to Export from Goodreads -->
-        <div class="bg-secondary rounded-xl p-6 space-y-4 card">
-            <h2 class="text-2xl font-semibold text-content-primary mb-4">How to Export from Goodreads</h2>
-            <ol class="numbered list-decimal list-inside space-y-2 text-content-secondary">
-                <li>Go to <a href="https://www.goodreads.com/review/import" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Goodreads Import/Export</a></li>
-                <li>Click "Export Library" at the top of the page</li>
-                <li>Wait for the export to complete (you'll receive an email)</li>
-                <li>Download the CSV file from the link in the email</li>
-                <li>Upload it below</li>
-            </ol>
-        </div>
-
-        <!-- Upload Section -->
-        <div class="bg-secondary rounded-xl p-6 card">
-            <h2 class="text-2xl font-semibold text-content-primary mb-4">Upload Your Goodreads Export</h2>
-
-            <div class="flex justify-center">
-                <label for="goodreads-import"
-                       class="inline-flex items-center gap-2 px-8 py-4 bg-green-600 rounded-lg text-on-accent text-lg font-semibold transition-colors hover:bg-green-700 cursor-pointer">
-                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                    </svg>
-                    Choose CSV File
-                </label>
-                <input type="file" id="goodreads-import" accept=".csv" class="hidden" data-change="handleGoodreadsImport"
-                       data-import-url="{{ url_for('user.import_goodreads') }}"
-                       data-covers-start-url="{{ url_for('covers.start') }}"
-                       data-profile-url="{{ url_for('user.profile', username=current_user.username) }}">
+            <div class="p-4 bg-primary">
+                <dt class="font-semibold text-content-primary">Books already in Libaraxia</dt>
+                <dd class="text-content-secondary">Libaraxia wins. The import only adds what is missing: a status, rating, review or reading session. A Goodreads review that differs from yours is added below yours, your text unchanged. Differences in status and rating are shown, and yours are kept.</dd>
             </div>
-
-            <!-- Import Progress/Status -->
-            <div id="import-status" class="hidden mt-6 p-4 bg-primary rounded-lg">
-                <div id="import-progress" class="space-y-3">
-                    <div class="flex items-center gap-3">
-                        <svg class="animate-spin h-5 w-5 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="text-content-primary font-medium">Importing your Goodreads library...</span>
-                    </div>
-                    <p class="text-sm text-content-secondary">This may take a minute. Please don't close this page.</p>
-                </div>
-                <div id="import-result" class="hidden space-y-2">
-                    <p id="import-message" class="text-content-primary"></p>
-                </div>
+            <div class="p-4 bg-primary">
+                <dt class="font-semibold text-content-primary"><span class="font-mono text-accent">currently-reading</span></dt>
+                <dd class="text-content-secondary">Asked: still reading, finished, or did not finish (Goodreads' answer is as old as your export), unless you already have a status on the book here.</dd>
             </div>
-        </div>
+            <div class="p-4 bg-primary">
+                <dt class="font-semibold text-content-primary"><span class="font-mono text-accent">to-read</span></dt>
+                <dd class="text-content-secondary">Your wishlist, with your private notes as the note. Left alone if you already have the book here in any form. A book on your wishlist that Goodreads says you read is asked about.</dd>
+            </div>
+            <div class="p-4 bg-primary">
+                <dt class="font-semibold text-content-primary">Your other shelves</dt>
+                <dd class="text-content-secondary">Not turned into collections. They are kept with the import, and you can filter the review by them. Rows on an unknown shelf with no reading recorded are skipped unless you say otherwise.</dd>
+            </div>
+            <div class="p-4 bg-primary">
+                <dt class="font-semibold text-content-primary">Importing again</dt>
+                <dd class="text-content-secondary">Safe: only what is missing is added, and rows you skipped last time stay skipped unless you change them.</dd>
+            </div>
+        </dl>
+        <p class="text-sm text-content-secondary">Matching only looks at your own books and your household's shelf, never anyone else's. Covers aren't in the export: fetch them after the import. Not imported: additional authors, binding, owned copies, the spoiler flag, and private notes on books that aren't wishlist entries.</p>
+    </section>
 
-        <!-- Rate Limit Notice -->
-        <div class="bg-secondary rounded-xl p-4 card">
-            <p class="text-sm text-content-secondary text-center">
-                <strong>Note:</strong> you can run the import up to 3 times an hour.
-            </p>
-        </div>
-    </div>
+    <section class="bg-secondary rounded-xl card p-6 space-y-4">
+        <h2 class="text-2xl font-display text-content-primary">Export from Goodreads</h2>
+        <ol class="numbered list-decimal list-inside space-y-2 text-content-secondary">
+            <li>Go to <a href="https://www.goodreads.com/review/import" target="_blank" rel="noopener noreferrer" class="text-accent underline">Goodreads Import/Export</a>.</li>
+            <li>Click "Export Library" at the top of the page and wait for the export.</li>
+            <li>Download the CSV file and upload it below.</li>
+        </ol>
+    </section>
+
+    <section class="bg-secondary rounded-xl card p-6 space-y-4">
+        <h2 class="text-2xl font-display text-content-primary">Upload your export</h2>
+        <form id="goodreads-upload" method="POST" action="{{ url_for('user.import_goodreads_plan') }}"
+              enctype="multipart/form-data" data-submit="goodreadsUploading" class="flex flex-wrap items-end gap-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="flex flex-col gap-1 text-sm text-content-secondary">CSV file
+                <input type="file" name="goodreads_csv" accept=".csv" required class="bulk-field text-content-primary">
+            </label>
+            <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 font-bold">Review import</button>
+        </form>
+        <p id="goodreads-uploading" class="text-content-secondary" hidden aria-live="polite">Reading your file...</p>
+        <p class="text-sm text-content-secondary">Up to 5000 rows. You can upload 10 times an hour and import 3 times an hour.{% if waiting %} A new upload replaces the one waiting for review.{% endif %}</p>
+    </section>
+</div>
 {% endblock %}
 
 {% block scripts %}
