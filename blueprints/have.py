@@ -6,10 +6,10 @@ with your status and rating. The scanner just reloads the page with the
 code in ?q=, so the answer is rendered on the server and the page works
 without the camera (or JavaScript). Matching is utils/have.py.
 """
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from utils import have, have_online
+from utils import have, have_online, media
 from utils.database import get_db
 from utils.rate_limiting import limiter
 
@@ -24,7 +24,31 @@ def check():
     missed = bool(result and not result['matches'] and result['kind'] != 'bad_code')
     links = have.add_links(result['kind'], result['value'], q) if missed else []
     return render_template('have.html', q=q, result=result, add_links=links,
-                           online=missed and have.worth_asking(result))
+                           online=missed and have.worth_asking(result),
+                           verdict_label=have.verdict_label)
+
+
+@have_blueprint.route('/local', methods=['GET'])
+@login_required
+def local():
+    """The same local check as the page, as JSON, for the Add pages
+    (add_item.js, ROADMAP 14c): a scanned or typed code is checked against
+    your shelves before the online lookup, so "already have it" shows at
+    once. Codes only; a title is the page's job. Never asks anyone outside."""
+    q = (request.args.get('q') or '').strip()[:200]
+    result = have.find(get_db(), current_user.id, q) if q else None
+    if not result or result['kind'] not in ('isbn', 'barcode'):
+        return jsonify({'success': True, 'best': None, 'matches': []})
+    matches = [{
+        'id': row['id'],
+        'title': row['title'],
+        'author': row['author'],
+        'media_type': row['media_type'],
+        'verdict': row['verdict'],
+        'label': have.verdict_label(row),
+        'url': url_for(media.item_endpoint(media.media_type_of(row), 'show'), id=row['id']),
+    } for row in result['matches']]
+    return jsonify({'success': True, 'best': result['best'], 'matches': matches})
 
 
 def _per_user():

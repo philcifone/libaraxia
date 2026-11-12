@@ -91,7 +91,8 @@
                to fill the form. Say so, and point at the shelf check. #}
             <p class="px-4 -mt-2 pb-3 text-xs text-content-secondary">
                 Searches online catalogues to fill in the form, not your library.
-                To check your shelf, use <a href="{{ url_for('have.check') }}" class="underline hover:text-accent">Do I Have This?</a>
+                A scanned or typed code is checked against your library first; for a title, use
+                <a href="{{ url_for('have.check') }}" class="underline hover:text-accent">Do I Have This?</a>
             </p>
             <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pb-4"></div>
             {% else %}

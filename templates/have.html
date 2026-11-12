@@ -111,13 +111,7 @@
                         <p class="font-semibold text-content-primary">{{ row.title }}</p>
                         {% if row.author %}<p class="text-sm text-content-secondary truncate">{{ lm.by }} {{ row.author }}</p>{% endif %}
                         <p class="mt-2 text-sm font-semibold {{ 'text-accent' if row.verdict in ('yours', 'household') else 'text-content-primary' }}">
-                            {%- if row.verdict == 'yours' %}On your shelf
-                            {%- elif row.verdict == 'household' %}On the shelf: {{ row.owner }}'s
-                            {%- elif row.verdict == 'wishlist' %}On your wishlist
-                            {%- elif row.verdict == 'not_owned' %}Unshelved
-                            {%- elif row.verdict == 'removed' %}Removed from your shelf
-                            {%- elif row.verdict == 'their_wishlist' %}On {{ row.owner }}'s wishlist
-                            {%- else %}{{ row.owner ~ "'s copy" if row.owner else 'No owner' }}, not on a shelf here{% endif -%}
+                            {{- verdict_label(row) -}}
                             <span class="font-normal text-content-secondary"> &middot; {{ lm.Noun }}{% if row.format %}, {{ row.format|format_label }}{% endif %}</span>
                         </p>
                         {% set mine = [] %}

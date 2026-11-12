@@ -118,6 +118,25 @@ def find(conn, user_id, q):
     return result
 
 
+def verdict_label(row):
+    """One match's verdict in words, as the Do I have this? page shows it
+    (have.html) and the Add pages' local check (ROADMAP 14c)."""
+    v, owner = row['verdict'], row.get('owner')
+    if v == 'yours':
+        return 'On your shelf'
+    if v == 'household':
+        return f"On the shelf: {owner}'s"
+    if v == 'wishlist':
+        return 'On your wishlist'
+    if v == 'not_owned':
+        return 'Unshelved'
+    if v == 'removed':
+        return 'Removed from your shelf'
+    if v == 'their_wishlist':
+        return f"On {owner}'s wishlist"
+    return (f"{owner}'s copy" if owner else 'No owner') + ', not on a shelf here'
+
+
 def worth_asking(result):
     """Whether "Not here" asks the outside sources (ROADMAP 13b): a code,
     or a title of at least two letters. Never for a bad code or a hit."""

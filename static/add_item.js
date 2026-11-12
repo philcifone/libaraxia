@@ -188,7 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
         async duplicates() {
             const data = await getJSON('/books/check_duplicates', {
                 method: 'POST', headers: getCSRFHeaders(),
-                body: JSON.stringify({ title: $('title').value, author: $('author').value, isbn: $('isbn').value }),
+                body: JSON.stringify({ title: $('title').value, author: $('author').value, isbn: $('isbn').value,
+                                       subtitle: $('subtitle')?.value || '' }),
             });
             return (data.duplicates || []).map(d => {
                 const where = [];
@@ -370,22 +371,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Duplicates: a notice above the form, never a blocking dialog --------
 
-    async function showDuplicates() {
+    // What the local check (below) found for the last code, kept so the
+    // duplicate check after the online lookup adds to it, not replaces it
+    let localMatches = [];
+
+    function renderNotice(heading, list, note) {
         const box = $('duplicate-notice');
         if (!box) return;
-        let dups = [];
-        try { dups = await type.duplicates(); } catch (e) { console.error('Duplicate check failed', e); }
-        if (!dups.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
-        const items = dups.map(d => {
+        if (!list.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        const items = list.map(d => {
             const title = d.url
                 ? `<a class="underline hover:text-accent" href="${escapeHtml(d.url)}">${escapeHtml(d.title)}</a>`
                 : escapeHtml(d.title);
             return `<li>${title}${d.note ? ', ' + escapeHtml(d.note) : ''}</li>`;
         }).join('');
-        box.innerHTML = `<p class="font-bold text-content-primary">${escapeHtml(type.duplicateHeading)}</p>
+        box.innerHTML = `<p class="font-bold text-content-primary">${escapeHtml(heading)}</p>
                          <ul class="list-disc pl-5 text-content-primary">${items}</ul>
-                         <p class="text-content-secondary">${escapeHtml(type.duplicateNote)}</p>`;
+                         ${note ? `<p class="text-content-secondary">${escapeHtml(note)}</p>` : ''}`;
         box.classList.remove('hidden');
+    }
+
+    // Do I have this?'s check (utils/have.py via /have/local, ROADMAP 14c),
+    // run on a scanned or typed code before anything goes online, so "you
+    // already have it" shows at once. Yours, the household's, your
+    // wishlist, unshelved, removed, or a friend's copy you have data on.
+    async function checkLocal(code) {
+        localMatches = [];
+        let data = {};
+        try {
+            data = await getJSON(`/have/local?q=${enc(code)}`);
+        } catch (e) {
+            console.error('Local check failed', e);
+        }
+        localMatches = (data.matches || []).map(m => ({
+            title: m.title, url: m.url, verdict: m.verdict,
+            note: [m.author, m.label].filter(Boolean).join(', '),
+        }));
+        const owned = localMatches.some(m => m.verdict === 'yours' || m.verdict === 'household');
+        renderNotice(owned ? 'You already have this:' : 'Not on a shelf here, but in your records:',
+                     localMatches, owned ? type.duplicateNote : '');
+        return localMatches.length;
+    }
+
+    async function showDuplicates() {
+        let dups = [];
+        try { dups = await type.duplicates(); } catch (e) { console.error('Duplicate check failed', e); }
+        // The code's local matches first, then any title match not among them
+        const seen = new Set(localMatches.map(m => m.url));
+        const list = [...localMatches, ...dups.filter(d => !d.url || !seen.has(d.url))];
+        const owned = dups.length || localMatches.some(m => m.verdict === 'yours' || m.verdict === 'household');
+        const heading = dups.length ? type.duplicateHeading
+            : (owned ? 'You already have this:' : 'Not on a shelf here, but in your records:');
+        renderNotice(heading, list, owned ? type.duplicateNote : '');
     }
 
     // One lookup at a time; a newer one makes an older answer stale
@@ -469,15 +506,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = event.target.closest('[data-pick]');
         if (!button) return;
         const result = results[Number(button.dataset.pick)];
+        localMatches = [];      // a title pick: the last code's matches no longer apply
         if (result) runLookup(`Fetching "${result.title}"...`, () => type.pick(result));
     });
 
     // --- Code box ------------------------------------------------------------
 
-    function lookUpCode(code) {
+    // Your own library first (checkLocal), then online to fill the form
+    async function lookUpCode(code) {
         code = (code || '').trim();
         if (!code) { setStatus('Type the code first.'); return; }
-        runLookup('Looking it up...', () => type.code(code));
+        setStatus('Checking your library...');
+        const found = await checkLocal(code);
+        runLookup(found ? 'In your library (see above). Looking it up online too...' : 'Not in your library. Looking it up online...',
+                  () => type.code(code));
     }
 
     // Without this the box posts as a plain form (the no-JS fallback)
