@@ -72,7 +72,7 @@ Noted while testing 14b; after its wrap-up, before Phase 15.
 **14c follow-ups (Phil, 2026-11-12, after the first pass):**
 - [x] **Shelf style, take two:** heading cards set in a small bookcase like the grid's (frame, back wall, ledge, the case's outside faces), not a box; the item page's cover keeps its box and stands in a bookcase of its own.
 - [x] **Settings for everyone:** the gear opens Settings for every user, with Library and Account (from the profile) and an Admin tab (the old Admin Settings, as-is) for admins only. The profile keeps profile things, with Stats as its own tab.
-- [ ] **Cyclers in a row of their own:** style, accent and font below the first icons, shown and hidden by a toggle right of the light/dark toggle.
+- [x] **Cyclers in a row of their own:** style, accent and font below the first icons, shown and hidden by a toggle right of the light/dark toggle.
 
 ## Phase 15: Movies & TV, lending, cover crop
 

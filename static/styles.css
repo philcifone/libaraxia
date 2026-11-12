@@ -2149,6 +2149,8 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     transition: color .15s;
 }
 .sidebar-icon:hover, .sidebar-icon.is-active { color: rgb(var(--accent-text)); }
+/* The cycler row (14c follow-up): .flex would otherwise beat [hidden] */
+#sidebar-cyclers[hidden] { display: none; }
 .mode-icon-sun { display: none; }
 :root[data-mode="dark"] .mode-icon-sun { display: inline; }
 :root[data-mode="dark"] .mode-icon-moon { display: none; }

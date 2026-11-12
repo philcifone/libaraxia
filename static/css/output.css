@@ -5721,6 +5721,12 @@ dialog::backdrop {
   color: rgb(var(--accent-text));
 }
 
+/* The cycler row (14c follow-up): .flex would otherwise beat [hidden] */
+
+#sidebar-cyclers[hidden] {
+  display: none;
+}
+
 .mode-icon-sun {
   display: none;
 }

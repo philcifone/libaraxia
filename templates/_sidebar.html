@@ -49,7 +49,7 @@
                full choice, with "Follow system", is at Profile -> Appearance. #}
             {% set waiting = notification_count() %}
             <h2 class="text-xl text-content-primary text-center">Welcome, {{ current_user.username.capitalize() }}!</h2>
-            <div class="sidebar-icons mt-1 flex items-center justify-center">{# no gap: six 36px icons fit the 224px drawer (14c) #}
+            <div class="sidebar-icons mt-1 flex items-center justify-center gap-3">
                 <a href="{{ url_for('friends.notifications_page') }}" title="Notifications"
                    aria-label="Notifications{% if waiting %}, {{ waiting }} waiting{% endif %}"
                    class="sidebar-icon relative shrink-0 {{ 'is-active' if request.endpoint == 'friends.notifications_page' }}">
@@ -67,10 +67,20 @@
                     <span class="mode-icon-moon">{{ icon('moon') }}</span>
                     <span class="mode-icon-sun">{{ icon('sun') }}</span>
                 </button>
-                {# Cyclers (14c): each click moves to the next style, accent or
-                   font and saves it, like Profile -> Appearance (sidebar.js).
-                   data-cycle-values / -names are the choices in order. The font
-                   one is hidden in Outrun, which has its own fonts. #}
+                {# Shows / hides the cycler row below; sidebar.js remembers
+                   the choice in this browser (14c follow-up) #}
+                <button type="button" class="sidebar-icon" data-cyclers-toggle
+                        aria-controls="sidebar-cyclers" aria-expanded="false"
+                        title="Quick appearance" aria-label="Show quick appearance buttons">
+                    {{ icon('sliders') }}
+                </button>
+            </div>
+            {# Cyclers (14c): each click moves to the next style, accent or
+               font and saves it, like Settings -> Account -> Appearance
+               (sidebar.js). data-cycle-values / -names are the choices in
+               order. The font one is hidden in Outrun, which has its own
+               fonts. Hidden until the toggle above opens the row. #}
+            <div id="sidebar-cyclers" class="sidebar-icons flex items-center justify-center gap-3" hidden>
                 {% for kind, icon_name, what, choices, extra in [
                     ('style', 'mop-sparkles', 'Style', theme_styles, ''),
                     ('accent', 'palette', 'Accent colour', theme_accents, ''),
