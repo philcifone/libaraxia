@@ -73,6 +73,9 @@ Noted while testing 14b; after its wrap-up, before Phase 15.
 - [x] **Shelf style, take two:** heading cards set in a small bookcase like the grid's (frame, back wall, ledge, the case's outside faces), not a box; the item page's cover keeps its box and stands in a bookcase of its own.
 - [x] **Settings for everyone:** the gear opens Settings for every user, with Library and Account (from the profile) and an Admin tab (the old Admin Settings, as-is) for admins only. The profile keeps profile things, with Stats as its own tab.
 - [x] **Cyclers in a row of their own:** style, accent and font below the first icons, shown and hidden by a toggle right of the light/dark toggle.
+- [x] **Shelf depth and boxes everywhere:** the small bookcases get the grid's ledge and inner panel; the item page's box stands on a deeper shelf with the spine on its own edge; every cover in the Shelf style is a box (rows, feed, wishlist, reviews, Do I Have This?); feed cards and notification sections are bookcases.
+- [x] **Placeholders:** titled everywhere (Collections showed a bare binding), cover-shaped at one row height (Reviews squeezed them into w-14), words never split mid-letter; the small size's CSS had never shipped (Tailwind dropped it).
+- [x] **Collisions:** usernames can't be a page's name or a case twin (migration 033); no page renders an element id twice.
 
 ## Phase 15: Movies & TV, lending, cover crop
 

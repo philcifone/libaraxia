@@ -7,10 +7,10 @@
 <div class="wishlist-item group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link"
      data-search="{{ (book.title ~ ' ' ~ (book.author or ''))|lower }}">
     <a href="{{ item_url(book) }}" class="block flex-1">
-        <div class="relative">
+        <div class="cover-slot relative" data-media="{{ book.media_type }}">
             {% if book.cover_image_url|upload_exists %}
-            <img src="{{ url_for('static', filename=book.cover_image_url) }}" alt="{{ book.title }}"
-                 class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200">
+            <span class="cover-box"><img src="{{ url_for('static', filename=book.cover_image_url) }}" alt="{{ book.title }}"
+                 class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200"></span>
             {% else %}
             {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
             {% endif %}

@@ -878,7 +878,11 @@
          lg  book page, review page: title and author
          md  grid cards: title and author
          sm  feed and profile thumbnails: title only
-       With no title (shelf-preview strips) it's just the binding. */
+       The type scales with the box (a size container: every caller gives it
+       a width, or a height and an aspect ratio), so a thumbnail and the
+       book page have the same proportions in every style, and words break
+       between words, hyphenated if one still won't fit, never mid-letter
+       (14c follow-up: Reviews' rows printed "Al / as / ka"). */
     .no-cover {
         display: flex;
         flex-direction: column;
@@ -887,7 +891,9 @@
         padding: 1rem .75rem 1rem 1.25rem;
         overflow: hidden;
         text-align: center;
-        overflow-wrap: anywhere;
+        container-type: inline-size;
+        overflow-wrap: break-word;
+        hyphens: auto;
         background: rgb(var(--surface));
         color: rgb(var(--ink));
         border: 1px solid rgb(var(--rule-strong));
@@ -896,7 +902,7 @@
     }
     .no-cover-title {
         @apply font-display;
-        font-size: 1rem;
+        font-size: clamp(.6rem, 10cqw, 1.5rem);
         line-height: 1.2;
         display: -webkit-box;
         -webkit-box-orient: vertical;
@@ -904,7 +910,7 @@
         overflow: hidden;
     }
     .no-cover-author {
-        font-size: .75rem;
+        font-size: clamp(.55rem, 7cqw, .9rem);
         color: rgb(var(--ink-2));
         display: -webkit-box;
         -webkit-box-orient: vertical;
@@ -914,10 +920,8 @@
     /* The wrapper round a grid cover's <img> (_book_grid.html): no box of
        its own, except in the Shelf style's bookcase (the 3D box). */
     .cover-box { display: contents; }
-    .no-cover-lg .no-cover-title { font-size: 1.5rem; }
-    .no-cover-lg .no-cover-author { font-size: .9rem; }
-    .no-cover-sm { padding: .5rem .35rem .5rem .6rem; border-left-width: 4px; }
-    .no-cover-sm .no-cover-title { font-size: .7rem; -webkit-line-clamp: 4; }
+    .no-cover-sm { padding: .4rem .2rem .4rem .4rem; border-left-width: 4px; }
+    .no-cover-sm .no-cover-title { font-size: clamp(.55rem, 14cqw, .8rem); -webkit-line-clamp: 4; }
 
     /* ---- Cover loading skeleton ----
        Grid covers (img.book-cover-img) shimmer until they load; common.js
@@ -1741,7 +1745,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    45 degrees in wood, as on the grid. The heading's text and icon are
    untouched. On the item page the cover keeps its own 3D box, standing on
    the ledge inside the case. */
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card) {
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card) {
     --frame: 8px;
     --case-run: 10px;               /* how far the outside faces go back */
     /* The ledge as on the grid (follow-up, Phil 2026-11-12: "more depth"):
@@ -1793,47 +1797,48 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     box-shadow: inset 0 0 20px rgb(0 0 0 / .18), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
-/* Activity feed cards (14c follow-up, a trial: revert this commit if it's
-   too much): each card is a small bookcase too; the corner buttons and the
-   like / comment row stay inside it, above the ledge (pb-16 leaves room).
-   The cover stands as a book: square, with the bookcase's drop shadow. */
-:root[data-style="shelf"] .feed-card {
+/* Activity feed and notification cards (.case-card, 14c follow-up): each
+   card is a small bookcase too; the corner buttons and the like / comment
+   row stay inside it, above the ledge (pb-16 leaves room). Their covers
+   are boxes like every other (below). */
+:root[data-style="shelf"] .case-card {
     --ledge-top: 12px;
     --ledge-front: 10px;
     margin-top: calc(1.5rem + var(--case-run));    /* space-y-6 plus the top face, which the case rule replaced */
 }
-:root[data-style="shelf"] .feed-card :is(.feed-cover, .no-cover) {
-    border-radius: 0 0 0 var(--cover-r);
-    box-shadow: none;
-    filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35));
-}
+/* Room for the ledge; the feed's cards already keep 4rem (pb-16) for the
+   like / comment row in their bottom corner */
+:root[data-style="shelf"] .case-card:not(.pb-16) { padding-bottom: calc(1.5rem + var(--ledge-h)); }
 :root[data-style="shelf"] .cover-stand {
     --frame: 10px;
     --case-run: 12px;
-    --ledge-top: 16px;
+    /* In the grid's proportions to the box (Phil: the box overhung the
+       shelf): the top face about 2.5 boxes deep, the box standing in from
+       its front edge, so its far corner lands on the shelf, not past it */
+    --ledge-top: 22px;
     --ledge-front: 12px;
-    --sink: 9px;                    /* the box stands this far into the top face, as on the grid */
+    --sink: 14px;
     /* room round the cover: its box's top and right faces (--box-depth)
        and a little wall on every side */
     padding: calc(var(--box-depth) + 14px) calc(var(--box-depth) + 14px)
              calc(var(--ledge-h) - var(--sink)) calc(14px + var(--side-w));
 }
 /* The case's outside: top face (lit) and right face (in shade) */
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::before,
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::after {
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::before,
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::after {
     content: "";
     position: absolute;
     pointer-events: none;
     top: calc(-1 * (var(--frame) + var(--case-run)));
 }
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::before {    /* top */
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::before {    /* top */
     left: calc(-1 * var(--frame));
     width: calc(100% + 2 * var(--frame) + var(--case-run));
     height: var(--case-run);
     background: linear-gradient(to top, rgb(0 0 0 / .06), transparent), rgb(var(--case-top, var(--shelf-top)));
     clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
-:root[data-style="shelf"] :is(.page-heading, .cover-stand, .feed-card)::after {     /* right side */
+:root[data-style="shelf"] :is(.page-heading, .cover-stand, .case-card)::after {     /* right side */
     left: calc(100% + var(--frame));
     width: var(--case-run);
     height: calc(100% + var(--frame) + var(--case-run));
@@ -1879,64 +1884,76 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     background-repeat: no-repeat;
     background-attachment: local;
 }
-:root[data-style="shelf"] .shelf-row > img,
-:root[data-style="shelf"] .shelf-row > .no-cover,
-:root[data-style="shelf"] .shelf-row > .shelf-figure > img,
-:root[data-style="shelf"] .shelf-row > .shelf-figure > .no-cover {
-    border-radius: var(--cover-r);
-    box-shadow: none;
-    filter: drop-shadow(2px 3px 3px rgb(0 0 0 / .35));
-}
-
-/* The cover on the item page: a 3D box like the grid's (top and right
-   faces meeting at the far corner), standing on the case's ledge. Pages
-   for a book, a case's edge for movies and music. .cover-box is
-   display: contents everywhere but here. */
-:root[data-style="shelf"] .cover-stand {
-    --box-depth: 12px;
+/* ---- Shelf: every cover is a box (14c follow-up, Phil 2026-11-12:
+   "covers should have the box shape on this entire theme") ----
+   The grid's 3D box everywhere a cover is shown: the top of the pages and
+   the fore-edge (a case's edge for movies and music) going back at 45
+   degrees, meeting at the far corner. A picture is wrapped in .cover-box
+   (display: contents in the other styles); a coverless item's .no-cover is
+   the box itself, its spine an inset band so the faces start at the
+   spine's edge, as on the grid. The grid and the bookcases keep their own
+   depths and colours; this is the default for rows, cards and lists.
+   Pictures in form previews (add / edit) and admin pages aren't wrapped,
+   so they stay flat. */
+:root[data-style="shelf"] {
+    --box-depth: 5px;
     --box-top: 226 224 218;
     --box-side: 196 193 186;
+    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4);
+    --box-cast: 4px 0 4px rgb(0 0 0 / .2);
 }
-:root[data-style="shelf"] .cover-stand:is([data-media="video"], [data-media="record"]) {
-    --box-top: 218 219 222;
-    --box-side: 184 186 191;
-}
-:root[data-style="shelf"][data-mode="dark"] .cover-stand {
+:root[data-style="shelf"][data-mode="dark"] {
     --box-top: 178 174 166;
     --box-side: 146 142 135;
 }
 @media (prefers-color-scheme: dark) {
-    :root[data-style="shelf"]:not([data-mode="light"]) .cover-stand {
+    :root[data-style="shelf"]:not([data-mode="light"]) {
         --box-top: 178 174 166;
         --box-side: 146 142 135;
     }
 }
-:root[data-style="shelf"] .cover-stand .cover-box { display: block; position: relative; }
-:root[data-style="shelf"] .cover-stand .cover-box > img { display: block; border-radius: 0 0 0 var(--cover-r); }
-/* overflow: visible for the faces; the title clamps itself (as on the bookcase) */
-:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover) {
-    position: relative;
-    overflow: visible;
-    border-radius: 0 0 0 var(--cover-r);
-    box-shadow: 0 2px 2px -1px rgb(0 0 0 / .4);
+:root[data-style="shelf"] .cover-box {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
 }
-:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::before,
-:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::after {
+:root[data-style="shelf"] .cover-box > img {
+    display: block;
+    border-radius: 0 0 0 var(--cover-r);
+    box-shadow: none;
+}
+:root[data-style="shelf"] :is(.cover-box, .no-cover) {
+    position: relative;
+    border-radius: 0 0 0 var(--cover-r);
+    box-shadow: var(--box-contact);
+}
+:root[data-style="shelf"] .no-cover {
+    border: 0;
+    overflow: visible;              /* the faces; title and author clamp themselves */
+    padding-left: calc(6px + .5rem);
+    box-shadow: inset 6px 0 0 rgb(var(--accent)), var(--box-contact);
+}
+:root[data-style="shelf"] .no-cover-sm {
+    padding-left: calc(4px + .25rem);
+    box-shadow: inset 4px 0 0 rgb(var(--accent)), var(--box-contact);
+}
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::before,
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::after {
     content: "";
     position: absolute;
     pointer-events: none;
-    transform-origin: 0 100%;
+    transform-origin: 0 100%;       /* bottom-left: the edge on the front */
 }
-:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::before {   /* right side */
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::before {   /* right side */
     top: 0;
     left: 100%;
     width: var(--box-depth);
     height: 100%;
     background: rgb(var(--box-side));
-    box-shadow: 4px 0 4px rgb(0 0 0 / .2);
+    box-shadow: var(--box-cast);
     transform: skewY(-45deg);
 }
-:root[data-style="shelf"] .cover-stand :is(.cover-box, .no-cover)::after {    /* top */
+:root[data-style="shelf"] :is(.cover-box, .no-cover)::after {    /* top */
     bottom: 100%;
     left: 0;
     width: 100%;
@@ -1944,6 +1961,53 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     background: rgb(var(--box-top));
     transform: skewX(-45deg);
 }
+/* Rows of thumbnails: room above for the top faces */
+:root[data-style="shelf"] .shelf-row { padding-top: var(--box-depth); padding-right: var(--box-depth); }
+
+/* The item page's cover: deeper, on the bookcase's deeper ledge */
+:root[data-style="shelf"] .cover-stand { --box-depth: 9px; }
+:root[data-style="shelf"] .cover-stand:is([data-media="video"], [data-media="record"]) {
+    --box-top: 218 219 222;
+    --box-side: 184 186 191;
+}
+:root[data-style="shelf"][data-mode="dark"] .cover-stand:is([data-media="video"], [data-media="record"]) {
+    --box-top: 168 170 175;
+    --box-side: 136 139 146;
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) .cover-stand:is([data-media="video"], [data-media="record"]) {
+        --box-top: 168 170 175;
+        --box-side: 136 139 146;
+    }
+}
+:root[data-style="shelf"] .cover-stand .cover-box > img { max-width: 100%; height: auto; }
+
+/* Feed and notifications covers: a little deeper than a row's */
+:root[data-style="shelf"] .case-card { --box-depth: 6px; }
+
+/* Wishlist cards: the cover shown whole, standing in the card's top as a
+   box, instead of cropped to fill it */
+:root[data-style="shelf"] .cover-slot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 19rem;
+    padding: calc(var(--box-depth) + 1rem) calc(var(--box-depth) + 1rem) .75rem 1rem;
+    --box-depth: 7px;
+}
+:root[data-style="shelf"] .cover-slot .cover-box > img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(19rem - 1.75rem - 7px);
+    object-fit: contain;
+}
+:root[data-style="shelf"] .cover-slot .no-cover {
+    width: auto;
+    height: 100%;
+    aspect-ratio: 2 / 3;
+}
+:root[data-style="shelf"] .cover-slot[data-media="record"] .no-cover { aspect-ratio: 1; }
 
 /* Covers on cards (wishlist) and in the feed: square corners like a book */
 :root[data-style="shelf"] .wishlist-item img { border-radius: 0; }

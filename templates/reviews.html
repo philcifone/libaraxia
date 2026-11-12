@@ -16,7 +16,7 @@
         {{ section_switch(media_type, urls=section_urls, wrap=False, class='mb-8') }}
 
         <section class="bg-secondary rounded-lg p-4 sm:p-8 card">
-            {% with shelf_cols='grid-cols-1', cover_h='h-28' %}{% include '_shelf_rows.html' %}{% endwith %}
+            {% with shelf_cols='grid-cols-1' %}{% include '_shelf_rows.html' %}{% endwith %}
         </section>
     </main>
 

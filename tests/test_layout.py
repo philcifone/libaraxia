@@ -966,3 +966,32 @@ def test_buttons_take_the_styles_corners():
     css = open(f'{root}/static/styles.css', encoding='utf-8').read()
     assert '.bulk-sheet { border-radius: var(--r-xl)' in css
     assert '.crop-dialog .crop-stage, .crop-dialog .crop-panel { border-radius: var(--r-xl); }' in css
+
+
+def _css_selectors(text):
+    """Every rule's selectors in a stylesheet, whitespace-normalised."""
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
+    found, buf = set(), ''
+    for ch in text:
+        if ch == '{':
+            sel = ' '.join(buf.split())
+            if sel and not sel.startswith('@'):
+                found |= {' '.join(part.split()) for part in sel.split(',')}
+            buf = ''
+        elif ch in '};':
+            buf = ''
+        else:
+            buf += ch
+    return found
+
+
+def test_every_rule_in_styles_css_ships_in_output_css():
+    """Tailwind drops a component rule whose class it can't find in the
+    templates, and a class written as `no-cover-{{ size }}` can't be found:
+    the small placeholder's rule had silently never shipped (14c). Every
+    selector in styles.css must reach the committed output.css (safelist
+    the class in tailwind.config.js, or run npm run build:css)."""
+    src = _css_selectors((ROOT / 'static/styles.css').read_text())
+    out = _css_selectors((ROOT / 'static/css/output.css').read_text())
+    keyframe_steps = re.compile(r'^(from|to|[\d.]+%)$')
+    assert sorted(s for s in src - out if not keyframe_steps.match(s)) == []

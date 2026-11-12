@@ -14,7 +14,7 @@
         <div class="space-y-6">
             {% if activities %}
                 {% for activity in activities %}
-                    <div class="feed-card bg-secondary rounded-lg p-6 pb-16 transition-shadow relative card">
+                    <div class="case-card bg-secondary rounded-lg p-6 pb-16 transition-shadow relative card">
                         <!-- Action buttons in top right -->
                         <div class="absolute top-4 right-4 flex gap-3 items-center">
                             <!-- Dismiss button (only for user's own activities) -->
@@ -38,9 +38,9 @@
                             <div class="flex-shrink-0">
                                 <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}" class="block">
                                     {% if activity.cover_image_url|upload_exists %}
-                                        <img src="{{ url_for('static', filename=activity.cover_image_url) }}"
+                                        <span class="cover-box"><img src="{{ url_for('static', filename=activity.cover_image_url) }}"
                                              alt="{{ activity.title }}"
-                                             class="feed-cover rounded-lg shadow-md">
+                                             class="feed-cover rounded-lg shadow-md"></span>
                                     {% else %}
                                         {% with title=activity.title, size='sm', box='w-24 h-36 rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                                     {% endif %}
@@ -48,7 +48,7 @@
                             </div>
 
                             <!-- Activity Details -->
-                            <div class="flex-grow">
+                            <div class="flex-grow min-w-0 pr-6">{# pr-6: clear of the dismiss X in the corner #}
                                 {% if activity.type == 'book_added' %}
                                     <!-- New Book Activity -->
                                     <div class="flex items-start gap-2 mb-2">

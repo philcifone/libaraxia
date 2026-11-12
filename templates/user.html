@@ -259,7 +259,7 @@
                 <a href="{{ url_for('wishlist.view_wishlist') if is_own_profile else url_for('wishlist.view_user_wishlist', username=user['username']) }}"
                    class="text-accent hover:text-accent-hover transition-colors text-sm">View all →</a>
             </div>
-            {% with shelves=wishlist_shelves, shelf_cols='grid-cols-1', cover_h='h-28' %}{% include '_shelf_rows.html' %}{% endwith %}
+            {% with shelves=wishlist_shelves, shelf_cols='grid-cols-1' %}{% include '_shelf_rows.html' %}{% endwith %}
         </section>
         {% endif %}
 
@@ -338,11 +338,11 @@
                         <!-- Book Cover -->
                         <a href="{{ url_for('books.show_book', id=review.book_id) }}" class="flex-shrink-0" aria-label="{{ review.title }}">
                             {% if review.cover_image_url|upload_exists %}
-                            <img src="{{ url_for('static', filename=review.cover_image_url) }}"
+                            <span class="cover-box"><img src="{{ url_for('static', filename=review.cover_image_url) }}"
                                  alt="{{ review.title }}"
-                                 class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" />
+                                 class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" /></span>
                             {% else %}
-                            {% with title=review.title, size='sm', box='w-20 h-28 rounded-md' %}{% include '_no_cover.html' %}{% endwith %}
+                            {% with title=review.title, size='sm', box='h-32 w-auto aspect-[2/3] rounded-md' %}{% include '_no_cover.html' %}{% endwith %}
                             {% endif %}
                         </a>
 
