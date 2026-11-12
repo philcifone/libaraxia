@@ -24,11 +24,10 @@
         <section class="bg-secondary rounded-lg p-5 card flex flex-wrap items-center gap-4">
             <form method="POST" action="{{ url_for('admin.backup_create') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="px-5 py-2 bg-accent hover:bg-accent-hover text-on-accent font-bold btn">Back up now</button>
+                <button type="submit" class="px-5 py-2 bg-accent hover:bg-accent-hover text-on-accent font-bold rounded-lg btn">Back up now</button>
             </form>
             <p class="text-sm text-content-secondary flex-1 min-w-[16rem]">
-                Libaraxia also backs up before every restore, and keeps the newest {{ keep }} of those. Backups you
-                make here stay until you delete them. Each user's own library backups (Profile, before Goodreads
+                Backups stay until you delete them. Each user's own library backups (Profile, before Goodreads
                 imports) are separate and only change that user's data.
             </p>
         </section>
@@ -51,9 +50,9 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
                     <form method="POST" action="{{ url_for('admin.backup_restore', name=b.name) }}"
-                          data-confirm="Restore the backup from {{ when(b) }}? The whole site goes back to how it was then, for every user: anything added, changed or imported since is replaced. What is there now is backed up first, so this can be undone.">
+                          data-confirm="Restore the backup from {{ when(b) }}? The whole site goes back to how it was then, for every user: anything added, changed or imported since is replaced. This can't be undone.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary btn btn-outline">Restore</button>
+                        <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Restore</button>
                     </form>
                     <a href="{{ url_for('admin.backup_download', name=b.name) }}" class="text-sm text-accent underline">Download database</a>
                     <form method="POST" action="{{ url_for('admin.backup_delete', name=b.name) }}"

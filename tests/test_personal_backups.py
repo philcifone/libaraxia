@@ -63,7 +63,7 @@ def test_restore_puts_your_library_back_and_leaves_others_alone(pb, conn, db, pe
     add_review(db, alice, later_alice)
     db.commit()
 
-    r = pb.restore(conn, bob, 'bob', made['name'])
+    r = pb.restore(conn, bob, made['name'])
 
     assert scalar(db, 'SELECT title FROM books WHERE id = ?', kept) == 'Kept'
     assert scalar(db, 'SELECT rating FROM read_data WHERE user_id = ? AND book_id = ?', bob, kept) == 4
@@ -73,9 +73,7 @@ def test_restore_puts_your_library_back_and_leaves_others_alone(pb, conn, db, pe
     # Alice's books and data are as she left them
     assert scalar(db, 'SELECT comment FROM read_data WHERE user_id = ? AND book_id = ?', alice, on_alices) == 'Alice wrote this'
     assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE user_id = ? AND book_id = ?', alice, later_alice) == 1
-    # And bob's library as it was before the restore is a backup of its own
-    assert r['safety']['kind'] == 'before_restore'
-    assert pb.latest(bob)['name'] == r['safety']['name']
+    assert [b['name'] for b in pb.list_backups(bob)] == [made['name']]   # no backup of its own
 
 
 def test_restore_brings_back_deleted_items_with_their_ids(pb, conn, db, people):
@@ -89,7 +87,7 @@ def test_restore_brings_back_deleted_items_with_their_ids(pb, conn, db, people):
     db.execute('DELETE FROM books WHERE id = ?', (gone,))
     db.commit()
 
-    r = pb.restore(conn, bob, 'bob', made['name'])
+    r = pb.restore(conn, bob, made['name'])
     assert r['books_back'] == 1
     assert scalar(db, 'SELECT title FROM books WHERE id = ?', gone) == 'Deleted by mistake'
     assert session_count(db, bob, gone) == 2     # add_review's and the one added here
@@ -101,7 +99,7 @@ def test_items_others_have_data_on_are_kept(pb, conn, db, people):
     added = add_book(db, bob, 'Alice reviewed it')
     add_review(db, alice, added)
 
-    r = pb.restore(conn, bob, 'bob', made['name'])
+    r = pb.restore(conn, bob, made['name'])
     assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', added) == 1
     assert r['kept'] == [('Alice reviewed it', ['alice'])]
 
@@ -113,7 +111,7 @@ def test_items_given_away_stay_with_their_new_owner(pb, conn, db, people):
     db.execute('UPDATE books SET added_by = ? WHERE id = ?', (alice, given))
     db.commit()
 
-    r = pb.restore(conn, bob, 'bob', made['name'])
+    r = pb.restore(conn, bob, made['name'])
     assert scalar(db, 'SELECT added_by FROM books WHERE id = ?', given) == alice
     assert r['given_away'] == ['Given to alice']
 
@@ -126,7 +124,7 @@ def test_data_on_a_book_that_is_gone_is_skipped(pb, conn, db, people):
     db.execute('DELETE FROM books WHERE id = ?', (hers,))
     db.commit()
 
-    r = pb.restore(conn, bob, 'bob', made['name'])
+    r = pb.restore(conn, bob, made['name'])
     assert r['skipped'] == 3                     # the review, the status and the session
     assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', hers) == 0
 
@@ -156,7 +154,7 @@ def test_covers_come_back(pb, conn, db, people, static_root):
     assert made['files'] == 1
     os.remove(static_root / 'uploads' / 'cover_b.jpg')
 
-    r = pb.restore(conn, bob, 'bob', made['name'])
+    r = pb.restore(conn, bob, made['name'])
     assert r['files'] == 1 and (static_root / 'uploads' / 'cover_b.jpg').read_bytes() == b'cover'
 
 

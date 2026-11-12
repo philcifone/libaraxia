@@ -616,7 +616,7 @@ def personal_backup_create():
 def personal_backup_restore(name):
     from utils import personal_backups
     try:
-        r = personal_backups.restore(get_db(), current_user.id, current_user.username, name)
+        r = personal_backups.restore(get_db(), current_user.id, name)
     except personal_backups.PersonalBackupError as e:
         current_app.logger.exception(f'Personal restore {name} for {current_user.username} failed')
         flash(str(e), 'error')
@@ -636,7 +636,6 @@ def personal_backup_restore(name):
         parts.append(f"{len(r['given_away'])} item(s) you've given to someone since stay with them.")
     if r['skipped']:
         parts.append(f"{r['skipped']} status(es), review(s) or session(s) couldn't come back: their book is gone.")
-    parts.append('What you had before is the newest backup in the list.')
     flash(' '.join(parts), 'success')
     return _backups_back()
 

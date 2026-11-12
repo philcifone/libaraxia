@@ -17,12 +17,10 @@ The backup directory is BACKUP_DIR, default "backups" next to the database
 file. It must not be inside static/, which is served to the browser.
 
 A backup is of the whole site, every user, so restoring one is an admin's
-call: everything anyone did after it is replaced. Before a restore the
-current state is backed up (kind "before_restore"), so a restore can be
-undone by restoring that one. Automatic backups are pruned to the newest
-KEEP_AUTOMATIC; manual ones stay until deleted. Each user's own library
-backups, which the Goodreads import takes, are utils/personal_backups.py
-("goodreads" here is only for site backups made before that existed).
+call: everything anyone did after it is replaced, and that can't be
+undone. Site backups are only made by hand and stay until deleted. Each
+user's own library backups, which the Goodreads import takes, are
+utils/personal_backups.py.
 
 A backup made before a migration is restored and then brought up to date
 with the same runner as `manage.py migrate`. One made by newer code (it has
@@ -39,11 +37,8 @@ from utils import image_utils
 from utils.database import database_path
 
 KINDS = {
-    'manual':         'Backed up by hand',
-    'goodreads':      'Before a Goodreads import',
-    'before_restore': 'Before a restore',
+    'manual': 'Backed up by hand',
 }
-KEEP_AUTOMATIC = 5
 NAME_RE = re.compile(r'^\d{8}-\d{6}(-\d+)?$')
 DB_FILE = 'library.db'
 META_FILE = 'meta.json'
@@ -144,7 +139,7 @@ def _new_name(root):
     return f'{stamp}-{max(used) + 1}'
 
 
-def create(kind='manual', username=None, prune=True):
+def create(kind='manual', username=None):
     """Back up the database and the uploads. Returns the new backup's info
     (as list_backups() gives it). Raises BackupError if it can't."""
     if kind not in KINDS:
@@ -190,8 +185,6 @@ def create(kind='manual', username=None, prune=True):
         shutil.rmtree(tmp, ignore_errors=True)
         raise BackupError(f'The backup failed: {e.__class__.__name__}.') from e
     made = info(name)
-    if kind != 'manual' and prune:
-        _prune(keep=name)
     return made
 
 
@@ -241,25 +234,16 @@ def delete(name):
     shutil.rmtree(folder(name))
 
 
-def _prune(keep=None):
-    """Delete automatic backups beyond the newest KEEP_AUTOMATIC, never
-    `keep` (the one a restore is still reading)."""
-    automatic = [b for b in list_backups() if b['kind'] != 'manual']
-    for b in automatic[KEEP_AUTOMATIC:]:
-        if b['name'] == keep:
-            continue
-        shutil.rmtree(os.path.join(backup_dir(), b['name']), ignore_errors=True)
 
-
-def restore(name, username=None):
+def restore(name):
     """Replace the live database with backup `name`, and put back any of
-    its upload files that are gone. The current state is backed up first.
+    its upload files that are gone.
 
     The caller must not hold a read or write open on the database (close
     the request's connection first): the copy needs every lock.
 
-    Returns {'restored': info, 'safety': info of the before_restore backup,
-    'files': upload files put back, 'migrated': migrations applied}."""
+    Returns {'restored': info, 'files': upload files put back,
+    'migrated': migrations applied}."""
     import manage  # the migration runner, shared with `manage.py migrate`
 
     path = folder(name)
@@ -287,7 +271,6 @@ def restore(name, username=None):
         finally:
             conn.close()
 
-        safety = create('before_restore', username, prune=False)
         _copy_db(scratch, database_path())
     except BackupError:
         raise
@@ -301,5 +284,4 @@ def restore(name, username=None):
     backed_up = os.path.join(path, 'uploads')
     if os.path.isdir(backed_up):
         files = _link_tree(backed_up, uploads_dir(), only_missing=True)
-    _prune(keep=name)
-    return {'restored': meta, 'safety': safety, 'files': files, 'migrated': pending}
+    return {'restored': meta, 'files': files, 'migrated': pending}

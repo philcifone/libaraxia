@@ -35,8 +35,7 @@ Restore, in one transaction:
      user, so an old id can't belong to anyone else). A row on a book that
      no longer exists (a household book its owner deleted) is skipped and
      counted.
-Before that, the current state is backed up (kind "before_restore"), so a
-restore can be undone. After it, missing cover files are linked back and
+A restore can't be undone. After it, missing cover files are linked back and
 the covers of books deleted in step 2 are deleted if nothing uses them.
 
 A backup made before a migration still restores: only the columns both
@@ -55,7 +54,6 @@ from utils import image_utils
 KINDS = {
     'manual':         'Backed up by hand',
     'goodreads':      'Before a Goodreads import',
-    'before_restore': 'Before a restore',
 }
 MAX_MANUAL = 10        # per user; the oldest must be deleted to make another
 KEEP_AUTOMATIC = 5     # per user, newest kept
@@ -139,7 +137,7 @@ def _counts(tables):
 
 # --- making and listing ----------------------------------------------------
 
-def create(conn, user_id, username, kind='manual', prune=True):
+def create(conn, user_id, username, kind='manual'):
     """Back up one user's library. Returns its info. Raises
     PersonalBackupError (the manual limit, or a failure)."""
     if kind not in KINDS:
@@ -184,7 +182,7 @@ def create(conn, user_id, username, kind='manual', prune=True):
         shutil.rmtree(tmp, ignore_errors=True)
         raise PersonalBackupError(f'The backup failed: {e.__class__.__name__}.') from e
     made = info(user_id, name)
-    if kind != 'manual' and prune:
+    if kind != 'manual':
         _prune(user_id, keep=name)
     return made
 
@@ -271,10 +269,10 @@ def _insert(conn, table, saved, live_books):
     return skipped
 
 
-def restore(conn, user_id, username, name):
+def restore(conn, user_id, name):
     """Put a user's library back as backup `name` has it. Commits.
 
-    Returns {'restored': info, 'safety': info, 'books_back', 'books_removed',
+    Returns {'restored': info, 'books_back', 'books_removed',
     'kept': [(title, [usernames])], 'given_away': [titles], 'skipped',
     'files'}. Raises PersonalBackupError, with nothing changed."""
     from models import other_users_with_book_data
@@ -283,13 +281,11 @@ def restore(conn, user_id, username, name):
     data = _load(user_id, name)
     tables = data['tables']
     meta = info(user_id, name)
-    # Not pruned yet: that could take the backup being restored
-    safety = create(conn, user_id, username, 'before_restore', prune=False)
 
     saved_books = tables['books']
     id_i = saved_books['columns'].index('id')
     saved_ids = {r[id_i] for r in saved_books['rows']}
-    result = {'restored': meta, 'safety': safety, 'books_back': 0, 'books_removed': 0,
+    result = {'restored': meta, 'books_back': 0, 'books_removed': 0,
               'kept': [], 'given_away': [], 'skipped': 0, 'files': 0}
     removed_covers = []
     try:
@@ -363,5 +359,4 @@ def restore(conn, user_id, username, name):
     for path in removed_covers:
         if not conn.execute('SELECT 1 FROM books WHERE cover_image_url = ?', (path,)).fetchone():
             delete_image_file(path)
-    _prune(user_id, keep=name)
     return result

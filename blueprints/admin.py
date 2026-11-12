@@ -761,7 +761,7 @@ def remove_library_member():
 def backups_page():
     from utils import backups
     return render_template('admin/backups.html', backups=backups.list_backups(),
-                           keep=backups.KEEP_AUTOMATIC, where=backups.backup_dir())
+                           where=backups.backup_dir())
 
 
 @admin_blueprint.route("/backups/create", methods=["POST"])
@@ -792,18 +792,16 @@ def backup_restore(name):
     # request's connection (the login check already used it)
     close_db()
     try:
-        result = backups.restore(name, who)
+        result = backups.restore(name)
     except backups.BackupError as e:
         current_app.logger.exception(f'Restore of backup {name} failed')
         flash(str(e), 'error')
         return redirect(url_for('admin.backups_page'))
     when = result['restored']['created_at'].strftime('%-d %b %Y, %H:%M')
-    current_app.logger.warning(f"Admin {who} restored backup {name}; current state saved as "
-                               f"{result['safety']['name']}")
+    current_app.logger.warning(f"Admin {who} restored backup {name}")
     note = f" Brought up to date with {len(result['migrated'])} migration(s)." if result['migrated'] else ''
     files = f" {result['files']} missing cover/avatar file(s) put back." if result['files'] else ''
-    flash(f"Restored the backup from {when}.{files}{note} What was there before is the newest backup "
-          "in the list, if you need it back.", 'success')
+    flash(f"Restored the backup from {when}.{files}{note}", 'success')
     return redirect(url_for('admin.backups_page'))
 
 

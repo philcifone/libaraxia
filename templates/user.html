@@ -589,11 +589,11 @@
             <p class="text-sm text-content-secondary mb-4 max-w-3xl">
                 A backup of your own library: the items you added and their covers, and your statuses, ratings, reviews,
                 reading sessions, wishlist, tags, collections and goals. Restoring one puts all of that back as it was and
-                never changes anyone else's data. Libaraxia also backs up before every Goodreads import and every restore.
+                never changes anyone else's data. Libaraxia also backs up before every Goodreads import.
             </p>
             <form method="POST" action="{{ url_for('user.personal_backup_create') }}" class="mb-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2">Back up my library</button>
+                <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-4 py-2 rounded-lg">Back up my library</button>
                 <span class="text-sm text-content-secondary ml-2">Up to {{ backups_max }} of your own; delete one to make another.</span>
             </form>
             {% if library_backups %}
@@ -606,7 +606,7 @@
                         <span class="block text-sm text-content-secondary">{{ b.kind_label }} · {{ b.counts.books }} items, {{ b.counts.reviews }} reviews, {{ b.counts.sessions }} sessions</span>
                     </div>
                     <form method="POST" action="{{ url_for('user.personal_backup_restore', name=b.name) }}"
-                          data-confirm="Put your library back to {{ when }}? Your items, statuses, ratings, reviews, sessions, wishlist, tags, collections and goals go back to how they were then. Items you added since are removed, except ones someone else has data on. Nobody else's data changes. Your library as it is now is backed up first, so this can be undone.">
+                          data-confirm="Put your library back to {{ when }}? Your items, statuses, ratings, reviews, sessions, wishlist, tags, collections and goals go back to how they were then. Items you added since are removed, except ones someone else has data on. Nobody else's data changes. This can't be undone.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline px-3 py-1 text-sm">Restore</button>
                     </form>

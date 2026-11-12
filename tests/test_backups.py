@@ -1,4 +1,4 @@
-"""Site backups (utils/backups.py, admin pages): back up, restore, prune,
+"""Site backups (utils/backups.py, admin pages): back up, restore,
 delete, download, and the backup the Goodreads import takes first."""
 import json
 import os
@@ -57,18 +57,13 @@ def test_restore_puts_back_the_data_and_deleted_covers(backups, db, people, uplo
     db.commit()
     os.remove(uploads / 'cover_a.jpg')            # e.g. an undone import deleted it
 
-    result = backups.restore(made['name'], 'alice')
+    result = backups.restore(made['name'])
 
     assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', kept) == 1
     assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', later) == 0
     assert (uploads / 'cover_a.jpg').read_bytes() == b'cover a'
     assert result['files'] == 1 and result['migrated'] == []
-    # What was there before the restore is itself a backup, newest in the list
-    safety = result['safety']
-    assert safety['kind'] == 'before_restore' and backups.latest()['name'] == safety['name']
-    copy = sqlite3.connect(os.path.join(backups.folder(safety['name']), 'library.db'))
-    assert copy.execute('SELECT COUNT(*) FROM books WHERE id = ?', (later,)).fetchone()[0] == 1
-    copy.close()
+    assert len(backups.list_backups()) == 1        # a restore makes no backup of its own
 
 
 def test_restore_brings_an_older_backup_up_to_date(backups, db, people):
@@ -96,16 +91,9 @@ def test_restore_refuses_a_backup_from_newer_code(backups, db, people):
     with pytest.raises(backups.BackupError, match='newer'):
         backups.restore(made['name'])
     assert scalar(db, "SELECT COUNT(*) FROM books WHERE title = 'Added after'") == 1
-    assert len(backups.list_backups()) == 1        # and no safety backup was taken
+    assert len(backups.list_backups()) == 1
 
 
-def test_automatic_backups_are_pruned_manual_ones_kept(backups, db, people, monkeypatch):
-    manual = backups.create('manual')
-    for _ in range(backups.KEEP_AUTOMATIC + 2):
-        backups.create('goodreads')
-    kinds = [b['kind'] for b in backups.list_backups()]
-    assert kinds.count('goodreads') == backups.KEEP_AUTOMATIC
-    assert manual['name'] in [b['name'] for b in backups.list_backups()]
 
 
 def test_names_from_urls_are_checked(backups, db_path):
