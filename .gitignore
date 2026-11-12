@@ -18,6 +18,10 @@ library.db
 # Uploads and user data
 # No trailing slash: a worktree links these, and "dir/" would not match the symlink
 static/uploads
+# A copy of prod's DB and covers for the 14b dry run (worktree only, never commit)
+prod/
+# The worktree's previous uploads copy, moved aside while static/uploads points at prod/
+dev-uploads/
 goodreads_library_export.csv
 *.csv
 
