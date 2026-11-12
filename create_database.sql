@@ -65,6 +65,13 @@ INSERT INTO statuses (status, media_type) VALUES
     ('watched', 'video'), ('want to watch', 'video'),
     ('listened', 'record'), ('want to listen', 'record');
 
+-- A video is a movie or TV (migration 034): books.video_kind is 'tv' or NULL
+-- (= movie). Same lookup-table pattern; media.VIDEO_KINDS keeps the list.
+CREATE TABLE video_kinds (
+    name TEXT PRIMARY KEY
+);
+INSERT INTO video_kinds (name) VALUES ('movie'), ('tv');
+
 -- ---------------------------------------------------------------- books
 
 -- Shared catalogue. added_by is the owner (NULL = unowned; deleting a user
@@ -96,6 +103,11 @@ CREATE TABLE books (
     -- 0 = read/watched/listened to but never owned (migration 025); kept out of
     -- library grids and owned counts unless asked for. Not the same as removed.
     owned INTEGER NOT NULL DEFAULT 1 CHECK (owned IN (0, 1)),
+    -- Videos only (migration 034): 'tv' or NULL = movie; season is free text
+    -- for TV ("Season 2", "Complete series"). Last, where the migration's
+    -- ALTERs put them, so fresh and migrated DBs have the same column order.
+    video_kind TEXT REFERENCES video_kinds(name),
+    season TEXT,
     FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_books_added_by ON books(added_by);
@@ -461,4 +473,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('029_reading_goals.sql'),
     ('031_bulk_edits.sql'),
     ('032_goodreads_import.sql'),
-    ('033_username_nocase.sql');
+    ('033_username_nocase.sql'),
+    ('034_video_kind.sql');

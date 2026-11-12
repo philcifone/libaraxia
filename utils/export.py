@@ -12,7 +12,7 @@ import io
 import zipfile
 from datetime import datetime
 
-from utils.media import NO_STATUS_LABEL
+from utils.media import NO_STATUS_LABEL, kind_of
 
 
 def _csv(header, rows):
@@ -32,6 +32,8 @@ LIBRARY_HEADER = [
     # keep working. For a movie, Author is the director and Publisher the studio;
     # for an album, Author is the artist and Publisher the label.
     'Type', 'Format', 'Barcode', 'Catalogue Number', 'Runtime (min)',
+    # Movies & TV (15.1): movie / tv for a video, blank otherwise; season is TV's
+    'Kind', 'Season',
 ]
 
 
@@ -56,6 +58,7 @@ def library_rows(conn, user_id):
                b.page_count, b.genre, owner.username AS owner, b.added_by = :u AND b.owned = 1 AS own,
                b.removed_at, b.removed_note,
                b.media_type, b.format, b.barcode, b.catalog_number, b.runtime_minutes,
+               b.video_kind, b.season,
                c.status, c.created_at AS status_added,
                (SELECT MIN(date_started) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS started,
                (SELECT MAX(date_completed) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS completed,
@@ -95,7 +98,7 @@ def library_rows(conn, user_id):
         r['status'] or NO_STATUS_LABEL.get(r['media_type'], 'Unread'), r['status_added'], r['started'], r['completed'], r['reads'] or 0,
         r['rating'], r['comment'], r['tags'], r['shelves'],
         r['media_type'], r['format'] or '', r['barcode'] or '', r['catalog_number'] or '',
-        r['runtime_minutes'] or '',
+        r['runtime_minutes'] or '', kind_of(r) or '', r['season'] or '',
     ] for r in rows]
 
 

@@ -52,4 +52,7 @@ python3 manage.py migrate             # back up, then apply pending (asks first)
 - `027_shelf_types.sql` - Custom shelves get a `media_type` (Books / Movies / Music tabs on Collections, ROADMAP 8C); names unique per section. Rebuilds `user_collections`; a shelf holding only movies or only albums becomes that section's, every other shelf a Books one.
 - `028_font.sql` - Adds `users.font` (Profile → Appearance → Font).
 - `029_reading_goals.sql` - Reading goals per year (`reading_goals`, ROADMAP 12.3); the existing `users.reading_goal` becomes this year's row and the column is left unused.
-- `031_bulk_edits.sql` - Bulk edit (ROADMAP 14a): `bulk_edits` and `bulk_edit_items` (the undo journal) and `collections.quiet` (status rows written in bulk stay out of the feed). 030 is reserved for ROADMAP 15.1.
+- `031_bulk_edits.sql` - Bulk edit (ROADMAP 14a): `bulk_edits` and `bulk_edit_items` (the undo journal) and `collections.quiet` (status rows written in bulk stay out of the feed). 030 was reserved for ROADMAP 15.1, which shipped as 034.
+- `032_goodreads_import.sql` - Granular Goodreads import (ROADMAP 14b): `goodreads_staging`, `goodreads_imports`, `goodreads_rows`.
+- `033_username_nocase.sql` - Usernames unique ignoring case (unique index on `username COLLATE NOCASE`).
+- `034_video_kind.sql` - Movies & TV (ROADMAP 15.1): `video_kinds` lookup table (`movie`, `tv`), `books.video_kind` (`'tv'`, NULL = movie, no backfill) and `books.season` (free text). ADD COLUMN only; the `library_*` views pick them up.

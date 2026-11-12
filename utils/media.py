@@ -66,6 +66,33 @@ FORMAT_LABELS = {
 }
 
 
+# A video is a movie or TV (ROADMAP 15.1, migration 034): books.video_kind,
+# whose values are rows in the video_kinds table (a test checks they agree).
+# NULL means movie, for old rows and new ones alike (video_kind() below), so
+# a movie has one spelling; season is free text, kept for TV only.
+MOVIE = 'movie'
+TV = 'tv'
+VIDEO_KINDS = (MOVIE, TV)
+KIND_LABELS = {MOVIE: 'Movie', TV: 'TV'}
+
+
+def video_kind(value):
+    """What to store for a Kind choice: 'tv', or None for a movie (and
+    anything unknown), like book_format."""
+    return TV if (value or '').strip().lower() == TV else None
+
+
+def kind_of(row):
+    """'tv' or 'movie' for a video row (or dict); None for a book or album,
+    or a row selected without the column."""
+    if media_type_of(row) != VIDEO:
+        return None
+    try:
+        return TV if row['video_kind'] == TV else MOVIE
+    except (KeyError, IndexError):
+        return MOVIE
+
+
 def book_format(value):
     """What to store for a book form's Format choice: 'Audiobook', or None
     for a plain book (so old rows and new ones read the same)."""

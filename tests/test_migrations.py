@@ -88,6 +88,7 @@ def wind_back_to_023(conn):
         DROP TABLE collections;
         DROP TABLE statuses;
         DROP TABLE media_types;
+        DROP TABLE video_kinds;        -- 034 runs again too (books.video_kind)
         {BOOKS_023}
         CREATE VIEW library_books AS SELECT b.* FROM books b
         WHERE b.media_type = 'book' AND b.added_by IS NOT NULL
@@ -98,9 +99,10 @@ def wind_back_to_023(conn):
         -- 024 rebuilds books and 025 adds books.owned; the rebuilt books
         -- above has neither, so both run again. Later migrations on other
         -- tables (026: users) stay applied. 031 adds collections.quiet and
-        -- references books, so it goes back too.
+        -- references books, so it goes back too, and so does 034
+        -- (books.video_kind, books.season).
         DELETE FROM schema_migrations WHERE name IN ('024_add_records.sql', '025_owned.sql',
-                                                     '031_bulk_edits.sql');
+                                                     '031_bulk_edits.sql', '034_video_kind.sql');
     """)
 
 
@@ -336,6 +338,7 @@ def test_lookup_tables_match_utils_media(db):
     assert {r[0] for r in db.execute('SELECT name FROM media_types')} == set(media.MEDIA_TYPES)
     in_db = {(r[0], r[1]) for r in db.execute('SELECT status, media_type FROM statuses')}
     assert in_db == {(s, t) for t, statuses in media.STATUSES.items() for s in statuses}
+    assert {r[0] for r in db.execute('SELECT name FROM video_kinds')} == set(media.VIDEO_KINDS)
 
 
 def test_031_on_a_database_at_029(template_db, tmp_path):
@@ -443,3 +446,44 @@ def test_goodreads_tables_follow_their_parents(db, people):
     for table in ('goodreads_staging', 'goodreads_imports', 'goodreads_rows'):
         assert db.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0] == 0
     assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+
+
+def test_034_on_a_database_at_033(template_db, tmp_path):
+    """034 (Movies & TV, ROADMAP 15.1) on a database with videos already in
+    it: no backfill, so every existing video reads as a movie (NULL), the
+    library_videos view carries the new columns, and the schema ends up the
+    same as a fresh one."""
+    from utils import media
+    path = tmp_path / 'at-033.db'
+    conn = fresh_db(path)
+    conn.executescript("""
+        ALTER TABLE books DROP COLUMN season;
+        ALTER TABLE books DROP COLUMN video_kind;
+        DROP TABLE video_kinds;
+        DELETE FROM schema_migrations WHERE name = '034_video_kind.sql';
+        INSERT INTO users (id, username, email, password) VALUES (1, 'phil', 'p@example.test', 'x');
+        INSERT INTO books (id, title, author, added_by) VALUES (1, 'A book', 'A', 1);
+        INSERT INTO books (id, title, author, added_by, media_type, format)
+            VALUES (2, 'Jaws', 'Spielberg', 1, 'video', 'VHS');
+    """)
+    conn.close()
+
+    result = run_manage('--db', str(path), 'migrate', '-y')
+    assert '034_video_kind.sql' in result.stdout
+
+    conn = connect(path)
+    assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    row = conn.execute('SELECT * FROM library_videos').fetchone()
+    assert (row['id'], row['video_kind'], row['season']) == (2, None, None)
+    assert media.kind_of(row) == media.MOVIE
+    conn.close()
+    assert schema(path) == schema(template_db)
+
+
+def test_unknown_video_kind_is_refused(db):
+    """video_kinds does what a CHECK would (foreign keys are on)."""
+    db.execute('PRAGMA foreign_keys = ON')
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute("INSERT INTO books (title, author, media_type, video_kind) VALUES ('x', 'y', 'video', 'anime')")
+    db.execute("INSERT INTO books (title, author, media_type, video_kind, season) "
+               "VALUES ('x', 'y', 'video', 'tv', 'Season 2')")

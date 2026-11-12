@@ -854,6 +854,9 @@ def card_json(conn, viewer_id, books):
             'removed': b['removed_at'] is not None,
             'not_owned': not b['owned'],
             'format': b['format'],
+            # Videos (15.1): 'tv' or None (a movie), and a TV set's season text
+            'video_kind': b['video_kind'],
+            'season': b['season'],
             'year': b['publish_year'],
             'status': media.STATUS_LABELS.get(status, status) if status else None,
             'rating': mark.get('rating'),
