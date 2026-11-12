@@ -128,7 +128,7 @@
                             {% if d.author %}<span class="text-content-secondary"> · {{ d.author }}</span>{% endif %}
                         </p>
                         <p class="gr-details">
-                            <span class="font-mono">line {{ row.line }}</span>
+                            <span>line {{ row.line }}</span>
                             {% if row.book %} · <a href="{{ url_for('books.show_book', id=row.book.id) }}" class="text-accent underline">{{ match_label(row) }}</a>{% endif %}
                             {% if d.shelves %} · {{ d.shelves|join(', ') }}{% endif %}
                             {% if d.date_read %} · read {{ d.date_read }}{% elif d.date_added %} · added {{ d.date_added }}{% endif %}

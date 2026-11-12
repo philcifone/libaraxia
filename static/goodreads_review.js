@@ -269,7 +269,7 @@ function grRowMatches(row, filter) {
             const rows = data.rows.filter(r => r.outcome === key);
             if (!rows.length) return '';
             const items = rows.map(r => `
-                <li><span class="font-mono text-xs text-content-secondary">line ${r.line}</span>
+                <li><span class="text-xs text-content-secondary">line ${r.line}</span>
                     ${escapeHtml(r.title || '(no title)')}${r.author ? ` <span class="text-content-secondary">· ${escapeHtml(r.author)}</span>` : ''}
                     ${r.detail ? ` <span class="text-content-secondary">(${escapeHtml(r.detail)})</span>` : ''}</li>`).join('');
             return `
