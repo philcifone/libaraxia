@@ -152,13 +152,31 @@ def profile(username):
         in_shared_library=in_shared_library,
         household=household,
         recent_reviews=recent_reviews,
-        account_removal=(removal_context(conn, current_user.id, viewer_is_admin=False)
-                         if is_own_profile else None),
-        # Recent bulk edits (ROADMAP 14), yours only, with their Undo
-        bulk_history=bulk.recent(conn, current_user) if is_own_profile else [],
-        library_backups=personal_backups.list_backups(current_user.id) if is_own_profile else [],
-        backups_max=personal_backups.MAX_MANUAL,
     )
+
+@user_blueprint.route('/settings')
+@login_required
+def settings():
+    """Settings (ROADMAP 14c), the sidebar's gear, for everyone: Library
+    (export, Goodreads import, covers, bulk edits, backups) and Account
+    (sign-in, appearance, export / deactivate / delete), moved off the
+    profile; admins also get the Admin tab (the old Admin Settings)."""
+    conn = get_db()
+    me = dict(conn.execute('SELECT * FROM users WHERE id = ?', (current_user.id,)).fetchone())
+    admin = None
+    if current_user.is_admin:
+        from blueprints.admin import settings_context
+        admin = settings_context(conn)
+    return render_template(
+        'settings.html',
+        user=me,
+        account_removal=removal_context(conn, current_user.id, viewer_is_admin=False),
+        bulk_history=bulk.recent(conn, current_user),
+        library_backups=personal_backups.list_backups(current_user.id),
+        backups_max=personal_backups.MAX_MANUAL,
+        **(admin or {}),
+    )
+
 
 @user_blueprint.route('/update_reading_goal', methods=['POST'])
 @login_required
@@ -545,7 +563,7 @@ def delete_account_self():
     """Deactivate or delete your own account (see utils/accounts.py)."""
     conn = get_db()
     ctx = removal_context(conn, current_user.id, viewer_is_admin=False)
-    back = redirect(url_for('user.profile', username=current_user.username))
+    back = redirect(url_for('user.settings', _anchor='account'))
     if ctx['last_admin']:
         flash("You're the only admin. Make someone else an admin first.", "error")
         return back
@@ -593,7 +611,7 @@ def _backups_back():
     """The Goodreads import page offers "Back up my library" too."""
     if request.form.get('back') == 'goodreads':
         return redirect(url_for('user.import_goodreads_page'))
-    return redirect(url_for('user.profile', username=current_user.username) + '#library-backups')
+    return redirect(url_for('user.settings', _anchor='library-backups'))
 
 
 @user_blueprint.route('/backups/create', methods=['POST'])

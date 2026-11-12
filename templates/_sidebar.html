@@ -56,12 +56,11 @@
                     {{ icon('bell') }}
                     {% if waiting %}<span class="absolute -top-1 -right-1 min-w-[1.25rem] px-1 bg-accent text-on-accent text-xs leading-5 text-center rounded-pill" aria-hidden="true">{{ waiting }}</span>{% endif %}
                 </a>
-                {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.settings') }}" title="Admin Settings" aria-label="Admin Settings"
-                   class="sidebar-icon {{ 'is-active' if request.path.startswith('/admin') }}">
+                {# Settings, for everyone; admins find Admin Settings as its last tab (14c) #}
+                <a href="{{ url_for('user.settings') }}" title="Settings" aria-label="Settings"
+                   class="sidebar-icon {{ 'is-active' if request.endpoint == 'user.settings' or request.path.startswith('/admin') }}">
                     {{ icon('settings') }}
                 </a>
-                {% endif %}
                 {# data-mode-picker: hidden in Outrun, which is dark only #}
                 <button type="button" class="sidebar-icon" data-mode-toggle data-mode-picker
                         title="Light or dark mode" aria-label="Switch between light and dark mode">

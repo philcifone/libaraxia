@@ -9,7 +9,7 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
-    {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Goodreads Import', class='') }}
+    {{ crumbs([('Settings', url_for('user.settings', _anchor='library'))], 'Goodreads Import', class='') }}
 
     {{ page_heading('library', 'Import from Goodreads', subtitle='Your reading history from a Goodreads CSV export', class='') }}
 
@@ -41,7 +41,7 @@
                 <input type="hidden" name="back" value="goodreads">
                 <button type="submit" class="btn bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold rounded-lg">Back up my library</button>
             </form>
-            <a href="{{ url_for('user.profile', username=current_user.username) }}#library-backups" class="text-accent underline">Your backups</a>
+            <a href="{{ url_for('user.settings', _anchor='library-backups') }}" class="text-accent underline">Your backups</a>
         </div>
     </section>
 

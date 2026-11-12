@@ -179,7 +179,7 @@ def test_cards_and_filled_buttons_use_the_components():
 
 def test_sidebar_has_the_mode_shortcut(client, db, people):
     """7.1: Mode can be switched from the sidebar on any page, without a trip
-    to the profile. Same buttons and endpoint as Profile -> Appearance."""
+    to the profile. Same buttons and endpoint as Settings -> Account -> Appearance."""
     db.execute("UPDATE users SET color_mode = 'dark' WHERE id = ?", (people['bob'],))
     db.commit()
     login(client, 'bob')
@@ -291,7 +291,7 @@ def test_every_field_and_button_has_a_name(client, db, people):
     login(client, 'alice')
     pages = ['/base/index', '/books/add', f'/books/edit/{book}', f'/books/book/{book}', '/wishlist/view',
              '/user/alice', f'/read/rate_review/{book}', '/collections/collections', '/feed/activity',
-             '/friends/notifications_page', '/admin/settings', '/user/import_goodreads_page']
+             '/friends/notifications_page', '/user/settings', '/user/import_goodreads_page']
     problems = {}
     for url in pages:
         parser = _Names()
@@ -451,11 +451,11 @@ def test_search_row_sits_under_the_tabs(client, people):
 
 
 def test_accent_colour_is_saved_and_on_every_page(client, db, people):
-    """8B.5: Profile -> Appearance -> Accent. Saved per user, put on <html
+    """8B.5: Settings -> Account -> Appearance -> Accent. Saved per user, put on <html
     data-accent>, House style only (the picker hides under Classic)."""
     login(client, 'bob')
     assert 'data-accent="green"' in client.get('/base/index').get_data(as_text=True)
-    page = client.get('/user/bob').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-accent-picker' in page and page.count('data-kind="accent"') == 7
     r = client.post('/user/update_theme', json={'accent': 'blue'})
     assert r.status_code == 200 and r.get_json()['accent'] == 'blue'
@@ -484,7 +484,7 @@ def test_pages_share_the_heading_card(client, db, people):
     login(client, 'alice')                                      # admin
     for url, name in [('/feed/activity', 'Activity Feed'), ('/friends/notifications_page', 'Notifications'),
                       ('/wishlist/view', 'Wishlist'), ('/collections/collections', 'Collections'),
-                      ('/admin/settings', 'Admin Settings')]:
+                      ('/user/settings', 'Settings')]:
         page = client.get(url, follow_redirects=True).get_data(as_text=True)
         h1 = re.search(r'<h1 class="flex items-center justify-center gap-3[^"]*">(.*?)</h1>', page, re.S)
         assert h1 and '<svg' in h1.group(1) and name in h1.group(1), url
@@ -509,7 +509,7 @@ def test_style_names_and_classic_accents(client, db, people):
     """Styles show as Negative Earth / OG (keys unchanged), and Classic takes
     the accent too, through its own --acc-l shades."""
     login(client, 'alice')
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'Negative Earth' in page and '>OG<' in page.replace('\n', '').replace(' ', '')
     css = pathlib.Path('static/styles.css').read_text()
     assert '[data-accent-picker] { display: none; }' not in css
@@ -547,7 +547,7 @@ def test_outrun_style_is_dark_only_with_neon_accents(client, db, people):
     login(client, 'alice')
     r = client.post('/user/update_theme', json={'style': 'outrun'})
     assert r.status_code == 200
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-style="outrun"' in page
     assert page.count('data-mode-picker') == 2          # sidebar + Appearance
     assert 'data-outrun-note' in page and 'data-font-picker' in page
@@ -587,10 +587,10 @@ def test_shelf_style_bookcase(client, db, people):
 
 
 def test_font_choice_saved_and_on_the_page(client, db, people):
-    """Font (Profile -> Appearance): saved per user, on <html data-font>,
+    """Font (Settings -> Account -> Appearance): saved per user, on <html data-font>,
     each choice has a CSS block and self-hosted OFL files; unknown is refused."""
     login(client, 'alice')
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-font="theme"' in page and 'data-kind="font"' in page
     assert client.post('/user/update_theme', json={'font': 'comic-sans'}).status_code == 400
     assert client.post('/user/update_theme', json={'font': 'garamond'}).status_code == 200
@@ -822,15 +822,10 @@ def test_friends_page_and_notifications_under_the_welcome(client, db, people):
     page = client.get('/friends/').get_data(as_text=True)
     head = page[page.index('Welcome,'):page.index('<!-- Navigation -->')]
     assert 'aria-label="Notifications, 1 waiting"' in head
-    assert 'href="/admin/settings"' not in head          # carol isn't an admin
+    assert 'href="/user/settings"' in head               # the gear: Settings, for everyone (14c)
     nav = page[page.index('<!-- Navigation -->'):]
     nav = nav[:nav.index('</nav>')]
-    assert 'notifications' not in nav and 'Admin Settings' not in nav
-    # An admin gets the gear there instead of a nav entry
-    login(client, 'alice')
-    page = client.get('/friends/').get_data(as_text=True)
-    head = page[page.index('Welcome,'):page.index('<!-- Navigation -->')]
-    assert 'href="/admin/settings"' in head
+    assert 'notifications' not in nav and 'Settings' not in nav
 
 
 def test_shelf_coverless_titles_break_between_words():
@@ -880,7 +875,7 @@ def test_appearance_card_and_two_mode_buttons(client, db, people):
     Mode is Light | Dark plus a "Follow system" link (hidden by CSS while
     following). 'system' stays the stored default and a valid choice."""
     login(client, 'alice')
-    page = client.get('/user/alice').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     card = page[page.index('<details class="appearance-card'):]
     card = card[:card.index('</details>')]
     assert 'id="appearance-settings" data-theme-picker' in card

@@ -18,8 +18,15 @@ admin_blueprint = Blueprint('admin', __name__, template_folder='templates')
 @login_required
 @admin_required
 def settings():
-    """Admin settings page - user management"""
-    conn = get_db()
+    """Old address of Admin Settings, now the Admin tab of Settings
+    (user.settings, ROADMAP 14c). A bookmark's #fragment survives the
+    redirect, so /admin/settings#maintenance still opens that tab."""
+    return redirect(url_for('user.settings', _anchor='admin'))
+
+
+def settings_context(conn):
+    """What the Admin tab shows: every user with counts, site stats, and
+    the households (library groups)."""
     # Get all users with their stats
     users = conn.execute("""
         SELECT
@@ -72,10 +79,7 @@ def settings():
             libraries[lib_id] = []
         libraries[lib_id].append(dict(member))
 
-    return render_template('admin_settings.html',
-                         users=users,
-                         stats=stats,
-                         libraries=libraries)
+    return {'users': users, 'stats': stats, 'libraries': libraries}
 
 
 @admin_blueprint.route("/create_user", methods=["POST"])
@@ -91,15 +95,15 @@ def create_user():
     # Validation
     if not username or not email or not password:
         flash("All fields are required", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     if len(password) < 6:
         flash("Password must be at least 6 characters", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     if not is_valid_username(username):
         flash(USERNAME_RULES, "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     conn = get_db()
     try:
@@ -110,7 +114,7 @@ def create_user():
 
         if existing_user:
             flash(f"Username '{username}' already exists", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('user.settings', _anchor='users'))
 
         # Check if email already exists
         existing_email = conn.execute(
@@ -119,7 +123,7 @@ def create_user():
 
         if existing_email:
             flash(f"Email '{email}' already exists", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('user.settings', _anchor='users'))
 
         # Create new user
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -136,7 +140,7 @@ def create_user():
         current_app.logger.error(f"Error creating user: {str(e)}")
         flash("Error creating user", "error")
 
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('user.settings', _anchor='users'))
 
 
 @admin_blueprint.route("/toggle_user", methods=["POST"])
@@ -149,7 +153,7 @@ def toggle_user():
     # Prevent admin from deactivating themselves
     if user_id == current_user.id:
         flash("You cannot deactivate your own account", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     conn = get_db()
     try:
@@ -157,7 +161,7 @@ def toggle_user():
 
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('user.settings', _anchor='users'))
 
         new_status = 0 if user['is_active'] else 1
         conn.execute('UPDATE users SET is_active = ? WHERE id = ?', (new_status, user_id))
@@ -171,7 +175,7 @@ def toggle_user():
         current_app.logger.error(f"Error toggling user status: {str(e)}")
         flash("Error updating user status", "error")
 
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('user.settings', _anchor='users'))
 
 
 @admin_blueprint.route("/users/<int:user_id>/removal")
@@ -200,30 +204,30 @@ def delete_user():
 
     if user_id == current_user.id:
         flash("Use Profile → Account to deactivate or delete your own account.", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     conn = get_db()
     ctx = removal_context(conn, user_id, viewer_is_admin=True)
     if not ctx:
         flash("User not found", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
     if ctx['last_admin']:
         flash("Cannot remove the last admin user", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     username = ctx['user']['username']
     if action == 'deactivate':
         deactivate_account(conn, user_id)
         flash(f"'{username}' deactivated. Everything is kept; reactivate them any time.", "success")
         current_app.logger.warning(f"Admin {current_user.username} deactivated user: {username}")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     try:
         username, owned, new_owner, files = delete_account(conn, user_id, request.form.get('books_to'))
     except AccountError as e:
         conn.rollback()
         flash(str(e), "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     from utils.image_utils import delete_image_file
     for path in files:
@@ -234,7 +238,7 @@ def delete_user():
         flash(f"User '{username}' and their data deleted.", "success")
     current_app.logger.warning(
         f"Admin {current_user.username} deleted user: {username} (books -> {new_owner or 'none'})")
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('user.settings', _anchor='users'))
 
 
 @admin_blueprint.route("/toggle_admin", methods=["POST"])
@@ -247,7 +251,7 @@ def toggle_admin():
     # Prevent admin from removing their own admin status
     if user_id == current_user.id:
         flash("You cannot change your own admin status", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     conn = get_db()
     try:
@@ -255,14 +259,14 @@ def toggle_admin():
 
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('user.settings', _anchor='users'))
 
         # If removing admin status, check if they're the last admin
         if user['is_admin']:
             admin_count = conn.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0]
             if admin_count <= 1:
                 flash("Cannot remove admin status from the last admin", "error")
-                return redirect(url_for('admin.settings'))
+                return redirect(url_for('user.settings', _anchor='users'))
 
         new_status = 0 if user['is_admin'] else 1
         conn.execute('UPDATE users SET is_admin = ? WHERE id = ?', (new_status, user_id))
@@ -276,7 +280,7 @@ def toggle_admin():
         current_app.logger.error(f"Error toggling admin status: {str(e)}")
         flash("Error updating admin status", "error")
 
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('user.settings', _anchor='users'))
 
 
 @admin_blueprint.route("/update_user_email", methods=["POST"])
@@ -289,7 +293,7 @@ def update_user_email():
 
     if not new_email:
         flash("Email address is required", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     conn = get_db()
     try:
@@ -297,13 +301,13 @@ def update_user_email():
         user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('user.settings', _anchor='users'))
 
         # Check if email is already in use
         existing = conn.execute('SELECT id FROM users WHERE email = ? AND id != ?', (new_email, user_id)).fetchone()
         if existing:
             flash(f"Email '{new_email}' is already in use", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('user.settings', _anchor='users'))
 
         # Update email
         conn.execute('UPDATE users SET email = ? WHERE id = ?', (new_email, user_id))
@@ -316,7 +320,7 @@ def update_user_email():
         current_app.logger.error(f"Error updating email: {str(e)}")
         flash("Error updating email address", "error")
 
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('user.settings', _anchor='users'))
 
 
 @admin_blueprint.route("/reset_user_password", methods=["POST"])
@@ -329,11 +333,11 @@ def reset_user_password():
 
     if not new_password:
         flash("Password is required", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     if len(new_password) < 6:
         flash("Password must be at least 6 characters", "error")
-        return redirect(url_for('admin.settings'))
+        return redirect(url_for('user.settings', _anchor='users'))
 
     conn = get_db()
     try:
@@ -341,7 +345,7 @@ def reset_user_password():
         user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings'))
+            return redirect(url_for('user.settings', _anchor='users'))
 
         # Update password
         hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
@@ -355,7 +359,7 @@ def reset_user_password():
         current_app.logger.error(f"Error resetting password: {str(e)}")
         flash("Error resetting password", "error")
 
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('user.settings', _anchor='users'))
 
 
 @admin_blueprint.route("/upload_user_avatar", methods=["POST"])
@@ -664,7 +668,7 @@ def add_library_member():
 
     if not user_id:
         flash("User ID is required", "error")
-        return redirect(url_for('admin.settings', _anchor='households'))
+        return redirect(url_for('user.settings', _anchor='households'))
 
     conn = get_db()
     try:
@@ -672,7 +676,7 @@ def add_library_member():
         user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings', _anchor='households'))
+            return redirect(url_for('user.settings', _anchor='households'))
 
         # Check if user is already in a library
         existing = conn.execute(
@@ -681,7 +685,7 @@ def add_library_member():
 
         if existing:
             flash(f"User '{user['username']}' is already in a library group", "warning")
-            return redirect(url_for('admin.settings', _anchor='households'))
+            return redirect(url_for('user.settings', _anchor='households'))
 
         # If no library_id provided, create a new library, with this user as
         # its owner (every household has one; see utils/households.py)
@@ -710,7 +714,7 @@ def add_library_member():
         current_app.logger.error(f"Error adding library member: {str(e)}")
         flash("Error adding user to library", "error")
 
-    return redirect(url_for('admin.settings', _anchor='households'))
+    return redirect(url_for('user.settings', _anchor='households'))
 
 
 @admin_blueprint.route("/remove_library_member", methods=["POST"])
@@ -722,7 +726,7 @@ def remove_library_member():
 
     if not user_id:
         flash("User ID is required", "error")
-        return redirect(url_for('admin.settings', _anchor='households'))
+        return redirect(url_for('user.settings', _anchor='households'))
 
     conn = get_db()
     try:
@@ -733,7 +737,7 @@ def remove_library_member():
 
         if not user:
             flash("User not found", "error")
-            return redirect(url_for('admin.settings', _anchor='households'))
+            return redirect(url_for('user.settings', _anchor='households'))
 
         # Remove from library (hands ownership on / dissolves a household of one)
         if households.leave(conn, user_id):
@@ -749,7 +753,7 @@ def remove_library_member():
         current_app.logger.error(f"Error removing library member: {str(e)}")
         flash("Error removing user from library", "error")
 
-    return redirect(url_for('admin.settings', _anchor='households'))
+    return redirect(url_for('user.settings', _anchor='households'))
 
 
 

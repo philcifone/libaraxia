@@ -192,7 +192,7 @@ def test_backups_are_per_user(client, db, people):
 def test_profile_lists_backups_and_routes_work(client, db, people):
     from utils import personal_backups as pb
     login(client, 'bob')
-    page = client.get('/user/bob').get_data(as_text=True)
+    page = client.get('/user/settings').get_data(as_text=True)
     assert 'Library backups' in page and 'No backups yet' in page
     r = client.post('/user/backups/create', follow_redirects=True)
     assert b'Library backed up' in r.data and b'Restore' in r.data
