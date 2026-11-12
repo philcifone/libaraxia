@@ -172,6 +172,9 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
         DROP TABLE household_invites;  -- added by 021
         DROP TABLE cover_jobs;         -- added by 022
         DROP TABLE reading_goals;      -- added by 029
+        DROP TABLE goodreads_rows;     -- added by 032
+        DROP TABLE goodreads_imports;
+        DROP TABLE goodreads_staging;
         -- videos, added by 023
         DROP VIEW library_videos;
         DROP INDEX idx_books_media_type;
@@ -387,4 +390,56 @@ def test_bulk_journal_follows_its_parents(db, people):
     db.execute('DELETE FROM users WHERE id = ?', (bob,))
     assert db.execute('SELECT COUNT(*) FROM bulk_edits WHERE id = ?', (third,)).fetchone()[0] == 0
     assert db.execute('SELECT COUNT(*) FROM bulk_edit_items WHERE edit_id = ?', (third,)).fetchone()[0] == 0
+    assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+
+
+def test_032_on_a_database_at_031(template_db, tmp_path):
+    """032 (Goodreads import, ROADMAP 14b) is additive: on a database that
+    has everything up to 031 it adds the three tables, touches no data, and
+    the schema ends up the same as a fresh one."""
+    path = tmp_path / 'at-031.db'
+    conn = fresh_db(path)
+    conn.executescript("""
+        DROP TABLE goodreads_rows;
+        DROP TABLE goodreads_imports;
+        DROP TABLE goodreads_staging;
+        DELETE FROM schema_migrations WHERE name = '032_goodreads_import.sql';
+        INSERT INTO users (id, username, email, password) VALUES (1, 'phil', 'p@example.test', 'x');
+        INSERT INTO books (id, title, author, added_by) VALUES (1, 'A book', 'A', 1);
+    """)
+    conn.close()
+
+    result = run_manage('--db', str(path), 'migrate', '-y')
+    assert '032_goodreads_import.sql' in result.stdout
+
+    conn = connect(path)
+    assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    assert conn.execute('SELECT title FROM books').fetchall()[0][0] == 'A book'
+    conn.close()
+    assert schema(path) == schema(template_db)
+
+
+def test_goodreads_tables_follow_their_parents(db, people):
+    """Provenance outlives the undo journal and the books it names: a swept
+    bulk edit nulls goodreads_imports.edit_id, a deleted book nulls
+    goodreads_rows.book_id, and a deleted user takes their staging, imports
+    and rows with them."""
+    alice = people['alice']
+    db.execute('PRAGMA foreign_keys = ON')
+    book = db.execute("INSERT INTO books (title, author, added_by) VALUES ('B', 'A', ?)", (alice,)).lastrowid
+    edit = db.execute("INSERT INTO bulk_edits (user_id, action, params, summary, item_count) "
+                      "VALUES (?, 'goodreads', '{}', 'x', 1)", (alice,)).lastrowid
+    imp = db.execute("INSERT INTO goodreads_imports (user_id, edit_id, filename, row_count) "
+                     "VALUES (?, ?, 'x.csv', 1)", (alice, edit)).lastrowid
+    db.execute("INSERT INTO goodreads_rows (import_id, line, goodreads_id, book_id, outcome) "
+               "VALUES (?, 2, '42', ?, 'filled')", (imp, book))
+    db.execute("INSERT INTO goodreads_staging (user_id, line, data) VALUES (?, 2, '{}')", (alice,))
+
+    db.execute('DELETE FROM bulk_edits WHERE id = ?', (edit,))
+    assert db.execute('SELECT edit_id FROM goodreads_imports WHERE id = ?', (imp,)).fetchone()[0] is None
+    db.execute('DELETE FROM books WHERE id = ?', (book,))
+    assert db.execute('SELECT book_id, goodreads_id FROM goodreads_rows').fetchone()[:] == (None, '42')
+    db.execute('DELETE FROM users WHERE id = ?', (alice,))
+    for table in ('goodreads_staging', 'goodreads_imports', 'goodreads_rows'):
+        assert db.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0] == 0
     assert db.execute('PRAGMA foreign_key_check').fetchall() == []

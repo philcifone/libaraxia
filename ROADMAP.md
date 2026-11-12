@@ -59,7 +59,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
   > Step N-1 is approved: commit it on the branch first. Then Phase 14b, step N: granular Goodreads import. Read docs/GOODREADS-IMPORT-SPEC.md in full, then CLAUDE.md, ROADMAP.md (14b), and BULK-EDIT-SPEC.md sections 2, 3, 9 and 14 (where they differ, the Goodreads spec's section 14 wins). Work in the worktree ../libaraxia-import on branch phase-14b-goodreads-import, following the spec's section 14 pipeline. Build step N only. Where the spec and the code disagree, stop and tell me. Leave step N uncommitted; stop and report when it's done.
 - [x] Re-spec after 14a (replaces BULK-EDIT-SPEC section 16).
 - [x] 1. Parser: `goodreads_id` and `shelves` from `parse_row`.
-- [ ] 2. Migration 032 (staging, imports, rows). **Merge point M1.**
+- [x] 2. Migration 032 (staging, imports, rows). **Merge point M1.**
 - [ ] 3. `utils/goodreads_plan.py` stage + plan, headless (boxes, fill, choices).
 - [ ] 4. Apply and undo, headless (provenance, bulk journal).
 - [ ] 5. Routes and the review page; old route removed.
