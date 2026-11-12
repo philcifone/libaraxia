@@ -193,6 +193,53 @@ def parse_row(row):
     }
 
 
+# ------------------------------------------------------------------ writers
+# Plain functions on (conn, user_id), shared by the granular import
+# (utils/goodreads_plan.py), which decides what to write; these only write.
+
+def create_book(conn, user_id, r, owned):
+    """A new book from parsed row `r`, added by the user. Format Audiobook
+    for an audiobook row. Returns its id.
+
+    created_at is the Goodreads Date Added, so 300 imported books don't flood
+    friends' feeds as "added today". The column default covers rows without
+    one (never write NULL into it: it breaks feed order)."""
+    cols = ['title', 'author', 'isbn', 'publisher', 'publish_year', 'page_count', 'added_by', 'owned']
+    vals = [r['title'], r['author'] or 'Unknown', r['isbns'][0] if r['isbns'] else None,
+            r['publisher'], r['year'], r['pages'], user_id, int(bool(owned))]
+    if r['audiobook']:
+        cols.append('format')
+        vals.append('Audiobook')
+    if r['date_added']:
+        cols.append('created_at')
+        vals.append(r['date_added'])
+    return conn.execute(f"INSERT INTO books ({', '.join(cols)}) VALUES ({', '.join('?' * len(vals))})",
+                        vals).lastrowid
+
+
+def set_status(conn, user_id, book_id, status, date_added, quiet=0):
+    """A new reading status, dated Date Added when there is one. `quiet` keeps
+    it out of friends' feed (migration 031)."""
+    if date_added:
+        conn.execute('INSERT INTO collections (user_id, book_id, status, created_at, updated_at, quiet) '
+                     'VALUES (?, ?, ?, ?, ?, ?)', (user_id, book_id, status, date_added, date_added, quiet))
+    else:
+        conn.execute('INSERT INTO collections (user_id, book_id, status, quiet) VALUES (?, ?, ?, ?)',
+                     (user_id, book_id, status, quiet))
+
+
+def add_sessions(conn, user_id, book_id, dates):
+    """One reading session per date_completed in `dates` (None = undated).
+    Returns the new session ids."""
+    return [conn.execute('INSERT INTO reading_sessions (user_id, book_id, date_completed) VALUES (?, ?, ?)',
+                         (user_id, book_id, date)).lastrowid for date in dates]
+
+
+def add_wishlist(conn, user_id, book_id, notes, added_at):
+    conn.execute('INSERT INTO wishlist (user_id, book_id, notes, added_at) '
+                 'VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))', (user_id, book_id, notes or None, added_at))
+
+
 # ------------------------------------------------------------------ import
 
 class _Importer:
@@ -214,37 +261,18 @@ class _Importer:
     # --- helpers that write -------------------------------------------------
 
     def create_book(self, r):
-        # created_at is the Goodreads Date Added, so 300 imported books don't
-        # flood friends' feeds as "added today". The column default covers
-        # rows without one (never write NULL into it: it breaks feed order).
-        cols = ['title', 'author', 'isbn', 'publisher', 'publish_year', 'page_count', 'added_by']
-        vals = [r['title'], r['author'] or 'Unknown', r['isbns'][0] if r['isbns'] else None,
-                r['publisher'], r['year'], r['pages'], self.user_id]
-        if r['audiobook']:
-            # Not owned, unless it's a wishlist entry (those aren't "owned"
-            # either way; buying one is "Move to library")
-            cols += ['format', 'owned']
-            vals += ['Audiobook', 1 if r['status'] == 'wishlist' else 0]
-        if r['date_added']:
-            cols.append('created_at')
-            vals.append(r['date_added'])
-        cur = self.conn.execute(
-            f"INSERT INTO books ({', '.join(cols)}) VALUES ({', '.join('?' * len(vals))})", vals)
+        # Audiobooks not owned, unless it's a wishlist entry (those aren't
+        # "owned" either way; buying one is "Move to library")
+        owned = not r['audiobook'] or r['status'] == 'wishlist'
         self.report['totals']['books_created'] += 1
-        return cur.lastrowid
+        return create_book(self.conn, self.user_id, r, owned)
 
     def has_status(self, book_id):
         return self.conn.execute('SELECT 1 FROM collections WHERE user_id = ? AND book_id = ?',
                                  (self.user_id, book_id)).fetchone() is not None
 
     def set_status(self, book_id, status, date_added):
-        if date_added:
-            self.conn.execute('INSERT INTO collections (user_id, book_id, status, created_at, updated_at) '
-                              'VALUES (?, ?, ?, ?, ?)',
-                              (self.user_id, book_id, status, date_added, date_added))
-        else:
-            self.conn.execute('INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, ?)',
-                              (self.user_id, book_id, status))
+        set_status(self.conn, self.user_id, book_id, status, date_added)
         self.report['totals']['statuses'] += 1
 
     def add_review(self, book_id, r):
@@ -262,10 +290,7 @@ class _Importer:
         """Read Count sessions for a read book (at least one). Goodreads only
         keeps the date of the last read, so earlier reads are undated."""
         count = max(r['read_count'], 1)
-        for i in range(count):
-            completed = r['date_read'] if i == count - 1 else None
-            self.conn.execute('INSERT INTO reading_sessions (user_id, book_id, date_completed) '
-                              'VALUES (?, ?, ?)', (self.user_id, book_id, completed))
+        add_sessions(self.conn, self.user_id, book_id, [None] * (count - 1) + [r['date_read']])
         self.report['totals']['sessions'] += count
 
     def add_to_collections(self, book_id, names):
@@ -311,9 +336,7 @@ class _Importer:
                 new_book = {'id': book_id, 'isbn': r['isbns'][0] if r['isbns'] else None,
                             'title': r['title'], 'author': r['author'], 'removed_at': None,
                             'whose': 'own', 'is_wishlist_entry': 1}
-                self.conn.execute('INSERT INTO wishlist (user_id, book_id, notes, added_at) '
-                                  'VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))',
-                                  (self.user_id, book_id, r['private_notes'] or None, r['date_added']))
+                add_wishlist(self.conn, self.user_id, book_id, r['private_notes'], r['date_added'])
                 self.report['totals']['wishlist'] += 1
                 outcome, detail = 'wishlist', None
         else:

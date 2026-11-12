@@ -25,14 +25,20 @@ only ever points at a book BookIndex could have matched.
 import csv
 import hashlib
 import json
+import logging
 from dataclasses import dataclass, field
 from io import StringIO
 
+from models import can_view_book, other_users_with_book_data
 from utils import media
+from utils.bulk import KEEP_DAYS, Action, BulkError
 from utils.book_matching import BookIndex
 from utils.goodreads import REQUIRED_COLUMNS, ImportFileError, parse_row
 from utils.media import BOOK, only
+from utils.image_utils import delete_image_file, is_safe_upload_path
 from utils.search import fold
+
+logger = logging.getLogger(__name__)
 
 MAX_ROWS = 5000           # per upload; the review page holds every row
 STAGING_HOURS = 24        # an upload waits this long for its review
@@ -616,3 +622,318 @@ def choose(conn, user, lines, choice):
             saved.append(line)
     conn.commit()
     return {'saved': saved, 'refused': refused, 'plan': plan(conn, user) if saved else current}
+
+
+# ------------------------------------------------------------------ snapshots (undo)
+# A journal item (bulk_edit_items) per book written, holding only the parts
+# the row wrote: {"book", "status", "read_data", "sessions", "wishlist"}.
+# `before` is those parts as they were (None where no row existed; the whole
+# of `before` is NULL for a book the import created).
+
+# Not the cover: the cover job will have set one, and that mustn't block undo
+BOOK_PART = ('title', 'author', 'isbn', 'format', 'genre', 'owned', 'removed_at')
+
+
+def _part(conn, user_id, book_id, name, session_ids=()):
+    if name == 'sessions':
+        marks = ','.join('?' * len(session_ids)) or 'NULL'
+        return [dict(r) for r in conn.execute(
+            f'SELECT session_id, date_started, date_completed FROM reading_sessions '
+            f'WHERE user_id = ? AND book_id = ? AND session_id IN ({marks}) ORDER BY session_id',
+            (user_id, book_id, *session_ids))]
+    if name == 'book':
+        row = conn.execute(f"SELECT {', '.join(BOOK_PART)} FROM books WHERE id = ? AND media_type = 'book'",
+                           (book_id,)).fetchone()
+        return None if row is None else dict(row)
+    sql = {
+        'status': 'SELECT status, created_at, updated_at, quiet FROM collections WHERE book_id = ? AND user_id = ?',
+        'read_data': 'SELECT rating, comment FROM read_data WHERE book_id = ? AND user_id = ?',
+        'wishlist': 'SELECT added_at, notes, purchase_link FROM wishlist WHERE book_id = ? AND user_id = ?',
+    }[name]
+    row = conn.execute(sql, (book_id, user_id)).fetchone()
+    return None if row is None else dict(row)
+
+
+def _snapshot(conn, user_id, book_id, names, session_ids=()):
+    return {name: _part(conn, user_id, book_id, name, session_ids) for name in names}
+
+
+def _write_read_data(conn, user_id, book_id, rating, review):
+    """Fill a missing rating and/or set or append the review (the plan
+    decided which). Never replaces a rating you have."""
+    comment = review[1] if review else None
+    exists = conn.execute('SELECT 1 FROM read_data WHERE user_id = ? AND book_id = ?',
+                          (user_id, book_id)).fetchone()
+    if not exists:
+        conn.execute('INSERT INTO read_data (user_id, book_id, rating, comment) VALUES (?, ?, ?, ?)',
+                     (user_id, book_id, rating, comment))
+        return
+    if rating:
+        conn.execute('UPDATE read_data SET rating = ? WHERE user_id = ? AND book_id = ? AND rating IS NULL',
+                     (rating, user_id, book_id))
+    if comment is not None:
+        conn.execute('UPDATE read_data SET comment = ? WHERE user_id = ? AND book_id = ?',
+                     (comment, user_id, book_id))
+
+
+def _write_row(conn, user, row, edit_id):
+    """Write one row's parts and its journal item. Returns (book_id, wrote)."""
+    from utils import goodreads as writers
+    d, parts = row.data, row.parts
+    wrote, names = [], []
+    if parts.get('create'):
+        create = parts['create']
+        book_id = writers.create_book(conn, user.id, d, owned=create != 'not_owned')
+        before = None
+        wrote.append('book')
+        names.append('book')
+        if create == 'wishlist':
+            writers.add_wishlist(conn, user.id, book_id, d['private_notes'], d['date_added'])
+            wrote.append('wishlist')
+            names.append('wishlist')
+    else:
+        book_id = row.book['id']
+        # Checked again now, as for any write onto a book id (the household
+        # copy may have been given away since the plan)
+        if not can_view_book(conn, user, book_id):
+            raise PlanError('Not found')
+        if parts.get('wishlist_move'):
+            names += ['book', 'wishlist']
+        if parts.get('status'):
+            names.append('status')
+        if parts.get('rating') or parts.get('review'):
+            names.append('read_data')
+        before = _snapshot(conn, user.id, book_id, names)
+        if parts.get('sessions'):
+            before['sessions'] = []
+        if parts.get('wishlist_move'):
+            # Read it: off the wishlist; "don't want it" also means not owned
+            conn.execute('DELETE FROM wishlist WHERE user_id = ? AND book_id = ?', (user.id, book_id))
+            conn.execute('UPDATE books SET owned = ? WHERE id = ? AND added_by = ?',
+                         (0 if parts['wishlist_move'] == 'drop_wish' else 1, book_id, user.id))
+            wrote.append('wishlist')
+
+    if parts.get('status'):
+        writers.set_status(conn, user.id, book_id, parts['status'], d['date_added'], quiet=1)
+        wrote.append('status')
+    if parts.get('rating') or parts.get('review'):
+        _write_read_data(conn, user.id, book_id, parts.get('rating'), parts.get('review'))
+        if parts.get('rating'):
+            wrote.append('rating')
+        if parts.get('review'):
+            wrote.append('review' if parts['review'][0] == 'set' else 'review_appended')
+    session_ids = []
+    if parts.get('sessions'):
+        session_ids = writers.add_sessions(conn, user.id, book_id, parts['sessions'])
+        wrote.append(f'sessions:{len(session_ids)}')
+
+    if parts.get('create'):
+        # A created book's snapshot covers everything written on it
+        if parts.get('status'):
+            names.append('status')
+        if parts.get('rating') or parts.get('review'):
+            names.append('read_data')
+    if session_ids:
+        names.append('sessions')
+    after = _snapshot(conn, user.id, book_id, names, session_ids)
+    conn.execute('INSERT INTO bulk_edit_items (edit_id, book_id, before, after) VALUES (?, ?, ?, ?)',
+                 (edit_id, book_id, None if before is None else json.dumps(before, sort_keys=True),
+                  json.dumps(after, sort_keys=True)))
+    return book_id, wrote
+
+
+# ------------------------------------------------------------------ apply
+
+def _outcome(row):
+    """The OUTCOMES key of a row that wrote."""
+    box = row.home_box or row.box
+    if box in ('decide_reading', 'decide_wishlist'):
+        return 'decided'
+    if box == 'fill':
+        return 'filled'
+    return row.parts['create']          # not_owned, library or wishlist
+
+
+SUMMARY_WORDS = (('not_owned', 'added as not owned'), ('library', 'to your library'),
+                 ('wishlist', 'to your wishlist'), ('filled', 'filled'), ('decided', 'decided'))
+
+
+def _summary(counts):
+    bits = [f'{counts[k]} {words}' for k, words in SUMMARY_WORDS if counts.get(k)]
+    return 'Goodreads import: ' + (', '.join(bits) if bits else 'nothing written')
+
+
+def apply(conn, user, fingerprint):
+    """Write the plan the user reviewed. Raises StalePlan (with the fresh
+    plan) if anything moved since `fingerprint`. One outcome per staged row;
+    a row that fails leaves nothing behind and the rest carry on. Deletes the
+    staging and commits. Returns the report."""
+    current = plan(conn, user)
+    if current is None:
+        raise PlanError('Upload your export first.')
+    if current.fingerprint != fingerprint:
+        raise StalePlan(current)
+
+    # Lazy sweep of old bulk journals, as bulk.apply does
+    conn.execute("DELETE FROM bulk_edits WHERE created_at < datetime('now', ?)", (f'-{KEEP_DAYS} days',))
+    # One transaction for the lot: without it the first SAVEPOINT would open
+    # the transaction and its RELEASE would commit every row
+    if not conn.in_transaction:
+        conn.execute('BEGIN')
+    edit_id = conn.execute("INSERT INTO bulk_edits (user_id, action, params, summary, item_count) "
+                           "VALUES (?, 'goodreads', '{}', '', 0)", (user.id,)).lastrowid
+    import_id = conn.execute('INSERT INTO goodreads_imports (user_id, edit_id, filename, row_count) '
+                             'VALUES (?, ?, ?, ?)',
+                             (user.id, edit_id, current.filename, len(current.rows))).lastrowid
+    conn.execute('UPDATE bulk_edits SET params = ? WHERE id = ?',
+                 (json.dumps({'import_id': import_id, 'edit_id': edit_id}, sort_keys=True), edit_id))
+
+    counts = {key: 0 for key in OUTCOMES}
+    report_rows = []
+    written = 0
+
+    def record(row, outcome, book_id, wrote):
+        conn.execute('INSERT INTO goodreads_rows (import_id, line, goodreads_id, book_id, outcome, wrote, shelves) '
+                     'VALUES (?, ?, ?, ?, ?, ?, ?)',
+                     (import_id, row.line, row.data.get('goodreads_id'), book_id, outcome,
+                      json.dumps(wrote), ','.join(row.data['shelves'])))
+
+    for row in current.rows:
+        book_id = row.book['id'] if row.book else None
+        detail = row.reason
+        if row.writes:
+            conn.execute('SAVEPOINT goodreads_row')
+            try:
+                book_id, wrote = _write_row(conn, user, row, edit_id)
+                outcome = _outcome(row)
+                record(row, outcome, book_id, wrote)
+                conn.execute('RELEASE goodreads_row')
+                written += 1
+                detail = ', '.join(row.adds)
+            except Exception:
+                logger.exception('Goodreads import: line %s (%r) failed', row.line, row.data['title'])
+                conn.execute('ROLLBACK TO goodreads_row')
+                conn.execute('RELEASE goodreads_row')
+                outcome, book_id, detail = 'error', None, "couldn't import this row"
+        elif row.choice == 'ask':
+            # Not remembered as skipped: the next upload asks again
+            outcome, detail = 'later', 'needs a decision'
+            if book_id:
+                record(row, outcome, book_id, [])
+        elif row.choice == 'skip':
+            outcome = 'skipped'
+            if row.data['title']:
+                record(row, outcome, None, [])
+            book_id = None
+        else:
+            outcome = 'nothing'
+            if book_id and not row.same_as:
+                # Matched, nothing missing: still findable under From Goodreads
+                record(row, outcome, book_id, [])
+        counts[outcome] += 1
+        report_rows.append({'line': row.line, 'title': row.data['title'], 'author': row.data['author'],
+                            'outcome': outcome, 'detail': detail, 'book_id': book_id})
+
+    summary = _summary(counts)
+    if written:
+        conn.execute('UPDATE bulk_edits SET summary = ?, item_count = ? WHERE id = ?', (summary, written, edit_id))
+    else:
+        # Nothing to undo: no journal (the import's provenance stays)
+        conn.execute('DELETE FROM bulk_edits WHERE id = ?', (edit_id,))
+        edit_id = None
+    conn.execute('DELETE FROM goodreads_staging WHERE user_id = ?', (user.id,))
+    conn.commit()
+    return {'edit_id': edit_id, 'import_id': import_id, 'summary': summary,
+            'total_rows': len(report_rows), 'outcomes': counts,
+            'outcome_labels': list(OUTCOMES.items()), 'rows': report_rows}
+
+
+# ------------------------------------------------------------------ undo (through the bulk journal)
+
+def _journal_after(conn, params, book_id):
+    item = conn.execute('SELECT after FROM bulk_edit_items WHERE edit_id = ? AND book_id = ?',
+                        (params.get('edit_id'), book_id)).fetchone()
+    return json.loads(item['after']) if item and item['after'] else {}
+
+
+def _current(conn, user, book_id, params):
+    """The same parts the import wrote, as they are now (undo's guard
+    compares this with the journalled `after`)."""
+    after = _journal_after(conn, params, book_id)
+    ids = [s['session_id'] for s in after.get('sessions') or []]
+    return _snapshot(conn, user.id, book_id, list(after), ids)
+
+
+def _yours_beyond(conn, user, book_id, after):
+    """Whether you have data on a created book that the import didn't write:
+    another session, a tag, a collection entry, or a status, review or
+    wishlist entry it didn't make."""
+    ids = {s['session_id'] for s in after.get('sessions') or []}
+    sessions = {r[0] for r in conn.execute('SELECT session_id FROM reading_sessions WHERE user_id = ? '
+                                           'AND book_id = ?', (user.id, book_id))}
+    if sessions - ids:
+        return True
+    if conn.execute('SELECT 1 FROM book_tags WHERE user_id = ? AND book_id = ?', (user.id, book_id)).fetchone():
+        return True
+    if conn.execute('SELECT 1 FROM collection_books cb JOIN user_collections uc ON uc.collection_id = cb.collection_id '
+                    'WHERE uc.user_id = ? AND cb.book_id = ?', (user.id, book_id)).fetchone():
+        return True
+    return any(name not in after and _part(conn, user.id, book_id, name) is not None
+               for name in ('status', 'read_data', 'wishlist'))
+
+
+def _restore(conn, user, book_id, before, after, params):
+    if before is None:
+        # A book the import created: deleted only if nobody else has data
+        # on it and you've added nothing of your own since
+        book = conn.execute("SELECT added_by, cover_image_url FROM books WHERE id = ? AND media_type = 'book'",
+                            (book_id,)).fetchone()
+        if (book is None or book['added_by'] != user.id
+                or other_users_with_book_data(conn, book_id, user.id)
+                or _yours_beyond(conn, user, book_id, after)):
+            return False
+        conn.execute('DELETE FROM books WHERE id = ? AND added_by = ?', (book_id, user.id))
+        if book['cover_image_url'] and is_safe_upload_path(book['cover_image_url']):
+            delete_image_file(book['cover_image_url'])
+        return True
+
+    for name, was in before.items():
+        if name == 'sessions':
+            ids = [s['session_id'] for s in after.get('sessions') or []]
+            conn.executemany('DELETE FROM reading_sessions WHERE session_id = ? AND user_id = ? AND book_id = ?',
+                             [(i, user.id, book_id) for i in ids])
+        elif name == 'status':
+            if was is None:
+                conn.execute('DELETE FROM collections WHERE user_id = ? AND book_id = ?', (user.id, book_id))
+        elif name == 'read_data':
+            if was is None:
+                conn.execute('DELETE FROM read_data WHERE user_id = ? AND book_id = ?', (user.id, book_id))
+            else:
+                conn.execute('UPDATE read_data SET rating = ?, comment = ? WHERE user_id = ? AND book_id = ?',
+                             (was['rating'], was['comment'], user.id, book_id))
+        elif name == 'wishlist' and was is not None:
+            conn.execute('INSERT INTO wishlist (user_id, book_id, added_at, notes, purchase_link) '
+                         'VALUES (?, ?, ?, ?, ?)',
+                         (user.id, book_id, was['added_at'], was['notes'], was['purchase_link']))
+        elif name == 'book' and was is not None:
+            conn.execute('UPDATE books SET owned = ? WHERE id = ? AND added_by = ?',
+                         (was['owned'], book_id, user.id))
+    return True
+
+
+def _after_undo(conn, user, edit_id):
+    conn.execute('UPDATE goodreads_imports SET undone_at = CURRENT_TIMESTAMP WHERE edit_id = ? AND user_id = ?',
+                 (edit_id, user.id))
+
+
+def _not_a_bulk_edit(*args, **kwargs):
+    raise BulkError('That bulk action is not available.')
+
+
+# Looked up by bulk._action('goodreads'): only undo and the Profile list use it
+ACTION = Action(
+    params=_not_a_bulk_edit, plan=_not_a_bulk_edit, write=_not_a_bulk_edit,
+    current=_current, restore=_restore,
+    describe=lambda p: 'Goodreads import', summary=lambda p, n: 'Goodreads import',
+    key=lambda b: None, label=lambda k, p: '', same_text=lambda p: '',
+    after_undo=_after_undo)

@@ -628,6 +628,7 @@ class Action:
     notes: callable = _no_notes
     owner_only: bool = False         # item edits: the owner or an admin; marks: anyone who can view it
     prepare: callable = None         # (conn, user, params) -> params, once per apply
+    after_undo: callable = None      # (conn, user, edit_id), inside undo's transaction (the Goodreads import)
 
 
 def _genre_name(value):
@@ -733,6 +734,11 @@ def _ids(ids):
 
 
 def _action(key):
+    if key == 'goodreads':
+        # The Goodreads import journals here so its undo is a bulk undo
+        # (ROADMAP 14b). Imported late: goodreads_plan imports this module.
+        from utils.goodreads_plan import ACTION
+        return ACTION
     if key not in ACTIONS:
         raise BulkError('That bulk action is not available.')
     return ACTIONS[key]
@@ -899,6 +905,8 @@ def undo(conn, user, edit_id):
         conn.execute('DELETE FROM user_collections WHERE collection_id = ? AND user_id = ? AND NOT EXISTS '
                      '(SELECT 1 FROM collection_books WHERE collection_id = ?)',
                      (params['shelf_id'], user.id, params['shelf_id']))
+    if act.after_undo:
+        act.after_undo(conn, user, edit_id)
     conn.execute('UPDATE bulk_edits SET undone_at = CURRENT_TIMESTAMP WHERE id = ?', (edit_id,))
     conn.commit()
     if not restored:

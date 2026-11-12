@@ -475,3 +475,306 @@ def test_every_box_key_and_choice_is_consistent():
     for key, box in gp.BOXES.items():
         assert box['default'] in (None, 'ask') or box['default'] in gp.CHOICES, key
         assert all(c in gp.CHOICES and c != 'ask' for c in box['choices']), key
+
+
+# --- apply (step 4) ---------------------------------------------------------------
+
+from utils import bulk  # noqa: E402
+
+
+def apply_all(db, user_id):
+    """Apply the staged plan as it stands."""
+    return gp.apply(db, who(user_id), gp.plan(db, who(user_id)).fingerprint)
+
+
+def import_file(db, user_id, *rows, choices=()):
+    staged(db, user_id, *rows)
+    for lines, choice in choices:
+        gp.choose(db, who(user_id), lines, choice)
+    report = apply_all(db, user_id)
+    assert sum(report['outcomes'].values()) == report['total_rows'] == len(rows)
+    return report
+
+
+def outcome_of(report, title):
+    return next(r for r in report['rows'] if r['title'] == title)['outcome']
+
+
+def book_named(db, title):
+    return db.execute('SELECT * FROM books WHERE title = ?', (title,)).fetchone()
+
+
+def test_one_click_with_the_defaults_on_a_mixed_file(db, people):
+    alice, bob = people['alice'], people['bob']
+    add_book(db, alice, 'On Shelf', 'Some Author')
+    bobs = add_book(db, bob, 'Bobs Copy', 'Some Author')
+    wish(db, alice, 'Wished')
+    report = import_file(db, alice,
+                         row('Read New', my_rating='5', my_review='Lovely', date_read='2022/01/09'),
+                         row('Heard', bookshelves='audiobook'),
+                         row('On Shelf', my_rating='4'),
+                         row('Bobs Copy', my_review='Hm'),
+                         row('Wanted', 'to-read', private_notes='gift'),
+                         row('On Shelf', 'to-read'),
+                         row('Reading', 'currently-reading'),
+                         row('Wished'),
+                         row('Kindle', 'kindle-deals', read_count='0'),
+                         row(''))
+    assert [r['outcome'] for r in report['rows']] == [
+        'not_owned', 'not_owned', 'filled', 'filled', 'wishlist', 'nothing', 'later', 'later', 'skipped', 'nothing']
+    assert report['summary'] == 'Goodreads import: 2 added as not owned, 1 to your wishlist, 2 filled'
+
+    new = book_named(db, 'Read New')
+    assert (new['owned'], new['format'], new['added_by']) == (0, None, alice)
+    assert db.execute('SELECT rating, comment FROM read_data WHERE book_id = ?', (new['id'],)).fetchone()[:] == (5, 'Lovely')
+    assert [r[0] for r in db.execute('SELECT date_completed FROM reading_sessions WHERE book_id = ?', (new['id'],))] == ['2022-01-09']
+    heard = book_named(db, 'Heard')
+    assert (heard['owned'], heard['format']) == (0, 'Audiobook')
+    wanted = book_named(db, 'Wanted')
+    assert db.execute('SELECT notes FROM wishlist WHERE book_id = ?', (wanted['id'],)).fetchone()[0] == 'gift'
+    assert status_of(db, alice, bobs) == 'read'
+    # No new statuses announced in the feed
+    assert scalar(db, 'SELECT COUNT(*) FROM collections WHERE quiet = 0') == 0
+    # No collections from shelves any more (decision 2)
+    assert scalar(db, 'SELECT COUNT(*) FROM user_collections') == 0
+    assert scalar(db, 'SELECT COUNT(*) FROM goodreads_staging') == 0
+
+
+def status_of(db, user_id, book_id):
+    r = db.execute('SELECT status FROM collections WHERE user_id = ? AND book_id = ?', (user_id, book_id)).fetchone()
+    return r and r['status']
+
+
+def test_apply_records_provenance_and_journal_per_row(db, people):
+    alice = people['alice']
+    mine = add_book(db, alice, 'Have It', 'Some Author')
+    give(db, alice, mine, status='read', sessions=[None])
+    report = import_file(db, alice, row('New', book_id='1'), row('Have It', book_id='2'),
+                         row('Skip Me', book_id='3'), row('Undecided', 'currently-reading', book_id='4'),
+                         choices=[([4], 'skip')])
+    imp = db.execute('SELECT * FROM goodreads_imports').fetchone()
+    assert (imp['user_id'], imp['row_count'], imp['edit_id'], imp['filename']) == \
+           (alice, 4, report['edit_id'], 'goodreads_library_export.csv')
+    rows = {r['line']: dict(r) for r in db.execute('SELECT * FROM goodreads_rows')}
+    new = book_named(db, 'New')['id']
+    assert rows[2]['book_id'] == new and rows[2]['outcome'] == 'not_owned'
+    assert json.loads(rows[2]['wrote']) == ['book', 'status', 'sessions:1']
+    assert rows[2]['shelves'] == 'read' and rows[2]['goodreads_id'] == '1'
+    # A match with nothing to add is still recorded (From Goodreads finds it)
+    assert (rows[3]['book_id'], rows[3]['outcome'], json.loads(rows[3]['wrote'])) == (mine, 'nothing', [])
+    assert (rows[4]['book_id'], rows[4]['outcome']) == (None, 'skipped')
+    # An undecided new row has no book to record
+    assert 5 not in rows
+    items = db.execute('SELECT book_id, before FROM bulk_edit_items WHERE edit_id = ?', (report['edit_id'],)).fetchall()
+    assert [(i['book_id'], i['before']) for i in items] == [(new, None)]
+    edit = db.execute('SELECT * FROM bulk_edits WHERE id = ?', (report['edit_id'],)).fetchone()
+    assert (edit['action'], edit['item_count']) == ('goodreads', 1)
+
+
+def test_apply_refuses_a_stale_plan_and_keeps_the_choices(db, people):
+    alice = people['alice']
+    book = add_book(db, alice, 'Moving', 'Some Author')
+    p = staged(db, alice, row('Moving', my_rating='4'), row('New'))
+    gp.choose(db, who(alice), [3], 'library')
+    stale = gp.plan(db, who(alice)).fingerprint
+    give(db, alice, book, rating=2)
+    with pytest.raises(gp.StalePlan) as err:
+        gp.apply(db, who(alice), stale)
+    assert err.value.plan.fingerprint != stale
+    assert by_title(err.value.plan, 'New').choice == 'library'
+    assert scalar(db, "SELECT COUNT(*) FROM books WHERE title = 'New'") == 0
+    assert scalar(db, 'SELECT COUNT(*) FROM goodreads_imports') == 0
+    with pytest.raises(gp.PlanError):
+        gp.apply(db, who(people['bob']), p.fingerprint)
+
+
+def test_a_failing_row_leaves_nothing_and_the_rest_carry_on(db, people, monkeypatch):
+    from utils import goodreads as writers
+    original = writers.add_sessions
+
+    def explode(conn, user_id, book_id, dates):
+        if conn.execute('SELECT title FROM books WHERE id = ?', (book_id,)).fetchone()[0] == 'Bad Row':
+            raise RuntimeError('boom')
+        return original(conn, user_id, book_id, dates)
+    monkeypatch.setattr(writers, 'add_sessions', explode)
+    report = import_file(db, people['alice'], row('Good Row'), row('Bad Row', my_rating='5'), row('After'))
+    assert [r['outcome'] for r in report['rows']] == ['not_owned', 'error', 'not_owned']
+    assert scalar(db, "SELECT COUNT(*) FROM books WHERE title = 'Bad Row'") == 0
+    assert scalar(db, 'SELECT COUNT(*) FROM read_data') == 0
+    assert scalar(db, 'SELECT COUNT(*) FROM goodreads_rows WHERE line = 3') == 0
+    assert scalar(db, 'SELECT COUNT(*) FROM bulk_edit_items') == 2
+    assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+
+
+def test_library_choice_adds_it_owned(db, people):
+    import_file(db, people['alice'], row('Mine After All'), choices=[([2], 'library')])
+    assert book_named(db, 'Mine After All')['owned'] == 1
+
+
+def test_fill_writes_only_whats_missing_and_appends_a_review(db, people):
+    alice = people['alice']
+    book = add_book(db, alice, 'Reread', 'Some Author')
+    give(db, alice, book, status='read', rating=5, comment='Mine.', sessions=['2025-03-01'])
+    report = import_file(db, alice, row('Reread', my_rating='3', date_read='2011/05/02', read_count='2',
+                                        my_review='Theirs.'))
+    assert outcome_of(report, 'Reread') == 'filled'
+    assert db.execute('SELECT rating, comment FROM read_data WHERE book_id = ?', (book,)).fetchone()[:] == \
+           (5, 'Mine.\n\n----\nGoodreads review, read 2011-05-02, ★3:\nTheirs.')
+    assert sorted(r[0] for r in db.execute('SELECT date_completed FROM reading_sessions WHERE book_id = ?', (book,))) == \
+           ['2011-05-02', '2025-03-01']
+    assert status_of(db, alice, book) == 'read'
+
+
+def test_decisions_write_what_was_chosen(db, people):
+    alice = people['alice']
+    keep, drop, bought = (wish(db, alice, t) for t in ('Keep', 'Drop', 'Bought'))
+    report = import_file(db, alice, row('Keep', my_rating='4'), row('Drop'), row('Bought'),
+                         row('Fresh', 'currently-reading'), row('Gave Up', 'currently-reading'),
+                         choices=[([2], 'keep_wished'), ([3], 'drop_wish'), ([4], 'bought'),
+                                  ([5], 'finished'), ([6], 'dnf')])
+    assert [r['outcome'] for r in report['rows']] == ['decided'] * 5
+    wished = {r[0] for r in db.execute('SELECT book_id FROM wishlist')}
+    assert wished == {keep}
+    owned = dict(db.execute('SELECT id, owned FROM books').fetchall())
+    assert (owned[keep], owned[drop], owned[bought]) == (1, 0, 1)
+    assert scalar(db, 'SELECT COUNT(*) FROM library_books WHERE id = ?', bought) == 1
+    for book in (keep, drop, bought):
+        assert status_of(db, alice, book) == 'read'
+    fresh = book_named(db, 'Fresh')
+    assert fresh['owned'] == 0 and status_of(db, alice, fresh['id']) == 'read'
+    # Finished: one undated session (Goodreads has no finish date for it)
+    assert [r[0] for r in db.execute('SELECT date_completed FROM reading_sessions WHERE book_id = ?',
+                                     (fresh['id'],))] == [None]
+    assert status_of(db, alice, book_named(db, 'Gave Up')['id']) == 'did not finish'
+
+
+def test_undecided_rows_write_nothing_and_are_asked_again(db, people):
+    alice = people['alice']
+    rows = [row('Still Open', 'currently-reading', book_id='5')]
+    report = import_file(db, alice, *rows)
+    assert outcome_of(report, 'Still Open') == 'later'
+    assert scalar(db, 'SELECT COUNT(*) FROM books') == 0
+    r = staged(db, alice, *rows).rows[0]
+    assert (r.box, r.choice, r.skipped_before) == ('decide_reading', 'ask', False)
+
+
+def test_reimporting_the_same_file_writes_nothing(db, people):
+    alice = people['alice']
+    add_book(db, alice, 'Shelf Book', 'Some Author')
+    rows = [row('Read One', my_rating='4', my_review='Good', book_id='1'),
+            row('Shelf Book', my_rating='3', book_id='2'),
+            row('Wanted', 'to-read', book_id='3'), row('Passed', book_id='4'),
+            row('Asked', 'currently-reading', book_id='5')]
+    import_file(db, alice, *rows, choices=[([5], 'skip'), ([6], 'still_reading')])
+    counts = {t: scalar(db, f'SELECT COUNT(*) FROM {t}')
+              for t in ('books', 'collections', 'read_data', 'reading_sessions', 'wishlist')}
+
+    p = staged(db, alice, *rows)
+    assert [(r.box, r.reason) for r in p.rows] == [
+        ('nothing', 'in Libaraxia and nothing missing'), ('nothing', 'in Libaraxia and nothing missing'),
+        ('want_nothing', 'already on your wishlist'), ('nothing', 'skipped last time'),
+        ('nothing', 'in Libaraxia and nothing missing')]
+    assert p.will_write == 0
+    second = apply_all(db, alice)
+    assert second['outcomes']['nothing'] == 4 and second['outcomes']['skipped'] == 1
+    assert second['edit_id'] is None
+    assert counts == {t: scalar(db, f'SELECT COUNT(*) FROM {t}') for t in counts}
+
+
+# --- undo ---------------------------------------------------------------------------
+
+def test_undo_deletes_untouched_created_books_and_their_covers(db, people, monkeypatch):
+    alice = people['alice']
+    deleted = []
+    monkeypatch.setattr(gp, 'delete_image_file', deleted.append)
+    report = import_file(db, alice, row('Gone Again', my_rating='4', my_review='x'), row('Wanted', 'to-read'))
+    created = book_named(db, 'Gone Again')['id']
+    # The cover job sets a cover after the import: undo still goes ahead
+    db.execute("UPDATE books SET cover_image_url = 'uploads/cover_x.jpg' WHERE id = ?", (created,))
+    db.commit()
+    assert bulk.recent(db, who(alice))[0]['undoable'] == 2
+    result = bulk.undo(db, who(alice), report['edit_id'])
+    assert (result.changed, result.skipped) == (2, 0)
+    assert scalar(db, 'SELECT COUNT(*) FROM books') == 0
+    assert scalar(db, 'SELECT COUNT(*) FROM read_data') + scalar(db, 'SELECT COUNT(*) FROM wishlist') == 0
+    assert deleted == ['uploads/cover_x.jpg']
+    assert scalar(db, 'SELECT undone_at IS NOT NULL FROM goodreads_imports') == 1
+    with pytest.raises(bulk.BulkError, match='Already undone'):
+        bulk.undo(db, who(alice), report['edit_id'])
+
+
+def test_undo_keeps_a_created_book_you_or_your_household_have_used(db, people, monkeypatch):
+    alice, bob = people['alice'], people['bob']
+    monkeypatch.setattr(gp, 'delete_image_file', lambda path: None)
+    report = import_file(db, alice, row('Tagged'), row('Reread Here'), row('Bob Reviewed'))
+    ids = {t: book_named(db, t)['id'] for t in ('Tagged', 'Reread Here', 'Bob Reviewed')}
+    db.execute("INSERT INTO book_tags (user_id, book_id, tag_name) VALUES (?, ?, 'fav')", (alice, ids['Tagged']))
+    db.execute("INSERT INTO reading_sessions (user_id, book_id, date_completed) VALUES (?, ?, '2026-01-01')",
+               (alice, ids['Reread Here']))
+    db.execute("INSERT INTO read_data (user_id, book_id, rating) VALUES (?, ?, 4)", (bob, ids['Bob Reviewed']))
+    db.commit()
+    result = bulk.undo(db, who(alice), report['edit_id'])
+    assert (result.changed, result.skipped) == (0, 3)
+    assert scalar(db, 'SELECT COUNT(*) FROM books') == 3
+
+
+def test_undo_removes_filled_parts_only_where_unchanged(db, people):
+    alice = people['alice']
+    same = add_book(db, alice, 'Same Since', 'Some Author')
+    edited = add_book(db, alice, 'Edited Since', 'Some Author')
+    appended = add_book(db, alice, 'Appended', 'Some Author')
+    give(db, alice, appended, status='read', rating=5, comment='Mine.', sessions=['2025-01-01'])
+    report = import_file(db, alice, row('Same Since', my_rating='4', date_read='2020/01/01'),
+                         row('Edited Since', my_rating='4'),
+                         row('Appended', my_review='Theirs.', date_read='2011/05/02'))
+    db.execute('UPDATE read_data SET rating = 2 WHERE book_id = ?', (edited,))
+    db.commit()
+    result = bulk.undo(db, who(alice), report['edit_id'])
+    assert (result.changed, result.skipped) == (2, 1)
+    for book in (same,):
+        assert status_of(db, alice, book) is None
+        assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE book_id = ?', book) == 0
+        assert scalar(db, 'SELECT COUNT(*) FROM reading_sessions WHERE book_id = ?', book) == 0
+    assert scalar(db, 'SELECT rating FROM read_data WHERE book_id = ?', edited) == 2
+    assert status_of(db, alice, edited) == 'read'
+    # Your review back exactly, your session kept, the Goodreads one gone
+    assert db.execute('SELECT rating, comment FROM read_data WHERE book_id = ?', (appended,)).fetchone()[:] == (5, 'Mine.')
+    assert [r[0] for r in db.execute('SELECT date_completed FROM reading_sessions WHERE book_id = ?', (appended,))] == \
+           ['2025-01-01']
+    assert scalar(db, 'SELECT COUNT(*) FROM books') == 3
+
+
+def test_undo_reverses_wishlist_moves(db, people):
+    alice = people['alice']
+    drop = wish(db, alice, 'Drop')
+    bought = wish(db, alice, 'Bought')
+    db.execute("UPDATE wishlist SET notes = 'note', added_at = '2020-02-02 00:00:00' WHERE book_id = ?", (drop,))
+    db.commit()
+    report = import_file(db, alice, row('Drop'), row('Bought'), choices=[([2], 'drop_wish'), ([3], 'bought')])
+    bulk.undo(db, who(alice), report['edit_id'])
+    assert db.execute('SELECT notes, added_at FROM wishlist WHERE book_id = ?', (drop,)).fetchone()[:] == \
+           ('note', '2020-02-02 00:00:00')
+    assert scalar(db, 'SELECT COUNT(*) FROM wishlist WHERE book_id = ?', bought) == 1
+    assert [scalar(db, 'SELECT owned FROM books WHERE id = ?', b) for b in (drop, bought)] == [1, 1]
+    assert status_of(db, alice, drop) is None and status_of(db, alice, bought) is None
+
+
+def test_an_undone_import_is_forgotten_by_the_book_id_memory(db, people, monkeypatch):
+    alice = people['alice']
+    monkeypatch.setattr(gp, 'delete_image_file', lambda path: None)
+    report = import_file(db, alice, row('Skipped Once', book_id='9'), choices=[([2], 'skip')])
+    assert report['edit_id'] is None        # nothing written, nothing to undo
+    report = import_file(db, alice, row('Kept', book_id='10'))
+    bulk.undo(db, who(alice), report['edit_id'])
+    p = staged(db, alice, row('Kept', book_id='10'), row('Skipped Once', book_id='9'))
+    assert by_title(p, 'Kept').box == 'read_new'
+    assert by_title(p, 'Skipped Once').reason == 'skipped last time'
+
+
+def test_only_the_importer_can_undo_and_the_bulk_routes_refuse_the_action(db, people):
+    alice, bob = people['alice'], people['bob']
+    report = import_file(db, alice, row('Mine'))
+    with pytest.raises(bulk.BulkError):
+        bulk.undo(db, who(bob), report['edit_id'])
+    with pytest.raises(bulk.BulkError):
+        bulk.plan(db, who(alice), 'goodreads', {}, [1])
