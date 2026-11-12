@@ -2,6 +2,7 @@
 
 The visual checks (light/dark, House/Classic, 390px and desktop) are done in a
 headless browser; these tests pin the specific causes found that way."""
+import os
 import pathlib
 import re
 from html.parser import HTMLParser
@@ -950,3 +951,23 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     html = client.get(f'/books/book/{book}').get_data(as_text=True)
     assert 'class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="book"' in html
     assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
+
+
+def test_buttons_take_the_styles_corners():
+    """.btn has no radius of its own: every button gets a rounded-* utility
+    (radius tokens: rounded in OG and Shelf, square in Negative Earth and
+    Outrun), and the crop tool and bulk edit use the tokens (ROADMAP 14c)."""
+    import glob, re
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pat = re.compile(r'class(?:Name)?\s*=\s*["\']([^"\']*)["\']')
+    missing = []
+    for path in glob.glob(f'{root}/templates/**/*.html', recursive=True) + glob.glob(f'{root}/static/*.js'):
+        for n, line in enumerate(open(path, encoding='utf-8'), 1):
+            for classes in pat.findall(line):
+                words = classes.split()
+                if 'btn' in words and not any(w.startswith('rounded') for w in words) and '{{' not in classes:
+                    missing.append(f'{os.path.relpath(path, root)}:{n}')
+    assert missing == []
+    css = open(f'{root}/static/styles.css', encoding='utf-8').read()
+    assert '.bulk-sheet { border-radius: var(--r-xl)' in css
+    assert '.crop-dialog .crop-stage, .crop-dialog .crop-panel { border-radius: var(--r-xl); }' in css

@@ -29,11 +29,11 @@
             <input type="hidden" name="all" value="1"/>
             <label for="reassign-all" class="text-sm text-content-primary">Give all {{ books|length }} to</label>
             <select name="new_owner_id" id="reassign-all" required
-                    class="px-3 py-2 bg-primary border border-card text-content-primary">
+                    class="px-3 py-2 rounded-lg bg-primary border border-card text-content-primary">
                 <option value="">Choose…</option>
                 {% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
             </select>
-            <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn">Reassign all</button>
+            <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn rounded-lg">Reassign all</button>
         </form>
 
         <div class="bg-secondary rounded-lg divide-y divide-gray-700 card">
@@ -52,11 +52,11 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="book_id" value="{{ b.id }}"/>
                     <select name="new_owner_id" required aria-label="New owner for {{ b.title }}"
-                            class="px-3 py-2 bg-primary border border-card text-content-primary text-sm">
+                            class="px-3 py-2 rounded-lg bg-primary border border-card text-content-primary text-sm">
                         <option value="">Give to…</option>
                         {% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
                     </select>
-                    <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm btn">Save</button>
+                    <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm btn rounded-lg">Save</button>
                 </form>
             </div>
             {% endfor %}

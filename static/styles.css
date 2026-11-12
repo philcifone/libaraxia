@@ -2688,3 +2688,21 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
     .gr-main, .gr-row:not(:has(.gr-cover)) .gr-main { grid-column: 2; }
     .gr-choice { grid-column: 2; width: 100%; min-width: 0; }
 }
+
+/* ---- Corners for the crop tool and bulk edit (ROADMAP 14c) ----
+   Both were drawn square in every style. They take the style's own radius
+   tokens, like the cards beside them: rounded in OG and Shelf, square in
+   Negative Earth and Outrun (whose tokens are 0). Edge-to-edge pieces (the
+   bulk bar, the sheet on a phone) stay square. */
+.crop-dialog .crop-stage, .crop-dialog .crop-panel { border-radius: var(--r-xl); }
+.crop-result, .crop-busy, .crop-thumb, .crop-loupe { border-radius: var(--r-md); }
+.crop-thumb img { border-radius: inherit; }
+.bulk-sheet { border-radius: var(--r-xl); overflow: hidden; }
+.bulk-menu { border-radius: var(--r-lg); overflow: hidden; }
+.bulk-field, .bulk-list, .bulk-drop { border-radius: var(--r-md); }
+.bulk-banner { border-radius: var(--r-xl); }
+@media (max-width: 639px) {
+    .bulk-sheet { border-radius: 0; }
+}
+/* Shelf: the magnifier stays a round glass */
+:root[data-style="shelf"] .crop-loupe { border-radius: 50%; }

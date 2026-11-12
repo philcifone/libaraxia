@@ -26,7 +26,7 @@
             <form method="POST" action="{{ url_for('admin.clear_placeholder_covers') }}" class="mb-4"
                   data-confirm="{{ ("Clear " ~ books|length ~ " placeholder covers? The image files are deleted.") }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn">
+                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn rounded-lg">
                     Clear {{ books|length }} placeholder cover(s)
                 </button>
             </form>
@@ -59,7 +59,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="scope" value="all"/>
                 <input type="hidden" name="next" value="{{ url_for('admin.placeholder_covers') }}"/>
-                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn">
+                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent btn rounded-lg">
                     Fetch all {{ missing }} missing covers
                 </button>
             </form>

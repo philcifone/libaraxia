@@ -455,7 +455,7 @@
                     <span class="text-sm text-content-secondary" title="Every item has changed since, so there is nothing to undo">Changed since</span>
                     {% else %}
                     <button type="button" data-click="bulkHistoryUndo" data-edit-id="{{ edit.id }}"
-                            class="btn btn-outline px-3 py-1 text-sm">Undo</button>
+                            class="btn btn-outline px-3 py-1 text-sm rounded-lg">Undo</button>
                     {% endif %}
                 </li>
                 {% endfor %}
@@ -489,12 +489,12 @@
                     <form method="POST" action="{{ url_for('user.personal_backup_restore', name=b.name) }}"
                           data-confirm="Put your library back to {{ when }}? Your items, statuses, ratings, reviews, sessions, wishlist, tags, collections and goals go back to how they were then. Items you added since are removed, except ones someone else has data on. Nobody else's data changes. This can't be undone.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline px-3 py-1 text-sm">Restore</button>
+                        <button type="submit" class="btn btn-outline px-3 py-1 text-sm rounded-lg">Restore</button>
                     </form>
                     <form method="POST" action="{{ url_for('user.personal_backup_delete', name=b.name) }}"
                           data-confirm="Delete the backup from {{ when }}? It can't be brought back.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn px-3 py-1 text-sm text-content-secondary hover:text-accent" aria-label="Delete the backup from {{ when }}">Delete</button>
+                        <button type="submit" class="btn px-3 py-1 text-sm text-content-secondary hover:text-accent rounded-lg" aria-label="Delete the backup from {{ when }}">Delete</button>
                     </form>
                 </li>
                 {% endfor %}
@@ -670,17 +670,17 @@
                 </p>
                 <div class="flex flex-wrap gap-3">
                     <a href="{{ url_for('user.export_data') }}"
-                       class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-content-primary hover:bg-primary-hover btn btn-outline">
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-content-primary hover:bg-primary-hover btn btn-outline rounded-lg">
                         Export My Data (ZIP)
                     </a>
                     <button type="button" data-click="showModal" data-target="account-removal-dialog"
-                            class="px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400">
+                            class="btn rounded-lg px-4 py-2 bg-red-900/50 hover:bg-red-900/70 text-red-400">
                         Deactivate or Delete Account…
                     </button>
                 </div>
             </div>
         </section>
-        <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 bg-secondary text-content-primary backdrop:bg-black/60 card">
+        <dialog id="account-removal-dialog" class="w-full max-w-lg p-6 rounded-xl bg-secondary text-content-primary backdrop:bg-black/60 card">
             {% with ctx=account_removal, is_self=True, action_url=url_for('user.delete_account_self'), export_url=url_for('user.export_data') %}
             {% include '_account_removal.html' %}
             {% endwith %}

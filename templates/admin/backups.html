@@ -58,7 +58,7 @@
                     <form method="POST" action="{{ url_for('admin.backup_delete', name=b.name) }}"
                           data-confirm="Delete the backup from {{ when(b) }}? Its copy of the database and its {{ b.files }} files go for good.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="px-3 py-2 text-content-secondary hover:text-accent btn" aria-label="Delete the backup from {{ when(b) }}">Delete</button>
+                        <button type="submit" class="px-3 py-2 text-content-secondary hover:text-accent btn rounded-lg" aria-label="Delete the backup from {{ when(b) }}">Delete</button>
                     </form>
                 </div>
             </div>

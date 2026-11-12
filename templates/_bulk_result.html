@@ -8,9 +8,9 @@
         <p class="flex-1 min-w-0">{{ bulk_result.summary }}{{ '' if bulk_result.summary.endswith('.') else '.' }}</p>
         {% if bulk_result.edit_id and not bulk_result.undone %}
         <button type="button" data-click="bulkUndo" data-edit-id="{{ bulk_result.edit_id }}"
-                class="btn btn-outline px-3 py-1 text-sm">Undo</button>
+                class="btn btn-outline rounded-lg px-3 py-1 text-sm">Undo</button>
         {% endif %}
-        <button type="button" data-click="bulkDismiss" class="btn btn-outline px-3 py-1 text-sm">Dismiss</button>
+        <button type="button" data-click="bulkDismiss" class="btn btn-outline rounded-lg px-3 py-1 text-sm">Dismiss</button>
     </div>
 </div>
 {% endif %}

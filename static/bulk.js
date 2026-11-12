@@ -324,7 +324,7 @@ function idFromHref(href) {
         if (offerView) {
             const more = document.createElement('button');
             more.type = 'button';
-            more.className = 'btn btn-outline px-3 py-1 text-sm';
+            more.className = 'btn btn-outline rounded-lg px-3 py-1 text-sm';
             more.dataset.click = 'bulkSelectView';
             more.textContent = viewButtonLabel(container.dataset.bulkView);   // the line before it gives the number
             hint.append(n === list.length ? `All ${n} loaded are selected. ` : `${n} of ${total} selected. `, more);
