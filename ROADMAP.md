@@ -2,7 +2,7 @@
 
 The single list of **open** work for Libaraxia, in the order to do it. Tick items (`[x]`) as they land; when a phase is finished, move it to [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md) with its date and keep only its line in the table below.
 
-Finished phases (0–8F, 10, 11–13b and 14a) are in the archive, verbatim and with their original numbers, because code comments cite them ("ROADMAP 7.2b", "8B.3", "10.1"). Grep the archive for those.
+Finished phases (0–8F, 10, 11–13b, 14a and 14b) are in the archive, verbatim and with their original numbers, because code comments cite them ("ROADMAP 7.2b", "8B.3", "10.1"). Grep the archive for those.
 
 Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 
@@ -14,7 +14,8 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 10 | More styles: Shelf (with the movie rack), Outrun, font choice; Shelf polish | Done 2026-11-08 (polish 2026-11-11), [archive](docs/ROADMAP-ARCHIVE.md#phase-10-more-styles) |
 | 11–13b | Shelves hub and Friends page, profile and stats, reading goals, Reviews section, Do I have this? across all types | Done 2026-11-08 to 2026-11-09, [archive](docs/ROADMAP-ARCHIVE.md#phase-11-shelves-one-home-for-every-section) |
 | 14a | Bulk edit: select on every grid, eight actions, review, undo | Done 2026-11-11, [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit) |
-| 14b | [Granular Goodreads import](#phase-14-bulk-edit-and-granular-import) | In progress (spec approved 2026-11-11). Was Phase 9 |
+| 14b | Granular Goodreads import, site and personal backups, "Unshelved" | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import) |
+| 14c | [Tweaks after 14b](#14c-tweaks-after-14b-phil-2026-11-12-) | Next |
 | 15 | [Movies & TV, lending, cover crop](#phase-15-movies--tv-lending-cover-crop) | After 14 |
 | 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Last: screenshots of the finished app |
 
@@ -53,20 +54,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 
 14a (bulk edit) is done: [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit).
 
-### 14b Granular Goodreads import 🟢
-**Spec: [docs/GOODREADS-IMPORT-SPEC.md](docs/GOODREADS-IMPORT-SPEC.md)** (approved 2026-11-11; brief: [docs/GOODREADS-IMPORT-BRIEF.md](docs/GOODREADS-IMPORT-BRIEF.md)). Branch `phase-14b-goodreads-import`, worktree `../libaraxia-import` (set up 2026-11-11). Claude does the git work: commits each step on the branch once Phil approves it, merges into `main` at M1/M2 when Phil says; Phil pushes (spec section 14, "Git").
-- **To start a step**, in a fresh session (replace N with the next unticked step; the first sentence only when the previous step was approved):
-  > Step N-1 is approved: commit it on the branch first. Then Phase 14b, step N: granular Goodreads import. Read docs/GOODREADS-IMPORT-SPEC.md in full, then CLAUDE.md, ROADMAP.md (14b), and BULK-EDIT-SPEC.md sections 2, 3, 9 and 14 (where they differ, the Goodreads spec's section 14 wins). Work in the worktree ../libaraxia-import on branch phase-14b-goodreads-import, following the spec's section 14 pipeline. Build step N only. Where the spec and the code disagree, stop and tell me. Leave step N uncommitted; stop and report when it's done.
-- [x] Re-spec after 14a (replaces BULK-EDIT-SPEC section 16).
-- [x] 1. Parser: `goodreads_id` and `shelves` from `parse_row`.
-- [x] 2. Migration 032 (staging, imports, rows). **Merge point M1.**
-- [x] 3. `utils/goodreads_plan.py` stage + plan, headless (boxes, fill, choices).
-- [x] 4. Apply and undo, headless (provenance, bulk journal).
-- [x] 5. Routes and the review page; old route removed.
-- [x] 6. Provenance in the UI: From Goodreads filter, book page note.
-- [x] 6b. Site backups before shipping (Phil, 2026-11-12): Admin → Backups (back up now; per backup restore, download the database, delete), "Back up first" on the import page. `utils/backups.py`. Then per user (Phil, same day): Profile → Library backups, each user backs up and restores their own data only (`utils/personal_backups.py`); the import takes a personal backup first (no backup, no import), no site backup. The library CSV gains a Section column and the household's shelf. **Prod:** set `BACKUP_DIR` (e.g. `/var/lib/libaraxia/backups`, beside the uploads, outside the repo) before M2 is pushed.
-- [x] 6c. "Not owned" becomes **"Unshelved"** in the UI (Phil, 2026-11-12): covers never-had and have-it-but-not-scanned-yet. Wording only (grid badge, Show filter, stats tile, bulk radio, `media.py` labels, book page and Book tools, Goodreads page); `books.owned` unchanged.
-- [ ] 7. Dry run on a prod copy (Phil), wrap-up. **Merge point M2.**
+14b (Goodreads import, backups, Unshelved) is done: [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import).
 
 ---
 
