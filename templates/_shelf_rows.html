@@ -16,14 +16,22 @@
    shelf_cols:  'grid-cols-1 md:grid-cols-2' (default) or 'grid-cols-1'
    cover_h:     cover height class, default 'h-28' (one size everywhere, 14c);
                 widths follow the image,
-                so an album is square and a VHS box tall #}
+                so an album is square and a VHS box tall
+
+   In a bookcase (16.0): put `shelf-case` on the element round this partial
+   (Reviews, Collections). Shelf then draws it as one bookcase, each shelf
+   its own ledge right under the covers (captions hang below it), the label
+   on the back wall; other styles show the usual cards. shelf-item,
+   shelf-link and shelf-label are the hooks for that, and every shelf has a
+   .shelf-row, empty when it has no covers (hidden, except as a bare ledge
+   in the case). #}
 {% set cover_h = cover_h or 'h-28' %}
 <div class="grid {{ shelf_cols or 'grid-cols-1 md:grid-cols-2' }} gap-4">
     {% for shelf in shelves %}
-    <div class="flex items-center gap-2 min-w-0 group">
+    <div class="shelf-item flex items-center gap-2 min-w-0 group">
         <a href="{{ shelf.url }}"
-           class="flex-1 min-w-0 bg-primary hover:bg-primary-hover p-4 rounded-lg transition-colors">
-            <div class="flex items-center justify-between gap-3 {% if shelf.covers %}mb-3{% endif %}">
+           class="shelf-link flex-1 min-w-0 bg-primary hover:bg-primary-hover p-4 rounded-lg transition-colors">
+            <div class="shelf-label flex items-center justify-between gap-3 {% if shelf.covers %}mb-3{% endif %}">
                 {# With "See all" beside it a long name would be cut on a phone: let it wrap #}
                 <span class="text-content-primary text-lg {{ 'min-w-0' if shelf.more else 'truncate' }}">{{ shelf.label }}</span>
                 <span class="flex items-center gap-3 shrink-0">
@@ -57,6 +65,8 @@
                     {% endif %}
                 {% endfor %}
             </div>
+            {% else %}
+            <div class="shelf-row"></div>
             {% endif %}
         </a>
         {% if shelf.delete_url %}

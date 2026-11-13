@@ -1062,3 +1062,24 @@ def test_feed_card_layout(client, db, people):
     assert 'grid-template-areas: "cover main" "cover actions";' in css
     assert 'grid-template-areas: "main main" "cover actions";' in css     # phone
     assert ':root[data-style="shelf"] .feed-card .feed-cover {\n    align-self: end;' in css
+
+
+def test_stacked_shelves_in_one_bookcase(client, db, people):
+    """Style pass (16.0): Reviews and Collections set their rows of covers in
+    one bookcase (.shelf-case round _shelf_rows.html). Every shelf has its
+    row, empty when it has no covers: hidden in the other styles, a bare
+    ledge in Shelf's case. Making a collection is a tool, so it has its own
+    card, outside the case."""
+    login(client, 'alice')
+    for url in ('/reviews/', '/collections/collections'):
+        page = client.get(url).get_data(as_text=True)
+        assert 'class="shelf-case ' in page, url
+        assert 'shelf-item' in page and 'shelf-link' in page and 'shelf-label' in page, url
+    page = client.get('/collections/collections').get_data(as_text=True)
+    case = page.index('class="shelf-case ')
+    assert page.index('name="name"') > page.index('</section>', case)      # the form is after the case
+    assert 'Create collection' in page and 'Create Shelf' not in page      # UI: shelf = what you own
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '.shelf-row:empty { display: none; }' in css
+    assert ':root[data-style="shelf"] .shelf-case .shelf-row:empty {' in css
+    assert 'background-attachment: local;       /* the ledge runs the whole scroll width */' in css

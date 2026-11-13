@@ -1696,6 +1696,13 @@ textarea {
   scroll-snap-align: start;
 }
 
+/* A shelf with no covers (_shelf_rows.html renders the row anyway):
+       nothing to show, except a bare ledge in Shelf's bookcase */
+
+.shelf-row:empty {
+  display: none;
+}
+
 /* Activity feed covers (8B.7): the picture's own shape, never cropped.
        Only maximums, so the browser scales it to fit inside 6rem x 10rem
        keeping its proportions: a book fills the width, a square album is
@@ -5353,15 +5360,15 @@ dialog::backdrop {
 
 /* The case's outside: top face (lit) and right face (in shade) */
 
-:root[data-style="shelf"] :is(.page-heading, .case-card)::before,
-:root[data-style="shelf"] :is(.page-heading, .case-card)::after {
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::before,
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::after {
   content: "";
   position: absolute;
   pointer-events: none;
   top: calc(-1 * (var(--frame) + var(--case-run)));
 }
 
-:root[data-style="shelf"] :is(.page-heading, .case-card)::before {
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::before {
   /* top */
   left: calc(-1 * var(--frame));
   width: calc(100% + 2 * var(--frame) + var(--case-run));
@@ -5370,7 +5377,7 @@ dialog::backdrop {
   clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
 
-:root[data-style="shelf"] :is(.page-heading, .case-card)::after {
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::after {
   /* right side */
   left: calc(100% + var(--frame));
   width: var(--case-run);
@@ -5582,6 +5589,147 @@ dialog::backdrop {
 :root[data-style="shelf"] .shelf-row {
   padding-top: var(--box-depth);
   padding-right: var(--box-depth);
+}
+
+/* ---- Shelf: stacked shelves in one bookcase (16.0) ----
+   A page's rows of covers (_shelf_rows.html: Reviews, Collections) set in
+   one case: the page puts .shelf-case on the element round them. The frame
+   and the outside top and right faces are the small cases' (above); the
+   bottom is framed too, since here the last shelf isn't the case's floor.
+   Each shelf is its label on the back wall, then its covers standing on a
+   ledge that runs wall to wall and scrolls with them, then any captions
+   (stars, a name) hanging below the ledge like the grid's badges.
+   The covers are all one height (h-28, the rows' one size), so the ledge is
+   painted at a fixed depth in the row: --shelf-y, where the covers' bases
+   stand --row-sink into its top face. */
+
+:root[data-style="shelf"] .shelf-case {
+  --frame: 8px;
+  --case-run: 10px;
+  --ledge-top: 10px;
+  --ledge-front: 8px;
+  --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
+  --row-sink: 4px;
+  --row-pad: 1.25rem;
+  /* the shelves' text and covers from the case's sides */
+  position: relative;
+  margin-top: var(--case-run);
+  padding: 1.25rem 0 .25rem;
+  /* the last ledge sits just above the framed bottom */
+  border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
+  border-radius: 0;
+  background-color: rgb(var(--shelf-back));
+  background-image: none;
+  box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
+}
+
+/* the right face also runs down past the framed bottom */
+
+:root[data-style="shelf"] .shelf-case::after {
+  height: calc(100% + 2 * var(--frame) + var(--case-run));
+}
+
+/* One shelf per row of the case, whatever the page's columns elsewhere */
+
+:root[data-style="shelf"] .shelf-case > .grid {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 1.75rem;
+}
+
+/* A shelf is its label and its row on the back wall: no panel */
+
+:root[data-style="shelf"] .shelf-case .shelf-link {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-label {
+  margin-bottom: .75rem;
+  padding: 0 var(--row-pad);
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-link:hover .shelf-label > :first-child {
+  color: rgb(var(--accent-text));
+}
+
+/* A custom collection's delete button: in the label's corner, not beside
+   the shelf (which would stop it short of the case's side) */
+
+:root[data-style="shelf"] .shelf-case .shelf-item {
+  position: relative;
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-item > form {
+  position: absolute;
+  top: -.4rem;
+  right: .25rem;
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-item:has(> form) .shelf-label {
+  padding-right: 3rem;
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-row {
+  --shelf-y: calc(var(--box-depth) + 7rem - var(--row-sink));
+  /* h-28 = 7rem */
+  align-items: flex-start;
+  /* covers top-aligned: their bases meet the ledge */
+  padding: var(--box-depth) var(--row-pad) calc(var(--ledge-h) - var(--row-sink) + 2px);
+  scroll-padding-inline: var(--row-pad);
+  background-image:
+        /* front edge: the lit arris along its top, a shaded bottom pixel */
+        linear-gradient(var(--ledge-lit), var(--ledge-lit)),
+        linear-gradient(rgb(0 0 0 / var(--front-shade)), rgb(0 0 0 / var(--front-shade))),
+        /* top face, darker at the back */
+        linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
+        /* the ledge's two faces */
+        linear-gradient(rgb(var(--shelf-top)), rgb(var(--shelf-top))),
+        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front))),
+        /* its shadow on the wall below, and the wall darkening toward it above */
+        linear-gradient(to bottom, rgb(0 0 0 / var(--under-shade)), transparent),
+        linear-gradient(to bottom, transparent, rgb(0 0 0 / var(--wall-shade)));
+  background-size:
+        100% var(--ledge-lit-w),
+        100% 1px,
+        100% var(--ledge-top),
+        100% var(--ledge-top),
+        100% var(--ledge-front),
+        100% 14px,
+        100% 26px;
+  background-position:
+        0 calc(var(--shelf-y) + var(--ledge-top)),
+        0 calc(var(--shelf-y) + var(--ledge-h) - 1px),
+        0 var(--shelf-y),
+        0 var(--shelf-y),
+        0 calc(var(--shelf-y) + var(--ledge-top)),
+        0 calc(var(--shelf-y) + var(--ledge-h)),
+        0 calc(var(--shelf-y) - 26px);
+  background-repeat: no-repeat;
+  background-attachment: local;
+  /* the ledge runs the whole scroll width */
+}
+
+/* An empty shelf: just its ledge (and the wall above it) */
+
+:root[data-style="shelf"] .shelf-case .shelf-row:empty {
+  display: block;
+  --shelf-y: 26px;
+  height: calc(26px + var(--ledge-h));
+  padding: 0;
+}
+
+/* A heading or a note inside the case (Collections' "Reading Shelves",
+   "Custom Collections") lines up with the shelves' labels */
+
+:root[data-style="shelf"] .shelf-case :is(.shelf-case-heading, .shelf-case-note) {
+  padding: 0 var(--row-pad);
+}
+
+/* Captions (stars, a reviewer) hang below the ledge, under their cover */
+
+:root[data-style="shelf"] .shelf-case .shelf-figure figcaption {
+  margin-top: calc(var(--ledge-h) - var(--row-sink));
 }
 
 /* The item page's cover: a deeper box, standing free in the details card

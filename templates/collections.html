@@ -22,20 +22,29 @@
             </nav>
         </div>
 
-        <!-- Status shelves of this section (media.STATUSES) -->
-        <section class="bg-secondary rounded-lg p-4 sm:p-8 mb-8 card">
-            <h2 class="text-2xl font-display text-content-primary mb-6">
+        {# The section's shelves (16.0): its status shelves, then its custom
+           collections, in one card; in Shelf, one bookcase with a shelf per
+           row (shelf-case, _shelf_rows.html). Making a collection is a tool,
+           so it has its own card below. #}
+        <section class="shelf-case bg-secondary rounded-lg p-4 sm:p-8 mb-8 card" aria-labelledby="status-shelves">
+            <h2 id="status-shelves" class="shelf-case-heading text-2xl font-display text-content-primary mb-6">
                 {{ {'book': 'Reading', 'video': 'Watching', 'record': 'Listening'}[media_type] }} Shelves
             </h2>
             {% with shelves=status_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
+
+            <h2 id="custom-shelves" class="shelf-case-heading text-2xl font-display text-content-primary mt-10 mb-6">Custom Collections</h2>
+            {% if custom_shelves %}
+                {% with shelves=custom_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
+            {% else %}
+                <p class="shelf-case-note text-content-secondary text-center italic">No {{ m.noun }} collections yet</p>
+            {% endif %}
         </section>
 
-        <!-- Custom shelves for this section -->
-        <section class="bg-secondary rounded-lg p-4 sm:p-8 card">
-            <h2 class="text-2xl font-display text-content-primary mb-6">Custom Collections</h2>
-
+        <!-- Make a custom collection for this section -->
+        <section class="bg-secondary rounded-lg p-4 sm:p-8 card" aria-labelledby="new-collection">
+            <h2 id="new-collection" class="text-2xl font-display text-content-primary mb-6">New collection</h2>
             <form action="{{ url_for('collections.create_custom_collection') }}" method="POST"
-                  class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8">
+                  class="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="media_type" value="{{ media_type }}"/>
                 <input type="text" name="name" aria-label="New collection name" required maxlength="100"
@@ -43,15 +52,9 @@
                        class="flex-1 min-w-0 bg-primary text-content-primary px-4 py-2 rounded-lg
                               border border-primary-hover focus:border-accent outline-none transition-colors">
                 <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-6 py-2 rounded-lg btn">
-                    Create Shelf
+                    Create collection
                 </button>
             </form>
-
-            {% if custom_shelves %}
-                {% with shelves=custom_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
-            {% else %}
-                <p class="text-content-secondary text-center italic">No {{ m.noun }} collections yet</p>
-            {% endif %}
         </section>
 
         {# Goodreads shelves (ROADMAP 14c): the custom shelves your Goodreads
