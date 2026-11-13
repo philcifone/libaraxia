@@ -87,7 +87,7 @@ def test_unknown_format_falls_back_to_lp_and_barcode_is_kept(client, db, people)
 def test_add_album_page_has_search_barcode_and_scan(client, people):
     login(client, 'alice')
     page = client.get('/records/add').get_data(as_text=True)
-    assert 'Add an Album</h1>' in page and 'data-type="record"' in page
+    assert 'page-title min-w-0">Add an Album</span>' in page and 'data-type="record"' in page
     assert 'id="search-input"' in page and 'Artist and title...' in page
     # Barcodes since 8B.12: code and scan tabs, the scanner, a barcode field
     assert 'data-method="code"' in page and 'data-method="scan"' in page
@@ -322,7 +322,7 @@ def test_sidebar_has_vinyls(client, people):
 def test_vinyl_on_the_wishlist_then_onto_the_shelf(client, db, people):
     login(client, 'alice')
     page = client.get('/wishlist/add?type=record').get_data(as_text=True)
-    assert 'Add an Album to your Wishlist</h1>' in page and 'id="notes"' in page
+    assert 'page-title min-w-0">Add an Album to your Wishlist</span>' in page and 'id="notes"' in page
     r = client.post('/wishlist/add', data=form(media_type='record', notes='first pressing'))
     assert r.headers['Location'].endswith('/wishlist/view')
     record = scalar(db, "SELECT id FROM books WHERE title = 'Blue'")
@@ -579,4 +579,4 @@ def test_vinyl_sizes_have_no_icon_and_a_centred_title(client, db, people):
     rid = add_record(db, people['alice'], title='Small', fmt='7in')
     login(client, 'alice')
     page = client.get(f'/records/{rid}').get_data(as_text=True)
-    assert '<header class="mb-8 px-3 md:px-6 text-center">' in page and 'role="img"' not in page
+    assert '<header class="py-2 px-3 md:px-6 text-center">' in page and 'role="img"' not in page

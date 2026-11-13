@@ -114,11 +114,11 @@ def test_member_can_leave(client, db, people):
 
 def test_profile_shows_the_right_household_button(client, db, people):
     login(client, 'alice')
-    assert 'Remove from Household' in client.get('/user/bob').get_data(as_text=True)
-    assert 'Invite to Household' in client.get('/user/carol').get_data(as_text=True)
+    assert 'data-action="household-remove"' in client.get('/user/bob').get_data(as_text=True)
+    assert f'action="/user/household/invite/{people["carol"]}"' in client.get('/user/carol').get_data(as_text=True)
     login(client, 'bob')
     page = client.get('/user/alice').get_data(as_text=True)
-    assert 'Leave Household' in page and 'Remove from Household' not in page
+    assert 'data-action="household-leave"' in page and 'data-action="household-remove"' not in page
 
 
 def test_member_row_on_every_household_page(client, db, people):

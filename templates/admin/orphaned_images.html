@@ -5,7 +5,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+    <div class="page-frame pt-20 pb-12">
         <!-- Back Nav -->
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Orphaned Images') }}
 

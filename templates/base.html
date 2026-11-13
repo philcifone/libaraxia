@@ -27,6 +27,8 @@
        it sets data-rack on <html> before the first paint, so the rack
        doesn't flash in. #}
     <script src="{{ url_for('static', filename='shelf.js') }}"></script>
+    {# Shelf: the tilt glare, on or off per device in Appearance (16.0 step 12) #}
+    <script src="{{ url_for('static', filename='tilt.js') }}" defer></script>
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}bg-primary min-h-screen{% endblock %}">

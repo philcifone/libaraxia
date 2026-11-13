@@ -414,6 +414,16 @@ document.addEventListener('load', event => {
     if (event.target.tagName === 'IMG') event.target.dataset.loaded = '1';
 }, true);
 
+// A cover picture's box: the JS twin of cover_img() in templates/_covers.html
+// (keep the two in step). src is the uploads path as stored; alt and author
+// are escaped here. author sets data-author, which the load-error handler
+// above uses to title the placeholder it swaps in.
+function coverBoxHtml(src, alt, imgClass, { author = null } = {}) {
+    const authorAttr = author === null ? '' : ` data-author="${escapeHtml(author)}"`;
+    return `<span class="cover-box"><img src="/static/${escapeHtml(src)}" alt="${escapeHtml(alt)}"${authorAttr}`
+         + ` class="${imgClass}"><span class="cover-sheen" aria-hidden="true"></span></span>`;
+}
+
 // --- No cover -----------------------------------------------------------------
 // The JS twin of templates/_no_cover.html (keep the two in step): a plain
 // binding with the title on it, for cards built in script.

@@ -9,11 +9,12 @@
     <!-- Add Book Button -->
     {% with fab_items=[('Library', url_for('books.add_book')), ('Wishlist', url_for('wishlist.add_to_wishlist', type='book'))] %}{% include '_add_fab.html' %}{% endwith %}
 
-    {% with top_padding=true %}{% include '_search_sort_filter.html' %}{% endwith %}
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2 mb-4">
+    {# Crumbs first, then the search bar, as on every drill-down page (F11) #}
+    <div class="page-frame pt-20 mb-4">
         {{ crumbs([('Library', url_for('base.index'))], 'Search' ~ (': ' ~ search_term if search_term else ''), class='') }}
     </div>
+
+    {% include '_search_sort_filter.html' %}
 
     {% include '_bulk_result.html' %}
 

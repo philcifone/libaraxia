@@ -57,13 +57,16 @@ def test_item_page_cover_is_a_box_without_a_bookcase():
     stand = CSS[CSS.index(':root[data-style="shelf"] .cover-stand {\n    --box-depth'):]
     assert 'padding: var(--box-depth) var(--box-depth) 0 0' in stand[:stand.index('}')]
     detail = (ROOT / 'templates/book_detail.html').read_text()
-    assert detail.count('case-card') == 3          # details, household reviews, your info
+    assert 'case-card' not in detail               # plain cards since Phil, 2026-11-13; the heading keeps its case
 
 
-def test_feed_and_notifications_are_bookcases(client, db, people):
+def test_feed_and_notifications_are_cards_like_reviews(client, db, people):
+    """Phil, 2026-11-13: the feed and notifications went back from small
+    bookcases to the rounded cards the Reviews lists use."""
     login(client, 'alice')
-    assert 'class="case-card' in client.get('/friends/notifications_page').get_data(as_text=True)
-    assert 'case-card' in (ROOT / 'templates/activity_feed.html').read_text()
+    assert 'case-card' not in client.get('/friends/notifications_page').get_data(as_text=True)
+    feed = (ROOT / 'templates/activity_feed.html').read_text()
+    assert 'case-card' not in feed and 'class="feed-card relative bg-secondary rounded-lg p-4 card flex gap-4 min-w-0"' in feed
 
 
 def test_feed_reviews_are_clamped():

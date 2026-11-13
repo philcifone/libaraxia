@@ -389,7 +389,7 @@ def test_feed_words_video_activity(client, db, people):
     page = client.get('/feed/activity').get_data(as_text=True)
     assert 'added a new movie' in page
     assert 'reviewed a movie' in page
-    assert 'watched' in page and 'directed by' in page
+    assert 'watched' in page and 'Steven Spielberg' in page     # the creator, as on Reviews (no "directed by")
 
 
 # --- videos stay out of book features ----------------------------------------
@@ -670,7 +670,7 @@ def test_search_thumbnails_allow_tmdb_posters_only():
 def test_add_pages_share_one_layout(client, people, url, noun, code_tab):
     login(client, 'alice')
     page = client.get(url).get_data(as_text=True)
-    assert f'Add a {noun}</h1>' in page and 'add_item.js' in page
+    assert f'page-title min-w-0">Add a {noun}</span>' in page and 'add_item.js' in page
     for method in ('search', 'code', 'scan'):
         assert f'data-method="{method}"' in page
     assert f'>{code_tab}</span>' in page                     # the tab's short label
@@ -708,7 +708,7 @@ def test_edit_movie_uses_the_shared_fields(client, db, people):
     video = add_video(db, people['alice'], fmt='DVD')
     login(client, 'alice')
     page = client.get(f'/videos/edit/{video}').get_data(as_text=True)
-    assert 'Edit Movie</h1>' in page and 'id="runtime_minutes"' in page
+    assert 'page-title min-w-0">Edit Movie</span>' in page and 'id="runtime_minutes"' in page
     assert '<option value="DVD" selected' in page and 'value="124"' in page
 
 
@@ -717,11 +717,11 @@ def test_edit_movie_uses_the_shared_fields(client, db, people):
 def test_wishlist_add_page_for_each_type(client, people):
     login(client, 'alice')
     page = client.get('/wishlist/add?type=video&format=DVD').get_data(as_text=True)
-    assert 'Add a Movie or Show to your Wishlist</h1>' in page and 'id="notes"' in page
+    assert 'page-title min-w-0">Add a Movie or Show to your Wishlist</span>' in page and 'id="notes"' in page
     assert 'action="/wishlist/add"' in page and '<option value="DVD" selected' in page
     assert 'Add to Wishlist' in page and 'class="crumb-link">Wishlist<' in page
     book = client.get('/wishlist/add?type=book').get_data(as_text=True)
-    assert 'Add a Book to your Wishlist</h1>' in book and 'id="notes"' in book
+    assert 'page-title min-w-0">Add a Book to your Wishlist</span>' in book and 'id="notes"' in book
     # a movie barcode found on the wishlist's Add Book goes to its Add Movie
     assert 'data-other-add-url="/wishlist/add?type=video"' in book
 
@@ -787,7 +787,7 @@ def test_edit_book_saves_isbn_and_genre_is_optional(client, db, people):
     book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
     page = client.get(f'/books/edit/{book}').get_data(as_text=True)
-    assert 'Edit Book</h1>' in page and 'id="fetch-cover-btn"' in page and 'id="page_count"' in page
+    assert 'page-title min-w-0">Edit Book</span>' in page and 'id="fetch-cover-btn"' in page and 'id="page_count"' in page
     assert not re.search(r'id="genre"[^>]*required', page)
     r = client.post(f'/books/edit/{book}', data={'title': 'Dune', 'author': 'Frank Herbert',
                                                  'isbn': '9780441013593', 'genre': ''})

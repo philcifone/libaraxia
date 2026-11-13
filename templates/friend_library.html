@@ -5,13 +5,13 @@
    profile and wishlist are a link away. #}
 
 {% block title %}{{ friend.username }}'s Shelves - libaraxia{% endblock %}
-{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
+{% block body_class %}bg-primary text-content-primary{% endblock %}
 
 {% block content %}
     {% from '_shelves.html' import shelf_header %}
     {{ shelf_header('book', 'friend', friend.username) }}
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="page-frame">
         <p class="mb-4 text-sm text-content-secondary">
             <a href="{{ url_for('user.profile', username=friend.username) }}" class="text-accent hover:text-accent-hover underline">{{ friend.username }}'s profile</a>
             ·

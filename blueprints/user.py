@@ -6,6 +6,7 @@ from utils.export import library_csv, data_zip
 from utils import households
 from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
+from utils.book_matching import books_in_common
 from utils import bulk, media, reviews, shelves, personal_backups
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
@@ -126,6 +127,12 @@ def profile(username):
             'they_are_in_one': households.membership(conn, user['id']) is not None,
         }
 
+    # Friend at a glance (16.0): books on both your shelves, for a friend
+    # only (not someone who just shares your household, nor a stranger)
+    common_books = None
+    if are_friends and not is_own_profile:
+        common_books = books_in_common(conn, current_user.id, user['id'])
+
     # Recent reviews, the same list and order as the Reviews section's
     # (utils/reviews.py), which "View all" opens. One row per review: the old
     # query joined every reading session and listed a re-read book twice.
@@ -152,6 +159,7 @@ def profile(username):
         in_shared_library=in_shared_library,
         household=household,
         recent_reviews=recent_reviews,
+        common_books=common_books,
     )
 
 @user_blueprint.route('/settings')

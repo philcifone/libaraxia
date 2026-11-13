@@ -402,9 +402,9 @@ class InfiniteScroll {
 
 
         const coverImage = book.cover_image_url   // cover-box: as _book_grid.html
-            ? `<span class="cover-box"><img src="/static/${this.escapeHtml(book.cover_image_url)}"
-                    alt="${this.escapeHtml(book.title)}" data-author="${this.escapeHtml(book.author || '')}"
-                    class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>`
+            ? coverBoxHtml(book.cover_image_url, book.title,
+                'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200',
+                { author: book.author || '' })
             : noCoverHtml(book.title, book.author);
 
         // List view's columns: year, your status, your rating (card_json)
@@ -476,7 +476,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Only initialize on library index and search results pages
     // Check for the book container by ID which persists across view changes
     const bookContainer = document.getElementById('book-container');
-    const dataContainer = document.querySelector('.container[data-current-page]');
+    // The grid's wrapper (_book_grid.html), found by its data, not a layout
+    // class: keyed on Tailwind's .container, the 16.0 page frame silently
+    // switched infinite scroll off (Phil saw only the first page)
+    const dataContainer = document.querySelector('[data-current-page]');
     if (bookContainer && dataContainer) {
         new InfiniteScroll();
     }

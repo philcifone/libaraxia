@@ -114,6 +114,10 @@
 {%- elif name == 'moon' %}
     {# Lucide "moon" #}
     <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+{%- elif name == 'book-open' %}
+    {# Lucide "book-open": a plain book's title card (it has no stored format) #}
+    <path d="M12 7v14"/>
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
 {%- elif name == 'audiobook' %}
     {# Lucide "book-headphones" #}
     <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>
@@ -150,8 +154,16 @@
    the accent (the Shelves heading's Mine / Household, _shelves.html). #}
 {# sr_prefix: words before the name for screen readers only ("Household"
    on the household's Shelves, where the lit toggle says it visually) #}
+{# The heading card itself, for a page whose heading isn't an icon and a name
+   (the item page: title, subtitle, creator, format icon). One place for its
+   classes, so every heading card matches (and Shelf sets each in a small
+   bookcase, .page-heading). Use: {% call heading_card('mb-8') %}...{% endcall %} #}
+{% macro heading_card(class='mb-6') -%}
+<div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ class }}">{{ caller() }}</div>
+{%- endmacro %}
+
 {% macro page_heading(icon_name, name, subtitle=none, class='mb-6', toggle=none, sr_prefix=none) -%}
-<div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ 'relative' if toggle }} {{ class }}">
+{% call heading_card(('relative ' if toggle else '') ~ class) %}
     <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center">
         {% if toggle %}
         <a href="{{ toggle.url }}" title="{{ toggle.label }}" aria-label="{{ toggle.label }}"
@@ -163,16 +175,18 @@
         <span class="page-title min-w-0">{% if sr_prefix %}<span class="sr-only">{{ sr_prefix }} </span>{% endif %}{{ name }}</span>
     </h1>
     {% if subtitle %}<p class="mt-1 text-sm text-content-secondary text-center">{{ subtitle }}</p>{% endif %}
-</div>
+{% endcall %}
 {%- endmacro %}
 
 {# A grid page's heading: page_heading the width of the tabs and search row
    ("My Music", "alice's Movies"), 24px from each (the tabs' pb-4 plus pt-2
    above, pb-6 below). #}
+{# Each section's icon, by media type: the grids' headings and the Add and
+   Edit pages' (import it beside page_heading) #}
+{% set section_icons = {'book': 'library', 'video': 'vhs', 'record': 'disc'} %}
 {% macro section_heading(media_type, name) -%}
-{% set names = {'book': 'library', 'video': 'vhs', 'record': 'disc'} %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
-    {{ page_heading(names[media_type], name, class='') }}
+<div class="page-frame pt-2 pb-6">
+    {{ page_heading(section_icons[media_type], name, class='') }}
 </div>
 {%- endmacro %}
 

@@ -109,7 +109,10 @@
             {# One entry for Books, Movies and Music (ROADMAP 11.1): the Shelves
                pages switch section themselves; this returns you to the last one #}
             {# A friend's shelves count as Friends (that's where you came from) #}
-            {% set on_friend = request.endpoint in ('friends.index', 'base.friend_library', 'videos.user_videos', 'records.user_records') %}
+            {# Friends is lit on a friend's shelves and on anyone else's
+               profile, where its cards lead (16.0) #}
+            {% set on_friend = request.endpoint in ('friends.index', 'base.friend_library', 'videos.user_videos', 'records.user_records')
+                               or (request.endpoint == 'user.profile' and (request.view_args or {}).get('username', '')|lower != current_user.username|lower) %}
             <a href="{{ url_for('base.shelves') }}"
                class="nav-link {% if request.path.startswith(('/base', '/books', '/videos', '/records')) and not on_friend %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
                       hover:bg-accent/10 transition-colors">
@@ -154,7 +157,7 @@
             </a>
 
             <a href="/user/{{ current_user.username }}"
-               class="nav-link {% if request.path == '/user/' ~ current_user.username %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
+               class="nav-link {% if request.endpoint == 'user.profile' and not on_friend %}nav-active{% endif %} flex items-center gap-3 px-4 py-3 text-content-secondary hover:text-accent
                       hover:bg-accent/10 transition-colors">
                 {{ icon('user') }}
                 Profile

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_covers.html' import cover_img %}
 {% from '_icons.html' import crumbs %}
 {% from '_shelves.html' import section_switch %}
 {# "See all" of one Reviews row (reviews.see_all, ROADMAP 13): every review
@@ -11,7 +12,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
+    <main class="page-frame pt-20 pb-24">
         {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], heading) }}
         <h1 class="text-3xl font-display text-content-primary text-center mb-6">{{ heading }}</h1>
         {{ section_switch(media_type, urls=section_urls, wrap=False, class='mb-8') }}
@@ -23,8 +24,7 @@
             <li class="bg-secondary rounded-lg p-4 card flex gap-4 min-w-0">
                 <a href="{{ page }}" class="shrink-0 self-start" aria-label="{{ r.title }}">
                     {% if r.cover_image_url|upload_exists %}
-                    <span class="cover-box"><img src="{{ url_for('static', filename=r.cover_image_url) }}" alt="" loading="lazy"
-                         class="w-20 max-h-32 object-contain rounded shadow-sm"></span>
+                    {{ cover_img(r.cover_image_url, '', 'w-20 max-h-32 object-contain rounded shadow-sm', lazy=True) }}
                     {% else %}
                     {% with title=r.title, size='sm', box='h-28 w-auto aspect-[2/3] rounded' %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}

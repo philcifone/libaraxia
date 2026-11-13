@@ -16,7 +16,7 @@
    urls: {type: url} for a page that isn't a shelf (Reviews, ROADMAP 13);
    without it the links come from shelf_url() and keep the scope. #}
 {% macro section_switch(section, scope=None, username=None, class='pb-4', wrap=True, urls=None) -%}
-<div class="{{ 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' if wrap }} {{ class }}">
+<div class="{{ 'page-frame' if wrap }} {{ class }}">
     <div class="bg-secondary rounded-xl overflow-hidden card">
         <nav class="flex items-stretch" aria-label="Section">
             {% for key, label in SECTION_NAMES.items() %}
@@ -34,7 +34,7 @@
    so the crumbs lead back there #}
 {% macro shelf_header(section, scope, username=None) -%}
 {% if scope == 'friend' %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+<div class="page-frame pt-20">
     {{ crumbs([('Friends', url_for('friends.index'))], username, class='mb-4') }}
 </div>
 {% endif %}
@@ -51,7 +51,7 @@
      'url': shelf_url(section, 'mine' if household else 'shared'),
      'icon': 'library-house', 'on': household,
      'label': 'Showing the household: show only mine' if household else 'Show the household'} %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {{ 'pt-2' if scope == 'friend' else 'pt-20' }} pb-4">
+<div class="page-frame {{ 'pt-2' if scope == 'friend' else 'pt-20' }} pb-4">
     {{ page_heading('library', names[scope], class='', toggle=toggle,
                     sr_prefix='Household' if household else none) }}
 </div>

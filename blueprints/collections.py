@@ -10,6 +10,20 @@ from utils.rate_limiting import limiter
 
 collections_blueprint = Blueprint('collections', __name__, template_folder='templates')
 
+
+# The item page's forms come back to the card they were sent from (16.0),
+# not to the top of the page. A fixed list: the fragment is never a value
+# echoed from the form.
+ITEM_ANCHORS = {'your-info'}
+
+
+def _back(fallback=None):
+    url = request.referrer or fallback or url_for('base.index')
+    anchor = request.form.get('anchor')
+    if anchor in ITEM_ANCHORS:
+        url = url.split('#')[0] + '#' + anchor
+    return redirect(url)
+
 # The Collections page's tabs (?type=), in order: Books, Movies, Music
 TABS = (media.BOOK, media.VIDEO, media.RECORD)
 
@@ -125,12 +139,19 @@ def create_custom_collection():
 
     conn = get_db()
     try:
-        conn.execute('''
+        collection_id = conn.execute('''
             INSERT INTO user_collections (user_id, name, media_type)
             VALUES (?, ?, ?)
-        ''', (current_user.id, name, media_type))
+        ''', (current_user.id, name, media_type)).lastrowid
+        # From an item page (16.0): the item goes straight into it
+        book_id = request.form.get('book_id')
+        if book_id and can_view_book(conn, current_user, book_id):
+            conn.execute('INSERT INTO collection_books (collection_id, book_id) VALUES (?, ?)',
+                         (collection_id, book_id))
+            flash(f'Created "{name}" and added this to it.', 'success')
+        else:
+            flash('Collection created successfully!', 'success')
         conn.commit()
-        flash('Collection created successfully!', 'success')
     except sqlite3.IntegrityError:
         conn.rollback()
         flash(f'You already have a collection called "{name}" here.', 'error')
@@ -141,7 +162,7 @@ def create_custom_collection():
 
     # From an item page's "Create Collection" box: back to that page
     if request.form.get('next') == 'item' and request.referrer:
-        return redirect(request.referrer)
+        return _back()
     return redirect(back)
 
 @collections_blueprint.route('/collections/<int:collection_id>/add', methods=['POST'])
@@ -268,7 +289,7 @@ def add_to_status_collection():
                          (current_user.id, book_id))
             conn.commit()
             flash('Status cleared.', 'success')
-            return redirect(request.referrer or url_for('base.index'))
+            return _back()
         if not media.is_valid_status(media_type, status):
             flash('That status is not available here.', 'danger')
             return redirect(request.referrer or url_for('base.index'))
@@ -302,8 +323,8 @@ def add_to_status_collection():
     except Exception as e:
         current_app.logger.exception('Error updating collection')
         flash('Failed to update the reading status.', 'danger')
-    
-    return redirect(request.referrer)
+
+    return _back()
 
 @collections_blueprint.route('/collections/status/<status>', methods=['GET'])
 @login_required
@@ -409,7 +430,7 @@ def manage_book_collections():
         current_app.logger.exception('Error managing collection')
         flash('Error managing collection.', 'error')
 
-    return redirect(request.referrer)
+    return _back()
 
 @collections_blueprint.route('/delete_collection/<int:collection_id>', methods=['POST'])
 @login_required

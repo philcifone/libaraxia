@@ -17,7 +17,7 @@
         {% include '_add_fab.html' %}
     {% endwith %}
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
+    <div class="page-frame pt-20 pb-32">
         {{ page_heading('bookmark', 'Wishlist', "Books, movies, TV and music you'd like to own", class='mb-8') }}
 
         {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
@@ -53,9 +53,10 @@
             <h2 id="wishlist-{{ key }}" class="scroll-mt-20 text-3xl font-display text-content-primary mb-6">
                 {{ m.plural|capitalize }} <span class="text-content-secondary text-xl">({{ items|length }})</span>
             </h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {# shelf-grid: the library's bookcase in the Shelf style (_wishlist_card.html) #}
+            <div class="wishlist-grid shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" data-media="{{ m.type }}">
                 {% for book in items %}
-                {% include '_wishlist_card.html' %}
+                {% with own=true %}{% include '_wishlist_card.html' %}{% endwith %}
                 {% endfor %}
             </div>
         </section>

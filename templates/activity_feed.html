@@ -1,244 +1,122 @@
 {% extends 'base.html' %}
+{% from '_covers.html' import cover_img %}
 {% from '_icons.html' import page_heading %}
 
 {% block title %}Activity Feed - Libaraxia{% endblock %}
-{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
+{% block body_class %}bg-primary text-content-primary{% endblock %}
 
 {% block content %}
     <!-- Main Container -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+    <div class="page-frame pt-20">
         <!-- Page Header -->
         {{ page_heading('feed', 'Activity Feed', 'What your friends are reading, watching and listening to', class='mb-8') }}
 
         <!-- Activity Feed -->
-        <div class="space-y-6">
-            {% if activities %}
-                {% for activity in activities %}
-                    <div class="case-card bg-secondary rounded-lg p-6 pb-16 transition-shadow relative card">
-                        <!-- Action buttons in top right -->
-                        <div class="absolute top-4 right-4 flex gap-3 items-center">
-                            <!-- Dismiss button (only for user's own activities) -->
-                            {% if activity.user_id == current_user.id %}
-                            <form method="POST" action="/feed/dismiss_activity" class="inline" data-confirm="Are you sure you want to dismiss this activity from the feed? This will hide it for all users.">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <input type="hidden" name="activity_type" value="{{ activity.type }}">
-                                <input type="hidden" name="book_id" value="{{ activity.book_id }}">
-                                <input type="hidden" name="user_id" value="{{ activity.user_id }}">
-                                <button type="submit" class="text-content-secondary hover:text-yellow-500 transition-colors" title="Dismiss from feed">
-                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M18.36 6L6 18.36M6 6l12.36 12.36"></path>
-                                    </svg>
-                                </button>
-                            </form>
-                            {% endif %}
-                        </div>
+        {% if activities %}
+        {# Each activity is the Reviews list's card (reviews_list.html; Phil,
+           2026-11-13: "match the activity feed to it"): the cover on the
+           left; the title, creator, a line of the rating, who did what and
+           when, the review clamped with Read more, then the like. Your own
+           activities have the dismiss X in the corner. #}
+        <ul class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {% for activity in activities %}
+            {% set lm = labels_for(activity) %}
+            {% set page = '/books/book/' ~ activity.book_id %}
+            {% set mine = activity.user_id == current_user.id %}
+            <li class="feed-card relative bg-secondary rounded-lg p-4 card flex gap-4 min-w-0">
+                {% if mine %}
+                <form method="POST" action="/feed/dismiss_activity" class="absolute top-3 right-3" data-confirm="Are you sure you want to dismiss this activity from the feed? This will hide it for all users.">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="activity_type" value="{{ activity.type }}">
+                    <input type="hidden" name="book_id" value="{{ activity.book_id }}">
+                    <input type="hidden" name="user_id" value="{{ activity.user_id }}">
+                    <button type="submit" class="text-content-secondary hover:text-yellow-500 transition-colors" title="Dismiss from feed" aria-label="Dismiss from feed">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M18.36 6L6 18.36M6 6l12.36 12.36"></path>
+                        </svg>
+                    </button>
+                </form>
+                {% endif %}
 
-                        <div class="flex gap-4">
-                            <!-- Book Cover -->
-                            <div class="flex-shrink-0">
-                                <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}" class="block">
-                                    {% if activity.cover_image_url|upload_exists %}
-                                        <span class="cover-box"><img src="{{ url_for('static', filename=activity.cover_image_url) }}"
-                                             alt="{{ activity.title }}"
-                                             class="feed-cover rounded-lg shadow-md"></span>
-                                    {% else %}
-                                        {% with title=activity.title, size='sm', box='w-24 h-36 rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
-                                    {% endif %}
-                                </a>
-                            </div>
+                <a href="{{ page }}" class="shrink-0 self-start" aria-label="{{ activity.title }}">
+                    {% if activity.cover_image_url|upload_exists %}
+                    {{ cover_img(activity.cover_image_url, '', 'w-20 max-h-32 object-contain rounded shadow-sm', lazy=True) }}
+                    {% else %}
+                    {% with title=activity.title, size='sm', box='h-28 w-auto aspect-[2/3] rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% endif %}
+                </a>
 
-                            <!-- Activity Details -->
-                            <div class="flex-grow min-w-0 pr-6">{# pr-6: clear of the dismiss X in the corner #}
-                                {% if activity.type == 'book_added' %}
-                                    <!-- New Book Activity -->
-                                    <div class="flex items-start gap-2 mb-2">
-                                        <svg class="w-5 h-5 text-accent mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M12 5v14m7-7H5"></path>
-                                        </svg>
-                                        <div>
-                                            <p class="text-content-primary font-semibold">
-                                                {% if activity.username %}
-                                                    <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
-                                                        {{ activity.username }}
-                                                    </a>
-                                                    added a new {{ labels_for(activity).noun }}
-                                                {% else %}
-                                                    New {{ labels_for(activity).Noun }} Added
-                                                {% endif %}
-                                            </p>
-                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
-                                        </div>
-                                    </div>
+                <div class="flex-1 min-w-0">
+                    {# pr-6: clears the dismiss X #}
+                    <a href="{{ page }}" class="block text-lg font-semibold text-content-primary hover:text-accent line-clamp-2 {{ 'pr-6' if mine }}">{{ activity.title }}</a>
+                    {% if activity.author %}<p class="text-sm text-content-secondary truncate">{{ activity.author }}</p>{% endif %}
 
-                                    <a href="/books/book/{{ activity.book_id }}"
-                                       class="block hover:text-accent transition-colors">
-                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
-                                            {{ activity.title }}
-                                        </h3>
-                                        <p class="text-content-secondary mb-2">{{ labels_for(activity).by }} {{ activity.author }}</p>
-                                    </a>
+                    <p class="mt-1 text-sm flex flex-wrap items-center gap-x-3">
+                        {% if activity.type == 'review_added' and activity.rating %}
+                        <span class="whitespace-nowrap"><span class="text-yellow-400" aria-hidden="true">{{ '★' * (activity.rating|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - activity.rating|int) }}</span><span class="sr-only">Rated {{ activity.rating|int }} of 5</span></span>
+                        {% endif %}
+                        <span class="text-content-secondary">
+                            {%- if activity.type == 'book_added' and not activity.username -%}
+                                New {{ lm.noun }} added
+                            {%- else -%}
+                                <a href="/user/{{ activity.username }}" class="hover:text-accent underline">{{ activity.username }}</a>
+                                {% if activity.type == 'book_added' %}added a new {{ lm.noun }}
+                                {% elif activity.type == 'wishlist_added' %}added it to their wishlist
+                                {% elif activity.type == 'review_added' %}reviewed {{ lm.a }} {{ lm.noun }}
+                                {% elif activity.status == 'currently reading' %}started reading
+                                {% elif activity.status == 'want to read' %}wants to read
+                                {% elif activity.status == 'watched' %}watched
+                                {% elif activity.status == 'want to watch' %}wants to watch
+                                {% elif activity.status == 'listened' %}listened to
+                                {% elif activity.status == 'want to listen' %}wants to listen to
+                                {% else %}added it to their library{% endif %}
+                            {%- endif -%}
+                        </span>
+                        {# The day, as Reviews shows it: additions carry a time, reviews a date (F13) #}
+                        {% if activity.date %}<span class="text-content-secondary">{{ activity.date[:10] }}</span>{% endif %}
+                    </p>
 
-                                {% elif activity.type == 'wishlist_added' %}
-                                    <!-- Wishlist Activity -->
-                                    <div class="flex items-start gap-2 mb-2">
-                                        <svg class="w-5 h-5 text-purple-500 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                        </svg>
-                                        <div>
-                                            <p class="text-content-primary font-semibold">
-                                                <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
-                                                    {{ activity.username }}
-                                                </a>
-                                                added to wishlist
-                                            </p>
-                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
-                                        </div>
-                                    </div>
-
-                                    <a href="/books/book/{{ activity.book_id }}"
-                                       class="block hover:text-accent transition-colors">
-                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
-                                            {{ activity.title }}
-                                        </h3>
-                                        <p class="text-content-secondary mb-2">{{ labels_for(activity).by }} {{ activity.author }}</p>
-                                    </a>
-
-                                {% elif activity.type == 'collection_added' %}
-                                    <!-- Collection Status Activity -->
-                                    <div class="flex items-start gap-2 mb-2">
-                                        <svg class="w-5 h-5 text-blue-500 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                        </svg>
-                                        <div>
-                                            <p class="text-content-primary font-semibold">
-                                                <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
-                                                    {{ activity.username }}
-                                                </a>
-                                                {% if activity.status == 'currently reading' %}
-                                                    started reading
-                                                {% elif activity.status == 'want to read' %}
-                                                    wants to read
-                                                {% elif activity.status == 'watched' %}
-                                                    watched
-                                                {% elif activity.status == 'want to watch' %}
-                                                    wants to watch
-                                                {% elif activity.status == 'listened' %}
-                                                    listened to
-                                                {% elif activity.status == 'want to listen' %}
-                                                    wants to listen to
-                                                {% else %}
-                                                    added to library
-                                                {% endif %}
-                                            </p>
-                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
-                                        </div>
-                                    </div>
-
-                                    <a href="/books/book/{{ activity.book_id }}"
-                                       class="block hover:text-accent transition-colors">
-                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
-                                            {{ activity.title }}
-                                        </h3>
-                                        <p class="text-content-secondary">{{ labels_for(activity).by }} {{ activity.author }}</p>
-                                    </a>
-
-                                {% elif activity.type == 'review_added' %}
-                                    <!-- Review Activity -->
-                                    <div class="flex items-start gap-2 mb-2">
-                                        <svg class="w-5 h-5 text-yellow-500 mt-1" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                                        </svg>
-                                        <div>
-                                            <p class="text-content-primary font-semibold">
-                                                <a href="/user/{{ activity.username }}" class="hover:text-accent transition-colors">
-                                                    {{ activity.username }}
-                                                </a>
-                                                reviewed {{ labels_for(activity).a }} {{ labels_for(activity).noun }}
-                                            </p>
-                                            <p class="text-content-secondary text-sm">{{ activity.date }}</p>
-                                        </div>
-                                    </div>
-
-                                    <a href="/books/book/{{ activity.book_id }}"
-                                       class="block hover:text-accent transition-colors mb-3">
-                                        <h3 class="text-xl font-semibold text-content-primary mb-1">
-                                            {{ activity.title }}
-                                        </h3>
-                                        <p class="text-content-secondary">{{ labels_for(activity).by }} {{ activity.author }}</p>
-                                    </a>
-
-                                    {% if activity.rating %}
-                                        <div class="flex items-center gap-1 mb-2">
-                                            {% for i in range(5) %}
-                                                {% if i < activity.rating %}
-                                                    <svg class="w-5 h-5 text-yellow-500" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                                                    </svg>
-                                                {% else %}
-                                                    <svg class="w-5 h-5 text-content-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                                                    </svg>
-                                                {% endif %}
-                                            {% endfor %}
-                                            <span class="ml-2 text-content-secondary">{{ activity.rating }}/5</span>
-                                        </div>
-                                    {% endif %}
-
-                                    {% if activity.comment %}
-                                        {# Clamped with Read more (common.js): a long review printed in full
-                                           made one card thousands of pixels tall on a phone #}
-                                        <div class="bg-primary/50 rounded-lg p-4 mt-3" data-read-more>
-                                            <p id="feed-review-{{ loop.index }}" class="read-more-text text-content-primary italic whitespace-pre-wrap">"{{ activity.comment }}"</p>
-                                            <button type="button" class="read-more-toggle" data-click="toggleReadMore"
-                                                    aria-controls="feed-review-{{ loop.index }}" aria-expanded="false" hidden>Read more</button>
-                                        </div>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- Like button in bottom right corner (for all activity types) -->
-                        <div class="absolute bottom-6 right-6 z-10">
-                            {% if activity.user_id != current_user.id %}
-                            <button
-                                data-click="toggleLike" data-activity-type="{{ activity.type }}"
-                                data-book-id="{{ activity.book_id|tojson }}" data-activity-user-id="{{ activity.user_id|tojson }}"
-                                class="like-button flex items-center gap-1 text-content-secondary hover:text-red-500 transition-colors"
-                                data-liked="{{ 'true' if activity.user_liked else 'false' }}"
-                                title="{{ 'Unlike' if activity.user_liked else 'Like' }}">
-                                <svg class="w-5 h-5 {{ 'fill-red-500 text-red-500' if activity.user_liked else 'fill-none' }}"
-                                     viewBox="0 0 24 24"
-                                     stroke="currentColor"
-                                     stroke-width="2">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                                </svg>
-                                <span class="like-count text-sm">{{ activity.like_count if activity.like_count > 0 else '' }}</span>
-                            </button>
-                            {% else %}
-                            <!-- Show like count for own activities (non-clickable) -->
-                            {% if activity.like_count > 0 %}
-                            <div class="flex items-center gap-1 text-content-secondary">
-                                <svg class="w-5 h-5 fill-red-500 text-red-500"
-                                     viewBox="0 0 24 24"
-                                     stroke="currentColor"
-                                     stroke-width="2">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                                </svg>
-                                <span class="text-sm">{{ activity.like_count }}</span>
-                            </div>
-                            {% endif %}
-                            {% endif %}
-                        </div>
+                    {% if activity.type == 'review_added' and activity.comment %}
+                    {# Clamped with Read more (common.js), as on Reviews #}
+                    <div class="mt-2" data-read-more>
+                        <p id="feed-review-{{ loop.index }}" class="read-more-text text-content-secondary text-sm whitespace-pre-wrap">{{ activity.comment }}</p>
+                        <button type="button" class="read-more-toggle" data-click="toggleReadMore"
+                                aria-controls="feed-review-{{ loop.index }}" aria-expanded="false" hidden>Read more</button>
                     </div>
-                {% endfor %}
-            {% else %}
-                {% with title='Nothing in your feed yet',
-                         text="Friends' reviews, finished books and wishlist additions show up here." %}
-                    {% include '_empty_state.html' %}
-                {% endwith %}
-            {% endif %}
-        </div>
+                    {% endif %}
+
+                    <!-- Like: where Reviews has Edit review -->
+                    {% if not mine %}
+                    <button
+                        data-click="toggleLike" data-activity-type="{{ activity.type }}"
+                        data-book-id="{{ activity.book_id|tojson }}" data-activity-user-id="{{ activity.user_id|tojson }}"
+                        class="like-button mt-2 inline-flex items-center gap-1 text-sm text-content-secondary hover:text-red-500 transition-colors"
+                        data-liked="{{ 'true' if activity.user_liked else 'false' }}"
+                        title="{{ 'Unlike' if activity.user_liked else 'Like' }}">
+                        <svg class="w-5 h-5 {{ 'fill-red-500 text-red-500' if activity.user_liked else 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                        <span class="like-count">{{ activity.like_count if activity.like_count > 0 else '' }}</span>
+                    </button>
+                    {% elif activity.like_count > 0 %}
+                    <!-- Your own activity: the count, not a button -->
+                    <p class="mt-2 inline-flex items-center gap-1 text-sm text-content-secondary">
+                        <svg class="w-5 h-5 fill-red-500 text-red-500" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                        {{ activity.like_count }}
+                    </p>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+            {% with title='Nothing in your feed yet',
+                     text="Friends' reviews, finished books and wishlist additions show up here." %}
+                {% include '_empty_state.html' %}
+            {% endwith %}
+        {% endif %}
     </div>
     <!-- End Main Container -->
 {% endblock %}

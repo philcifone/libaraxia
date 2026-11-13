@@ -191,12 +191,12 @@ def manage_session(book_id):
                 flash("Start date cannot be in the future.", 'error')
                 if redirect_to == 'rate_review':
                     return redirect(url_for('read.rate_review', book_id=book_id))
-                return redirect(url_for('books.show_book', id=book_id))
+                return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
         except ValueError:
             flash("Invalid start date format.", 'error')
             if redirect_to == 'rate_review':
                 return redirect(url_for('read.rate_review', book_id=book_id))
-            return redirect(url_for('books.show_book', id=book_id))
+            return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
 
     if date_completed:
         try:
@@ -206,19 +206,19 @@ def manage_session(book_id):
                 flash("Completion date cannot be in the future.", 'error')
                 if redirect_to == 'rate_review':
                     return redirect(url_for('read.rate_review', book_id=book_id))
-                return redirect(url_for('books.show_book', id=book_id))
+                return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
         except ValueError:
             flash("Invalid completion date format.", 'error')
             if redirect_to == 'rate_review':
                 return redirect(url_for('read.rate_review', book_id=book_id))
-            return redirect(url_for('books.show_book', id=book_id))
+            return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
 
     # Validate that start date is before completion date
     if date_started_obj and date_completed_obj and date_started_obj > date_completed_obj:
         flash("Start date cannot be after completion date.", 'error')
         if redirect_to == 'rate_review':
             return redirect(url_for('read.rate_review', book_id=book_id))
-        return redirect(url_for('books.show_book', id=book_id))
+        return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
 
     # No dates at all is allowed (books read long ago), but only when the
     # page asked and the user said yes (undated=1, ROADMAP 14c). Without it a
@@ -227,7 +227,7 @@ def manage_session(book_id):
         flash("No dates were entered, so nothing was saved.", 'info')
         if redirect_to == 'rate_review':
             return redirect(url_for('read.rate_review', book_id=book_id))
-        return redirect(url_for('books.show_book', id=book_id))
+        return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
 
     # Update or insert reading session
     if session_id:
@@ -251,7 +251,7 @@ def manage_session(book_id):
     # Redirect based on preference
     if redirect_to == 'rate_review':
         return redirect(url_for('read.rate_review', book_id=book_id))
-    return redirect(url_for('books.show_book', id=book_id))
+    return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
 
 
 @read_blueprint.route('/delete_reading_session/<int:session_id>', methods=['POST'])
@@ -284,7 +284,7 @@ def delete_reading_session(session_id):
     # Redirect based on preference
     if book_id:
         if redirect_to == 'book_detail':
-            return redirect(url_for('books.show_book', id=book_id))
+            return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
         else:
             return redirect(url_for('read.rate_review', book_id=book_id))
     else:

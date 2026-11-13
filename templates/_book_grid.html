@@ -1,5 +1,6 @@
+{% from '_covers.html' import cover_img %}
     <!-- Book Grid/List -->
-    <div class="container mx-auto px-4 pb-32"
+    <div class="page-frame pb-32"
          data-current-page="{{ current_page | default(1) }}"
          data-has-more="{{ has_more | default(false) | lower }}"
          data-total-count="{{ total_count | default(0) }}">
@@ -25,9 +26,7 @@
                         {% if book.cover_image_url|upload_exists %}
                         {# cover-box: the Shelf style draws the cover as a 3D box on it;
                            display: contents (no box at all) everywhere else #}
-                        <span class="cover-box"><img src="{{ url_for('static', filename=book['cover_image_url']) }}"
-                             alt="{{ book['title'] }}" data-author="{{ book['author'] or '' }}"
-                             class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>
+                        {{ cover_img(book['cover_image_url'], book['title'], 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200', author=book['author'] or '') }}
                         {% if book['media_type'] == 'video' %}
                         {# The Shelf style's video-store rack prints the title on
                            every case instead of showing the poster; hidden

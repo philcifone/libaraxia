@@ -682,6 +682,17 @@
 }
 
 @layer components {
+    /* ---- The page frame (16.0) ----
+       Every wide page (grids, shelves, wishlist, collections, reviews, the
+       feed, friends): its toolbars, heading, bookcase and grid all share
+       this one width and gutter, so they line up on every screen. Single-
+       column pages (profile, forms, settings panes) are narrower on purpose
+       and set their own max-w. Phil, 2026-11-13: the wishlist grid on an
+       iPhone, a 16px gutter each side, is the reference. */
+    .page-frame {
+        @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    }
+
     /* ---- Cards and buttons ----
        The look comes from the shape variables of the active style (see Themes).
        .card       a panel (static: shadow, no movement)
@@ -786,20 +797,9 @@
         flex: none;
         scroll-snap-align: start;
     }
-
-    /* Activity feed covers (8B.7): the picture's own shape, never cropped.
-       Only maximums, so the browser scales it to fit inside 6rem x 10rem
-       keeping its proportions: a book fills the width, a square album is
-       6rem square, a tall VHS box is 10rem high and narrower. The box is
-       the image, so the rounded corners and shadow hug it. (Stored covers
-       are usually bigger than this; a smaller one shows at its own size.) */
-    .feed-cover {
-        display: block;
-        width: auto;
-        height: auto;
-        max-width: 6rem;
-        max-height: 10rem;
-    }
+    /* A shelf with no covers (_shelf_rows.html renders the row anyway):
+       nothing to show, except a bare ledge in Shelf's bookcase */
+    .shelf-row:empty { display: none; }
 
     /* The camera picker (scanner.js sets .hidden when there's one camera):
        its `flex` class would otherwise beat the hidden attribute. */
@@ -917,9 +917,12 @@
         -webkit-line-clamp: 2;
         overflow: hidden;
     }
-    /* The wrapper round a grid cover's <img> (_book_grid.html): no box of
-       its own, except in the Shelf style's bookcase (the 3D box). */
+    /* The wrapper round a cover's <img> (cover_img() in _covers.html): no box
+       of its own, except in the Shelf style, which draws the 3D box on it.
+       .cover-sheen is a spare layer for light across the front (the box's
+       pseudo-elements are its faces); off unless a style turns it on. */
     .cover-box { display: contents; }
+    .cover-sheen { display: none; }
     .no-cover-sm { padding: .4rem .2rem .4rem .4rem; border-left-width: 4px; }
     .no-cover-sm .no-cover-title { font-size: clamp(.55rem, 14cqw, .8rem); -webkit-line-clamp: 4; }
 
@@ -1069,8 +1072,19 @@
     }
 
     /* Appearance picker (profile): pressed option is filled */
-    .theme-opt { @apply text-content-secondary hover:bg-primary-hover; }
-    .theme-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
+    .theme-opt, .tilt-opt { @apply text-content-secondary hover:bg-primary-hover; }
+    .theme-opt[aria-pressed="true"], .tilt-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
+
+    /* Choice chips (the item page's status and collections, 16.0): a tap
+       sets it, the pressed one is filled. One per choice, so they wrap. */
+    .chip {
+        @apply inline-flex items-center px-3 py-1.5 text-sm rounded-pill border border-rule-strong
+               text-content-primary transition-colors hover:bg-primary-hover;
+    }
+    .chip[aria-pressed="true"] { @apply bg-accent text-on-accent border-accent hover:bg-accent-hover; }
+    summary.chip { list-style: none; }
+    summary.chip::-webkit-details-marker { display: none; }
+    .new-collection[open] > summary.chip { @apply bg-primary-hover; }
 
     /* Long-form text (descriptions, reviews): keep monospace lines readable */
     .measure {
@@ -1353,17 +1367,9 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --ledge: calc(var(--ledge-top) + var(--ledge-front));
     --shelf-gap: 44px;
     --shelf-pitch: calc(var(--cover-h) + var(--ledge) + var(--shelf-gap));
-    /* Light and shade. One lamp, above and a little left: the wall darkens
-       toward each shelf, the top face is darker at the back, the front
-       edge catches a line of light along its top and loses it at the
-       bottom. Alphas of black, so the video-store rack can turn them down. */
-    --wall-shade: .12;
-    --top-shade: .16;
-    --under-shade: .28;         /* the shadow a shelf casts on the wall below */
-    --case-shade: .22;          /* the frame's shadow on the inside of the case */
-    --front-shade: .2;          /* bottom 1px of the front edge */
-    --ledge-lit: rgb(255 255 255 / .2);     /* the lit arris of the front edge */
-    --ledge-lit-w: 1px;
+    /* Light and shade: the lamp tokens on :root (Shelf: the rest of the
+       app), the inside shade a little deeper in the big case */
+    --case-shade: .22;
     /* The books show their top and right faces, so we stand above and to
        the right of the case, and from there the inside of its left panel
        is in view: a strip half as wide as the shelf top is tall. The
@@ -1456,7 +1462,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     left: calc(-1 * var(--frame));
     width: calc(100% + 2 * var(--frame) + var(--case-run));
     height: var(--ledge-top);
-    background: linear-gradient(to top, rgb(0 0 0 / .06), transparent),   /* darker at the front edge's lip */
+    background: linear-gradient(to top, rgb(0 0 0 / var(--lip-shade)), transparent),   /* darker at the front edge's lip */
                 rgb(var(--case-top, var(--shelf-top)));
     clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
@@ -1512,11 +1518,12 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    the grid's container (its parent, a size container for this): the width,
    less the frame, the side padding and the gaps, over the columns
    (Tailwind's 2 / md 3 / lg 4 / xl 5; 3 on the Shelf phone). Rounded down to
-   whole px so the ledges, one repeating gradient, don't drift. */
-:root[data-style="shelf"] :has(> #book-container.shelf-grid.grid[data-media="record"]) {
+   whole px so the ledges, one repeating gradient, don't drift. The
+   wishlist's Music grid too (:is() keeps the id's weight). */
+:root[data-style="shelf"] :has(> :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"]) {
     container-type: inline-size;
 }
-:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+:root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] {
     --cols: 2;
     --frame: 12px;
     --pad-x: 1.25rem;
@@ -1525,16 +1532,16 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --cover-h: round(down, var(--col-w), 1px);
 }
 @media (min-width: 768px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] { --cols: 3; }
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] { --cols: 3; }
 }
 @media (min-width: 1024px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] { --cols: 4; }
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] { --cols: 4; }
 }
 @media (min-width: 1280px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] { --cols: 5; }
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] { --cols: 5; }
 }
 @media (max-width: 767px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] {
         --cols: 3;
         --frame: 8px;
         --pad-x: .75rem;
@@ -1582,15 +1589,8 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         --box-side: 136 139 146;
     }
 }
-/* The shadows a box casts, from the same lamp as the rows and the item page
-   (their covers already had one; the bookcase's had none): a thin contact
-   shadow on the shelf under its base, and a soft one on the wall to the
-   right of its side face. Plain box-shadows rather than a drop-shadow
-   filter: there can be hundreds of covers on the page. */
-:root[data-style="shelf"] .shelf-grid.grid {
-    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4);
-    --box-cast: 4px 0 4px rgb(0 0 0 / .2);
-}
+/* The shadows a box casts (--box-contact, --box-cast) are the ones every
+   Shelf cover uses, set once in "Shelf: every cover is a box" below. */
 :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] { --box-depth: 4px; }
 @media (max-width: 767px) {
     :root[data-style="shelf"] .shelf-grid.grid { --box-depth: 5px; }
@@ -1718,8 +1718,21 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    two-tone line (top face, front edge) with a soft shadow under it. Paper
    panels sit on parchment; buttons are gently raised. No textures. */
 
-/* The ledge as a reusable background: bottom-anchored, --ledge tall */
+/* The ledge as a reusable background: bottom-anchored, --ledge tall.
+   And the lamp (16.0: one set for the grid, the small cases and the rows):
+   one light, above and a little left. The wall darkens toward each shelf,
+   the top face is darker at the back, the front edge catches a line of
+   light along its top and loses it at the bottom. Alphas of black, so the
+   video-store rack can turn them down. */
 :root[data-style="shelf"] {
+    --wall-shade: .12;
+    --top-shade: .16;
+    --under-shade: .28;         /* the shadow a shelf casts on the wall below */
+    --case-shade: .18;          /* the frame's shadow on the inside of a case */
+    --front-shade: .2;          /* bottom 1px of the front edge */
+    --lip-shade: .06;           /* a case's outside top face, at its front lip */
+    --ledge-lit: rgb(255 255 255 / .2);     /* the lit arris of the front edge */
+    --ledge-lit-w: 1px;
     --ledge-paint: linear-gradient(to bottom,
         rgb(var(--shelf-top)) 0 45%,
         rgb(var(--shelf-front)) 45% 100%);
@@ -1731,9 +1744,26 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     border-bottom: 0;
     box-shadow: inset 0 -3px 0 rgb(0 0 0 / .18), 0 3px 8px rgb(0 0 0 / .25);
 }
-:root[data-style="shelf"] .topbar .site-title { color: rgb(var(--shelf-label)); }
+/* The site title: dark mode's heading cream in both modes, never walnut
+   (Phil, 2026-11-13: walnut on the wooden bar was hard to read). 4.3:1 on
+   the light bar, 11:1 on the dark one; large text, so AA asks for 3:1. */
+:root[data-style="shelf"] .topbar .site-title { color: rgb(245 232 206); }
 :root[data-style="shelf"] .topbar .hamburger-bar { background-color: rgb(var(--shelf-label)); }
 :root[data-style="shelf"] #hamburger:hover { background-color: rgb(255 255 255 / .1); }
+
+/* Headings and placeholder covers in walnut instead of the near-black ink,
+   which read harsh against the wood (16.0, Phil); in dark mode a warmer
+   cream than the body text. 6.5:1 on the bookcase's back wall, the
+   palest it sits on (10.9:1 in dark). Headings are the display-font ones
+   in the primary text colour; the accent and on-accent ones keep theirs. */
+:root[data-style="shelf"] { --heading-ink: 92 62 38; }      /* #5c3e26 */
+:root[data-style="shelf"][data-mode="dark"] { --heading-ink: 245 232 206; }   /* #f5e8ce */
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) { --heading-ink: 245 232 206; }
+}
+:root[data-style="shelf"] :is(.font-display.text-content-primary, .no-cover):not(.site-title) {
+    color: rgb(var(--heading-ink));
+}
 
 /* Sidebar drawer: paper with a wooden edge. No shadow: the closed drawer
    is only translated off-screen, so a shadow would show along the left edge. */
@@ -1763,17 +1793,21 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
        running back into it on the grid's 1:2 slant. */
     --side-w: calc(var(--ledge-top) / 2);
     position: relative;
-    margin-top: var(--case-run);    /* room for the top face; the side overhangs the gutter */
+    /* Room for the top face, and for the right face inside the page frame,
+       as the grid has: a case and the grid beside it end at the same place
+       (Phil, 2026-11-13: the side used to overhang the gutter) */
+    margin-top: var(--case-run);
+    margin-right: var(--case-run);
     border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
     border-bottom-width: 0;
     border-radius: 0;
     background-color: rgb(var(--shelf-back));
     background-image:
         /* front edge: lit arris, then a shaded bottom pixel */
-        linear-gradient(to bottom, rgb(255 255 255 / .2) 0 1px, transparent 1px calc(100% - 1px),
-                        rgb(0 0 0 / .2) calc(100% - 1px)),
+        linear-gradient(to bottom, var(--ledge-lit) 0 var(--ledge-lit-w), transparent var(--ledge-lit-w) calc(100% - 1px),
+                        rgb(0 0 0 / var(--front-shade)) calc(100% - 1px)),
         /* top face: darker at the back */
-        linear-gradient(to bottom, rgb(0 0 0 / .16), transparent),
+        linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
         /* left panel: the top face's wedge, then the strip above it */
         conic-gradient(from 26.57deg at 0 calc(100% - var(--ledge-front)),
                        rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
@@ -1782,7 +1816,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         linear-gradient(to bottom, rgb(var(--shelf-top)) 0 var(--ledge-top), rgb(var(--shelf-front)) var(--ledge-top)),
         /* the wall darkens toward the shelf, as in the grid */
         linear-gradient(to bottom, transparent calc(100% - var(--ledge-h) - 22px),
-                        rgb(0 0 0 / .12) calc(100% - var(--ledge-h)));
+                        rgb(0 0 0 / var(--wall-shade)) calc(100% - var(--ledge-h)));
     background-size:
         100% var(--ledge-front),
         100% var(--ledge-top),
@@ -1798,7 +1832,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         bottom,
         0 0;
     background-repeat: no-repeat;
-    box-shadow: inset 0 0 20px rgb(0 0 0 / .18), var(--sh-lg);
+    box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
 /* Activity feed and notification cards, and the item page's details and
@@ -1818,21 +1852,21 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    like / comment row in their bottom corner */
 :root[data-style="shelf"] .case-card:not(.pb-16) { padding-bottom: calc(1.5rem + var(--ledge-h)); }
 /* The case's outside: top face (lit) and right face (in shade) */
-:root[data-style="shelf"] :is(.page-heading, .case-card)::before,
-:root[data-style="shelf"] :is(.page-heading, .case-card)::after {
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::before,
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::after {
     content: "";
     position: absolute;
     pointer-events: none;
     top: calc(-1 * (var(--frame) + var(--case-run)));
 }
-:root[data-style="shelf"] :is(.page-heading, .case-card)::before {    /* top */
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::before {    /* top */
     left: calc(-1 * var(--frame));
     width: calc(100% + 2 * var(--frame) + var(--case-run));
     height: var(--case-run);
-    background: linear-gradient(to top, rgb(0 0 0 / .06), transparent), rgb(var(--case-top, var(--shelf-top)));
+    background: linear-gradient(to top, rgb(0 0 0 / var(--lip-shade)), transparent), rgb(var(--case-top, var(--shelf-top)));
     clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
-:root[data-style="shelf"] :is(.page-heading, .case-card)::after {     /* right side */
+:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::after {     /* right side */
     left: calc(100% + var(--frame));
     width: var(--case-run);
     height: calc(100% + var(--frame) + var(--case-run));
@@ -1857,6 +1891,35 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 }
 :root[data-style="shelf"] .btn-outline { border-color: rgb(var(--rule-strong)); }
 :root[data-style="shelf"] .fab { box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-lg); }
+
+/* Tabs (16.0, Phil: with an accent line under the active tab, the open
+   tab beside it read as the one joined to the page, like a file folder).
+   Here the active tab is the raised one: paper, accent text, no line; the
+   others are recessed, a shade darker and pressed in from below, so the
+   eye lands on the one in front. Every tab bar in Shelf: profile, settings,
+   wishlist, collections, the Books | Movies | Music switch, stats.
+   The Add page's lookup tabs (.search-method-btn, add_item.js sets
+   data-active) are tabs too.
+   Recessed means darker than the raised paper in both modes: --fill in
+   light, but in dark --fill is the lighter one, so there it's --paper. */
+:root[data-style="shelf"] { --tab-recess: var(--fill); --tab-recess-hover: var(--paper); }
+:root[data-style="shelf"][data-mode="dark"] { --tab-recess: var(--paper); --tab-recess-hover: 38 30 24; }
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) { --tab-recess: var(--paper); --tab-recess-hover: 38 30 24; }
+}
+:root[data-style="shelf"] :is(.tab, .search-method-btn) {
+    background-color: rgb(var(--tab-recess));
+    box-shadow: inset 0 -6px 8px -6px rgb(0 0 0 / .18);
+}
+:root[data-style="shelf"] :is(.tab, .search-method-btn):hover { background-color: rgb(var(--tab-recess-hover)); }
+:root[data-style="shelf"] :is(.tab-active, .tab-button.active, [data-tabs] .tab[aria-selected="true"],
+                              .search-method-btn[data-active="true"]) {
+    background-color: rgb(var(--surface));
+    border-bottom-color: transparent;
+    box-shadow: none;
+    color: rgb(var(--accent-text));     /* as .tab's active (the lookup tabs had only the line) */
+    font-weight: 700;
+}
 
 /* Form fields: paper, set slightly into the page */
 :root[data-style="shelf"] :is(
@@ -1893,7 +1956,14 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --box-depth: 5px;
     --box-top: 226 224 218;
     --box-side: 196 193 186;
-    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4);
+    /* The shadows a box casts, from the lamp (above and a little left).
+       Plain box-shadows rather than a drop-shadow filter: there can be
+       hundreds of covers on a page. Contact: a thin dark line where the
+       base meets the shelf, then (16.0, Phil: "a subtle drop shadow on the
+       shelf underneath the book") a soft one on the top face, falling back
+       and to the right, away from the lamp. Cast: soft, on the wall to the
+       right of the side face. */
+    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4), 5px 4px 6px -3px rgb(0 0 0 / .3);
     --box-cast: 4px 0 4px rgb(0 0 0 / .2);
 }
 :root[data-style="shelf"][data-mode="dark"] {
@@ -1916,6 +1986,31 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     border-radius: 0 0 0 var(--cover-r);
     box-shadow: none;
 }
+/* Glare (16.0 step 9): the lamp's light caught across the front of every
+   cover, a soft diagonal band (the rental cases' sheen, below, much
+   fainter: paper doesn't shine like plastic). Still: no hover, no motion.
+   --sheen-shift moves the band across the cover; 0 here, and the place a
+   tilt-driven glare would set it. Movies and music are in plastic, a
+   little brighter. The rack's cases have their own sheen. */
+:root[data-style="shelf"] .cover-sheen {
+    --sheen-a: .10;
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+        linear-gradient(112deg,
+            transparent calc(24% + var(--sheen-shift, 0%)),
+            rgb(255 255 255 / var(--sheen-a)) calc(34% + var(--sheen-shift, 0%)),
+            rgb(255 255 255 / calc(var(--sheen-a) / 3)) calc(42% + var(--sheen-shift, 0%)),
+            transparent calc(54% + var(--sheen-shift, 0%)));
+}
+:root[data-style="shelf"] :is([data-media="video"], [data-media="record"]) .cover-sheen { --sheen-a: .16; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .cover-sheen { display: none; }
+/* Tilt (tilt.js) slides the band through --sheen-shift; the switch in
+   Appearance only shows in Shelf, the one style with a sheen */
+:root:not([data-style="shelf"]) [data-tilt-picker] { display: none; }
 :root[data-style="shelf"] :is(.cover-box, .no-cover) {
     position: relative;
     border-radius: 0 0 0 var(--cover-r);
@@ -1958,6 +2053,185 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 /* Rows of thumbnails: room above for the top faces */
 :root[data-style="shelf"] .shelf-row { padding-top: var(--box-depth); padding-right: var(--box-depth); }
 
+/* ---- Shelf: stacked shelves in one bookcase (16.0) ----
+   A page's rows of covers (_shelf_rows.html: Reviews, Collections) set in
+   one case: the page puts .shelf-case on the element round them. The frame
+   and the outside top and right faces are the small cases' (above); the
+   bottom is framed too, since here the last shelf isn't the case's floor.
+   Each shelf is its label on the back wall, then its covers standing on a
+   ledge that runs wall to wall and scrolls with them, then any captions
+   (stars, a name) hanging below the ledge like the grid's badges.
+   The covers are all one height (h-28, the rows' one size), so the ledge is
+   painted at a fixed depth in the row: --shelf-y, where the covers' bases
+   stand --row-sink into its top face. */
+:root[data-style="shelf"] .shelf-case {
+    --frame: 8px;
+    --case-run: 10px;
+    --ledge-top: 10px;
+    --ledge-front: 8px;
+    --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
+    --row-sink: 4px;
+    --row-pad: 1.25rem;                 /* the shelves' text and covers from the case's sides */
+    /* The inside of the left panel, in view from above and to the right
+       (Phil, 2026-11-13: "add more perspective", as the small cases have):
+       a strip down the case's side, each ledge running back into it on the
+       1:2 slant (.shelf-row::after, the heading's plank) */
+    --side-w: calc(var(--ledge-top) / 2);
+    position: relative;
+    margin-top: var(--case-run);
+    margin-right: var(--case-run);      /* the right face inside the page frame, as the grid's */
+    /* No framed bottom: the last ledge is the case's bottom, as on the grid
+       (Phil, 2026-11-13: a frame just under the last shelf read as a second
+       shelf). So a case always ends with a ledge (Collections puts a bare
+       one under its "no collections" note). */
+    padding: 1.25rem 0 0;
+    border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
+    border-bottom-width: 0;
+    border-radius: 0;
+    background-color: rgb(var(--shelf-back));
+    background-image: linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side)));
+    background-size: var(--side-w) 100%;
+    background-repeat: no-repeat;
+    box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
+}
+/* the right face runs from the top face down to the last ledge */
+:root[data-style="shelf"] .shelf-case::after { height: calc(100% + var(--frame) + var(--case-run)); }
+/* One shelf per row of the case, whatever the page's columns elsewhere */
+:root[data-style="shelf"] .shelf-case .grid:has(> .shelf-item) {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 1.75rem;
+}
+/* A shelf is its label and its row on the back wall: no panel */
+:root[data-style="shelf"] .shelf-case .shelf-link {
+    padding: 0;
+    border-radius: 0;
+    background: none;
+}
+:root[data-style="shelf"] .shelf-case .shelf-label {
+    margin-bottom: .75rem;
+    padding: 0 var(--row-pad);
+}
+:root[data-style="shelf"] .shelf-case .shelf-link:hover .shelf-label > :first-child { color: rgb(var(--accent-text)); }
+/* A custom collection's delete button: in the label's corner, not beside
+   the shelf (which would stop it short of the case's side) */
+:root[data-style="shelf"] .shelf-case .shelf-item { position: relative; }
+:root[data-style="shelf"] .shelf-case .shelf-item > form {
+    position: absolute;
+    top: -.4rem;
+    right: .25rem;
+}
+:root[data-style="shelf"] .shelf-case .shelf-item:has(> form) .shelf-label { padding-right: 3rem; }
+:root[data-style="shelf"] .shelf-case .shelf-row {
+    --shelf-y: calc(var(--box-depth) + 7rem - var(--row-sink));     /* h-28 = 7rem */
+    align-items: flex-start;            /* covers top-aligned: their bases meet the ledge */
+    --row-top: var(--box-depth);        /* the padding over the covers: their top faces */
+    padding: var(--row-top) var(--row-pad) calc(var(--ledge-h) - var(--row-sink));
+    scroll-padding-inline: var(--row-pad);
+    /* No rubber-band past either end (Phil, 2026-11-13: on a phone the row
+       stretched past its start and pulled the ledge with it, leaving a gap) */
+    overscroll-behavior-x: none;
+    background-image:
+        /* front edge: the lit arris along its top, a shaded bottom pixel */
+        linear-gradient(var(--ledge-lit), var(--ledge-lit)),
+        linear-gradient(rgb(0 0 0 / var(--front-shade)), rgb(0 0 0 / var(--front-shade))),
+        /* top face, darker at the back */
+        linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
+        /* the ledge's two faces */
+        linear-gradient(rgb(var(--shelf-top)), rgb(var(--shelf-top))),
+        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front))),
+        /* its shadow on the wall below, and the wall darkening toward it above */
+        linear-gradient(to bottom, rgb(0 0 0 / var(--under-shade)), transparent),
+        linear-gradient(to bottom, transparent, rgb(0 0 0 / var(--wall-shade))),
+        /* the same two faces again, fixed to the row rather than its
+           content: a browser that bounces anyway shows ledge, not a gap */
+        linear-gradient(rgb(var(--shelf-top)), rgb(var(--shelf-top))),
+        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
+    background-size:
+        100% var(--ledge-lit-w),
+        100% 1px,
+        100% var(--ledge-top),
+        100% var(--ledge-top),
+        100% var(--ledge-front),
+        100% 14px,
+        100% 26px,
+        100% var(--ledge-top),
+        100% var(--ledge-front);
+    background-position:
+        0 calc(var(--shelf-y) + var(--ledge-top)),
+        0 calc(var(--shelf-y) + var(--ledge-h) - 1px),
+        0 var(--shelf-y),
+        0 var(--shelf-y),
+        0 calc(var(--shelf-y) + var(--ledge-top)),
+        0 calc(var(--shelf-y) + var(--ledge-h)),
+        0 calc(var(--shelf-y) - 26px),
+        0 var(--shelf-y),
+        0 calc(var(--shelf-y) + var(--ledge-top));
+    background-repeat: no-repeat;
+    /* the ledge runs the whole scroll width; the last two layers stay put */
+    background-attachment: local, local, local, local, local, local, local, scroll, scroll;
+}
+/* An empty shelf: just its ledge (and the wall above it) */
+:root[data-style="shelf"] .shelf-case .shelf-row:empty {
+    display: block;
+    --shelf-y: 26px;
+    --row-top: 0px;
+    height: calc(26px + var(--ledge-h));
+    padding: 0;
+}
+/* A note inside the case (Collections: "No book collections yet", the
+   profile's Books / Movies / Music) lines up with the shelves' labels.
+   The case has no visible headings (Phil, 2026-11-13: a heading on a
+   plank of its own read as an empty shelf). */
+:root[data-style="shelf"] .shelf-case .shelf-case-note { padding: 0 var(--row-pad); }
+/* Collections: your custom collections' rows after the status rows, the
+   gap between any two shelves */
+:root[data-style="shelf"] .shelf-case .shelf-more { margin-top: 1.75rem; }
+/* The profile's Collections and Wishlist (user.html): the paper card goes,
+   so its heading stands above the bookcase, as the wishlist's section
+   headings stand above its grid */
+:root[data-style="shelf"] .case-wrap {
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+/* Where a row's ledge meets the left panel. The row (the scroller) starts
+   at the panel's inner face, so covers scrolling left go behind the board
+   in every browser (Phil, 2026-11-13; painting a piece over them failed in
+   iPhone Safari, which drew the scroller on top). Its own padding is less
+   by the strip, so the covers rest where they did. The strip's slice of
+   the ledge is this piece, positioned with .shelf-item (outside the
+   scroller, so it never moves): the top face's wedge running back into
+   the panel, the panel above it, the front edge crossing in front. It
+   takes its static place, the top of the row's content box, moved up
+   over the row's top padding. */
+:root[data-style="shelf"] .shelf-case .shelf-row {
+    margin-left: var(--side-w);
+    padding-left: calc(var(--row-pad) - var(--side-w));
+    scroll-padding-inline-start: calc(var(--row-pad) - var(--side-w));
+}
+:root[data-style="shelf"] .shelf-case .shelf-row::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: var(--side-w);
+    margin-top: calc(-1 * var(--row-top));         /* up to the row's top */
+    height: calc(var(--shelf-y) + var(--ledge-h));  /* down to its ledge's foot */
+    pointer-events: none;
+    background-image:
+        conic-gradient(from 26.57deg at 0 100%, rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
+        linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side))),
+        linear-gradient(to bottom, var(--ledge-lit) 0 var(--ledge-lit-w), transparent var(--ledge-lit-w) calc(100% - 1px),
+                        rgb(0 0 0 / var(--front-shade)) calc(100% - 1px)),
+        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
+    background-size: 100% var(--ledge-top), 100% calc(100% - var(--ledge-front)), 100% var(--ledge-front), 100% var(--ledge-front);
+    background-position: 0 calc(100% - var(--ledge-front)), 0 0, bottom, bottom;
+    background-repeat: no-repeat;
+}
+/* Captions (stars, a reviewer) hang below the ledge, under their cover */
+:root[data-style="shelf"] .shelf-case .shelf-figure figcaption { margin-top: calc(var(--ledge-h) - var(--row-sink)); }
+
 /* The item page's cover: a deeper box, standing free in the details card
 (a bookcase of its own was tried and dropped, Phil 2026-11-12); room above
 and to the right for its faces */
@@ -1984,32 +2258,77 @@ and to the right for its faces */
 /* Feed and notifications covers: a little deeper than a row's */
 :root[data-style="shelf"] .case-card { --box-depth: 6px; }
 
-/* Wishlist cards: the cover shown whole, standing in the card's top as a
-   box, instead of cropped to fill it */
-:root[data-style="shelf"] .cover-slot {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    height: 19rem;
-    padding: calc(var(--box-depth) + 1rem) calc(var(--box-depth) + 1rem) .75rem 1rem;
-    --box-depth: 7px;
+/* A case card's cover stands on the case's ledge (.case-cover: Do I Have
+   This? matches; 16.0, Phil: "lower the book box to sit on the
+   shelf"): at the foot of the card, pulled down through the card's bottom
+   padding (1.5rem in Shelf, above) so its base stands a little into the
+   ledge's top face, as the grid's books do. The text beside it keeps the
+   padding, so the feed's like row sits clear above the ledge. */
+:root[data-style="shelf"] .case-card .case-cover {
+    align-self: end;
+    margin-bottom: calc(-1.5rem - var(--ledge-top) / 2);
 }
-:root[data-style="shelf"] .cover-slot .cover-box > img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: calc(19rem - 1.75rem - 7px);
-    object-fit: contain;
-}
-:root[data-style="shelf"] .cover-slot .no-cover {
-    width: auto;
-    height: 100%;
-    aspect-ratio: 2 / 3;
-}
-:root[data-style="shelf"] .cover-slot[data-media="record"] .no-cover { aspect-ratio: 1; }
+/* A case that is a link stays put on hover, as the grid's covers do (Phil:
+   no hover animation on the bookcases) */
+:root[data-style="shelf"] .case-card.card-link:is(:hover, :focus-visible) { transform: none; }
 
-/* Covers on cards (wishlist) and in the feed: square corners like a book */
-:root[data-style="shelf"] .wishlist-item img { border-radius: 0; }
+/* Wishlists (yours and a friend's, _wishlist_card.html): each section is
+   the library's bookcase grid (Phil, 2026-11-13: "laid out exactly like the
+   main page shelves"). The cards carry the grid's hooks, so the grid rules
+   above draw them; this only takes off the card's own chrome, and hides
+   the full-width button and shop links (they're on the item page) in
+   favour of the round (+) on the cover's top-left corner. */
+:root[data-style="shelf"] .shelf-grid.grid .wishlist-item {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    transform: none;
+}
+:root[data-style="shelf"] .shelf-grid.grid .wishlist-actions { display: none; }
+/* A coverless item's box is two links deep here (.cover-anchor, the link),
+   not a flex item of .book-cover as in the library, and iPhone Safari gave
+   it no width from its height and aspect ratio (a size container): only
+   the spine showed (Phil, 2026-11-13). So its width is set, and its
+   height follows. */
+:root[data-style="shelf"] .wishlist-grid.shelf-grid.grid .no-cover {
+    width: calc(var(--cover-h) * 2 / 3);
+    height: auto;
+}
+:root[data-style="shelf"] .wishlist-grid.shelf-grid.grid[data-media="record"] .no-cover { width: var(--cover-h); }
+/* .cover-anchor hugs the cover (a flex item of the bottom-aligned
+   .book-cover), so the (+) lands on the cover's corner, not the column's */
+.cover-anchor { display: block; position: relative; max-width: 100%; }
+.wishlist-quick-add { display: none; }
+:root[data-style="shelf"] .shelf-grid.grid .wishlist-quick-add {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;                     /* over the box's top face */
+    transform: translate(-35%, -35%);
+}
+:root[data-style="shelf"] .wishlist-quick-add button {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;          /* a badge is round in every Shelf mode */
+    background: rgb(var(--accent));
+    color: rgb(var(--on-accent));
+    border: 2px solid rgb(var(--surface));
+    box-shadow: 0 1px 3px rgb(0 0 0 / .35);
+}
+:root[data-style="shelf"] .wishlist-quick-add button:hover { background: rgb(var(--accent-hover)); }
+:root[data-style="shelf"] .wishlist-quick-add button:focus-visible {
+    outline: 3px solid rgb(var(--accent));
+    outline-offset: 2px;
+}
+:root[data-style="shelf"] .wishlist-quick-add svg { width: 1rem; height: 1rem; }
+@media (max-width: 767px) {
+    :root[data-style="shelf"] .wishlist-quick-add button { width: 1.75rem; height: 1.75rem; }
+}
 
 
 /* ---- Shelf: the movie rack (Movies grids, ROADMAP 10.1) ----
@@ -2025,7 +2344,7 @@ and to the right for its faces */
    slogan. The light is a shop's fluorescent tubes: even and cool, so the
    bookcase's shading is turned well down and the cases cast no shadow.
    Music keeps the wooden bookcase. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] {
     --rack-blue: 30 50 114;
     --rack-yellow: 236 176 16;
     --shelf-frame: 252 252 250;
@@ -2042,14 +2361,14 @@ and to the right for its faces */
     --box-contact: 0 0 #0000;
     --box-cast: 0 0 #0000;
 }
-:root[data-style="shelf"][data-rack="store"][data-mode="dark"] .shelf-grid.grid[data-media="video"] {
+:root[data-style="shelf"][data-rack="store"][data-mode="dark"] #book-container.shelf-grid.grid[data-media="video"] {
     --shelf-frame: 222 225 229;
     --shelf-back: 206 210 215;
     --shelf-top: 236 238 241;
     --shelf-side: 190 194 200;
 }
 @media (prefers-color-scheme: dark) {
-    :root[data-style="shelf"][data-rack="store"]:not([data-mode="light"]) .shelf-grid.grid[data-media="video"] {
+    :root[data-style="shelf"][data-rack="store"]:not([data-mode="light"]) #book-container.shelf-grid.grid[data-media="video"] {
         --shelf-frame: 222 225 229;
         --shelf-back: 206 210 215;
         --shelf-top: 236 238 241;
@@ -2061,7 +2380,7 @@ and to the right for its faces */
    cropped). A movie with no poster shows its title and director on the case
    instead (just the title when it's long), so coverless boxes still read.
    The case is the .book-cover itself, a fixed shape, so the rack is even. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover {
     height: var(--cover-h);
     width: auto;
     max-width: 100%;
@@ -2082,7 +2401,7 @@ and to the right for its faces */
     --case-depth: 7px;
 }
 @media (max-width: 767px) {
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover {
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover {
         --case-pad: 5px;
         --case-pad-l: calc(var(--cover-h) * 5 / 8 * .15 + 4px);
         --case-depth: 5px;
@@ -2096,8 +2415,8 @@ and to the right for its faces */
    face by its own width, skewX shifts the top right by its height, so the
    two meet at the far corner. Both sit just outside the front's border
    (hence the 1.5px), under the badges and the label. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::before,
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::after {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::before,
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::after {
     content: "";
     position: absolute;
     box-sizing: border-box;
@@ -2105,7 +2424,7 @@ and to the right for its faces */
     pointer-events: none;
     transform-origin: 0 100%;       /* bottom-left: the edge on the front */
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::before {   /* right side */
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::before {   /* right side */
     top: -1.5px;
     left: calc(100% + 1.5px);
     width: var(--case-depth);
@@ -2115,7 +2434,7 @@ and to the right for its faces */
     background: #c9cbd0;
     transform: skewY(-45deg);
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::after {    /* top */
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::after {    /* top */
     bottom: calc(100% + 1.5px);
     left: -1.5px;
     width: calc(100% + 3px);
@@ -2124,7 +2443,7 @@ and to the right for its faces */
     background: #e6e7ea;
     transform: skewX(-45deg);
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover-img {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover-img {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -2133,45 +2452,45 @@ and to the right for its faces */
     filter: none;
     transform: none !important;     /* the case stays put on hover */
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
     padding: .25rem;
     background: transparent;
     border: 0;
     box-shadow: none;
     color: #1b1b1b;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-author { color: #444; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-long .no-cover-author { display: none; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-author { color: #444; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-long .no-cover-author { display: none; }
 @media (max-width: 767px) {
     /* the inset is about 60px wide here: smaller type, and words wrap whole
        (hyphenated if they must) instead of breaking anywhere */
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
         padding: .15rem 0;
         overflow-wrap: normal;
         hyphens: auto;
     }
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-title { font-size: .68rem; }
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-author { font-size: .58rem; }
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-title { font-size: .68rem; }
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-author { font-size: .58rem; }
 }
 /* Keyboard focus rings the case (the .cover-box inside is display: contents) */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-link:focus-visible .book-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-link:focus-visible .book-cover {
     outline: 3px solid rgb(var(--accent));
     outline-offset: 3px;
 }
 /* In the rack the case itself is the box, so the cover inside it is flat:
    it fills the inset, with no faces, corners, shadow or ring of its own. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .cover-box {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .cover-box {
     width: 100%;
     height: 100%;
     max-width: none;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover) {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover) {
     border-radius: 0;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-link:focus-visible :is(.cover-box, .no-cover) {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-link:focus-visible :is(.cover-box, .no-cover) {
     outline: none;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::before {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::before {
     content: none;
 }
 /* The clear plastic sleeve of a rental case (Phil, 2026-11-10; the rack
@@ -2180,19 +2499,19 @@ and to the right for its faces */
    the case's margins to cover the whole front. White at low alpha, so it
    shows on the poster and the stripes and vanishes on the white plastic.
    Still, never animated. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] {
     --case-sheen:
         linear-gradient(112deg, transparent 26%, rgb(255 255 255 / .26) 35%, rgb(255 255 255 / .08) 42%, transparent 54%),
         linear-gradient(to bottom, rgb(255 255 255 / .16), transparent 20%);
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::after {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::after {
     inset: calc(-1 * var(--case-pad)) calc(-1 * var(--case-pad)) calc(-1 * var(--case-pad)) calc(-1 * var(--case-pad-l));
     width: auto;
     height: auto;
     background: var(--case-sheen);
     transform: none;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
     width: 100%;
     height: 100%;
     max-width: none;
@@ -2207,20 +2526,20 @@ and to the right for its faces */
    elsewhere is off in the rack); the pattern is the one from the old
    barcode sticker (ecdba30), at half scale. */
 .rack-print { display: none; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .rack-print { display: flex; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .cover-box { display: none; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .rack-print { display: flex; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .cover-box { display: none; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
     padding-bottom: 14px;           /* clear of the barcode */
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.no-cover-title, .no-cover-author) {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.no-cover-title, .no-cover-author) {
     font-family: "VT323", ui-monospace, monospace;
     font-weight: 400;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-title {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-title {
     text-transform: uppercase;
     letter-spacing: .03em;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover::before {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover::before {
     content: "";
     top: auto;
     bottom: 3px;

@@ -100,7 +100,7 @@ def test_tv_item_pages_say_tv_show(client, db, people):
     assert 'created by' in page and 'About this Show' in page and 'Edit TV Show' in page
     assert 'Remove from Movies &amp; TV' in page
     edit = client.get(f'/videos/edit/{vid}').get_data(as_text=True)
-    assert 'Edit TV Show</h1>' in edit and '<span class="when-tv">Creator</span>' in edit
+    assert 'page-title min-w-0">Edit TV Show</span>' in edit and '<span class="when-tv">Creator</span>' in edit
     assert 'name="video_kind" value="tv" checked' in edit and 'value="Season 1"' in edit
 
 
@@ -136,7 +136,7 @@ def test_add_page_offers_kind_and_season(client, people):
     assert 'id="season"' in page and 'class="when-tv"' in page      # shown by CSS for TV only
     assert '<span class="when-movie">Director</span><span class="when-tv">Creator</span>' in page
     tv = client.get('/videos/add?kind=tv').get_data(as_text=True)
-    assert 'Add a TV Show</h1>' in tv and 'name="video_kind" value="tv" checked' in tv
+    assert 'page-title min-w-0">Add a TV Show</span>' in tv and 'name="video_kind" value="tv" checked' in tv
     # Music has neither
     music = client.get('/records/add').get_data(as_text=True)
     assert 'video_kind' not in music and 'id="season"' not in music
@@ -174,7 +174,7 @@ def test_reshown_form_keeps_the_kind(client, people):
     page = r.get_data(as_text=True)
     assert r.status_code == 400
     assert 'name="video_kind" value="tv" checked' in page and 'value="Season 1"' in page
-    assert 'Add a TV Show</h1>' in page
+    assert 'page-title min-w-0">Add a TV Show</span>' in page
 
 
 def test_wishlist_add_keeps_the_kind(client, db, people):
@@ -355,7 +355,7 @@ def test_have_online_tv_candidate(client, people, monkeypatch):
 
     page = client.get(best['shelf_url']).get_data(as_text=True)
     assert 'data-lookup-url="/videos/lookup?tmdb_id=1438&amp;kind=tv"' in page
-    assert 'name="video_kind" value="tv" checked' in page and 'Add a TV Show</h1>' in page
+    assert 'name="video_kind" value="tv" checked' in page and 'page-title min-w-0">Add a TV Show</span>' in page
 
 
 # --- stats: hours stay one number, a by-kind split of the counts ---------------------

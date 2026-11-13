@@ -1,31 +1,61 @@
-{# One wishlist item on your wishlist page (wishlist.html): cover, title,
-   creator, your note, and the button that moves it onto your shelf (the
-   Library for a book, Movies for a movie, Vinyls for a record). Needs `book` (a wishlist row:
-   books columns plus notes). The grid filter (wishlist.js) reads
-   data-search. #}
+{% from '_covers.html' import cover_img %}
+{# One item on a wishlist page: yours (wishlist.html) or a friend's
+   (user_wishlist.html). Needs `book` (a wishlist row: books columns plus
+   notes). wishlist.js filters on data-search.
+
+   own:   your wishlist: the button that moves it onto your shelf (the
+          Library for a book, Movies, Music), and the round (+) on the cover
+          that does the same.
+   owner: a friend's username: their wishlist; the link says whose
+          (book page crumbs) and the card offers shop searches instead.
+
+   One markup, two looks (16.0; the style cycler switches styles without a
+   reload, so the server can't choose): in House, OG and Outrun a card
+   with the cover, title, creator, note and button. In Shelf the section
+   is the library's bookcase grid (.shelf-grid round the cards): these
+   carry the grid's hooks (book-item, book-cover, book-info), so its rules
+   apply as they are: covers only, the text for screen readers, and the
+   (+) on the cover's top-left corner instead of the button.
+   .cover-anchor hugs the cover so the (+) sits on the cover's own corner
+   whatever its height; the link and the (+) are siblings in it, since a
+   button can't be inside a link. #}
 {% set bm = labels_for(book) %}
-<div class="wishlist-item group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link"
+{% set url = item_url(book) ~ ('?wishlist_owner=' ~ owner|urlencode if owner else '') %}
+<div class="wishlist-item book-item group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link"
      data-search="{{ (book.title ~ ' ' ~ (book.author or ''))|lower }}">
-    <a href="{{ item_url(book) }}" class="block flex-1">
-        <div class="cover-slot relative" data-media="{{ book.media_type }}">
-            {% if book.cover_image_url|upload_exists %}
-            <span class="cover-box"><img src="{{ url_for('static', filename=book.cover_image_url) }}" alt="{{ book.title }}"
-                 class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200"></span>
-            {% else %}
-            {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
+    <div class="cover-slot book-cover relative" data-media="{{ book.media_type }}">
+        <span class="cover-anchor">
+            <a href="{{ url }}" class="book-link block">
+                {% if book.cover_image_url|upload_exists %}
+                {{ cover_img(book.cover_image_url, book.title, 'book-cover-img object-cover w-full ' ~ ('aspect-square' if book.media_type == 'record' else 'h-72') ~ ' group-hover:opacity-90 transition-opacity duration-200', author=book.author or '') }}
+                {% else %}
+                {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
+                {% endif %}
+            </a>
+            {% if own %}
+            <form action="{{ url_for('wishlist.move_to_library', book_id=book.id) }}" method="POST" class="wishlist-quick-add"
+                  data-confirm="{{ 'Add ' ~ book.title ~ ' to your ' ~ bm.section ~ '? It moves off your wishlist.' }}"
+                  data-confirm-ok="Add to {{ bm.section }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" aria-label="Add {{ book.title }} to your {{ bm.section }}" title="Add to {{ bm.section }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+            </form>
             {% endif %}
-        </div>
-        <div class="p-4 pb-2">
-            <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-content-primary">{{ book.title }}</h3>
-            {% if book.author %}
-            <p class="text-content-secondary text-sm italic mb-2">{{ bm.by }} {{ book.author }}</p>
-            {% endif %}
-            {% if book.notes %}
-            <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">"{{ book.notes }}"</p>
-            {% endif %}
-        </div>
+        </span>
+    </div>
+    {# The title links too, for a mouse; the cover's link is the one in the tab order #}
+    <a href="{{ url }}" tabindex="-1" class="book-info block flex-1 p-4 pb-2">
+        <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-content-primary">{{ book.title }}</h3>
+        {% if book.author %}
+        <p class="text-content-secondary text-sm italic mb-2">{{ bm.by }} {{ book.author }}</p>
+        {% endif %}
+        {% if book.notes %}
+        <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">"{{ book.notes }}"</p>
+        {% endif %}
     </a>
-    <div class="px-4 pb-4">
+    {% if own %}
+    <div class="wishlist-actions px-4 pb-4">
         <form action="{{ url_for('wishlist.move_to_library', book_id=book.id) }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit"
@@ -34,4 +64,13 @@
             </button>
         </form>
     </div>
+    {% elif owner %}
+    {# Shop searches (media.buy_links), as on the item page #}
+    <div class="wishlist-actions px-4 pb-4 grid gap-2">
+        {% for name, shop_url in buy_links(book) %}
+        <a href="{{ shop_url }}" target="_blank" rel="noopener noreferrer" title="Search on {{ name }}"
+           class="px-2 py-2 bg-accent hover:bg-accent-hover text-on-accent text-xs rounded-md flex items-center justify-center btn">{{ name }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>

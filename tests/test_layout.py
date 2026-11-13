@@ -664,8 +664,12 @@ def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
     login(client, 'alice')
     css = pathlib.Path('static/styles.css').read_text()
     assert '.cover-box { display: contents; }' in css
-    for path in ('templates/_book_grid.html', 'static/script.js'):
-        assert '<span class="cover-box"><img' in pathlib.Path(path).read_text(), path
+    # One cover component (16.0): the macro and its JS twin make the box, and
+    # the grid (server-rendered and infinite scroll) goes through them
+    assert '<span class="cover-box' in pathlib.Path('templates/_covers.html').read_text()
+    assert '<span class="cover-box"><img' in pathlib.Path('static/common.js').read_text()
+    assert 'cover_img(' in pathlib.Path('templates/_book_grid.html').read_text()
+    assert 'coverBoxHtml(' in pathlib.Path('static/script.js').read_text()
     # The egg: Movies only
     assert 'data-click="toggleRack"' in client.get('/videos/').get_data(as_text=True)
     assert 'data-click="toggleRack"' not in client.get('/base/index').get_data(as_text=True)
@@ -731,7 +735,7 @@ def test_no_status_reads_unread(client, db, people):
     book = add_book(db, people['alice'], title='Never opened')
     login(client, 'alice')
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert '>Unread</option>' in page and 'Untracked' not in page
+    assert 'name="status" value="untracked" class="chip"' in page and '>Unread</button>' in page and 'Untracked' not in page
 
 
 def test_status_filter_options_use_labels(client, db, people):
@@ -793,7 +797,7 @@ def test_shelf_album_rows_are_as_tall_as_a_column_is_wide():
     --cover-h is a column's width (container units on the grid's parent),
     with the column count per breakpoint, not books' fixed height."""
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':has(> #book-container.shelf-grid.grid[data-media="record"])' in css
+    assert ':has(> :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"])' in css
     assert '--cover-h: round(down, var(--col-w), 1px);' in css
     for cols in ('--cols: 3;', '--cols: 4;', '--cols: 5;'):
         assert cols in css
@@ -810,7 +814,13 @@ def test_friends_page_and_notifications_under_the_welcome(client, db, people):
     login(client, 'alice')
     page = client.get('/friends/').get_data(as_text=True)
     assert 'carol' in page and '1 book' in page
-    assert 'href="/base/library/carol"' in page and 'href="/videos/user/carol"' in page
+    card = page[page.index('data-friend="'):]
+    card = card[:card.index('data-friend-shelf')+200]
+    # 16.0: avatar and name open the profile, "See their shelf" the shelves,
+    # and the counts are plain text
+    assert card.count('href="/user/carol"') == 2 and 'href="/base/library/carol"' in card
+    counts = card[card.index('data-friend-counts'):card.index('</p>', card.index('data-friend-counts'))]
+    assert '<a ' not in counts and '1 book' in counts
     assert 'bob' not in page.split('id="your-friends"')[1].split('Find friends')[0]   # household, not a friend
     assert 'id="friend-search-input"' in page and 'friends.js' in page
     # A friend's shelves: crumbs back to Friends, no scope tabs
@@ -944,7 +954,9 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     book = add_book(db, people['alice'], cover='uploads/c.jpg')
     login(client, 'alice')
     html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="book"' in html
+    assert 'class="cover-stand w-full max-w-[300px]" data-media="book"' in html
+    # An ID badge at every width: the facts beside the cover, two columns on a phone
+    assert 'grid-cols-[7rem_minmax(0,1fr)]' in html and 'class="item-facts ' in html
     assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
 
 
@@ -995,3 +1007,217 @@ def test_every_rule_in_styles_css_ships_in_output_css():
     out = _css_selectors((ROOT / 'static/css/output.css').read_text())
     keyframe_steps = re.compile(r'^(from|to|[\d.]+%)$')
     assert sorted(s for s in src - out if not keyframe_steps.match(s)) == []
+
+
+def test_one_cover_component(app):
+    """Style pass (16.0): a cover picture's markup lives in cover_img()
+    (_covers.html) and coverBoxHtml() (common.js) only, so a change to the
+    cover reaches every page. The box carries a spare .cover-sheen layer,
+    hidden unless a style turns it on, and every value is escaped."""
+    with app.test_request_context():
+        macro = app.jinja_env.get_template('_covers.html').module.cover_img
+        html = str(macro('uploads/c.jpg', 'A <b> "title"', 'w-full', 'shrink-0', lazy=True, author='O\'Brien & co'))
+    assert html.startswith('<span class="cover-box shrink-0"><img src="/static/uploads/c.jpg"')
+    assert 'alt="A &lt;b&gt; &#34;title&#34;"' in html
+    assert 'data-author="O&#39;Brien &amp; co"' in html
+    assert 'loading="lazy"' in html and 'class="w-full"' in html
+    assert html.endswith('<span class="cover-sheen" aria-hidden="true"></span></span>')
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '.cover-sheen { display: none; }' in css
+    # Nobody hand-writes the box any more
+    for path in pathlib.Path('templates').rglob('*.html'):
+        if path.name != '_covers.html':
+            assert '<span class="cover-box' not in path.read_text(), path
+    for path in pathlib.Path('static').glob('*.js'):
+        if path.name != 'common.js':
+            assert 'class="cover-box' not in path.read_text(), path
+
+
+def test_item_add_and_edit_pages_have_one_heading_card(client, db, people):
+    """Style pass (16.0): the item page's title and the Add and Edit pages'
+    headings are heading cards above the page's cards (in Shelf, a small
+    bookcase), one per page, made by heading_card() like every other page."""
+    alice = people['alice']
+    book = add_book(db, alice, title='Dune')
+    db.commit()
+    login(client, 'alice')
+    for url in (f'/books/book/{book}', '/books/add', '/videos/add', '/records/add',
+                '/wishlist/add?type=book', f'/books/edit/{book}'):
+        page = client.get(url).get_data(as_text=True)
+        assert page.count('class="page-heading ') == 1, url
+    item = client.get(f'/books/book/{book}').get_data(as_text=True)
+    # the title is in the heading card, before the details card
+    heading = item.index('class="page-heading ')
+    assert heading < item.index('<h1', heading) < item.index('Dune', heading) < item.index('cover-stand', heading)
+
+
+def test_shelf_site_title_stays_cream():
+    """Shelf's walnut headings (16.0 step 3) must not reach the site title on
+    the wooden top bar, which is one cream in both modes (Phil, 2026-11-13)."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':is(.font-display.text-content-primary, .no-cover):not(.site-title)' in css
+    assert ':root[data-style="shelf"] .topbar .site-title { color: rgb(245 232 206); }' in css
+
+
+def test_feed_card_layout(client, db, people):
+    """Style pass (16.0, Phil 2026-11-13): an activity card is the Reviews
+    list's card: cover left, title, creator, one line of rating / who did
+    what / when, the review clamped, then the like (no corner-pinned like,
+    no card grid of its own)."""
+    feed = pathlib.Path('templates/activity_feed.html').read_text()
+    reviews = pathlib.Path('templates/reviews_list.html').read_text()
+    card = 'bg-secondary rounded-lg p-4 card flex gap-4 min-w-0'
+    assert card in feed and card in reviews
+    assert 'feed-row' not in feed and 'absolute bottom-6 right-6' not in feed and 'pb-16' not in feed
+    assert "'w-20 max-h-32 object-contain rounded shadow-sm'" in feed
+    assert 'feed-row' not in pathlib.Path('static/styles.css').read_text()
+
+
+def test_stacked_shelves_in_one_bookcase(client, db, people):
+    """Style pass (16.0): Reviews and Collections set their rows of covers in
+    one bookcase (.shelf-case round _shelf_rows.html). Every shelf has its
+    row, empty when it has no covers: hidden in the other styles, a bare
+    ledge in Shelf's case. Making a collection is a tool, so it has its own
+    card, outside the case."""
+    login(client, 'alice')
+    for url in ('/reviews/', '/collections/collections'):
+        page = client.get(url).get_data(as_text=True)
+        assert 'class="shelf-case ' in page, url
+        assert 'shelf-item' in page and 'shelf-link' in page and 'shelf-label' in page, url
+    page = client.get('/collections/collections').get_data(as_text=True)
+    case = page.index('class="shelf-case ')
+    assert page.index('name="name"') > page.index('</section>', case)      # the form is after the case
+    assert 'Create collection' in page and 'Create Shelf' not in page      # UI: shelf = what you own
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '.shelf-row:empty { display: none; }' in css
+    assert ':root[data-style="shelf"] .shelf-case .shelf-row:empty {' in css
+    assert "background-attachment: local, local, local, local, local, local, local, scroll, scroll;" in css
+    assert "overscroll-behavior-x: none;" in css          # no rubber-band past the last cover
+    # The case's inside left panel, with each ledge running back into it;
+    # the row's piece stays put (positioned outside the scroller) over the covers
+    assert ':root[data-style="shelf"] .shelf-case .shelf-row::after {' in css
+    assert ':root[data-style="shelf"] .shelf-case .shelf-item { position: relative; }' in css
+
+
+def test_wishlists_are_the_library_grid_with_a_quick_add(client, db, people):
+    """16.0 step 7: your wishlist and a friend's share one card
+    (_wishlist_card.html) and the library grid's hooks, so the Shelf style
+    draws each section as the library's bookcase. Yours has the round (+)
+    on the cover (a POST to move_to_library, named for screen readers) as
+    well as the card's button; a friend's has shop searches and no (+)."""
+    book = add_book(db, people['carol'], title='Wanted Book')
+    db.execute('INSERT INTO wishlist (user_id, book_id, notes) VALUES (?, ?, ?)', (people['carol'], book, 'gift'))
+    db.commit()
+    login(client, 'carol')
+    page = client.get('/wishlist/view').get_data(as_text=True)
+    assert 'class="wishlist-grid shelf-grid grid ' in page and 'data-media="book"' in page
+    assert 'wishlist-item book-item' in page and 'class="book-info ' in page
+    quick = page.index('class="wishlist-quick-add"')
+    action = f'action="/wishlist/move_to_library/{book}"'
+    assert page.rfind(action, 0, quick) > page.index('class="cover-anchor"')   # on the cover
+    assert 'aria-label="Add Wanted Book to your Library"' in page
+    assert page.count(action) == 2                                          # the (+) and the button
+
+    login(client, 'alice')                                                   # carol's friend
+    page = client.get('/wishlist/user/carol').get_data(as_text=True)
+    assert 'class="wishlist-grid shelf-grid grid ' in page and 'wishlist-item book-item' in page
+    assert 'page-heading' in page and '?wishlist_owner=carol' in page
+    assert 'wishlist-quick-add' not in page and 'move_to_library' not in page
+    assert 'bookshop.org' in page                                            # media.buy_links
+
+    css = pathlib.Path('static/styles.css').read_text()
+    # The Movies rack easter egg stays on the library grid, not the wishlist's
+    assert not re.search(r'\[data-rack="store"\][^{]*?(?<!#book-container)\.shelf-grid', css)
+    assert ':root[data-style="shelf"] .shelf-grid.grid .wishlist-quick-add {' in css
+    assert '.wishlist-quick-add { display: none; }' in css
+    # A coverless item two links deep gets its own width (iPhone Safari: spine only)
+    assert ':root[data-style="shelf"] .wishlist-grid.shelf-grid.grid .no-cover {' in css
+
+
+def test_one_page_frame_and_cases_inside_it():
+    """16.0 (Phil, 2026-11-13: headings, grids and pages one width): wide
+    pages share .page-frame (no hand-written max-w-7xl gutters, no
+    Tailwind `container`, no padding on <body> pushing a page further in),
+    and in Shelf every case keeps its right face inside the frame, as the
+    grid does, so a heading case and the grid under it end together."""
+    templates = pathlib.Path('templates')
+    for path in templates.glob('*.html'):
+        src = path.read_text()
+        assert 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' not in src, path
+        assert not re.search(r'block body_class %\}[^{]*\bp-6\b', src), path
+        if path.name != '_empty_state.html':
+            assert 'container mx-auto' not in src, path
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '@apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;' in css
+    assert css.count('margin-right: var(--case-run);') >= 2      # small cases, stacked shelves (the grid has its own)
+
+
+def test_case_headings_stand_outside_the_bookcase(client, db, people):
+    """Collections has no visible headings inside its case (screen readers
+    keep them); the profile's headings sit above their bookcases."""
+    login(client, 'alice')
+    page = client.get('/collections/collections').get_data(as_text=True)
+    assert '<h2 id="status-shelves" class="sr-only">' in page
+    assert '<h2 id="custom-shelves" class="sr-only">' in page
+    assert 'shelf-case-heading' not in page
+    css = pathlib.Path('static/styles.css').read_text()
+    assert 'shelf-case-heading' not in css
+    assert ':root[data-style="shelf"] .case-wrap {' in css
+    # No framed bottom under the last shelf (it read as a second shelf); a
+    # case that ends with Collections' note gets a bare ledge to stand on
+    case = css[css.index(':root[data-style="shelf"] .shelf-case {'):]
+    assert 'border-bottom-width: 0;' in case[:case.index('}')]
+    assert '<div class="shelf-row mt-4"></div>' in pathlib.Path('templates/collections.html').read_text()
+    src = pathlib.Path('templates/user.html').read_text()
+    assert src.count('class="case-wrap ') == 2 and 'shelf-case-heading' not in src
+
+
+def test_have_matches_are_small_bookcases(client, db, people):
+    """16.0 step 7: Do I Have This? matches are case cards in Shelf, the
+    cover standing on the ledge through the shared .case-cover hook (the
+    feed's too)."""
+    add_book(db, people['alice'], title='Dune', cover='uploads/x.jpg')
+    login(client, 'alice')
+    page = client.get('/have/?q=dune').get_data(as_text=True)
+    assert 'class="case-card flex gap-6 ' in page and 'case-cover' in page   # gap-6: room for the box's side
+
+
+def test_have_album_covers_are_square(client, db, people):
+    """An album's cover in Do I Have This? is a square box, not squeezed
+    into a book's 5rem-wide slot (Phil, 2026-11-13)."""
+    from test_records import add_record
+    album = add_record(db, people['alice'], title='Mule', artist='Orville Peck')
+    db.execute("UPDATE books SET cover_image_url = 'uploads/x.jpg' WHERE id = ?", (album,)); db.commit()
+    login(client, 'alice')
+    page = client.get('/have/?q=mule').get_data(as_text=True)
+    match = page[page.index('class="case-card flex gap-6 '):]
+    match = match[:match.index('</a>')]
+    assert 'max-w-[5rem]' not in match
+    assert re.search(r'class="[^"]*\bh-24\b[^"]*\bw-24\b', match)   # the picture, or the square placeholder
+
+
+def test_infinite_scroll_finds_the_grid_by_data_not_layout_classes():
+    """The grid's paging state lives on its wrapper (data-current-page);
+    script.js found it as `.container[data-current-page]`, so swapping the
+    wrapper's width class for .page-frame (16.0) stopped the grid at its
+    first page. Find it by the data attribute only."""
+    js = pathlib.Path('static/script.js').read_text()
+    assert "document.querySelector('[data-current-page]')" in js
+    assert not re.search(r"querySelector\('\.[\w-]+\[data-current-page\]", js)
+    assert 'data-current-page=' in pathlib.Path('templates/_book_grid.html').read_text()
+
+
+def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
+    """16.0 steps 9-10: Shelf lays a still glare over every cover (the
+    .cover-sheen layer, with --sheen-shift for a tilt to drive later); the
+    feed shows days, not timestamps (F13); search starts with its crumbs (F11)."""
+    css = pathlib.Path('static/styles.css').read_text()
+    rule = css[css.index(':root[data-style="shelf"] .cover-sheen {'):]
+    rule = rule[:rule.index('}')]
+    assert 'display: block;' in rule and 'var(--sheen-shift, 0%)' in rule and 'pointer-events: none;' in rule
+    assert '.cover-sheen { display: none; }' in css                     # every other style
+    assert '{{ activity.date[:10] }}' in pathlib.Path('templates/activity_feed.html').read_text()
+    add_book(db, people['alice'], title='Dune')
+    login(client, 'alice')
+    page = client.get('/books/search?search_term=dune').get_data(as_text=True)
+    assert page.index('aria-label="Breadcrumb"') < page.index('search-form-container')

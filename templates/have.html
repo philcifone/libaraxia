@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_covers.html' import cover_img %}
 {% from '_icons.html' import page_heading, icon %}
 {# Do I have this? (have.check, ROADMAP 8E). `result` from utils/have.find:
    kind (isbn / barcode / bad_code / text), matches (each with a verdict),
@@ -99,13 +100,19 @@
         <ul class="space-y-3">
             {% for row in result.matches %}
             {% set lm = labels_for(row) %}
-            <li>
-                <a href="{{ item_url(row) }}" class="flex gap-4 bg-secondary rounded-xl card card-link p-3 sm:p-4">
+            {# Each match is a small bookcase in Shelf (case-card), its cover
+               standing on the ledge (case-cover); a card elsewhere. flow-root:
+               the case's top-face margin adds to the list's gap, not into it #}
+            <li class="flow-root">
+                <a href="{{ item_url(row) }}" class="case-card flex gap-6 bg-secondary rounded-xl card card-link p-3 sm:p-4">
+                    {# An album is square (h-24 w-24, cropped to fill); a book or
+                       movie keeps its own shape up to 5rem wide. The 5rem cap on
+                       a 6rem-tall album squeezed it (Phil, 2026-11-13). #}
+                    {% set square = row.media_type == 'record' %}
                     {% if row.cover_image_url|upload_exists %}
-                    <span class="cover-box self-start shrink-0"><img src="{{ url_for('static', filename=row.cover_image_url) }}" alt="" loading="lazy"
-                         class="h-24 w-auto max-w-[5rem] rounded shadow-sm"></span>
+                    {{ cover_img(row.cover_image_url, '', ('h-24 w-24 object-cover' if square else 'h-24 w-auto max-w-[5rem]') ~ ' rounded shadow-sm', 'case-cover self-start shrink-0', lazy=True) }}
                     {% else %}
-                    {% with title=row.title, size='sm', box='h-24 w-auto aspect-[2/3] self-start shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=row.title, size='sm', box='case-cover h-24 self-start shrink-0 rounded ' ~ ('w-24' if square else 'w-auto aspect-[2/3]') %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                     <div class="min-w-0 flex-1">
                         <p class="font-semibold text-content-primary">{{ row.title }}</p>

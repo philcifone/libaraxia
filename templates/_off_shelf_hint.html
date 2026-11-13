@@ -5,7 +5,7 @@
    book_utils.wishlist_matches: your wishlist entries that match, which the
    grid never lists. #}
 {% if off_shelf %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+<div class="page-frame mb-4">
     <p class="text-sm text-content-secondary border-l-4 border-accent pl-3 py-1">
         {% set all_mine = off_shelf.rows|rejectattr('added_by', 'equalto', current_user.id)|list|length == 0 %}
         <span class="font-semibold text-content-primary">Not on {{ 'your' if all_mine else 'the' }} shelf:</span>
@@ -23,7 +23,7 @@
 {% endif %}
 {% if on_wishlist %}
 {% set tab = {'book': 'books', 'video': 'movies', 'record': 'music'}[on_wishlist.rows[0].media_type] %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+<div class="page-frame mb-4">
     <p class="text-sm text-content-secondary border-l-4 border-accent pl-3 py-1">
         <span class="font-semibold text-content-primary">On your wishlist:</span>
         {% for row in on_wishlist.rows -%}

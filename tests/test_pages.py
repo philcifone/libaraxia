@@ -1,10 +1,11 @@
 """Registration, login, and every page loading."""
 import re
+from html.parser import HTMLParser
 
 import pytest
 
 from conftest import add_book, add_review, add_user, login, scalar
-from test_layout import unbalanced_tags
+from test_layout import VOID, unbalanced_tags
 
 
 def test_root_sends_first_visitor_to_register(client):
@@ -91,6 +92,41 @@ def duplicate_ids(html):
     return sorted(i for i, n in ids.items() if n > 1)
 
 
+class _Frames(HTMLParser):
+    """Tracks .page-frame depth through the open elements (void tags never
+    nest, so only the ones that close are counted)."""
+    def __init__(self):
+        super().__init__()
+        self.stack, self.nested = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in VOID:
+            return
+        framed = 'page-frame' in (dict(attrs).get('class') or '').split()
+        if framed and any(self.stack):
+            self.nested += 1
+        self.stack.append(framed)
+
+    def handle_endtag(self, tag):
+        if tag not in VOID and self.stack:
+            self.stack.pop()
+
+
+def nested_frames(html):
+    """How many .page-frame elements sit inside another (16.0, Phil
+    2026-11-13: "Collections / * pages still use the old width"). A frame
+    in a frame adds its gutters twice, so that page's grid and heading sit
+    16-32px further in than every other page's."""
+    parser = _Frames()
+    parser.feed(html)
+    return parser.nested
+
+
+def test_nested_frame_checker():
+    assert nested_frames('<div class="page-frame"><img src=x><div class="a"></div></div><div class="page-frame"></div>') == 0
+    assert nested_frames('<main class="page-frame pt-20"><div><div class="page-frame pb-32"></div></div></main>') == 1
+
+
 def test_every_page_loads(app, client, db, people):
     """Every GET route answers without a server error, as an admin with real-ish
     data, and every HTML page closes the tags it opens (see test_layout.py)."""
@@ -119,6 +155,7 @@ def test_every_page_loads(app, client, db, people):
         if r.status_code == 200 and r.mimetype == 'text/html':
             assert unbalanced_tags(r.get_data(as_text=True)) == [], url
             assert duplicate_ids(r.get_data(as_text=True)) == [], url
+            assert nested_frames(r.get_data(as_text=True)) == 0, url
         checked.append(url)
     assert len(checked) > 35
 
@@ -148,6 +185,7 @@ def test_every_page_loads(app, client, db, people):
         assert r.status_code < 400, url
         assert unbalanced_tags(r.get_data(as_text=True)) == [], url
         assert duplicate_ids(r.get_data(as_text=True)) == [], url
+        assert nested_frames(r.get_data(as_text=True)) == 0, url
 
 
 def test_every_template_page_extends_base():
