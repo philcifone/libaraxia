@@ -51,7 +51,7 @@ The only place the rule says "case" that this phase leaves alone is the profile'
 - **Reviews:** the section becomes one bookcase whose shelves are the existing rows (your reviews, friends', not yet reviewed). Each row's label, count and See all sit on the back wall, and its covers stand on a full-width ledge with the sideways scroll unchanged. This is a `cased` option on `_shelf_rows.html` (drops the row's `bg-primary` panel so the wall shows). It is the one "stacked shelves" component that the next three bullets reuse.
 - **Collections:** `collections.html` passes `cased` to its rows, so the whole page is one bookcase, a shelf per collection, scrolling sideways. Custom collections keep their delete button beside the label. The Books / Movies / Music tabs and the Goodreads shelves card stay outside the case (tools, so paper).
 - **Wishlist and a friend's wishlist** (Shelf only; other styles keep today's cards): one bookcase, a sideways-scrolling shelf per section (Books, Movies & TV, Music). The shelf's label shows the section and count, and the tabs still choose which shelves show. `_shelf_rows.html` needs one addition: an optional per-cover link (`cover.url`), since a wishlist cover opens its item, not the row's page. Today a row is a single link. `wishlist.js`'s filter hides the covers that don't match, and the counts update. The page feeds the rows through `utils/shelves.py` like Collections, not new markup. Simplest build: the page renders the cased rows in Shelf and the cards elsewhere (`data-style` is known server-side), with the filter working on both.
-- **Do I Have This?** (`have.html`): its results area becomes a bookcase. A single list of matches is one shelf; if it is grouped by type, a shelf per group. I'll confirm the layout in the step 1 audit before building.
+- **Do I Have This?** (`have.html`): each match is a card about one item, so it becomes a `.case-card` with its cover standing on the ledge and the details beside it (audit F8). The "You own this" banner and the search card stay paper.
 - **Friends page:** each friend card is a `.case-card`.
 
 ## 5. Friends and profile (behaviour changes the brief asks for, every style)
@@ -82,12 +82,30 @@ Shorter, still warm help text and confirm messages, with the same information. A
 
 ## 9. Findings (filled in by step 1, kept current)
 
-| Page | Style / mode / width | What's off | Decision |
-|---|---|---|---|
-| | | | |
+Audit of 2026-11-12: 32 pages × 7 style/mode pairs × phone and desktop, on a copy of the dev DB with real cover files mapped in (the dev DB's own covers aren't on disk). The harness and contact sheets are in the session scratchpad, not the repo.
+
+| # | Page | Where | What's off | Decision |
+|---|---|---|---|---|
+| F1 | Add (every type) | all styles | "Add a Book" heading sits inside the form card, under the lookup card | brief: step 4 |
+| F2 | Item page | all styles | title, subtitle and "by" are inside the details card | brief: step 4 |
+| F3 | Friend's profile | all styles | orange filled "× Remove from Household" (phone: just "Remove") stacked over an outline "Remove Friend": two danger actions, different weights, unclear targets | brief: step 8 |
+| F4 | Profile tabs, every `.tab` bar | Shelf | the active underline makes the open-bottomed neighbour read as the joined tab | brief: step 4 |
+| F5 | Feed | Shelf, worst on phone | cover top-aligned, so it floats above the ledge; text column squeezed by the dismiss X's `pr-6`; large empty band above the ledge (`pb-16`) | brief: step 5 |
+| F6 | Reviews, Collections, profile rows | Shelf | the ledge runs under the star and name captions, not under the covers, so the books don't stand on it | step 6: cased rows put the ledge right under the covers (one row height, `h-28`, makes that a fixed offset); captions hang below the ledge like the grid's badges |
+| F7 | Wishlist | Shelf | full paper cards with boxed covers floating inside | brief: step 7 |
+| F8 | Do I Have This? matches | Shelf | plain paper cards, cover top-aligned | step 7: each match is a `.case-card` with its cover standing on the ledge; the "You own this" banner stays paper (it's text) |
+| F9 | Notifications, empty | Shelf | the empty "No recent notifications" panel is a case with nothing on its shelf | fix now (step 10): the case goes on cards that hold an item, the empty state is paper, per the rule |
+| F10 | Collection status page ("Read"), Reviews "See all" | all styles | plain `<h1>`, not `page_heading`, so no heading card (and no case in Shelf), unlike every other page | fix now (step 10) |
+| F11 | Search results | all styles | the search bar sits above the crumbs, and the page has no heading; every other drill-down page starts with crumbs | fix now (step 10): crumbs first; heading as the other grids have it |
+| F12 | Settings | all styles | heading card is 7xl wide, the tabs and panels under it 4xl, so the heading overhangs | fix now (step 10): one width for the page |
+| F13 | Feed | all styles | timestamps raw (`2026-11-13 04:15:19`), unlike the dates elsewhere | note for Phil (wording/format, not style) |
+| F14 | Profile, Notifications, Have, Friends | all styles | page widths differ (3xl / 4xl / 7xl), the "4xl / 7xl mix" 16.0 mentions | note for Phil: propose 4xl for single-column pages, 7xl for grids, in step 10 if he agrees |
+| F15 | Profile | all styles | no page heading card; "Carol's Profile" is inside the header card | note for Phil (the header card with the avatar works as the heading; a case round it would break the rule's "tools are paper") |
+| F16 | Reviews "See all" cards | Shelf | each card is about one item with a cover, so the rule says case-card | note for Phil (page not named in the brief) |
 
 Notes for Phil (seen, not changed this phase):
 - Profile: the Collections and Wishlist rows aren't cased yet (one word each with `cased`).
+- F13 to F16 above.
 
 ## 10. Execution steps (one commit each)
 
