@@ -67,7 +67,7 @@ def test_item_page_offers_its_sections_shelves(client, db, people):
     shelf(db, alice, 'Sci-fi', 'book')
     login(client, 'alice')
     page = client.get(f'/videos/{movie}').get_data(as_text=True)
-    assert 'Noir (0)' in page and 'Sci-fi' not in page
+    assert 'value="' in page and '>Noir</button>' in page and 'Sci-fi' not in page
     assert '<input type="hidden" name="media_type" value="video"/>' in page
 
 

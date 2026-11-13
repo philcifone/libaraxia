@@ -58,7 +58,7 @@
                stretches the facts' row). #}
             <div class="grid grid-cols-[7rem_minmax(0,1fr)] sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[300px_minmax(0,1fr)] md:grid-rows-[auto_1fr] gap-x-4 gap-y-6 md:gap-8">
                 <!-- Book Cover Section -->
-                <div class="md:row-span-2">
+                <div class="self-center md:self-start md:row-span-2">
                     {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
                     <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}">
@@ -71,7 +71,7 @@
                 </div>
 
                 <!-- The facts, beside the cover -->
-                <div class="item-facts self-start p-3 md:p-4 bg-primary rounded-lg">
+                <div class="item-facts self-center md:self-start p-3 md:p-4 bg-primary rounded-lg">
                         <div class="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 md:gap-6">
                             {% if m.type == 'record' %}
                             {% set details = [
@@ -274,323 +274,262 @@
             </div>
         </div>
 
-        <!-- Household Reviews Section -->
-        {% if household_reviews and not in_wishlist %}
-        <div class="max-w-4xl mx-auto px-4 py-6">
-            <div class="bg-secondary rounded-lg p-4 md:p-6 card">
-                <h2 class="text-xl md:text-2xl font-display text-content-primary mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 md:w-6 md:h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
-                    </svg>
-                    Household Reviews
-                    <span class="text-sm text-content-secondary font-normal">({{ household_reviews|length }})</span>
-                </h2>
-
-                {# One card per review, written text shown in full up to a few
-                   lines, then "Read more" (common.js). No inner scroll box: a
-                   scroll area inside the page traps the thumb on phones. #}
-                <div class="space-y-4">
-                    {% for review in household_reviews %}
-                    <article class="bg-primary rounded-lg p-4 card">
-                        <header class="flex items-center gap-3">
-                            {% if review.avatar_url|upload_exists %}
-                            <img src="{{ url_for('static', filename=review.avatar_url) }}"
-                                 alt=""
-                                 class="w-10 h-10 shrink-0 rounded-full object-cover border-2 border-accent">
-                            {% else %}
-                            <div class="w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold border-2 border-accent" aria-hidden="true">
-                                {{ review.username[0]|upper }}
-                            </div>
-                            {% endif %}
-                            <div class="min-w-0 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                <span class="font-semibold text-content-primary">{{ review.username }}</span>
-                                {% if review.rating %}
-                                <span class="whitespace-nowrap" aria-label="{{ review.rating|int }} out of 5 stars">
-                                    <span class="text-yellow-400" aria-hidden="true">{{ '★' * (review.rating|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - review.rating|int) }}</span>
-                                </span>
-                                {% endif %}
-                            </div>
-                        </header>
-                        {% if review.comment %}
-                        <div class="mt-3" data-read-more>
-                            <p id="review-{{ loop.index }}" class="read-more-text measure text-content-secondary leading-relaxed text-sm whitespace-pre-wrap">{{ review.comment }}</p>
-                            <button type="button" class="read-more-toggle" data-click="toggleReadMore"
-                                    aria-controls="review-{{ loop.index }}" aria-expanded="false" hidden>Read more</button>
-                        </div>
-                        {% else %}
-                        <p class="mt-3 text-sm text-content-secondary italic">No written review</p>
-                        {% endif %}
-                    </article>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Reading Info Section (Hidden for wishlist books) -->
+        {# Your reading info (16.0, Phil 2026-11-13: less scrolling, status
+           and collections condensed): one card as wide as the details
+           above. Status and collections are chips that save on a tap; the
+           review, history and tags are tabs (common.js initTabs; without JS
+           all three show). Each form sends anchor=your-info, so the page
+           comes back here, not at the top (collections._back); a session
+           comes back to the History tab (#item-history). #}
         {% if not in_wishlist %}
-        <div class="max-w-4xl mx-auto px-4 py-8">
-            <div class="bg-secondary rounded-lg p-6 space-y-8 card">
-                <h2 class="text-2xl font-display text-content-primary text-center">
-                    {{ current_user.username.capitalize() }}'s {{ m.info_heading }}
-                </h2>
-            
-            <div class="space-y-8">
-                <!-- Reading Status Form -->
-                <form action="{{ url_for('collections.add_to_status_collection') }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="hidden" name="id" value="{{ book['id'] }}">
-                    <label for="status" class="block text-sm font-medium text-content-secondary pb-4">{{ m.status_label }}</label>
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <select name="status" id="status" 
-                                class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                            <option value="untracked" {% if collection_status == "untracked" %}selected{% endif %}>{{ m.no_status }}</option>
+        <section id="your-info" class="scroll-mt-20 bg-secondary rounded-xl p-4 md:p-8 mb-8 card" aria-labelledby="your-info-heading">
+            <h2 id="your-info-heading" class="text-2xl font-display text-content-primary mb-6">
+                {{ current_user.username.capitalize() }}'s {{ m.info_heading }}
+            </h2>
+
+            <div class="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                <div class="space-y-6 min-w-0">
+                    <!-- Status: one tap sets it (the pressed chip is the current one) -->
+                    <form action="{{ url_for('collections.add_to_status_collection') }}" method="post" data-item-status>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="id" value="{{ book['id'] }}">
+                        <input type="hidden" name="anchor" value="your-info">
+                        <p id="status-label" class="label text-sm pb-1 mb-3">{{ m.status_label }}</p>
+                        <div class="flex flex-wrap gap-2" role="group" aria-labelledby="status-label">
+                            <button type="submit" name="status" value="untracked" class="chip"
+                                    aria-pressed="{{ 'true' if collection_status == 'untracked' else 'false' }}">{{ m.no_status }}</button>
                             {% for status in m.statuses %}
-                            <option value="{{ status }}" {% if collection_status == status %}selected{% endif %}>{{ m.status_labels[status] }}</option>
+                            <button type="submit" name="status" value="{{ status }}" class="chip"
+                                    aria-pressed="{{ 'true' if collection_status == status else 'false' }}">{{ m.status_labels[status] }}</button>
                             {% endfor %}
-                        </select>
-                        <button type="submit" 
-                                class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
-                            Update Status
-                        </button>
-                    </div>
-                </form>
-        
-                <hr class="border-gray-700">
-        
-                <!-- Collections Management -->
-                <div class="space-y-6">
-                    <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="space-y-4">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        {# A shelf of this item's section (8C); back here afterwards #}
-                        <input type="hidden" name="media_type" value="{{ m.type }}"/>
-                        <input type="hidden" name="next" value="item"/>
-                    <label for="create-collection" class="block text-sm font-medium text-content-secondary">Create Collection</label>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <input type="text"
-                                   id="create-collection"
-                                   name="name"
-                                   placeholder="Create new collection"
-                                   class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                                   required>
-                            <button type="submit" 
-                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
-                                Create
-                            </button>
                         </div>
                     </form>
-        
-                    <form action="{{ url_for('collections.manage_book_collections') }}" method="POST" class="space-y-4">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="hidden" name="book_id" value="{{ book['id'] }}">
-                        <label for="collections" class="block text-sm font-medium text-content-secondary">Add to Collection</label>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <select name="collection_id" id="collections" 
-                                    class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                                <option value="">Select Collection</option>
-                                {% for collection in custom_collections %}
-                                <option value="{{ collection['collection_id'] }}"
-                                    {% if collection['has_book'] %}selected{% endif %}>
-                                    {{ collection['name'] }} ({{ collection['book_count'] }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" 
-                                    class="w-full sm:w-auto px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
-                                Update Collection
-                            </button>
-                        </div>
-                    </form>
-                </div>
-        
-                <hr class="border-gray-700">
 
-            <!-- Reading Stats -->
-            <div class="bg-secondary rounded-lg p-6 card">
-                <!-- Reading History (shown with or without a review) -->
-                <div class="mb-6">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="label text-sm pb-1">{{ m.history }}</h3>
-                        <button type="button"
-                                data-click="showAddSessionForm"
-                                class="text-xs px-3 py-1 bg-accent hover:bg-accent-hover text-on-accent rounded btn">
-                            Add Session
-                        </button>
-                    </div>
-
-                    <!-- Add/Edit Session Form (Hidden by default) -->
-                    <div id="session-form-container" class="hidden bg-primary rounded-lg p-4 mb-4 border-2 border-accent">
-                        {# No dates is allowed (read long ago) but asked first (book_detail.js, 14c) #}
-                        <form action="{{ url_for('read.manage_session', book_id=book.id) }}" method="POST"
-                              data-submit="saveSession"
-                              data-undated-add="Add a {{ m.session|lower }} with no dates?"
-                              data-undated-edit="Save this {{ m.session|lower }} with no dates?">
+                    <!-- Collections: a tap adds or takes it off; "New" makes one with this item in it -->
+                    <div data-item-collections>
+                        <p id="collections-label" class="label text-sm pb-1 mb-3">Collections</p>
+                        {% if custom_collections %}
+                        <form action="{{ url_for('collections.manage_book_collections') }}" method="POST"
+                              class="flex flex-wrap gap-2" role="group" aria-labelledby="collections-label">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <input type="hidden" name="session_id" id="form_session_id" value=""/>
-                            <input type="hidden" name="undated" id="form_undated" value=""/>
+                            <input type="hidden" name="book_id" value="{{ book['id'] }}">
+                            <input type="hidden" name="anchor" value="your-info">
+                            {% for collection in custom_collections %}
+                            <button type="submit" name="collection_id" value="{{ collection['collection_id'] }}" class="chip"
+                                    aria-pressed="{{ 'true' if collection['has_book'] else 'false' }}">{{ collection['name'] }}</button>
+                            {% endfor %}
+                        </form>
+                        {% else %}
+                        <p class="text-sm text-content-secondary italic">No collections yet.</p>
+                        {% endif %}
+                        <details class="new-collection mt-3">
+                            <summary class="chip cursor-pointer">+ New collection</summary>
+                            {# A shelf of this item's section (8C), with this item in it; back here afterwards #}
+                            <form action="{{ url_for('collections.create_custom_collection') }}" method="POST" class="mt-3 flex gap-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <input type="hidden" name="media_type" value="{{ m.type }}"/>
+                                <input type="hidden" name="book_id" value="{{ book['id'] }}"/>
+                                <input type="hidden" name="next" value="item"/>
+                                <input type="hidden" name="anchor" value="your-info">
+                                <input type="text" name="name" aria-label="New collection name" placeholder="Collection name" required maxlength="100"
+                                       class="flex-1 min-w-0 bg-primary border border-primary-hover rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">Create</button>
+                            </form>
+                        </details>
+                    </div>
 
-                            <h4 class="font-medium text-content-primary mb-4" id="session-form-title"
-                                data-add-title="Add New {{ m.session }}" data-edit-title="Edit {{ m.session }}">Add New {{ m.session }}</h4>
+                    {# What your Goodreads imports did here (ROADMAP 14b): your own only #}
+                    {% if goodreads_notes %}
+                    <div class="space-y-1 text-sm text-content-secondary">
+                        {% for note in goodreads_notes %}<p>{{ note }}</p>{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
 
-                            <div class="space-y-3">
-                                <div>
-                                    <label for="form_date_started" class="block text-sm text-content-secondary mb-1">
-                                        Date Started <span class="text-xs italic">(optional)</span>
-                                    </label>
-                                    <input type="date"
-                                           id="form_date_started"
-                                           name="date_started"
-                                           class="w-full max-w-xs bg-secondary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                <!-- Review, history and tags: tabs, as on the profile -->
+                <div data-tabs class="min-w-0" data-book-id="{{ book.id }}">
+                    <div role="tablist" aria-label="{{ m.info_heading }}" class="flex items-stretch bg-primary rounded-lg overflow-hidden border border-rule" hidden>
+                        {% for key, label in [('review', 'Review'), ('history', 'History'), ('tags', 'Tags')] %}
+                        <button type="button" role="tab" id="tab-item-{{ key }}" aria-controls="item-{{ key }}" aria-selected="false" class="tab">{{ label }}</button>
+                        {% endfor %}
+                    </div>
+
+                    <div role="tabpanel" id="item-review" aria-labelledby="tab-item-review" class="pt-5">
+                        {% if read_data %}
+                        {% if read_data['rating'] %}{# a review can have no rating #}
+                        <p class="text-xl whitespace-nowrap">
+                            <span class="text-yellow-400" aria-hidden="true">{{ '★' * (read_data['rating']|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - read_data['rating']|int) }}</span>
+                            <span class="sr-only">Rated {{ read_data['rating']|int }} of 5</span>
+                        </p>
+                        {% else %}
+                        <p class="text-sm text-content-secondary italic">No rating</p>
+                        {% endif %}
+                        {% if read_data['comment'] %}
+                        <div class="mt-3" data-read-more>
+                            <p id="your-review" class="read-more-text measure text-content-primary leading-relaxed whitespace-pre-wrap">{{ read_data['comment'] }}</p>
+                            <button type="button" class="read-more-toggle" data-click="toggleReadMore"
+                                    aria-controls="your-review" aria-expanded="false" hidden>Read more</button>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <p class="text-content-secondary italic">No review yet.</p>
+                        {% endif %}
+                        <a href="{{ url_for('read.rate_review', book_id=book.id) }}"
+                           class="inline-flex mt-4 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
+                            {% if read_data %}Edit review{% else %}Write a review{% endif %}
+                        </a>
+                    </div>
+
+                    <div role="tabpanel" id="item-history" aria-labelledby="tab-item-history" class="pt-5">
+                        <div class="flex items-center justify-between gap-4 mb-3">
+                            <h3 class="label text-sm pb-1">{{ m.history }}</h3>
+                            <button type="button" data-click="showAddSessionForm"
+                                    class="shrink-0 text-sm px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
+                                Add Session
+                            </button>
+                        </div>
+
+                        <!-- Add/Edit Session Form (Hidden by default) -->
+                        <div id="session-form-container" class="hidden bg-primary rounded-lg p-4 mb-4 border-2 border-accent">
+                            {# No dates is allowed (read long ago) but asked first (book_detail.js, 14c) #}
+                            <form action="{{ url_for('read.manage_session', book_id=book.id) }}" method="POST"
+                                  data-submit="saveSession"
+                                  data-undated-add="Add a {{ m.session|lower }} with no dates?"
+                                  data-undated-edit="Save this {{ m.session|lower }} with no dates?">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <input type="hidden" name="session_id" id="form_session_id" value=""/>
+                                <input type="hidden" name="undated" id="form_undated" value=""/>
+
+                                <h4 class="font-medium text-content-primary mb-4" id="session-form-title"
+                                    data-add-title="Add New {{ m.session }}" data-edit-title="Edit {{ m.session }}">Add New {{ m.session }}</h4>
+
+                                <div class="grid sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="form_date_started" class="block text-sm text-content-secondary mb-1">
+                                            Date Started <span class="text-xs italic">(optional)</span>
+                                        </label>
+                                        <input type="date" id="form_date_started" name="date_started"
+                                               class="w-full bg-secondary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                    </div>
+                                    <div>
+                                        <label for="form_date_completed" class="block text-sm text-content-secondary mb-1">
+                                            Date Completed <span class="text-xs italic">(optional)</span>
+                                        </label>
+                                        <input type="date" id="form_date_completed" name="date_completed"
+                                               class="w-full bg-secondary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                    </div>
                                 </div>
-
-                                <div>
-                                    <label for="form_date_completed" class="block text-sm text-content-secondary mb-1">
-                                        Date Completed <span class="text-xs italic">(optional)</span>
-                                    </label>
-                                    <input type="date"
-                                           id="form_date_completed"
-                                           name="date_completed"
-                                           class="w-full max-w-xs bg-secondary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                                </div>
-
-                                <div class="flex gap-2 pt-2">
-                                    <button type="submit"
-                                            class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm btn">
+                                <div class="flex gap-2 pt-4">
+                                    <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm btn">
                                         Save Session
                                     </button>
-                                    <button type="button"
-                                            data-click="hideSessionForm"
+                                    <button type="button" data-click="hideSessionForm"
                                             class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary rounded btn btn-outline text-sm">
                                         Cancel
                                     </button>
                                 </div>
-                            </div>
-                        </form>
-                    </div>
+                            </form>
+                        </div>
 
-                    <!-- Sessions List -->
-                    {% if reading_sessions %}
-                    <div class="bg-primary rounded-lg p-4 space-y-3">
-                        {% for session in reading_sessions %}
-                        <div class="flex items-center justify-between text-sm py-2 border-b border-gray-700 last:border-b-0">
-                            <div class="flex items-center gap-3">
-                                <span class="text-white font-medium">
+                        <!-- Sessions: one line each -->
+                        {% if reading_sessions %}
+                        <ol class="divide-y divide-rule" data-sessions>
+                            {% for session in reading_sessions %}
+                            <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm">
+                                <span class="font-medium text-content-primary">
                                     {% if loop.index == 1 %}First time {{ m.verb_past }}
                                     {% elif loop.index == 2 %}Second time {{ m.verb_past }}
                                     {% elif loop.index == 3 %}Third time {{ m.verb_past }}
                                     {% else %}{{ loop.index }}th time {{ m.verb_past }}
                                     {% endif %}
                                 </span>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <div class="flex items-center gap-2">
-                                    {% if session.date_started %}
-                                        <span class="text-content-primary">{{ session.date_started }}</span>
-                                        <span class="mx-1 text-content-secondary">→</span>
+                                <span class="text-content-secondary">
+                                    {% if session.date_started %}{{ session.date_started }} → {% endif %}
+                                    {% if session.date_completed %}{{ session.date_completed }}
+                                    {% elif session.date_started %}<span class="italic">{{ m.in_progress }}</span>
+                                    {% else %}<span class="italic">Date unknown</span>{# undated past read, e.g. from a Goodreads Read Count #}
                                     {% endif %}
-                                    {% if session.date_completed %}
-                                        <span class="text-content-primary">{{ session.date_completed }}</span>
-                                    {% elif session.date_started %}
-                                        <span class="text-yellow-500 italic">{{ m.in_progress }}</span>
-                                    {% else %}{# undated past read, e.g. from a Goodreads Read Count #}
-                                        <span class="text-content-secondary italic">Date unknown</span>
-                                    {% endif %}
-                                </div>
-                                <div class="flex gap-2">
+                                </span>
+                                <span class="ml-auto flex gap-4">
                                     <button type="button"
                                             data-click="editSession" data-session-id="{{ session.session_id }}"
                                             data-date-started="{{ session.date_started or '' }}" data-date-completed="{{ session.date_completed or '' }}"
-                                            class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                                        Edit
-                                    </button>
+                                            class="text-accent hover:underline">Edit</button>
                                     <button type="button"
                                             data-click="deleteSession" data-session-id="{{ session.session_id }}" data-book-id="{{ book.id }}"
-                                            class="text-xs text-red-400 hover:text-red-300 transition-colors">
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
+                                            class="text-content-secondary hover:text-red-400">Delete</button>
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                        {% else %}
+                        <p class="text-content-secondary text-sm italic">{{ m.no_sessions }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div role="tabpanel" id="item-tags" aria-labelledby="tab-item-tags" class="pt-5">
+                        <h3 class="sr-only">{{ m.tags_heading }}</h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="tagInput" aria-label="Add tags"
+                                   placeholder="Add tags (separate by comma)"
+                                   class="flex-1 min-w-0 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <button type="button" class="add-tag-btn px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
+                                Add
+                            </button>
                         </div>
-                        {% endfor %}
+                        <div id="tagsList" class="mt-4 flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Household reviews: the Reviews page's grid of cards -->
+        {% if household_reviews and not in_wishlist %}
+        <section class="bg-secondary rounded-xl p-4 md:p-8 card" aria-labelledby="household-reviews">
+            <h2 id="household-reviews" class="text-2xl font-display text-content-primary mb-4">
+                Household Reviews <span class="text-base text-content-secondary font-normal">({{ household_reviews|length }})</span>
+            </h2>
+
+            {# One card per review, written text shown in full up to a few
+               lines, then "Read more" (common.js). No inner scroll box: a
+               scroll area inside the page traps the thumb on phones. #}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {% for review in household_reviews %}
+                <article class="bg-primary rounded-lg p-4 card">
+                    <header class="flex items-center gap-3">
+                        {% if review.avatar_url|upload_exists %}
+                        <img src="{{ url_for('static', filename=review.avatar_url) }}"
+                             alt=""
+                             class="w-10 h-10 shrink-0 rounded-full object-cover border-2 border-accent">
+                        {% else %}
+                        <div class="w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold border-2 border-accent" aria-hidden="true">
+                            {{ review.username[0]|upper }}
+                        </div>
+                        {% endif %}
+                        <div class="min-w-0 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <span class="font-semibold text-content-primary">{{ review.username }}</span>
+                            {% if review.rating %}
+                            <span class="whitespace-nowrap" aria-label="{{ review.rating|int }} out of 5 stars">
+                                <span class="text-yellow-400" aria-hidden="true">{{ '★' * (review.rating|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - review.rating|int) }}</span>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </header>
+                    {% if review.comment %}
+                    <div class="mt-3" data-read-more>
+                        <p id="review-{{ loop.index }}" class="read-more-text measure text-content-secondary leading-relaxed text-sm whitespace-pre-wrap">{{ review.comment }}</p>
+                        <button type="button" class="read-more-toggle" data-click="toggleReadMore"
+                                aria-controls="review-{{ loop.index }}" aria-expanded="false" hidden>Read more</button>
                     </div>
                     {% else %}
-                    <div class="bg-primary rounded-lg p-4 text-center">
-                        <p class="text-content-secondary text-sm italic">{{ m.no_sessions }}</p>
-                    </div>
+                    <p class="mt-3 text-sm text-content-secondary italic">No written review</p>
                     {% endif %}
-                </div>
-
-                {# What your Goodreads imports did here (ROADMAP 14b): your own only #}
-                {% if goodreads_notes %}
-                <div class="mb-6 space-y-1 text-sm text-content-secondary">
-                    {% for note in goodreads_notes %}<p>{{ note }}</p>{% endfor %}
-                </div>
-                {% endif %}
-
-                {% if read_data %}
-                {% if read_data['rating'] %}{# a review can have no rating #}
-                <div class="grid sm:grid-cols-2 gap-8 mb-6">
-                    <div class="space-y-2">
-                        <span class="label text-sm pb-1">Your Rating</span>
-                        <div class="flex items-center gap-4">
-                            <span class="text-lg text-content-primary">{{ read_data['rating'] }} / 5</span>
-                            <div class="flex items-center">
-                                {% for i in range(read_data['rating']|int) %}
-                                    <span class="text-yellow-400 text-xl">★</span>
-                                {% endfor %}
-                                {% for i in range(5 - read_data['rating']|int) %}
-                                    <span class="text-gray-600 text-xl">☆</span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                {% if read_data['comment'] %}
-                    <div class="space-y-2">
-                        <span class="label text-sm pb-1">Your Review</span>
-                        <p class="measure text-content-primary bg-primary rounded-lg p-4 whitespace-pre-wrap border border-rule">{{ read_data['comment'] }}</p>
-                    </div>
-                {% endif %}
-                {% else %}
-                    <p class="text-content-secondary text-center italic py-8">No review added yet.</p>
-                {% endif %}
-
-                <div class="flex justify-center mt-6">
-                    <a href="{{ url_for('read.rate_review', book_id=book.id) }}" 
-                       class="inline-flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
-                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M17.1 3.3l-1.4-1.4c-.6-.6-1.5-.6-2.1 0L12 3.5l3.5 3.5 1.6-1.6c.6-.6.6-1.5 0-2.1zM2 13.5V17h3.5l9.9-9.9-3.5-3.5L2 13.5z"/>
-                        </svg>
-                        {% if read_data %}Edit{% else %}Write a{% endif %} Review
-                    </a>
-                </div>
+                </article>
+                {% endfor %}
             </div>
-
-            <!-- Tags Section -->
-            <div class="bg-secondary rounded-lg p-6 card" data-book-id="{{ book.id }}">
-                <h2 class="text-xl font-display text-content-primary mb-4">
-                    {{ current_user.username.capitalize() }}'s {{ m.tags_heading }}
-                </h2>
-                <div class="space-y-4">
-                    <div class="flex gap-2">
-                        <input type="text" 
-                               id="tagInput" aria-label="Add tags" 
-                               placeholder="Add tags (separate by comma)" 
-                               class="flex-1 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                        <button type="button" 
-                                class="add-tag-btn px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
-                            Add
-                        </button>
-                    </div>
-                    <div id="tagsList" class="flex flex-wrap gap-2"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-        </div>
-    {% endif %}
-    <!-- End of Reading Info Section -->
+        </section>
+        {% endif %}
     </div>{# Main Content Container #}
 {% endblock %}
 

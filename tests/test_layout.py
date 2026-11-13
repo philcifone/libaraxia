@@ -735,7 +735,7 @@ def test_no_status_reads_unread(client, db, people):
     book = add_book(db, people['alice'], title='Never opened')
     login(client, 'alice')
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert '>Unread</option>' in page and 'Untracked' not in page
+    assert 'name="status" value="untracked" class="chip"' in page and '>Unread</button>' in page and 'Untracked' not in page
 
 
 def test_status_filter_options_use_labels(client, db, people):

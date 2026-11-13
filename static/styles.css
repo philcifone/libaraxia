@@ -1075,6 +1075,17 @@
     .theme-opt, .tilt-opt { @apply text-content-secondary hover:bg-primary-hover; }
     .theme-opt[aria-pressed="true"], .tilt-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
 
+    /* Choice chips (the item page's status and collections, 16.0): a tap
+       sets it, the pressed one is filled. One per choice, so they wrap. */
+    .chip {
+        @apply inline-flex items-center px-3 py-1.5 text-sm rounded-pill border border-rule-strong
+               text-content-primary transition-colors hover:bg-primary-hover;
+    }
+    .chip[aria-pressed="true"] { @apply bg-accent text-on-accent border-accent hover:bg-accent-hover; }
+    summary.chip { list-style: none; }
+    summary.chip::-webkit-details-marker { display: none; }
+    .new-collection[open] > summary.chip { @apply bg-primary-hover; }
+
     /* Long-form text (descriptions, reviews): keep monospace lines readable */
     .measure {
         max-width: 66ch;

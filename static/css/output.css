@@ -2207,6 +2207,65 @@ img.book-cover-img:not([data-loaded]) {
   background-color: rgb(var(--accent) / var(--tw-bg-opacity, 1));
 }
 
+/* Choice chips (the item page's status and collections, 16.0): a tap
+       sets it, the pressed one is filled. One per choice, so they wrap. */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-pill);
+  border-width: 1px;
+  --tw-border-opacity: 1;
+  border-color: rgb(var(--rule-strong) / var(--tw-border-opacity, 1));
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  --tw-text-opacity: 1;
+  color: rgb(var(--ink) / var(--tw-text-opacity, 1));
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+:root[data-style="shelf"] :is(.font-display.chip, .no-cover):not(.site-title) {
+  color: rgb(var(--heading-ink));
+}
+
+.chip:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(var(--fill) / var(--tw-bg-opacity, 1));
+}
+
+.chip[aria-pressed="true"] {
+  --tw-border-opacity: 1;
+  border-color: rgb(var(--accent) / var(--tw-border-opacity, 1));
+  --tw-bg-opacity: 1;
+  background-color: rgb(var(--accent) / var(--tw-bg-opacity, 1));
+  --tw-text-opacity: 1;
+  color: rgb(var(--on-accent) / var(--tw-text-opacity, 1));
+}
+
+.chip[aria-pressed="true"]:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(var(--accent-hover) / var(--tw-bg-opacity, 1));
+}
+
+summary.chip {
+  list-style: none;
+}
+
+summary.chip::-webkit-details-marker {
+  display: none;
+}
+
+.new-collection[open] > summary.chip {
+  --tw-bg-opacity: 1;
+  background-color: rgb(var(--fill) / var(--tw-bg-opacity, 1));
+}
+
 /* Long-form text (descriptions, reviews): keep monospace lines readable */
 
 .measure {
@@ -3265,6 +3324,10 @@ img.book-cover-img:not([data-loaded]) {
   align-self: flex-start;
 }
 
+.self-center {
+  align-self: center;
+}
+
 .overflow-hidden {
   overflow: hidden;
 }
@@ -3903,11 +3966,6 @@ img.book-cover-img:not([data-loaded]) {
 .text-gray-400 {
   --tw-text-opacity: 1;
   color: rgb(var(--muted) / var(--tw-text-opacity, 1));
-}
-
-.text-gray-600 {
-  --tw-text-opacity: 1;
-  color: rgb(var(--rule) / var(--tw-text-opacity, 1));
 }
 
 .text-green-500 {
@@ -8251,10 +8309,6 @@ html[data-gr-bar="on"] body {
     width: 1.25rem;
   }
 
-  .sm\:w-auto {
-    width: auto;
-  }
-
   .sm\:w-full {
     width: 100%;
   }
@@ -8381,16 +8435,8 @@ html[data-gr-bar="on"] body {
     grid-row: span 2 / span 2;
   }
 
-  .md\:h-6 {
-    height: 1.5rem;
-  }
-
   .md\:w-1\/2 {
     width: 50%;
-  }
-
-  .md\:w-6 {
-    width: 1.5rem;
   }
 
   .md\:flex-none {
@@ -8429,12 +8475,12 @@ html[data-gr-bar="on"] body {
     gap: 2rem;
   }
 
-  .md\:p-4 {
-    padding: 1rem;
+  .md\:self-start {
+    align-self: flex-start;
   }
 
-  .md\:p-6 {
-    padding: 1.5rem;
+  .md\:p-4 {
+    padding: 1rem;
   }
 
   .md\:p-8 {
@@ -8444,11 +8490,6 @@ html[data-gr-bar="on"] body {
   .md\:px-6 {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
-  }
-
-  .md\:text-2xl {
-    font-size: 1.5rem;
-    line-height: 2rem;
   }
 
   .md\:text-4xl {
@@ -8481,6 +8522,10 @@ html[data-gr-bar="on"] body {
 
   .lg\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-\[minmax\(0\2c 2fr\)_minmax\(0\2c 3fr\)\] {
+    grid-template-columns: minmax(0,2fr) minmax(0,3fr);
   }
 
   .lg\:px-8 {
