@@ -1732,7 +1732,10 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     border-bottom: 0;
     box-shadow: inset 0 -3px 0 rgb(0 0 0 / .18), 0 3px 8px rgb(0 0 0 / .25);
 }
-:root[data-style="shelf"] .topbar .site-title { color: rgb(var(--shelf-label)); }
+/* The site title: dark mode's heading cream in both modes, never walnut
+   (Phil, 2026-11-13: walnut on the wooden bar was hard to read). 4.3:1 on
+   the light bar, 11:1 on the dark one; large text, so AA asks for 3:1. */
+:root[data-style="shelf"] .topbar .site-title { color: rgb(245 232 206); }
 :root[data-style="shelf"] .topbar .hamburger-bar { background-color: rgb(var(--shelf-label)); }
 :root[data-style="shelf"] #hamburger:hover { background-color: rgb(255 255 255 / .1); }
 
@@ -1746,7 +1749,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 @media (prefers-color-scheme: dark) {
     :root[data-style="shelf"]:not([data-mode="light"]) { --heading-ink: 245 232 206; }
 }
-:root[data-style="shelf"] :is(.font-display.text-content-primary, .no-cover) {
+:root[data-style="shelf"] :is(.font-display.text-content-primary, .no-cover):not(.site-title) {
     color: rgb(var(--heading-ink));
 }
 

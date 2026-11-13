@@ -1041,3 +1041,11 @@ def test_item_add_and_edit_pages_have_one_heading_card(client, db, people):
     # the title is in the heading card, before the details card
     heading = item.index('class="page-heading ')
     assert heading < item.index('<h1', heading) < item.index('Dune', heading) < item.index('case-card', heading)
+
+
+def test_shelf_site_title_stays_cream():
+    """Shelf's walnut headings (16.0 step 3) must not reach the site title on
+    the wooden top bar, which is one cream in both modes (Phil, 2026-11-13)."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':is(.font-display.text-content-primary, .no-cover):not(.site-title)' in css
+    assert ':root[data-style="shelf"] .topbar .site-title { color: rgb(245 232 206); }' in css
