@@ -1084,6 +1084,10 @@ def test_stacked_shelves_in_one_bookcase(client, db, people):
     assert ':root[data-style="shelf"] .shelf-case .shelf-row:empty {' in css
     assert "background-attachment: local, local, local, local, local, local, local, scroll, scroll;" in css
     assert "overscroll-behavior-x: none;" in css          # no rubber-band past the last cover
+    # The case's inside left panel, with each ledge running back into it;
+    # the row's piece stays put (positioned outside the scroller) over the covers
+    assert ':root[data-style="shelf"] .shelf-case .shelf-row::after {' in css
+    assert ':root[data-style="shelf"] .shelf-case .shelf-item { position: relative; }' in css
 
 
 def test_wishlists_are_the_library_grid_with_a_quick_add(client, db, people):
@@ -1117,3 +1121,5 @@ def test_wishlists_are_the_library_grid_with_a_quick_add(client, db, people):
     assert not re.search(r'\[data-rack="store"\][^{]*?(?<!#book-container)\.shelf-grid', css)
     assert ':root[data-style="shelf"] .shelf-grid.grid .wishlist-quick-add {' in css
     assert '.wishlist-quick-add { display: none; }' in css
+    # A coverless item two links deep gets its own width (iPhone Safari: spine only)
+    assert ':root[data-style="shelf"] .wishlist-grid.shelf-grid.grid .no-cover {' in css

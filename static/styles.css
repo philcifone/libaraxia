@@ -2059,13 +2059,20 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
     --row-sink: 4px;
     --row-pad: 1.25rem;                 /* the shelves' text and covers from the case's sides */
+    /* The inside of the left panel, in view from above and to the right
+       (Phil, 2026-11-13: "add more perspective", as the small cases have):
+       a strip down the case's side, each ledge running back into it on the
+       1:2 slant (.shelf-row::after, the heading's plank) */
+    --side-w: calc(var(--ledge-top) / 2);
     position: relative;
     margin-top: var(--case-run);
     padding: 1.25rem 0 .25rem;          /* the last ledge sits just above the framed bottom */
     border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
     border-radius: 0;
     background-color: rgb(var(--shelf-back));
-    background-image: none;
+    background-image: linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side)));
+    background-size: var(--side-w) 100%;
+    background-repeat: no-repeat;
     box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
 /* the right face also runs down past the framed bottom */
@@ -2158,17 +2165,23 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 :root[data-style="shelf"] .shelf-case .shelf-case-heading {
     padding-bottom: calc(.6rem + var(--ledge-h));
     background-image:
+        /* the top face running back into the left panel (see .shelf-case) */
+        conic-gradient(from 26.57deg at 0 100%, rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
+        linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side))),
         linear-gradient(var(--ledge-lit), var(--ledge-lit)),
         linear-gradient(rgb(0 0 0 / var(--front-shade)), rgb(0 0 0 / var(--front-shade))),
         linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
         linear-gradient(rgb(var(--shelf-top)), rgb(var(--shelf-top))),
         linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
-    background-size: 100% var(--ledge-lit-w), 100% 1px, 100% var(--ledge-top), 100% var(--ledge-top), 100% var(--ledge-front);
+    background-size: var(--side-w) var(--ledge-top), var(--side-w) var(--ledge-top),
+        100% var(--ledge-lit-w), 100% 1px, 100% var(--ledge-top), 100% var(--ledge-top), 100% var(--ledge-front);
     /* A percentage position lines the layer's own bottom up with the box's
        (100% = flush with the bottom), so each offset is just what sits
        below that layer: the front edge under the top face, and the lit line
        on the front edge's top. */
     background-position:
+        0 calc(100% - var(--ledge-front)),
+        0 calc(100% - var(--ledge-front)),
         0 calc(100% - var(--ledge-front) + var(--ledge-lit-w)),
         0 100%,
         0 calc(100% - var(--ledge-front)),
@@ -2176,6 +2189,27 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         0 100%;
     background-repeat: no-repeat;
     box-shadow: 0 10px 12px -8px rgb(0 0 0 / var(--under-shade));   /* its shadow on the wall below */
+}
+/* Where a row's ledge meets the left panel: the top face's wedge and the
+   strip above it, over the ledge the row paints. Absolutely positioned
+   with .shelf-item (not the scrolling row) as its containing block, so it
+   stays at the case's side while the covers scroll, and paints over them
+   there, as the panel would. Vertically it takes its static place, the
+   top of the row's content box, moved up over the row's top padding. */
+:root[data-style="shelf"] .shelf-case .shelf-row::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    z-index: 1;
+    width: var(--side-w);
+    /* from the row's top (its padding is the boxes' faces) down through
+       the top face, so a cover scrolling past goes behind the panel */
+    margin-top: calc(-1 * var(--box-depth));
+    height: calc(var(--box-depth) + 7rem - var(--row-sink) + var(--ledge-top));
+    pointer-events: none;
+    background:
+        conic-gradient(from 26.57deg at 0 100%, rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
+        rgb(var(--shelf-side));
 }
 /* Captions (stars, a reviewer) hang below the ledge, under their cover */
 :root[data-style="shelf"] .shelf-case .shelf-figure figcaption { margin-top: calc(var(--ledge-h) - var(--row-sink)); }
@@ -2231,6 +2265,16 @@ and to the right for its faces */
     transform: none;
 }
 :root[data-style="shelf"] .shelf-grid.grid .wishlist-actions { display: none; }
+/* A coverless item's box is two links deep here (.cover-anchor, the link),
+   not a flex item of .book-cover as in the library, and iPhone Safari gave
+   it no width from its height and aspect ratio (a size container): only
+   the spine showed (Phil, 2026-11-13). So its width is set, and its
+   height follows. */
+:root[data-style="shelf"] .wishlist-grid.shelf-grid.grid .no-cover {
+    width: calc(var(--cover-h) * 2 / 3);
+    height: auto;
+}
+:root[data-style="shelf"] .wishlist-grid.shelf-grid.grid[data-media="record"] .no-cover { width: var(--cover-h); }
 /* .cover-anchor hugs the cover (a flex item of the bottom-aligned
    .book-cover), so the (+) lands on the cover's corner, not the column's */
 .cover-anchor { display: block; position: relative; max-width: 100%; }
