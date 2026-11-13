@@ -78,8 +78,9 @@ def test_security_headers(client):
 # Routes that are GET but act, or need arguments filled in below.
 # admin.backup_download needs a real backup's name; tests/test_backups.py covers it.
 # books.thumbnail needs a ?url= and 404s without one; tests/test_csp.py covers it.
-# videos.lookup needs ?barcode= or ?title=, records.lookup ?mbid=; both answer 400 without (test_videos.py, test_records.py cover them).
-SKIP = {'static', 'admin.backup_download', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'records.lookup', 'videos.search'}
+# videos.lookup needs ?barcode= or ?title=, records.lookup ?mbid=, records.pressings ?source=&id=; all answer 400 without (test_videos.py, test_records.py, test_search_pages.py cover them).
+SKIP = {'static', 'admin.backup_download', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'records.lookup', 'videos.search',
+        'records.pressings'}
 
 
 def duplicate_ids(html):

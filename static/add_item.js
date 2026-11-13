@@ -295,17 +295,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const RECORD = {
         // The format choice beside the search box (Any / Vinyl / CD / Cassette)
-        searchUrl: q => `/records/search?q=${enc(q)}&format=${enc($('search-format')?.value || '')}`,
+        format: () => enc($('search-format')?.value || ''),
+        // Albums first (16.0): one row per album, then its pressings
+        searchUrl: q => `/records/albums?q=${enc(q)}&format=${RECORD.format()}`,
+        pressingsUrl: album => `/records/pressings?source=${enc(album.source)}&id=${enc(album.id)}&format=${RECORD.format()}`,
 
-        // One row per pressing: label, cat. no., year and country tell them apart
-        results(data) {
+        // An album row: artist and year. A pressing: label, cat. no., year
+        // and country tell them apart (under its album, the heading above
+        // names the artist, so the row leaves it out)
+        results(data, album) {
             if (!data.success) throw new Error(data.error || 'The search failed.');
-            return (data.results || []).map(r => ({
+            return (data.results || []).map(r => r.level === 'album' ? {
+                title: r.title, line: [r.artist, r.year].filter(Boolean).join(', '),
+                thumb: r.thumb, id: r.id, source: r.source, artist: r.artist, album: true,
+            } : {
                 title: r.title,
-                line: [r.artist, r.year, r.country].filter(Boolean).join(', '),
+                line: [album ? '' : r.artist, r.year, r.country].filter(Boolean).join(', '),
                 line2: [r.format_label, r.label, r.catalog_number].filter(Boolean).join(' \u00b7 '),
-                thumb: r.thumb, id: r.id, source: r.source,
-            }));
+                thumb: r.thumb || album?.thumb, id: r.id, source: r.source,
+            });
         },
 
         // Discogs' API terms ask for attribution under their data. Fixed
@@ -317,9 +325,12 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         async pick(result) {
-            // Discogs ids are numbers, MusicBrainz ids UUIDs: each to its own lookup
-            const param = result.source === 'discogs' ? 'discogs' : 'mbid';
-            const data = await getJSON(`/records/lookup?${param}=${enc(result.id)}`);
+            // Discogs ids are numbers, MusicBrainz ids UUIDs: each to its own
+            // lookup. An album row fills the form from its main pressing.
+            const param = result.album
+                ? (result.source === 'discogs' ? 'discogs_master' : 'mb_group')
+                : (result.source === 'discogs' ? 'discogs' : 'mbid');
+            const data = await getJSON(`/records/lookup?${param}=${enc(result.id)}&format=${RECORD.format()}`);
             if (data.success && !data.found) return { notFound: 'Nothing more on that one. Fill the form in by hand.' };
             return RECORD.form(data);
         },
@@ -480,28 +491,72 @@ document.addEventListener('DOMContentLoaded', () => {
     tabs.forEach(t => t.addEventListener('click', () => showTab(t.dataset.method)));
 
     // --- Search ------------------------------------------------------------------
+    //
+    // Each search answer carries `next`: the query parameters for its next
+    // page, or null (utils/search.py next_page). "Show more" appends them to
+    // the same URL and adds the rows under the ones shown (16.0). Music
+    // lists albums; "Pressings" on one lists its pressings in their place,
+    // with a way back to the albums as they were.
 
     const resultsBox = $('search-results');
-    let results = [];
+    let view = null;            // {url, rows, next, album}: what the box shows
+    let albumsView = null;      // the album list, kept while a pressings list shows
 
-    function showResults(list) {
-        results = list;
-        if (!list.length) {
-            resultsBox.innerHTML = '<p class="md:col-span-2 text-center py-4 text-content-secondary">Nothing found. Try fewer words, or fill the form in by hand.</p>';
-            return;
-        }
-        resultsBox.innerHTML = list.map((r, i) => `
-            <div class="flex gap-4 p-3 bg-primary border border-card rounded-lg">
+    const wide = 'md:col-span-2';
+
+    function rowHtml(r, i) {
+        const pressings = r.album
+            ? `<button type="button" data-pressings="${i}"
+                       class="px-3 py-1.5 text-sm border border-rule-strong text-content-primary hover:bg-primary-hover rounded-lg btn-outline">Pressings</button>`
+            : '';
+        return `
+            <div class="flex gap-4 p-3 bg-primary border border-card rounded-lg" data-row="${i}">
                 <img src="${escapeHtml(r.thumb ? coverSrc(r.thumb) : '/static/no-cover.svg')}" alt=""
                      data-fallback-src="/static/no-cover.svg" class="w-16 h-24 object-cover rounded shrink-0">
                 <div class="flex-1 min-w-0 flex flex-col">
                     <p class="font-medium text-content-primary line-clamp-2">${escapeHtml(r.title)}</p>
                     <p class="text-sm text-content-secondary truncate">${escapeHtml(r.line)}</p>
                     ${r.line2 ? `<p class="text-sm text-content-secondary line-clamp-2">${escapeHtml(r.line2)}</p>` : ''}
-                    <button type="button" data-pick="${i}"
-                            class="mt-auto self-start px-3 py-1.5 text-sm bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Use this</button>
+                    <div class="mt-auto pt-2 flex flex-wrap gap-2">
+                        <button type="button" data-pick="${i}"
+                                class="px-3 py-1.5 text-sm bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Use this</button>
+                        ${pressings}
+                    </div>
                 </div>
-            </div>`).join('');
+            </div>`;
+    }
+
+    const moreHtml = () => view.next
+        ? `<div class="${wide} text-center" data-more-row>
+               <button type="button" data-more
+                       class="px-4 py-2 text-sm border border-rule-strong text-content-primary hover:bg-primary-hover rounded-lg btn-outline">Show more</button>
+           </div>`
+        : '';
+
+    // The pressings list's heading, with the way back
+    function headHtml(album) {
+        return `<div class="${wide} flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-content-primary">Pressings of <span class="font-bold">${escapeHtml(album.title)}</span>${album.artist ? ` by ${escapeHtml(album.artist)}` : ''}</p>
+                    <button type="button" data-back class="text-sm underline text-content-secondary hover:text-accent">Back to albums</button>
+                </div>`;
+    }
+
+    function render() {
+        const head = view.album ? headHtml(view.album) : '';
+        if (!view.rows.length) {
+            const none = view.album ? `No pressings found in that format. Try Any format, or fill the form in by hand.`
+                                    : 'Nothing found. Try fewer words, or fill the form in by hand.';
+            resultsBox.innerHTML = `${head}<p class="${wide} text-center py-4 text-content-secondary">${none}</p>`;
+            return;
+        }
+        resultsBox.innerHTML = head + view.rows.map(rowHtml).join('') + moreHtml();
+    }
+
+    // One page from `url` (+ the `next` parameters); the adapter makes the rows
+    async function fetchPage(url, next) {
+        const params = next ? '&' + new URLSearchParams(next).toString() : '';
+        const data = await getJSON(url + params);
+        return { data, rows: type.results(data, view?.album), next: data.next || null };
     }
 
     $('search-form')?.addEventListener('submit', async event => {
@@ -510,21 +565,74 @@ document.addEventListener('DOMContentLoaded', () => {
         if (query.length < 2) { setStatus('Type at least two letters.'); return; }
         setStatus('Searching...');
         resultsBox.innerHTML = '';
+        albumsView = null;
         try {
-            const data = await getJSON(type.searchUrl(query));
-            showResults(type.results(data));
+            const url = type.searchUrl(query);
+            view = { url, rows: [], next: null, album: null };
+            const page = await fetchPage(url, null);
+            Object.assign(view, { rows: page.rows, next: page.next });
+            render();
             // A source's credit line (Discogs), else clear the status
-            setStatus(type.credit ? type.credit(data) : '', true);
+            setStatus(type.credit ? type.credit(page.data) : '', true);
         } catch (err) {
             console.error('Search failed', err);
             setStatus(err.message || 'The search failed. Try again.');
         }
     });
 
+    async function showMore(button) {
+        button.disabled = true;
+        button.textContent = 'Loading...';
+        try {
+            const first = view.rows.length;
+            const page = await fetchPage(view.url, view.next);
+            view.rows = view.rows.concat(page.rows);
+            view.next = page.next;
+            resultsBox.querySelector('[data-more-row]')?.remove();
+            resultsBox.insertAdjacentHTML('beforeend', page.rows.map((r, i) => rowHtml(r, first + i)).join('') + moreHtml());
+            // Keyboard and screen reader users land on the first new row
+            resultsBox.querySelector(`[data-row="${first}"] [data-pick]`)?.focus();
+        } catch (err) {
+            console.error('Show more failed', err);
+            button.disabled = false;
+            button.textContent = 'Show more';
+            setStatus(err.message || 'The search failed. Try again.');
+        }
+    }
+
+    async function showPressings(album) {
+        albumsView = view;
+        const url = type.pressingsUrl(album);
+        view = { url, rows: [], next: null, album };
+        resultsBox.innerHTML = `${headHtml(album)}<p class="${wide} text-center py-4 text-content-secondary">Finding pressings...</p>`;
+        try {
+            const page = await fetchPage(url, null);
+            Object.assign(view, { rows: page.rows, next: page.next });
+            render();
+            resultsBox.querySelector('[data-back]')?.focus();
+        } catch (err) {
+            console.error('Pressings failed', err);
+            setStatus(err.message || 'The search failed. Try again.');
+        }
+    }
+
+    function backToAlbums() {
+        if (!albumsView) return;
+        view = albumsView;
+        albumsView = null;
+        render();
+        resultsBox.querySelector('[data-pick]')?.focus();
+    }
+
     resultsBox?.addEventListener('click', event => {
+        const more = event.target.closest('[data-more]');
+        if (more) { showMore(more); return; }
+        if (event.target.closest('[data-back]')) { backToAlbums(); return; }
+        const pressings = event.target.closest('[data-pressings]');
+        if (pressings) { showPressings(view.rows[Number(pressings.dataset.pressings)]); return; }
         const button = event.target.closest('[data-pick]');
         if (!button) return;
-        const result = results[Number(button.dataset.pick)];
+        const result = view.rows[Number(button.dataset.pick)];
         localMatches = [];      // a title pick: the last code's matches no longer apply
         if (result) runLookup(`Fetching "${result.title}"...`, () => type.pick(result));
     });

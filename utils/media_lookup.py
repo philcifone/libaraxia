@@ -215,9 +215,18 @@ def tmdb_search(query, year=None, limit=8):
     year is often the video release, not the film's."""
     if not query or not tmdb_key():
         return []
-    results = (_tmdb('/search/multi', query=query, include_adult='false') or {}).get('results') or []
+    found = _tmdb_multi(query, 1)[0]
+    if year:
+        found.sort(key=lambda f: f['year'] != year)       # stable: TMDb's order otherwise
+    return found[:limit]
+
+
+def _tmdb_multi(query, tmdb_page):
+    """One page of TMDb's /search/multi (20 a page, people dropped): (rows,
+    total pages)."""
+    data = _tmdb('/search/multi', query=query, include_adult='false', page=tmdb_page) or {}
     found = []
-    for r in results:
+    for r in data.get('results') or []:
         kind = {'movie': media.MOVIE, 'tv': media.TV}.get(r.get('media_type'))
         if not kind or not isinstance(r.get('id'), int):
             continue
@@ -230,9 +239,22 @@ def tmdb_search(query, year=None, limit=8):
             'year': int(release[:4]) if release[:4].isdigit() else None,
             'poster': f"{TMDB_THUMBS}{r['poster_path']}" if r.get('poster_path') else None,
         })
-    if year:
-        found.sort(key=lambda f: f['year'] != year)       # stable: TMDb's order otherwise
-    return found[:limit]
+    return found, data.get('total_pages') or 0
+
+
+SEARCH_PAGE = 10    # Add Movie's Search tab: rows per page, half a TMDb page
+
+
+def tmdb_search_page(query, page=1):
+    """One page of Add Movie's Search tab (16.0, "Show more"): (rows, more),
+    rows as tmdb_search's. Our page n is one half of TMDb's page (n + 1) // 2."""
+    if not query or not tmdb_key():
+        return [], False
+    tmdb_page, second_half = (page + 1) // 2, page % 2 == 0
+    rows, pages = _tmdb_multi(query, tmdb_page)
+    half = rows[SEARCH_PAGE:] if second_half else rows[:SEARCH_PAGE]
+    more = (not second_half and len(rows) > SEARCH_PAGE) or tmdb_page < pages
+    return half, more
 
 
 def tmdb_details(tmdb_id, fallback_title='', kind=None):

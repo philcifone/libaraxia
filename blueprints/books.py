@@ -15,7 +15,7 @@ from utils.book_utils import (
     google_cover_candidates,
     fetch_cover_by_isbn_direct,
     save_best_cover,
-    search_google_books,
+    search_books_page,
     cover_search_steps,
     thumbnail_jpeg,
     ALLOWED_EXTENSIONS,
@@ -28,6 +28,7 @@ from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
 from utils import grid_query, media, sorting
 from utils.reviews import then_review_values
+from utils.search import by_arg, next_page, page_arg
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -207,26 +208,22 @@ def _add_book_page(values, destination, cover_url, isbn, duplicates=()):
 @books_blueprint.route("/search_books")
 @login_required
 def search_books():
-    """AJAX endpoint for book search - returns JSON for frontend"""
-    query = request.args.get("q", "")
+    """Add Book's Search tab: {"items": [...], "next": {...} | null}, one page
+    (BOOK_PAGE) of Google Books results (Open Library when Google is down or
+    has nothing). "X by Y" is title X by author Y; `next` is the parameters
+    for "Show more" (page, by, src), utils.search.next_page."""
+    query = (request.args.get("q") or "").strip()[:200]
     if not query:
-        return jsonify({"items": []})
-
+        return jsonify({"items": [], "next": None})
+    page = page_arg(request.args)
+    source = "openlibrary" if request.args.get("src") == "ol" else None
     try:
-        current_app.logger.debug(f"Starting search for query: {query}")
-
-        # Use consolidated search function (limits to 6 results for AJAX)
-        processed_items = search_google_books(query, max_results=6)
-
-        current_app.logger.debug(f"Found {len(processed_items)} results")
-
-        response = jsonify({"items": processed_items})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
-
-    except Exception as e:
-        current_app.logger.error(f"Unexpected error in search_books: {str(e)}", exc_info=True)
+        items, more, by, source = search_books_page(query, page, by_arg(request.args), source)
+    except Exception:
+        current_app.logger.exception("Book search failed")
         return jsonify({"error": "Search failed. Please try again."}), 500
+    keep = {"by": by, "src": "ol" if source == "openlibrary" else None}
+    return jsonify({"items": items, "next": next_page(page, more, **keep)})
 
 def video_code_response(code):
     """JSON for a scanned/typed code that turned out to be a video barcode

@@ -88,7 +88,7 @@ def test_add_album_page_has_search_barcode_and_scan(client, people):
     login(client, 'alice')
     page = client.get('/records/add').get_data(as_text=True)
     assert 'page-title min-w-0">Add an Album</span>' in page and 'data-type="record"' in page
-    assert 'id="search-input"' in page and 'Artist and title...' in page
+    assert 'id="search-input"' in page and 'Album, artist, or album by artist' in page
     # Barcodes since 8B.12: code and scan tabs, the scanner, a barcode field
     assert 'data-method="code"' in page and 'data-method="scan"' in page
     assert 'scanner.js' in page and 'name="barcode"' in page and 'name="isbn"' not in page

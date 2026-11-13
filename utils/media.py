@@ -192,7 +192,7 @@ _LABELS = {
         'shelf': 'library',             # "removed from the library"
         'section': 'Library',
         'search_hint': 'Title, author, ISBN or tag',
-        'title_search_placeholder': 'Title or author...',
+        'title_search_placeholder': 'Title, author, or title by author',
         'no_sessions': 'No reading sessions yet. Click "Add Session" to record when you read this book.',
         'not_owned': 'Read, unshelved',
         'description': 'Description',
@@ -247,7 +247,7 @@ _LABELS = {
         'shelf': 'music shelf',
         'section': 'Music',
         'search_hint': 'Artist, title, label or cat. no.',
-        'title_search_placeholder': 'Artist and title...',
+        'title_search_placeholder': 'Album, artist, or album by artist',
         'no_sessions': 'No listens yet. Click "Add Session" to record when you listened to it.',
         'not_owned': 'Listened to, unshelved',
         'description': 'Tracklist and notes',

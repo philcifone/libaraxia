@@ -14,6 +14,7 @@ from flask_login import login_required
 from blueprints.media_section import Section, make_blueprint
 from utils import media
 from utils import media_lookup
+from utils.search import next_page, page_arg
 from utils.rate_limiting import limiter
 
 
@@ -89,10 +90,12 @@ def search():
     if not media_lookup.tmdb_key():
         return jsonify({'success': False, 'error': 'Title search needs a TMDb key (TMDB_API_KEY in .env).'}), 400
     if len(query) < 2:
-        return jsonify({'success': True, 'results': []})
+        return jsonify({'success': True, 'results': [], 'next': None})
+    page = page_arg(request.args)
     try:
-        results = media_lookup.tmdb_search(query)
+        results, more = media_lookup.tmdb_search_page(query, page)
     except Exception:
         current_app.logger.exception('Movie search failed')
         return jsonify({'success': False, 'error': 'The search failed. Try again, or use the barcode.'}), 500
-    return jsonify({'success': True, 'results': results})
+    # `next`: the parameters for "Show more" (16.0)
+    return jsonify({'success': True, 'results': results, 'next': next_page(page, more)})

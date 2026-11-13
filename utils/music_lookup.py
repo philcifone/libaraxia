@@ -33,11 +33,14 @@ from flask import current_app
 
 from utils import book_utils
 from utils import media
+from utils.search import JOINERS, by_or_plain, fits
 
 MB_API = 'https://musicbrainz.org/ws/2'
 CAA = 'https://coverartarchive.org'
 MAX_JSON_BYTES = 2 * 1024 * 1024
 MIN_INTERVAL = 1.1          # seconds between requests (MusicBrainz allows 1/s)
+PAGE = 12                   # Search tab rows per page ("Show more" asks for the next)
+BROWSE = 50                 # an album's releases per request (they're filtered after)
 CACHE_SECONDS = 6 * 3600
 
 # MusicBrainz's `format` field matches whole values only: "Vinyl" doesn't
@@ -115,7 +118,8 @@ def _cached(key, compute):
     if hit and time.time() - hit[0] < CACHE_SECONDS:
         return hit[1]
     value = compute()
-    if value:                   # misses aren't kept
+    # Misses aren't kept: an empty answer, or a page (rows, more) with no rows
+    if value and (not isinstance(value, tuple) or value[0]):
         if len(_cache) > 500:
             _cache.clear()
         _cache[key] = (time.time(), value)
@@ -129,16 +133,36 @@ def _escape(term):
     return ''.join('\\' + ch if ch in '+-&|!(){}[]^"~*?:\\/' else ch for ch in term)
 
 
+def _words(text):
+    """The query words, escaped, joining words left out, at most ten."""
+    return [_escape(w) for w in (text or '').split() if w.strip() and w.lower() not in JOINERS][:10]
+
+
+def _formats(kind):
+    """The MusicBrainz media formats that count as `kind` ('' = all ours)."""
+    return MB_FORMATS[kind] if kind in MB_FORMATS else \
+        tuple(f for group in MB_FORMATS.values() for f in group)
+
+
 def build_query(text, kind=''):
     """'joni mitchell blue' -> every word in the artist or the title, physical
     releases of `kind` ('vinyl', 'cd', 'cassette'; '' = any of them). Words,
     not a phrase, so 'mitchell blue' finds it too."""
-    words = [_escape(w) for w in text.split() if w.strip()][:10]
-    terms = [f'(release:{w} OR artist:{w})' for w in words if w]
-    wanted = MB_FORMATS[kind] if kind in MB_FORMATS else \
-        [f for group in MB_FORMATS.values() for f in group]
-    formats = ' OR '.join('"' + f.replace('"', '\\"') + '"' for f in wanted)
+    terms = [f'(release:{w} OR artist:{w})' for w in _words(text)]
+    formats = ' OR '.join('"' + f.replace('"', '\\"') + '"' for f in _formats(kind))
     return ' AND '.join(terms + [f'format:({formats})'])
+
+
+def album_query(text, split=None):
+    """The release-group query for the Search tab's albums: every word in
+    the album title or the artist, or with `split` (title, artist) each in
+    its own field. Release groups have no format to filter on."""
+    if split:
+        title, artist = split
+        terms = [f'releasegroup:{w}' for w in _words(title)] + [f'artist:{w}' for w in _words(artist)]
+    else:
+        terms = [f'(releasegroup:{w} OR artist:{w})' for w in _words(text)]
+    return ' AND '.join(terms)
 
 
 def _artist(credit):
@@ -234,39 +258,108 @@ def cover_urls(mbid, group_id=None, size=500):
 
 # ------------------------------------------------------------ the lookups
 
-def search(text, kind='', limit=12):
-    """Releases matching `text` for the Search tab (of format `kind`, see
-    MB_FORMATS; '' = vinyl, CD or cassette): a list of
+def _release_row(r, group=None):
+    """A Search-tab row for one release (a pressing)."""
+    label, catno = _labels(r)
+    fmt = album_format(r)
+    group = group or (r.get('release-group') or {}).get('id')
+    return {
+        'id': r['id'],
+        'title': r.get('title') or '',
+        'artist': _artist(r.get('artist-credit')),
+        'year': _year(r.get('date')),
+        'country': r.get('country') or '',
+        'label': label,
+        'catalog_number': catno,
+        'format': fmt,
+        'format_label': media.format_label(fmt),
+        # The release group's art: most pressings have none of their own
+        'thumb': cover_urls(r['id'], group, 250)[-1],
+    }
+
+
+def search_page(text, kind='', page=1, limit=PAGE):
+    """One page of releases matching `text` for the Search tab (of format
+    `kind`, see MB_FORMATS; '' = vinyl, CD or cassette): (rows, more), rows
     {'id', 'title', 'artist', 'year', 'country', 'label', 'catalog_number',
      'format', 'format_label', 'thumb'}, best match first. Raises Busy."""
     text = (text or '').strip()
-    if len(text) < 2:
-        return []
+    if len(text) < 2 or not _words(text):
+        return [], False
 
     def compute():
-        data = _mb('/release/', query=build_query(text, kind), limit=limit) or {}
-        results = []
-        for r in data.get('releases') or []:
-            if not r.get('id'):
-                continue
-            label, catno = _labels(r)
-            fmt = album_format(r)
-            group = (r.get('release-group') or {}).get('id')
-            results.append({
-                'id': r['id'],
-                'title': r.get('title') or '',
-                'artist': _artist(r.get('artist-credit')),
-                'year': _year(r.get('date')),
-                'country': r.get('country') or '',
-                'label': label,
-                'catalog_number': catno,
-                'format': fmt,
-                'format_label': media.format_label(fmt),
-                # The release group's art: most pressings have none of their own
-                'thumb': cover_urls(r['id'], group, 250)[-1],
-            })
-        return results
-    return _cached(('search', kind, text.lower()), compute)
+        offset = (page - 1) * limit
+        data = _mb('/release/', query=build_query(text, kind), limit=limit, offset=offset) or {}
+        found = [r for r in data.get('releases') or [] if r.get('id')]
+        return [_release_row(r) for r in found], offset + len(data.get('releases') or []) < (data.get('count') or 0)
+    return _cached(('search', kind, text.lower(), page, limit), compute)
+
+
+def search(text, kind='', limit=12):
+    """The first page of search_page, rows only (Do I have this?, the cover
+    finder). Raises Busy."""
+    return search_page(text, kind, 1, limit)[0]
+
+
+def albums(text, kind='', page=1, by=None):
+    """The Search tab (16.0): albums (release groups) matching `text`, one
+    row each, PAGE a page. "X by Y" asks for title X by artist Y
+    (utils.search.by_or_plain). `kind` isn't used here (release groups have
+    no format); the pressings list narrows by it. (rows, more, by). Raises Busy."""
+    text = (text or '').strip()
+    if len(text) < 2 or not _words(text):
+        return [], False, False
+
+    def run(split, page):
+        query = album_query(text, split)
+        if not query:
+            return [], False
+
+        def compute():
+            offset = (page - 1) * PAGE
+            data = _mb('/release-group/', query=query, limit=PAGE, offset=offset) or {}
+            groups = data.get('release-groups') or []
+            rows = [{
+                'id': g['id'],
+                'source': 'musicbrainz',
+                'level': 'album',
+                'title': g.get('title') or '',
+                'artist': _artist(g.get('artist-credit')),
+                'year': _year(g.get('first-release-date')),
+                'thumb': f"{CAA}/release-group/{g['id']}/front-250",
+            } for g in groups if g.get('id')]
+            return rows, offset + len(groups) < (data.get('count') or 0)
+        return _cached(('albums', query, page), compute)
+    return by_or_plain(text, run, page, by,
+                       keep=lambda r, split: fits(split, r['title'], r['artist']))
+
+
+def pressings(group_id, kind='', page=1):
+    """An album's releases (MusicBrainz browses a release group's releases),
+    physical ones of format `kind` ('' = any of ours): (rows, more), rows as
+    search()'s. BROWSE a request, filtered after, so a page can be short.
+    Raises Busy."""
+    wanted = set(_formats(kind))
+
+    def compute():
+        offset = (page - 1) * BROWSE
+        data = _mb('/release', **{'release-group': group_id, 'inc': 'labels+media+release-groups',
+                                  'limit': BROWSE, 'offset': offset}) or {}
+        releases = data.get('releases') or []
+        rows = [_release_row(r, group_id) for r in releases
+                if r.get('id') and {m.get('format') for m in r.get('media') or []} & wanted]
+        return rows, offset + len(releases) < (data.get('release-count') or 0)
+    return _cached(('pressings', group_id, kind, page), compute)
+
+
+def main_release(group_id, kind=''):
+    """The pressing "Use this" on an album row fills the form from: the
+    earliest dated one of the first page (of `kind`, if given). None if the
+    album has none. Raises Busy."""
+    rows = pressings(group_id, kind, 1)[0]
+    if not rows:
+        return None
+    return min(rows, key=lambda r: (r['year'] is None, r['year'] or 0))['id']
 
 
 def barcode_search(ean):
