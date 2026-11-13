@@ -202,3 +202,34 @@ def own_book_for_wishlist(conn, user_id, isbn):
             if row['owned'] and row['removed_at'] is None:
                 return row['id'], 'library'
     return None, None
+
+
+def _book_keys(book):
+    """Every key a shelf book answers to: its ISBN forms, then title + author
+    for each title form (the index's rules, without its ranking)."""
+    keys = {('isbn', k) for k in _isbn_keys(book['isbn'])}
+    for title in stored_title_forms(book['title'], _get(book, 'subtitle')):
+        keys |= {('title', k) for k in _title_keys(title, book['author'])}
+    return keys
+
+
+def books_in_common(conn, user_id, other_id):
+    """How many books on `user_id`'s shelf are also on `other_id`'s (16.0,
+    the profile's "friend at a glance"). Books only, on the shelf on both
+    sides (owned, not removed: book_utils.on_shelf), never a wishlist entry;
+    each user's own copies only, not their household's. Two copies are the
+    same book by ISBN, or by title and author as BookIndex matches them.
+    Counted on the caller's side: two of your editions of one book that
+    they own count twice. The caller checks they may see each other."""
+    from utils.book_utils import on_shelf
+
+    def shelf(uid):
+        # library_books leaves out the owner's wishlist entries
+        return conn.execute(
+            f'SELECT * FROM library_books b WHERE b.added_by = ? AND {on_shelf("b")}',
+            (uid,)).fetchall()
+
+    theirs = set()
+    for book in shelf(other_id):
+        theirs |= _book_keys(book)
+    return sum(1 for book in shelf(user_id) if _book_keys(book) & theirs)

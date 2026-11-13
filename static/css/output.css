@@ -2778,10 +2778,6 @@ img.book-cover-img:not([data-loaded]) {
   height: 0.75rem;
 }
 
-.h-3\.5 {
-  height: 0.875rem;
-}
-
 .h-32 {
   height: 8rem;
 }
@@ -2900,10 +2896,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .w-3 {
   width: 0.75rem;
-}
-
-.w-3\.5 {
-  width: 0.875rem;
 }
 
 .w-4 {
@@ -3514,18 +3506,8 @@ img.book-cover-img:not([data-loaded]) {
   background-color: rgb(var(--fill) / var(--tw-bg-opacity, 1));
 }
 
-.bg-green-600 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--accent) / var(--tw-bg-opacity, 1));
-}
-
 .bg-green-900\/50 {
   background-color: rgb(var(--green) / 0.5);
-}
-
-.bg-orange-600 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--orange) / var(--tw-bg-opacity, 1));
 }
 
 .bg-primary {
@@ -8098,16 +8080,6 @@ html[data-gr-bar="on"] body {
 
 .hover\:bg-content-secondary\/20:hover {
   background-color: rgb(var(--ink-2) / 0.2);
-}
-
-.hover\:bg-green-700:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--accent-hover) / var(--tw-bg-opacity, 1));
-}
-
-.hover\:bg-orange-700:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(var(--orange) / var(--tw-bg-opacity, 1));
 }
 
 .hover\:bg-primary:hover {

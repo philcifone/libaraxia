@@ -120,7 +120,7 @@ The profile's Collections and Wishlist rows: done in step 7, each one `.shelf-ca
 5. Feed card layout (section 4).
 6. Stacked shelves: `cased` rows with per-cover links, then Reviews and Collections.
 7. Wishlist (yours and a friend's) as the library's bookcase grid with the (+) quick add; the profile's rows cased; Do I Have This? results in a case. Done (7a-7f): each match is a `.case-card` with its cover on the ledge, through `.case-cover`, the hook the feed's cover now shares; a case that is a link doesn't move on hover in Shelf.
-8. Friends page and profile changes, books in common (section 5).
+8. Friends page and profile changes, books in common (section 5). Done: Friends cards are `.case-card`s, avatar and name to the profile, "See their shelf", counts as text; Friends lit in the sidebar on anyone else's profile; the profile's actions in one row with full labels (Remove from your household, Leave household, Unfriend, Invite to your household, Join their household, Cancel invite, Accept friend request, Add friend) and consequence confirms; "friend at a glance" under the name (In your household, N books in common via `book_matching.books_in_common`), the reading goal staying under the bio. Also: Do I Have This? album covers are square (a book's 5rem width cap squeezed them, every style).
 9. Static cover glare.
 10. The audit's "fix now" findings.
 11. Wording pass.

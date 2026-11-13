@@ -105,10 +105,14 @@
                the case's top-face margin adds to the list's gap, not into it #}
             <li class="flow-root">
                 <a href="{{ item_url(row) }}" class="case-card flex gap-4 bg-secondary rounded-xl card card-link p-3 sm:p-4">
+                    {# An album is square (h-24 w-24, cropped to fill); a book or
+                       movie keeps its own shape up to 5rem wide. The 5rem cap on
+                       a 6rem-tall album squeezed it (Phil, 2026-11-13). #}
+                    {% set square = row.media_type == 'record' %}
                     {% if row.cover_image_url|upload_exists %}
-                    {{ cover_img(row.cover_image_url, '', 'h-24 w-auto max-w-[5rem] rounded shadow-sm', 'case-cover self-start shrink-0', lazy=True) }}
+                    {{ cover_img(row.cover_image_url, '', ('h-24 w-24 object-cover' if square else 'h-24 w-auto max-w-[5rem]') ~ ' rounded shadow-sm', 'case-cover self-start shrink-0', lazy=True) }}
                     {% else %}
-                    {% with title=row.title, size='sm', box='case-cover h-24 w-auto aspect-[2/3] self-start shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=row.title, size='sm', box='case-cover h-24 self-start shrink-0 rounded ' ~ ('w-24' if square else 'w-auto aspect-[2/3]') %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                     <div class="min-w-0 flex-1">
                         <p class="font-semibold text-content-primary">{{ row.title }}</p>

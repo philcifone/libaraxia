@@ -74,6 +74,14 @@
                     <h1 class="text-3xl font-display text-content-primary">
                         {{ user['username'].capitalize() }}'s Profile
                     </h1>
+                    {# Friend at a glance (16.0): the household, books on both your
+                       shelves (books_in_common), for a friend; their reading goal
+                       is the line under the bio (_reading_goal.html) #}
+                    {% if common_books is not none %}
+                    {% set facts = (['In your household'] if in_shared_library else [])
+                                   + [(common_books ~ ' book' ~ ('' if common_books == 1 else 's') ~ ' in common') if common_books else 'No books in common yet'] %}
+                    <p class="mt-1 text-sm text-content-secondary" data-friend-glance>{{ facts|join(' · ') }}</p>
+                    {% endif %}
                     <!-- Bio Section -->
                     {% if current_user.id == user['id'] or (user['bio'] and not is_own_profile) %}
                     <div class="mt-3">
@@ -118,95 +126,77 @@
 
                     {% include '_reading_goal.html' %}
 
-                    <!-- Friend Request Actions -->
+                    <!-- Friend and household actions -->
                     {% if not is_own_profile %}
-                    <!-- Household actions: shown to household members whether or not they're friends -->
-                    <div class="mt-3 flex flex-wrap items-center gap-2">
-                        <!-- Household: invite / respond / remove / leave (utils/households.py) -->
+                    {# One row (16.0): each button says exactly what it does, and a
+                       confirm names the consequence. Removals are plain outline
+                       buttons, red only on hover; no icon-only or shortened labels. #}
+                    {% set name = user['username'] %}
+                    {% set removal = 'px-3 py-2 text-sm text-content-secondary hover:text-red-500 hover:border-red-500 rounded btn btn-outline' %}
+                    {% set plain = 'px-3 py-2 text-sm text-content-secondary rounded btn btn-outline' %}
+                    {% set go = 'px-3 py-2 text-sm bg-accent hover:bg-accent-hover text-on-accent rounded btn' %}
+                    <div class="mt-4 flex flex-wrap items-center gap-2" data-profile-actions>
+                        {# Household (utils/households.py): shown to household members whether or not they're friends #}
                         {% if in_shared_library %}
                             {% if household.i_am_owner %}
-                            <form method="POST" action="{{ url_for('user.household_remove', user_id=user['id']) }}" class="inline-block">
+                            <form method="POST" action="{{ url_for('user.household_remove', user_id=user['id']) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm btn flex items-center gap-1.5" data-confirm="{{ ("Remove " ~ user["username"] ~ " from your household? Their books stay theirs; you just stop sharing a library.") }}">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                    <span class="hidden sm:inline">Remove from Household</span>
-                                    <span class="sm:hidden">Remove</span>
-                                </button>
+                                <button type="submit" class="{{ removal }}" data-action="household-remove"
+                                        data-confirm="{{ 'Remove ' ~ name ~ ' from your household? You stop sharing a library; ' ~ name ~ "'s books stay theirs and yours stay yours." }}">Remove from your household</button>
                             </form>
                             {% else %}
-                            <form method="POST" action="{{ url_for('user.household_remove', user_id=current_user.id) }}" class="inline-block">
+                            <form method="POST" action="{{ url_for('user.household_remove', user_id=current_user.id) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-on-accent rounded text-sm btn" data-confirm="{{ "Leave this household? Your books stay yours; you just stop sharing a library." }}">
-                                    Leave Household
-                                </button>
+                                <button type="submit" class="{{ removal }}" data-action="household-leave"
+                                        data-confirm="Leave the household? You stop sharing a library with its members. Your books stay yours.">Leave household</button>
                             </form>
                             {% endif %}
                         {% elif household.received %}
-                            <span class="text-sm text-content-secondary">Invited you to share a library:</span>
-                            <form method="POST" action="{{ url_for('user.household_accept', invite_id=household.received['id']) }}" class="inline-block">
+                            <span class="text-sm text-content-secondary">{{ name }} invited you to share a library:</span>
+                            <form method="POST" action="{{ url_for('user.household_accept', invite_id=household.received['id']) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm btn">Accept</button>
+                                <button type="submit" class="{{ go }}">Join their household</button>
                             </form>
-                            <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.received['id']) }}" class="inline-block">
+                            <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.received['id']) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary rounded btn btn-outline">Decline</button>
+                                <button type="submit" class="{{ plain }}">Decline</button>
                             </form>
                         {% elif household.sent %}
                             <span class="text-sm text-content-secondary">Household invite sent</span>
-                            <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.sent['id']) }}" class="inline-block">
+                            <form method="POST" action="{{ url_for('user.household_decline', invite_id=household.sent['id']) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="cancel" value="1">
-                                <button type="submit" class="px-3 py-2 text-xs text-content-secondary rounded btn btn-outline">Cancel</button>
+                                <button type="submit" class="{{ plain }}">Cancel invite</button>
                             </form>
                         {% elif friendship_status == 'friends' and household.can_invite and not household.they_are_in_one %}
-                            <form method="POST" action="{{ url_for('user.household_invite', user_id=user['id']) }}" class="inline-block">
+                            <form method="POST" action="{{ url_for('user.household_invite', user_id=user['id']) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded text-sm flex items-center gap-1.5 btn">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                                    </svg>
-                                    <span class="hidden sm:inline">Invite to Household</span>
-                                    <span class="sm:hidden">Invite</span>
-                                </button>
+                                <button type="submit" class="{{ go }}">Invite to your household</button>
                             </form>
                         {% endif %}
-                    </div>
-                    <div class="mt-3">
+
+                        {# Friendship #}
                         {% if friendship_status == 'friends' %}
-                            <div class="flex flex-wrap items-center gap-2">
-                                <!-- Remove Friend -->
-                                <form method="POST" action="{{ url_for('friends.remove_friend', friend_id=user['id']) }}" class="inline-block">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-2 text-xs text-content-secondary hover:text-red-500 hover:border-red-500 rounded btn btn-outline" data-confirm="{{ ("Remove " ~ user["username"] ~ " from friends?") }}">
-                                        Remove Friend
-                                    </button>
-                                </form>
-                            </div>
+                            <form method="POST" action="{{ url_for('friends.remove_friend', friend_id=user['id']) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="{{ removal }}" data-action="unfriend"
+                                        data-confirm="{{ 'Unfriend ' ~ name ~ "? You stop seeing each other's profiles, reviews and feed. " ~ ('You stay in the same household. ' if in_shared_library else '') ~ "Nobody's books are touched." }}">Unfriend</button>
+                            </form>
                         {% elif friendship_status == 'request_sent' %}
                             <span class="text-sm text-content-secondary">Friend request sent</span>
                         {% elif friendship_status == 'request_received' %}
-                            <div class="flex gap-2">
-                                <form method="POST" action="{{ url_for('friends.accept_request', request_id=friend_request_id) }}" class="inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-on-accent rounded text-sm btn">
-                                        Accept Friend Request
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ url_for('friends.decline_request', request_id=friend_request_id) }}" class="inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="px-3 py-1 bg-primary hover:bg-primary-hover text-content-primary rounded text-sm btn btn-outline">
-                                        Decline
-                                    </button>
-                                </form>
-                            </div>
-                        {% else %}
-                            <form method="POST" action="{{ url_for('friends.send_request', username=user['username']) }}">
+                            <form method="POST" action="{{ url_for('friends.accept_request', request_id=friend_request_id) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded btn">
-                                    Add Friend
-                                </button>
+                                <button type="submit" class="{{ go }}">Accept friend request</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('friends.decline_request', request_id=friend_request_id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="{{ plain }}">Decline</button>
+                            </form>
+                        {% else %}
+                            <form method="POST" action="{{ url_for('friends.send_request', username=name) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="{{ go }}">Add friend</button>
                             </form>
                         {% endif %}
                     </div>

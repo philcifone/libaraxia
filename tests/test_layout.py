@@ -814,7 +814,13 @@ def test_friends_page_and_notifications_under_the_welcome(client, db, people):
     login(client, 'alice')
     page = client.get('/friends/').get_data(as_text=True)
     assert 'carol' in page and '1 book' in page
-    assert 'href="/base/library/carol"' in page and 'href="/videos/user/carol"' in page
+    card = page[page.index('data-friend="'):]
+    card = card[:card.index('data-friend-shelf')+200]
+    # 16.0: avatar and name open the profile, "See their shelf" the shelves,
+    # and the counts are plain text
+    assert card.count('href="/user/carol"') == 2 and 'href="/base/library/carol"' in card
+    counts = card[card.index('data-friend-counts'):card.index('</p>', card.index('data-friend-counts'))]
+    assert '<a ' not in counts and '1 book' in counts
     assert 'bob' not in page.split('id="your-friends"')[1].split('Find friends')[0]   # household, not a friend
     assert 'id="friend-search-input"' in page and 'friends.js' in page
     # A friend's shelves: crumbs back to Friends, no scope tabs
@@ -1172,3 +1178,17 @@ def test_have_matches_are_small_bookcases(client, db, people):
     page = client.get('/have/?q=dune').get_data(as_text=True)
     assert 'class="case-card flex gap-4 ' in page and 'case-cover' in page
     assert 'class="feed-cover case-cover ' in pathlib.Path('templates/activity_feed.html').read_text()
+
+
+def test_have_album_covers_are_square(client, db, people):
+    """An album's cover in Do I Have This? is a square box, not squeezed
+    into a book's 5rem-wide slot (Phil, 2026-11-13)."""
+    from test_records import add_record
+    album = add_record(db, people['alice'], title='Mule', artist='Orville Peck')
+    db.execute("UPDATE books SET cover_image_url = 'uploads/x.jpg' WHERE id = ?", (album,)); db.commit()
+    login(client, 'alice')
+    page = client.get('/have/?q=mule').get_data(as_text=True)
+    match = page[page.index('class="case-card flex gap-4 '):]
+    match = match[:match.index('</a>')]
+    assert 'max-w-[5rem]' not in match
+    assert re.search(r'class="[^"]*\bh-24\b[^"]*\bw-24\b', match)   # the picture, or the square placeholder
