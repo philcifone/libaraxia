@@ -1236,3 +1236,15 @@ def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
     login(client, 'alice')
     page = client.get('/books/search?search_term=dune').get_data(as_text=True)
     assert page.index('aria-label="Breadcrumb"') < page.index('search-form-container')
+
+
+def test_notifications_card_has_no_heading_of_its_own(client, db, people):
+    """Phil, 2026-11-13: the page heading says Notifications; the card under
+    it lost its "Recent Activity" heading and bell. Screen readers still
+    get the section's name."""
+    login(client, 'alice')
+    page = client.get('/friends/notifications_page').get_data(as_text=True)
+    card = page[page.index('data-recent-activity'):]
+    card = card[:card.index('</section>')]
+    assert 'aria-label="Recent activity"' in page
+    assert '<h2' not in card and 'Recent Activity' not in card

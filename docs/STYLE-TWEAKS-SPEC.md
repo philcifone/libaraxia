@@ -104,6 +104,7 @@ Audit of 2026-11-12: 32 pages × 7 style/mode pairs × phone and desktop, on a c
 | F15 | Profile | all styles | no page heading card; "Carol's Profile" is inside the header card | On hold: touches headings (see F10) |
 | F16 | Reviews "See all" cards | Shelf | each card is about one item with a cover, so the rule says case-card | Dropped (2026-11-13): Phil is using the bookcase on fewer cards, and the feed now copies these |
 | F17 | Sidebar | all styles, phone height | avatar 2px under the top bar and the column ending up to 170px short of the drawer's bottom: the short-screen rules (11.5, `max-height: 760px`) were sized when the nav had more entries | Done (2026-11-13, Phil: "more padding between avatar and top bar"): the avatar clears the bar by 20px; the link rows are fluid with the height (`--side-row`), so the column ends about 20px above the bottom; breakpoint 800px, since the tall layout needs 770 |
+| F18 | Notifications | all styles | the card under the page heading had its own "Recent Activity" heading and bell, repeating the page's | Done (2026-11-13, Phil): no heading in the card (`aria-label` for screen readers); Mark all as read sits at its top right |
 
 Decided 2026-11-13 (Phil): consistency calls across pages and styles are Claude's to make, so every finding above is scheduled, none is waiting on Phil. Ask only when unifying two similar things would change how something already looks elsewhere.
 
