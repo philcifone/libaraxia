@@ -15,7 +15,7 @@ from utils.book_utils import (
     google_cover_candidates,
     fetch_cover_by_isbn_direct,
     save_best_cover,
-    search_google_books,
+    search_books_page,
     cover_search_steps,
     thumbnail_jpeg,
     ALLOWED_EXTENSIONS,
@@ -28,6 +28,7 @@ from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
 from utils import grid_query, media, sorting
 from utils.reviews import then_review_values
+from utils.search import by_arg, next_page, page_arg
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
@@ -207,26 +208,22 @@ def _add_book_page(values, destination, cover_url, isbn, duplicates=()):
 @books_blueprint.route("/search_books")
 @login_required
 def search_books():
-    """AJAX endpoint for book search - returns JSON for frontend"""
-    query = request.args.get("q", "")
+    """Add Book's Search tab: {"items": [...], "next": {...} | null}, one page
+    (BOOK_PAGE) of Google Books results (Open Library when Google is down or
+    has nothing). "X by Y" is title X by author Y; `next` is the parameters
+    for "Show more" (page, by, src), utils.search.next_page."""
+    query = (request.args.get("q") or "").strip()[:200]
     if not query:
-        return jsonify({"items": []})
-
+        return jsonify({"items": [], "next": None})
+    page = page_arg(request.args)
+    source = "openlibrary" if request.args.get("src") == "ol" else None
     try:
-        current_app.logger.debug(f"Starting search for query: {query}")
-
-        # Use consolidated search function (limits to 6 results for AJAX)
-        processed_items = search_google_books(query, max_results=6)
-
-        current_app.logger.debug(f"Found {len(processed_items)} results")
-
-        response = jsonify({"items": processed_items})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
-
-    except Exception as e:
-        current_app.logger.error(f"Unexpected error in search_books: {str(e)}", exc_info=True)
+        items, more, by, source = search_books_page(query, page, by_arg(request.args), source)
+    except Exception:
+        current_app.logger.exception("Book search failed")
         return jsonify({"error": "Search failed. Please try again."}), 500
+    keep = {"by": by, "src": "ol" if source == "openlibrary" else None}
+    return jsonify({"items": items, "next": next_page(page, more, **keep)})
 
 def video_code_response(code):
     """JSON for a scanned/typed code that turned out to be a video barcode
@@ -843,74 +840,13 @@ def delete_book(id):
 @books_blueprint.route("/search", methods=["GET"])
 @login_required
 def search():
-    # Get pagination parameters
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 30, type=int)
-
-    # Get search term
-    search_term = request.args.get("search_term", "").strip()
-
-    # Get sort parameters with validation
-    sort_by, sort_order = sorting.choice(request.args, media.BOOK)
-
-    # Limit per_page to reasonable values
-    per_page = max(12, min(per_page, 100))
-
-    conn = get_db()
-    # Get library members to filter books
-    library_member_ids = get_library_members(current_user.id)
-
-    # The query is shared with bulk edit's "select all in this view" (utils/grid_query.py)
-    query, params, match_sql, match_params = grid_query.search_query(
-        conn, library_member_ids, request.args, current_user.id)
-
-    # Get total count before pagination
-    count_query = query.replace("SELECT b.*", "SELECT COUNT(b.id)")
-    total_count = conn.execute(count_query, params).fetchone()[0]
-
-    # Add sorting and pagination
-    order_sql, order_params = sorting.order_by(sort_by, sort_order, current_user.id)
-    query += order_sql + " LIMIT ? OFFSET ?"
-    offset = (page - 1) * per_page
-    params.extend([*order_params, per_page, offset])
-
-    # Get paginated books
-    books = conn.execute(query, params).fetchall()
-    has_more = (offset + len(books)) < total_count
-
-    # Handle AJAX requests for infinite scroll
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        books_data = card_json(conn, current_user.id, books)   # list view's columns too
-
-        return jsonify({
-            'books': books_data,
-            'total_count': total_count,
-            'has_more': has_more,
-            'current_page': page
-        })
-
-    # Get filter options for the template
-    filter_options = get_filter_options(library_member_ids)
-
-    # "Not on your shelf, but you read it" (8B.3): only on the default Show
-    off_shelf = None
-    if search_term and not show_choice(request.args):
-        off_shelf = off_shelf_matches(conn, 'library_books', library_member_ids,
-                                      match_sql, match_params, current_user.id)
-    # ...and "it's on your wishlist" (7.2b)
-    on_wishlist = wishlist_matches(conn, current_user.id, media.BOOK, match_sql, match_params) if search_term else None
-
-    return render_template("search.html",
-                         off_shelf=off_shelf,
-                         on_wishlist=on_wishlist,
-                         books=books,
-                         filter_options=filter_options,
-                         sort_by=sort_by,
-                         sort_order=sort_order,
-                         search_term=search_term,
-                         total_count=total_count,
-                         has_more=has_more,
-                         current_page=page)
+    """Old links to the Books search page (before 16.0). Every grid searches
+    itself now, so a search covers exactly the shelf in view: this sends the
+    query string on to the Household grid (what this page searched: yours and
+    your household's), or to your own shelf if you share with nobody."""
+    others = [m for m in get_library_members(current_user.id) if m != current_user.id]
+    target = "base.shared_library" if others else "base.index"
+    return redirect(url_for(target, **request.args.to_dict(flat=False)))
 
 
 @books_blueprint.route("/transfer/<int:book_id>", methods=["POST"])

@@ -78,8 +78,9 @@ def test_security_headers(client):
 # Routes that are GET but act, or need arguments filled in below.
 # admin.backup_download needs a real backup's name; tests/test_backups.py covers it.
 # books.thumbnail needs a ?url= and 404s without one; tests/test_csp.py covers it.
-# videos.lookup needs ?barcode= or ?title=, records.lookup ?mbid=; both answer 400 without (test_videos.py, test_records.py cover them).
-SKIP = {'static', 'admin.backup_download', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'records.lookup', 'videos.search'}
+# videos.lookup needs ?barcode= or ?title=, records.lookup ?mbid=, records.pressings ?source=&id=; all answer 400 without (test_videos.py, test_records.py, test_search_pages.py cover them).
+SKIP = {'static', 'admin.backup_download', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'records.lookup', 'videos.search',
+        'records.pressings'}
 
 
 def duplicate_ids(html):
@@ -97,12 +98,15 @@ class _Frames(HTMLParser):
     nest, so only the ones that close are counted)."""
     def __init__(self):
         super().__init__()
-        self.stack, self.nested = [], 0
+        self.stack, self.nested, self.frames = [], 0, 0
 
     def handle_starttag(self, tag, attrs):
         if tag in VOID:
             return
-        framed = 'page-frame' in (dict(attrs).get('class') or '').split()
+        classes = (dict(attrs).get('class') or '').split()
+        framed = 'page-frame' in classes or 'page-frame-narrow' in classes
+        if framed:
+            self.frames += 1
         if framed and any(self.stack):
             self.nested += 1
         self.stack.append(framed)
@@ -120,6 +124,28 @@ def nested_frames(html):
     parser = _Frames()
     parser.feed(html)
     return parser.nested
+
+
+# Pages with a layout of their own: the sign-in cards (no sidebar, centred)
+UNFRAMED = ('/auth/',)
+# A page's own width, which the two frames replace (16.0 F14)
+OWN_WIDTH = re.compile(r'class="[^"]*\bmax-w-(?:3|4|5|6|7)xl mx-auto\b')
+
+
+def frame_problems(url, html):
+    """16.0 F14 (Phil, 2026-11-13: "do the page widths"): every page sits in
+    .page-frame (7xl) or .page-frame-narrow (4xl), the same gutters, and no
+    page sets its own outer width. [] when the page follows that."""
+    parser = _Frames()
+    parser.feed(html)
+    problems = []
+    page = '<html' in html                 # not a fragment (a dialog's content)
+    if page and not url.startswith(UNFRAMED) and not parser.frames:
+        problems.append('no .page-frame or .page-frame-narrow')
+    if parser.nested:
+        problems.append('a frame inside a frame')
+    problems += [f'own width: {m.group(0)}' for m in OWN_WIDTH.finditer(html)]
+    return problems
 
 
 def test_nested_frame_checker():
@@ -155,7 +181,7 @@ def test_every_page_loads(app, client, db, people):
         if r.status_code == 200 and r.mimetype == 'text/html':
             assert unbalanced_tags(r.get_data(as_text=True)) == [], url
             assert duplicate_ids(r.get_data(as_text=True)) == [], url
-            assert nested_frames(r.get_data(as_text=True)) == 0, url
+            assert frame_problems(url, r.get_data(as_text=True)) == [], url
         checked.append(url)
     assert len(checked) > 35
 
@@ -165,7 +191,7 @@ def test_every_page_loads(app, client, db, people):
                        (alice,)).lastrowid
     db.commit()
     extra = ['/base/index?show_removed=1', f'/books/book/{removed}', '/user/alice', '/user/bob',
-             '/base/library/carol', '/wishlist/user/carol', '/books/search?q=dune',
+             '/base/library/carol', '/wishlist/user/carol', '/base/shared-library?q=dune',
              '/admin/users/%d/removal' % alice,
              f'/videos/{video}', f'/videos/edit/{video}', f'/read/rate_review/{video}',
              '/videos/?q=jaws&format=VHS&sort_by=runtime_minutes&sort_order=desc',

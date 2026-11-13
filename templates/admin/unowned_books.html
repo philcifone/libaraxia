@@ -5,15 +5,15 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+    <div class="page-frame-narrow pt-20 pb-12">
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Unowned Books') }}
 
         <div class="mb-8">
             <h1 class="text-3xl font-display text-content-primary mb-2">Unowned Books</h1>
             <p class="text-content-secondary text-sm">
-                Books with no owner: their owner's account was deleted with "no owner", or they were added
-                before books had owners. They keep their reviews and reading history, but show up in no
-                library until someone owns them.
+                Books with no owner: their owner's account was deleted with "no owner", or they predate
+                owners. They keep their reviews and reading history but show in no library until someone
+                owns them.
             </p>
         </div>
 

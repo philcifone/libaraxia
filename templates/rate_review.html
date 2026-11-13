@@ -8,7 +8,7 @@
 
 
 {% block content %}
-    <main class="max-w-6xl mx-auto px-4 pt-20 pb-12">
+    <main class="page-frame pt-20 pb-12">
         <!-- Back Navigation -->
         {% if from_reviews %}
         {{ crumbs([('Reviews', url_for('reviews.index', type=m.type)), (book.title, item_url(book))], 'Review', class='mb-8') }}

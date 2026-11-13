@@ -1499,9 +1499,15 @@ textarea {
        Every wide page (grids, shelves, wishlist, collections, reviews, the
        feed, friends): its toolbars, heading, bookcase and grid all share
        this one width and gutter, so they line up on every screen. Single-
-       column pages (profile, forms, settings panes) are narrower on purpose
-       and set their own max-w. Phil, 2026-11-13: the wishlist grid on an
-       iPhone, a 16px gutter each side, is the reference. */
+       column pages use .page-frame-narrow: the same gutters, 4xl. One of
+       the two on every page, never one inside another and never a page's
+       own max-w (tests/test_pages.py checks every page). Phil, 2026-11-13:
+       the wishlist grid on an iPhone, a 16px gutter each side, is the
+       reference.
+         .page-frame         grids, shelves, bookcases, two-column pages
+                             (the item page, Rate & Review), lists of cards
+         .page-frame-narrow  one column: the profile, notifications, forms
+                             (add, edit, import), Do I Have This?, admin pages */
 
 .page-frame {
   margin-left: auto;
@@ -1520,6 +1526,28 @@ textarea {
 
 @media (min-width: 1024px) {
   .page-frame {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.page-frame-narrow {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 56rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-frame-narrow {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-frame-narrow {
     padding-left: 2rem;
     padding-right: 2rem;
   }
@@ -2967,14 +2995,6 @@ summary.chip::-webkit-details-marker {
 
 .max-w-4xl {
   max-width: 56rem;
-}
-
-.max-w-5xl {
-  max-width: 64rem;
-}
-
-.max-w-6xl {
-  max-width: 72rem;
 }
 
 .max-w-\[120px\] {
@@ -6285,25 +6305,41 @@ and to the right for its faces */
    The entries plus the welcome and Log out are taller than a
    small phone (667px); the nav scrolls, but Admin and Log out shouldn't
    hide below the fold. Height is what runs out, so this keys on height:
-   a smaller avatar, tighter link rows. Unlayered, so it beats the
-   Tailwind padding utilities on the same elements. */
+   a smaller avatar, link rows that shrink with the height. Unlayered, so
+   it beats the Tailwind padding utilities on the same elements.
+   16.0 (Phil, 2026-11-13: "more padding between avatar and top bar"): the
+   avatar clears the 4rem top bar by 20px, as it does on a tall screen (it
+   was 2px), and the rows are fluid instead of one fixed squeeze, which
+   left up to 170px empty under Log out: about 9px on a 667px screen, up to
+   the full .75rem at about 730px, so the column ends about 20px above the
+   drawer's bottom. The tall layout needs 770px, hence 800. */
 
-@media (max-height: 760px) {
+@media (max-height: 800px) {
+  #sidebar {
+    --side-row: clamp(.3rem, calc(.4rem + (100vh - 627px) / 18), .75rem);
+  }
+
+  @supports (height: 100dvh) {
+    #sidebar {
+      --side-row: clamp(.3rem, calc(.4rem + (100dvh - 627px) / 18), .75rem);
+    }
+  }
+
   #sidebar .sidebar-head {
     padding-top: 0;
     padding-bottom: .75rem;
   }
 
   #sidebar .sidebar-avatar {
-    width: 2.75rem;
-    height: 2.75rem;
-    margin-top: 3.4rem;
+    width: 3rem;
+    height: 3rem;
+    margin-top: 4.5rem;
     margin-bottom: .5rem;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
   }
 
   #sidebar .sidebar-head h2 {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
   }
 
   #sidebar > div {
@@ -6312,14 +6348,14 @@ and to the right for its faces */
   }
 
   #sidebar .nav-link {
-    padding: .4rem .75rem;
+    padding: var(--side-row) .75rem;
   }
 
   /* .75rem: "Do I Have This?" on one line */
 
   #sidebar form button {
-    padding-top: .5rem;
-    padding-bottom: .5rem;
+    padding-top: var(--side-row);
+    padding-bottom: var(--side-row);
   }
 }
 

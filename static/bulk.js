@@ -77,16 +77,22 @@ function applyLabel(n, action = '', shelfName = '') {
 
 function selectedLabel(n) { return `${n} selected`; }
 
-// A view selection's wording (Phil, 2026-11-11): a grid is a shelf, Search
-// has results. `button` is the offer, `count` the bar once it's taken; past
-// the cap the bar says so, and the actions are off.
-function viewLabel(total, view = '') {
-    const search = view === 'book:search';
-    if (total > MAX_ITEMS) return `Too many for one edit (${total}). Narrow the ${search ? 'search' : 'view'}.`;
-    return search ? `All ${total} results` : `All ${total} on this shelf`;
+// A view selection's wording (Phil, 2026-11-11): a grid is a shelf, a search
+// has results. Since 16.0 every grid searches itself, so `searched` (the
+// grid's URL has a search term) decides, not the view. The button is the
+// offer, the count the bar once it's taken; past the cap the bar says so,
+// and the actions are off.
+function viewLabel(total, searched = false) {
+    if (total > MAX_ITEMS) return `Too many for one edit (${total}). Narrow the ${searched ? 'search' : 'view'}.`;
+    return searched ? `All ${total} results` : `All ${total} on this shelf`;
 }
-function viewButtonLabel(view = '') {
-    return view === 'book:search' ? 'Select all results' : 'Select all on this shelf';
+function viewButtonLabel(searched = false) {
+    return searched ? 'Select all results' : 'Select all on this shelf';
+}
+
+// Whether the page's grid is searched (?search_term= with words in it)
+function isSearched() {
+    return !!(new URLSearchParams(window.location.search).get('search_term') || '').trim();
 }
 
 // The genre field's state: what would be sent, and the line under the box.
@@ -293,7 +299,7 @@ function idFromHref(href) {
         const hint = $('bulk-hint');
         if (viewAll) {
             const over = viewAll.total > MAX_ITEMS;
-            $('bulk-count').textContent = viewLabel(viewAll.total, viewAll.key);
+            $('bulk-count').textContent = viewLabel(viewAll.total, isSearched());
             $('bulk-all').classList.add('hidden');
             $('bulk-clear').classList.remove('hidden');
             document.querySelectorAll('[data-bulk-action]').forEach(btn => {
@@ -329,7 +335,7 @@ function idFromHref(href) {
             more.type = 'button';
             more.className = 'btn btn-outline rounded-lg px-3 py-1 text-sm';
             more.dataset.click = 'bulkSelectView';
-            more.textContent = viewButtonLabel(container.dataset.bulkView);   // the line before it gives the number
+            more.textContent = viewButtonLabel(isSearched());   // the line before it gives the number
             hint.append(n === list.length ? `All ${n} loaded are selected. ` : `${n} of ${total} selected. `, more);
         } else if (partial) {
             hint.textContent = `Selected the ${list.length} loaded of ${total}. Scroll down to load more.`;

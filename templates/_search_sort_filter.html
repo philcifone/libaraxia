@@ -5,10 +5,10 @@
    switch live in the view bar above the grid (_view_bar.html). Both forms
    are GET, so no CSRF token: it would only end up in URLs and logs.
 
-   Shared by every section. The Library leaves the options out: search goes
-   to books.search. Movies and Vinyls pass `m` (media_labels) and
-   `search_action` (the grid page itself), so search and filters stay on
-   that page; their filter_options add `formats`. The box's placeholder
+   Shared by every section. Every grid passes `search_action` (the grid
+   page itself), so a search covers exactly the shelf in view and its count
+   (Phil, 2026-11-10; done 16.0). Movies and Music also pass `m`
+   (media_labels); their filter_options add `formats`. The box's placeholder
    carries the item count ("Search your 136 books", Phil) unless the list
    is already searched or filtered (is_narrowed); then the count of matches
    is the line under the box. `top_padding` is for a
@@ -25,18 +25,17 @@
   <div class="relative z-30">
     <div class="grid grid-cols-4 gap-2">
         <!-- Search -->
-        <form method="GET" action="{{ search_action or url_for('books.search') }}" class="col-span-3"
+        <form method="GET" action="{{ search_action or request.path }}" class="col-span-3"
               role="search" data-submit="showLoading" data-loading="Searching...">
-            {% if search_action %}
-            {# Searching a section page keeps its sort, view and household members #}
-            {% for key in ('sort_by', 'sort_order', 'view', 'member') %}{% for value in request.args.getlist(key) %}
+            {# A new search keeps everything else in view: filters, sort, view
+               and household members (16.0), as filtering keeps the search #}
+            {% for key in request.args if key not in ('search_term', 'page', 'per_page') %}{% for value in request.args.getlist(key) %}
             <input type="hidden" name="{{ key }}" value="{{ value }}">
             {% endfor %}{% endfor %}
-            {% endif %}
             <div class="relative h-full">
                 <input type="text"
                        id="search_term"
-                       aria-label="Search {{ 'these ' ~ m.plural if m else 'your library' }}"
+                       aria-label="Search {{ whose }} {{ plural }}"
                        name="search_term"
                        placeholder="{{ placeholder }}"
                        title="{{ m.search_hint if m else 'Title, author, ISBN or tag' }}"
@@ -191,7 +190,7 @@
                 {# From Goodreads (ROADMAP 14b): books your Goodreads imports matched or
                    added, owned or not. Books only, and not on a friend's shelf (it is
                    always your own imports, utils/grid_query.from_goodreads). #}
-                {% if not m and not search_action %}
+                {% if not m and not friend %}
                 <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">
                     <input type="checkbox" name="from" value="goodreads" id="from_goodreads"
                            data-change="filtersChanged"

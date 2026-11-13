@@ -197,6 +197,21 @@ def test_sidebar_has_the_mode_shortcut(client, db, people):
     assert db.execute('SELECT color_mode FROM users WHERE id = ?', (people['bob'],)).fetchone()[0] == 'light'
 
 
+def test_short_screen_sidebar_clears_the_top_bar_and_fills_the_drawer():
+    """16.0 (Phil, 2026-11-13): on a phone-height screen the compact sidebar
+    put the avatar 2px under the 4rem top bar and ended 170px short. The
+    avatar's top (.75rem padding + its margin) clears the bar by 20px, the
+    rows grow with the height, and the breakpoint covers the tall layout's
+    770px. Measured in a browser at 600-844px tall; this guards the numbers."""
+    css = (ROOT / 'static/styles.css').read_text()
+    block = css[css.index('@media (max-height: 800px)'):]
+    block = block[:block.index('\n}\n')]
+    assert 'margin-top: 4.5rem' in block                       # 12px + 72px = 64px bar + 20px
+    assert '#sidebar .nav-link { padding: var(--side-row) .75rem; }' in block
+    assert 'clamp(.3rem, calc(.4rem + (100dvh - 627px) / 18), .75rem)' in block
+    assert '@media (max-height: 760px)' not in css
+
+
 def test_book_page_cover_has_no_film_frame(client, db, people):
     """The 7.1 film frame came off books (Phil, 2026-11-05). Its CSS is parked
     in docs/parked/film-frame.css for VHS/DVD, not loaded by the app."""
@@ -308,8 +323,8 @@ def test_empty_states(client, db, people):
     text = lambda url: ' '.join(client.get(url).get_data(as_text=True).split())
     assert 'Your library is empty' in text('/base/index') and '/user/import_goodreads_page' in text('/base/index')
     assert 'No books match these filters' in text('/base/index?genre=Nope')
-    page = text('/books/search?search_term=zzzz')
-    assert 'No books match &#34;zzzz&#34;' in page or 'No books match "zzzz"' in page
+    page = text('/base/index?search_term=zzzz')                 # the grid searches itself (16.0)
+    assert 'No books on your shelf match &#34;zzzz&#34;' in page and 'Clear the search' in page
     assert 'Your wishlist is empty' in text('/wishlist/view')
     feed = text('/feed/activity')
     assert 'Nothing in your feed yet' in feed and 'Find friends' not in feed   # link removed 2026-11-07
@@ -417,10 +432,16 @@ def test_view_bar_sorts_in_place(client, db, people):
     assert '<input type="hidden" name="member" value="%d">' % people['bob'] in sort_form
     assert 'action="/base/shared-library"' in shared[shared.index('id="filter-form"') - 10:][:200]
 
-    search = client.get('/books/search?search_term=dune').get_data(as_text=True)
+    search = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
     filter_form = search[search.index('id="filter-form"'):]
-    assert 'action="/books/search"' in filter_form[:100]
+    assert 'action="/base/shared-library"' in filter_form[:100]
     assert '<input type="hidden" name="search_term" value="dune">' in filter_form
+    # ...and a new search keeps the filters, sort and members in view (16.0)
+    filtered = client.get('/base/shared-library?genre=Fiction&sort_by=author&member=%d' % people['bob']).get_data(as_text=True)
+    box = filtered[filtered.index('role="search"') - 200:filtered.index('id="search_term"')]
+    assert 'action="/base/shared-library"' in box
+    for kept in ('name="genre" value="Fiction"', 'name="sort_by" value="author"', 'name="member" value="%d"' % people['bob']):
+        assert kept in box, kept
 
     for html in (page, shared, search):
         for form in re.findall(r'<form[^>]*method="GET".*?</form>', html, re.S | re.I):
@@ -444,7 +465,7 @@ def test_search_row_sits_under_the_tabs(client, people):
         row = page.index('search-form-container')
         assert tabs < row, url
         assert 'id="filter-toggle"' in page and 'aria-controls="filter-panel"' in page, url
-    search = client.get('/books/search?search_term=x').get_data(as_text=True)
+    search = client.get('/base/shared-library?search_term=x').get_data(as_text=True)
     assert 'search-form-container' in search and 'pt-20' in search
     wishlist = client.get('/wishlist/view').get_data(as_text=True)
     assert 'id="search-toggle"' not in wishlist
@@ -1210,7 +1231,8 @@ def test_infinite_scroll_finds_the_grid_by_data_not_layout_classes():
 def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
     """16.0 steps 9-10: Shelf lays a still glare over every cover (the
     .cover-sheen layer, with --sheen-shift for a tilt to drive later); the
-    feed shows days, not timestamps (F13); search starts with its crumbs (F11)."""
+    feed shows days, not timestamps (F13); a search keeps its page's
+    heading above the search row (F11; since 16.0 the grid itself)."""
     css = pathlib.Path('static/styles.css').read_text()
     rule = css[css.index(':root[data-style="shelf"] .cover-sheen {'):]
     rule = rule[:rule.index('}')]
@@ -1219,5 +1241,17 @@ def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
     assert '{{ activity.date[:10] }}' in pathlib.Path('templates/activity_feed.html').read_text()
     add_book(db, people['alice'], title='Dune')
     login(client, 'alice')
-    page = client.get('/books/search?search_term=dune').get_data(as_text=True)
-    assert page.index('aria-label="Breadcrumb"') < page.index('search-form-container')
+    page = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
+    assert page.index('<h1') < page.index('search-form-container')
+
+
+def test_notifications_card_has_no_heading_of_its_own(client, db, people):
+    """Phil, 2026-11-13: the page heading says Notifications; the card under
+    it lost its "Recent Activity" heading and bell. Screen readers still
+    get the section's name."""
+    login(client, 'alice')
+    page = client.get('/friends/notifications_page').get_data(as_text=True)
+    card = page[page.index('data-recent-activity'):]
+    card = card[:card.index('</section>')]
+    assert 'aria-label="Recent activity"' in page
+    assert '<h2' not in card and 'Recent Activity' not in card

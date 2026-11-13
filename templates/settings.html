@@ -10,23 +10,25 @@
        unchanged, with its own Users / Households / Maintenance tabs) for
        admins. The tab is in the URL hash (common.js, initTabs); a hash inside
        a panel, like #library-backups or #maintenance, opens that panel. #}
-    <div class="page-frame pt-20 pb-12">
-        {{ page_heading('settings', 'Settings', class='mb-8') }}
+    {# One column, like every other settings-like page: the heading card is as
+       wide as the tabs and panes under it (16.0 F12) #}
+    <div class="page-frame-narrow pt-20 pb-12">
+        {{ page_heading('settings', 'Settings', class='mb-6') }}
 
         {% set tabs = [('library', 'Library'), ('account', 'Account')] %}
         {% if current_user.is_admin %}{% set tabs = tabs + [('admin', 'Admin')] %}{% endif %}
         <div data-tabs class="space-y-6">
-            <div class="bg-secondary rounded-xl overflow-hidden card flex items-stretch max-w-4xl mx-auto" role="tablist" aria-label="Settings" hidden>
+            <div class="bg-secondary rounded-xl overflow-hidden card flex items-stretch" role="tablist" aria-label="Settings" hidden>
                 {% for key, label in tabs %}
                 <button type="button" role="tab" id="tab-{{ key }}" aria-controls="{{ key }}" aria-selected="false" class="tab">{{ label }}</button>
                 {% endfor %}
             </div>
 
-            <div role="tabpanel" id="library" aria-labelledby="tab-library" class="max-w-4xl mx-auto space-y-6">
+            <div role="tabpanel" id="library" aria-labelledby="tab-library" class="space-y-6">
                 {% include '_settings_library.html' %}
             </div>
 
-            <div role="tabpanel" id="account" aria-labelledby="tab-account" class="max-w-4xl mx-auto space-y-6">
+            <div role="tabpanel" id="account" aria-labelledby="tab-account" class="space-y-6">
                 {% include '_settings_account.html' %}
             </div>
 

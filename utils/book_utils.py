@@ -14,6 +14,7 @@ from utils.database import get_db
 from flask_login import current_user
 from urllib.parse import urljoin, urlparse, parse_qs, quote
 from utils.image_utils import is_safe_upload_path
+from utils.search import by_or_plain, fits
 from models import get_library_members
 
 # Constants
@@ -97,13 +98,16 @@ def _get_json(url: str, params: Optional[dict] = None, retries: int = 1) -> Opti
 # Google Books
 # ---------------------------------------------------------------------------
 
-def _google_volumes(query: str, max_results: int = 10) -> Optional[List[dict]]:
-    """Query Google Books. Returns a list of items, or None if the API failed."""
+def _google_volumes(query: str, max_results: int = 10, start: int = 0) -> Optional[List[dict]]:
+    """Query Google Books (from result `start`, for a later page). Returns a
+    list of items, or None if the API failed."""
     global _google_down_until
     if time.time() < _google_down_until:
         return None
 
     params = {"q": query, "maxResults": max(1, min(max_results, 40))}
+    if start:
+        params["startIndex"] = start
     api_key = os.getenv('GOOGLE_BOOKS_API_KEY')
     if api_key:
         params["key"] = api_key
@@ -165,9 +169,65 @@ def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any
     if not items:
         current_app.logger.info(f"Google Books returned no results for '{query}', trying Open Library")
         return search_open_library(query, max_results)
+    return _google_rows(items[:max_results])
 
+
+BOOK_PAGE = 10      # Add Book's Search tab: rows per page ("Show more" asks for the next)
+
+
+class _GoogleDown(Exception):
+    """Google Books didn't answer (or is cooling down): Open Library instead."""
+
+
+def search_books_page(query: str, page: int = 1, by=None, source: str = None):
+    """One page of Add Book's Search tab (16.0): (rows, more, by, source).
+
+    Google Books first; "X by Y" asks for title words X and author words Y
+    (intitle: / inauthor:), falling back to the words as typed when that
+    finds nothing (utils.search.by_or_plain). Open Library answers when
+    Google is down, or finds nothing at all on the first page; `source`
+    'openlibrary' (from the first page's answer) keeps "Show more" there.
+    Rows are search_google_books' shape."""
+    words = lambda text: re.sub(r'[-:!(){}\[\]^"~*?\\/+]', ' ', text).split()
+
+    def google(split, page):
+        if split:
+            q = ' '.join([f'intitle:{w}' for w in words(split[0])] + [f'inauthor:{w}' for w in words(split[1])])
+        else:
+            q = query
+        items = _google_volumes(q, BOOK_PAGE, (page - 1) * BOOK_PAGE)
+        if items is None:
+            raise _GoogleDown()
+        return _google_rows(items[:BOOK_PAGE]), len(items) >= BOOK_PAGE
+
+    def open_library(split, page):
+        if split:
+            rows = search_open_library(title=split[0], author=split[1], max_results=BOOK_PAGE, page=page)
+        else:
+            rows = search_open_library(query, max_results=BOOK_PAGE, page=page)
+        return rows, len(rows) >= BOOK_PAGE
+
+    def keep(row, split):
+        v = row.get("volumeInfo") or {}
+        return fits(split, f"{v.get('title', '')} {v.get('subtitle', '')}", ' '.join(v.get('authors') or []))
+
+    if source != 'openlibrary':
+        try:
+            rows, more, used_by = by_or_plain(query, google, page, by, keep)
+            if rows or page > 1:
+                return rows, more, used_by, 'google'
+        except _GoogleDown:
+            if page > 1:
+                return [], False, by, 'google'      # don't switch lists halfway down
+        current_app.logger.info(f"Google Books had nothing for '{query}', trying Open Library")
+    rows, more, used_by = by_or_plain(query, open_library, page, by, keep)
+    return rows, more, used_by, 'openlibrary'
+
+
+def _google_rows(items: List[dict]) -> List[Dict[str, Any]]:
+    """Google volumes as the Search tab's rows (Google-Books-shaped, trimmed)."""
     processed_items = []
-    for item in items[:max_results]:
+    for item in items:
         volume_info = item.get("volumeInfo", {})
         links = volume_info.get("imageLinks", {})
         thumb = _google_link(links.get("thumbnail") or links.get("smallThumbnail") or "") or None
@@ -295,13 +355,15 @@ def fetch_open_library(isbn: str) -> Optional[Dict[str, Any]]:
     }
 
 def search_open_library(query: str = None, max_results: int = 15,
-                        title: str = None, author: str = None) -> List[Dict[str, Any]]:
+                        title: str = None, author: str = None, page: int = 1) -> List[Dict[str, Any]]:
     """Search Open Library and return results in the same shape as search_google_books.
 
-    Pass `query` for a free-text search, or `title`/`author` for a fielded one.
+    Pass `query` for a free-text search, or `title`/`author` for a fielded one;
+    `page` (of `max_results`) for "Show more".
     """
     params = {
         "limit": max_results,
+        "page": page,
         "fields": "title,subtitle,author_name,publisher,first_publish_year,"
                   "number_of_pages_median,isbn,cover_i,subject"
     }

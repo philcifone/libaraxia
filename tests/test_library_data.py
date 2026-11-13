@@ -39,7 +39,7 @@ def test_someone_elses_wishlist_doesnt_hide_book_from_search(client, db, people)
     book = add_book(db, people['alice'], title='Dune')
     wishlist(db, people['carol'], book)
     login(client, 'alice')
-    r = client.get('/books/search?search_term=Dune')
+    r = client.get('/base/shared-library?search_term=Dune')
     assert b'Dune' in r.data
 
 

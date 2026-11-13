@@ -262,7 +262,7 @@
                     <form id="remove-book-panel" action="{{ url_for('books.remove_book', id=book['id']) }}" method="POST"
                           class="hidden mt-4 p-4 bg-primary border border-card rounded-lg space-y-3">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <p class="text-sm text-content-primary">The {{ m.noun }} leaves your {{ m.shelf }} (given away, sold, lost). It stops showing on your shelves, but its record stays, with everyone's reviews, ratings and {{ m.history|lower }}. You can put it back any time.</p>
+                        <p class="text-sm text-content-primary">For a {{ m.noun }} that's gone (given away, sold, lost): it leaves your shelves, but its record stays, with everyone's reviews, ratings and {{ m.history|lower }}. You can put it back any time.</p>
                         <label for="removed_note" class="block text-xs text-content-secondary">Where did it go? (optional)</label>
                         <input type="text" name="removed_note" id="removed_note" maxlength="200" placeholder="e.g. Little Free Library"
                                class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">

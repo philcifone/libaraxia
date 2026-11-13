@@ -4,7 +4,7 @@ from utils.database import get_db
 from utils import grid_query, households, media, sorting
 from datetime import datetime
 from models import get_library_members, is_friends_with
-from utils.book_utils import get_filter_options, card_json
+from utils.book_utils import get_filter_options, card_json, show_choice, off_shelf_matches, wishlist_matches
 
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
 
@@ -55,6 +55,17 @@ def library_page(template, owner_ids, data_user, **extra):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'books': card_json(conn, data_user, books),   # list view's columns too
                         'total_count': total_count, 'has_more': has_more, 'current_page': page})
+
+    # A search on your own or the household's shelf also says what matches
+    # off the shelf ("not on your shelf, but you read it", 8B.3) and on your
+    # wishlist (7.2b); a friend's shelf shows only their shelf
+    term = (request.args.get("search_term") or "").strip()
+    if term and 'friend' not in extra:
+        match_sql, match_params = grid_query.term_match(term, current_user.id)
+        if not show_choice(request.args):
+            extra['off_shelf'] = off_shelf_matches(conn, 'library_books', owner_ids, match_sql,
+                                                   match_params, current_user.id)
+        extra['on_wishlist'] = wishlist_matches(conn, current_user.id, media.BOOK, match_sql, match_params)
 
     return render_template(template, books=books,
                            filter_options=get_filter_options(owner_ids, data_user=data_user),

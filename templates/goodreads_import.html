@@ -8,7 +8,7 @@
 {% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
+<div class="page-frame-narrow pt-20 pb-8 space-y-6">
     {{ crumbs([('Settings', url_for('user.settings', _anchor='library'))], 'Goodreads Import', class='') }}
 
     {{ page_heading('library', 'Import from Goodreads', subtitle='Your reading history from a Goodreads CSV export', class='') }}
@@ -33,7 +33,7 @@
     {# A backup first (utils/personal_backups.py); the import also takes one itself #}
     <section class="bg-secondary rounded-xl card p-6 space-y-3 border-l-4 border-accent">
         <h2 class="text-2xl font-display text-content-primary">Back up first</h2>
-        <p class="text-content-secondary">An import can write hundreds of items at once. Back up your library before you import, so you can put it back exactly as it was if the result isn't what you wanted. Libaraxia also backs up your library by itself when you press Import. Restoring a backup only changes your own data.</p>
+        <p class="text-content-secondary">An import can write hundreds of items at once, so Libaraxia backs up your library when you press Import (you can make one yourself first, too). Restoring a backup puts your library back exactly as it was and changes nobody else's data.</p>
         <p class="text-content-primary">{% if last_backup %}Your last backup: {{ last_backup.created_at.strftime('%-d %b %Y, %H:%M') }} ({{ last_backup.kind_label|lower }}).{% else %}You have no backups yet.{% endif %}</p>
         <div class="flex flex-wrap items-center gap-4">
             <form method="POST" action="{{ url_for('user.personal_backup_create') }}">

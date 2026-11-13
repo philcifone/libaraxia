@@ -51,7 +51,7 @@
 
 {% block content %}
 <div id="add-item" data-type="{{ m.type }}"{% if request.method == 'GET' and code_value %} data-auto-lookup="1"{% endif %}{% if request.method == 'GET' and values.lookup_url %} data-lookup-url="{{ values.lookup_url }}"{% endif %} data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
-     class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+     class="page-frame-narrow pt-20 pb-10">
     {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun) }}
     {# The page's heading card above the lookups (16.0), as on every page #}
     {{ page_heading('bookmark' if to_wishlist else section_icons[m.type], heading) }}
@@ -92,8 +92,8 @@
             {# Not the grid's search box (7.2b): this one looks things up online
                to fill the form. Say so, and point at the shelf check. #}
             <p class="px-4 -mt-2 pb-3 text-xs text-content-secondary">
-                Searches online catalogues to fill in the form, not your library.
-                A scanned or typed code is checked against your library first; for a title, use
+                Fills in the form from online catalogues, not your library.
+                A code is checked against your library first; to check a title, use
                 <a href="{{ url_for('have.check') }}" class="underline hover:text-accent">Do I Have This?</a>
             </p>
             <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pb-4"></div>

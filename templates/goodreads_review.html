@@ -35,7 +35,7 @@
 {%- endmacro %}
 
 {% block content %}
-<div id="gr-review" class="max-w-5xl mx-auto pt-20 pb-28 px-4 space-y-6"
+<div id="gr-review" class="page-frame-narrow pt-20 pb-28 space-y-6"
      data-choose-url="{{ url_for('user.import_goodreads_choose') }}"
      data-apply-url="{{ url_for('user.import_goodreads_apply') }}"
      data-undo-url="{{ url_for('bulk.undo', edit_id=0) }}"

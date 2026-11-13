@@ -28,7 +28,7 @@ def shelves(db, people):
 
 
 @pytest.mark.parametrize('url', ['/base/index', '/base/shared-library', '/videos/', '/videos/shared',
-                                 '/records/', '/records/shared', '/books/search?search_term=Dune',
+                                 '/records/', '/records/shared', '/base/shared-library?search_term=Dune',
                                  '/collections/collections/status/read'])
 def test_select_is_on_the_grids_you_can_edit_from(client, people, shelves, url):
     login(client, 'alice')

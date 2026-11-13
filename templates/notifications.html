@@ -6,7 +6,7 @@
 
 {% block content %}
     <!-- Main Content -->
-    <div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
+    <div class="page-frame-narrow pt-20 pb-8 space-y-6">
         {{ page_heading('bell', 'Notifications', class='') }}
 
         <!-- Friend Requests Section -->
@@ -78,7 +78,7 @@
                     {% endif %}
                     <div class="flex-1 min-w-0">
                         <p class="text-content-primary font-semibold text-lg">{{ invite.username }}</p>
-                        <p class="text-content-secondary text-sm">Invited you to share their library. You'll see each other's books in the shared library, and books can be handed between you.</p>
+                        <p class="text-content-secondary text-sm">Invited you to their household: you'd see each other's books on the Household shelves, and could hand books to each other.</p>
                         <p class="text-content-secondary text-xs mt-1">{{ invite.created_at }}</p>
                     </div>
                     <div class="flex gap-3 flex-shrink-0">
@@ -101,25 +101,18 @@
         </section>
         {% endif %}
 
-        <!-- Recent Activity Section -->
-        <section class="bg-secondary rounded-lg p-6 card">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-display text-content-primary flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                    </svg>
-                    Recent Activity
-                </h2>
-                {% if notifications %}
-                <form method="POST" action="{{ url_for('friends.mark_all_read') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit"
-                            class="px-4 py-2 text-sm bg-primary-hover hover:bg-accent/20 text-content-secondary hover:text-accent rounded-lg btn btn-outline">
-                        Mark all as read
-                    </button>
-                </form>
-                {% endif %}
-            </div>
+        <!-- Recent activity: no heading of its own (Phil, 2026-11-13), the
+             page heading says what it is; screen readers still get a name -->
+        <section class="bg-secondary rounded-lg p-6 card" aria-label="Recent activity" data-recent-activity>
+            {% if notifications %}
+            <form method="POST" action="{{ url_for('friends.mark_all_read') }}" class="flex justify-end mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                        class="px-4 py-2 text-sm bg-primary-hover hover:bg-accent/20 text-content-secondary hover:text-accent rounded-lg btn btn-outline">
+                    Mark all as read
+                </button>
+            </form>
+            {% endif %}
 
             {% if notifications %}
             <div class="space-y-2">

@@ -73,7 +73,7 @@ def test_search_shared_and_friends_skip_not_owned(client, db, people):
     not_owned(db, alice, 'Dune Messiah')
     add_book(db, alice, title='Dune')
     login(client, 'bob')                       # alice's household
-    assert titles(client, '/books/search?search_term=dune') == {'Dune'}
+    assert titles(client, '/base/shared-library?search_term=dune') == {'Dune'}
     assert titles(client, '/base/shared-library') == {'Dune'}
     login(client, 'carol')                     # alice's friend
     page = client.get('/base/library/alice').get_data(as_text=True)
@@ -276,7 +276,7 @@ def test_search_hints_at_matches_not_on_the_shelf(client, db, people):
     db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, read))
     db.commit()
     login(client, 'alice')
-    page = client.get('/books/search?search_term=dune').get_data(as_text=True)
+    page = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
     hint = page[page.index('Not on your shelf:'):]
     hint = hint[:hint.index('</p>')]
     assert f'/books/book/{read}' in hint and '(read, unshelved)' in hint
@@ -286,8 +286,8 @@ def test_search_hints_at_matches_not_on_the_shelf(client, db, people):
     grid = page[page.index('id="book-container"'):]
     assert 'Dune Messiah' not in grid
     # No hint once Show asks for them, or without a search, or with nothing hidden
-    assert 'Not on your shelf' not in client.get('/books/search?search_term=dune&show=all').get_data(as_text=True)
-    assert 'Not on your shelf' not in client.get('/books/search?search_term=zzz').get_data(as_text=True)
+    assert 'Not on your shelf' not in client.get('/base/shared-library?search_term=dune&show=all').get_data(as_text=True)
+    assert 'Not on your shelf' not in client.get('/base/shared-library?search_term=zzz').get_data(as_text=True)
 
 
 def test_section_search_hint_names_household_owner_and_skips_friends(client, db, people):

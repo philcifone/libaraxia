@@ -41,7 +41,7 @@
             </p>
             <form method="POST" action="{{ url_for('books.transfer_book', book_id=book['id']) }}"
                   class="flex flex-col sm:flex-row gap-3"
-                  data-confirm="Transfer ownership of this {{ noun }}? The new owner will be responsible for it."
+                  data-confirm="Give this {{ noun }} to the new owner? It moves to their shelf."
                   data-confirm-ok="Transfer">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <label for="new_owner_id" class="sr-only">New owner</label>
@@ -71,7 +71,7 @@
                 {% if not in_wishlist %}Use <em>Remove from {{ m.section if m else 'Library' }}</em> on the {{ noun }} page instead.{% endif %}
             </p>
             {% else %}
-            <p class="text-sm text-content-secondary">For entries added by mistake. This erases the {{ noun }} and your own status, review and history for it. If the {{ noun }} just left the house, use <em>Remove from {{ m.section if m else 'Library' }}</em> on the {{ noun }} page instead.</p>
+            <p class="text-sm text-content-secondary">For mistakes only: erases the {{ noun }} and your status, review and history for it. If it just left the house, use <em>Remove from {{ m.section if m else 'Library' }}</em> on its page instead.</p>
             <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST"
                   data-confirm="{{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.") }}"
                   data-confirm-ok="Delete">

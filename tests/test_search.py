@@ -18,7 +18,7 @@ def test_match_needs_every_word_somewhere():
     assert match('  --  ', ['title']) == ('1', [])     # nothing searchable: everything
 
 
-def _titles(client, term, path='/books/search'):
+def _titles(client, term, path='/base/shared-library'):
     page = client.get(path, query_string={'search_term': term}).get_data(as_text=True)
     return page
 
@@ -83,3 +83,35 @@ def test_add_page_search_says_it_is_not_your_library(client, db, people):
     login(client, 'alice')
     page = client.get('/books/add').get_data(as_text=True)
     assert 'not your library' in page and '/have/' in page
+
+
+def test_each_grid_searches_exactly_its_own_shelf(client, db, people):
+    """The loose end "search should match the grid you're on" (Phil,
+    2026-11-10; done 16.0): your shelf searches your books, the Household
+    grid everyone's, each on its own page, and the box's count names it."""
+    alice, bob = people['alice'], people['bob']                 # one household
+    add_book(db, alice, title='Dune', author='Frank Herbert')
+    add_book(db, bob, title='Dune Messiah', author='Frank Herbert')
+    login(client, 'alice')
+    mine = client.get('/base/index?search_term=dune').get_data(as_text=True)
+    household = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
+    assert '>Dune<' in mine and 'Dune Messiah' not in mine
+    assert 'Dune Messiah' in household
+    # The box searches the page it's on, and says whose books those are
+    assert 'action="/base/index"' in mine and 'aria-label="Search your books"' in mine
+    plain = client.get('/base/shared-library').get_data(as_text=True)
+    assert "Search the household&#39;s 2 books" in plain
+
+
+def test_own_grid_search_hints_off_the_shelf_and_the_wishlist(client, db, people):
+    """The old Search page's hints, on the grid: read but not on your shelf,
+    and on your wishlist."""
+    alice = people['alice']
+    gone = add_book(db, alice, title='Dune', author='Frank Herbert')
+    db.execute('UPDATE books SET removed_at = CURRENT_TIMESTAMP WHERE id = ?', (gone,))
+    wish = add_book(db, alice, title='Dune Messiah', author='Frank Herbert')
+    db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (alice, wish))
+    db.commit()
+    login(client, 'alice')
+    page = client.get('/base/index?search_term=dune').get_data(as_text=True)
+    assert f'/books/book/{gone}' in page and f'/books/book/{wish}' in page

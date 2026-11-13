@@ -88,7 +88,7 @@ def test_add_album_page_has_search_barcode_and_scan(client, people):
     login(client, 'alice')
     page = client.get('/records/add').get_data(as_text=True)
     assert 'page-title min-w-0">Add an Album</span>' in page and 'data-type="record"' in page
-    assert 'id="search-input"' in page and 'Artist and title...' in page
+    assert 'id="search-input"' in page and 'Album, artist, or album by artist' in page
     # Barcodes since 8B.12: code and scan tabs, the scanner, a barcode field
     assert 'data-method="code"' in page and 'data-method="scan"' in page
     assert 'scanner.js' in page and 'name="barcode"' in page and 'name="isbn"' not in page
@@ -268,7 +268,7 @@ def test_records_stay_out_of_the_library_and_movies(client, db, people):
     add_book(db, people['alice'], 'Dune')
     add_record(db, people['alice'], title='Hejira')
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/books/search?search_term=e',
+    for url in ('/base/index', '/base/shared-library', '/base/shared-library?search_term=e',
                 '/base/library/alice', '/videos/', '/videos/shared'):
         assert 'Hejira' not in client.get(url).get_data(as_text=True), url
     login(client, 'carol')

@@ -12,7 +12,9 @@
 
     {% include '_bulk_result.html' %}
 
-    {% include '_search_sort_filter.html' %}
+    {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
+
+    {% include '_off_shelf_hint.html' %}
 
     {% if books %}
     {% set bulk_select = true %}{% set bulk_view = 'book:mine' %}
@@ -21,7 +23,15 @@
     {% else %}
     {# Nothing to show: an empty library, or filters that match nothing #}
     {% set filtered = request.args.keys()|reject('in', ['sort_by', 'sort_order', 'page', 'per_page', 'view'])|list %}
-    {% if filtered %}
+    {% set term = request.args.get('search_term', '')|trim %}
+    {% if term %}
+    {# The search page's empty state, now that search stays on the grid (16.0) #}
+    {% with title='No books on your shelf match "' ~ term ~ '"',
+            text='This searches titles, authors, publishers, ISBNs, years and your tags on your own shelf. The Household shelf searches everyone\'s; to find a book you don\'t have yet, search from Add Book.',
+            links=[(url_for('books.add_book'), 'Go to Add Book'), (url_for('base.index'), 'Clear the search')] %}
+        {% include '_empty_state.html' %}
+    {% endwith %}
+    {% elif filtered %}
     {% with title='No books match these filters',
             text='Nothing on your shelf matches the current filters.',
             links=[(url_for('base.index'), 'Clear filters')] %}
