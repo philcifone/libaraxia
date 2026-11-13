@@ -144,10 +144,7 @@ def frame_problems(url, html):
         problems.append('no .page-frame or .page-frame-narrow')
     if parser.nested:
         problems.append('a frame inside a frame')
-    # Settings: its heading spans 7xl over 4xl panes (F12). That's a heading
-    # question, on hold with the rest (Phil, 2026-11-13), so it's left as is
-    if url != '/user/settings':
-        problems += [f'own width: {m.group(0)}' for m in OWN_WIDTH.finditer(html)]
+    problems += [f'own width: {m.group(0)}' for m in OWN_WIDTH.finditer(html)]
     return problems
 
 
