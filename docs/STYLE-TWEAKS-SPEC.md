@@ -1,10 +1,10 @@
 # Style pass spec (ROADMAP 16.0)
 
-Approved by Phil 2026-11-12. Source brief: Phil's `style-tweaks.md` (2026-11-12, not committed). Built on branch `phase-16-style-pass`, one commit per step (section 10).
+Approved by Phil 2026-11-12. Source brief: Phil's [STYLE-TWEAKS-BRIEF.md](STYLE-TWEAKS-BRIEF.md) (2026-11-12; `style-tweaks.md` at the repo root until 2026-11-13). Built on branch `phase-16-style-pass`, one commit per step (section 10).
 
 ## 0. Context
 
-Phil's brief (`style-tweaks.md`, 2026-11-12): the styles look right overall, but small inconsistencies crept in while tools were added (crop, bulk edit, Goodreads, Movies & TV). This pass is mostly an **audit**: find the inconsistencies, fix them in small tweaks, and refactor the CSS and markup so **one change to one element updates it everywhere** in a style (bookcase, shelf grid, placeholder covers, cover box). There are no overhauls and no new hover, glow or animation effects. It is ROADMAP 16.0 "Final layout pass", the step before the portfolio screenshots. Most notes are about the Shelf style; Phil is still checking the other styles.
+Phil's brief ([STYLE-TWEAKS-BRIEF.md](STYLE-TWEAKS-BRIEF.md), 2026-11-12): the styles look right overall, but small inconsistencies crept in while tools were added (crop, bulk edit, Goodreads, Movies & TV). This pass is mostly an **audit**: find the inconsistencies, fix them in small tweaks, and refactor the CSS and markup so **one change to one element updates it everywhere** in a style (bookcase, shelf grid, placeholder covers, cover box). There are no overhauls and no new hover, glow or animation effects. It is ROADMAP 16.0 "Final layout pass", the step before the portfolio screenshots. Most notes are about the Shelf style; Phil is still checking the other styles.
 
 **On the word "refactor":** that is the right term. What you describe is a refactor (restructuring without changing how anything looks or behaves), aimed at a *single source of truth*: shared **design tokens** (CSS variables) and shared **components** (one Jinja macro / one JS helper per element). The one thing to watch: a refactor step must show no visual change on its own. Visual changes come in their own steps afterwards, so each one is easy to review.
 
