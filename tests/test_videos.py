@@ -398,7 +398,7 @@ def test_videos_stay_out_of_the_library(client, db, people):
     add_book(db, people['alice'], 'Dune')
     add_video(db, people['alice'], title='Jaws')
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/books/search?search_term=a',
+    for url in ('/base/index', '/base/shared-library', '/base/shared-library?search_term=a',
                 '/base/library/alice'):
         page = client.get(url).get_data(as_text=True)
         assert 'Dune' in page and 'Jaws' not in page, url

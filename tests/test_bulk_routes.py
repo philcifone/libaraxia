@@ -222,11 +222,11 @@ def test_a_view_selection_is_resolved_at_plan_time(client, db, people):
     assert genre_of(db, late) is None and all(genre_of(db, i) == 'Cookbooks' for i in ids)
 
 
-def test_view_selection_on_search_and_household(client, db, people):
+def test_view_selection_on_a_searched_household_grid(client, db, people):
     alice, bob = people['alice'], people['bob']
     mine, bobs = add_book(db, alice, title='Dune'), add_book(db, bob, title='Dune Messiah')
     login(client, 'alice')
-    for view, args in (('book:search', 'search_term=dune'), ('book:household', 'search_term=dune')):
+    for view, args in (('book:household', 'search_term=dune'),):
         plan = post(client, '/bulk/plan', action='tag_add', params={'tag': 'sf'}, view=view, args=args)
         assert sorted(plan.get_json()['plan']['ids']) == [mine, bobs], view
     # alice's own grid is hers alone (?member= is test_grid_query's)

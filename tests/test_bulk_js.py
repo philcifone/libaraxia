@@ -206,10 +206,11 @@ def test_now_text_shows_the_value_the_action_changes():
 
 
 def test_view_label_and_the_cap():
-    assert call('viewLabel', 57, 'book:mine') == 'All 57 on this shelf'
-    assert call('viewLabel', 500, 'video:household') == 'All 500 on this shelf'
-    assert call('viewLabel', 612, 'book:mine') == 'Too many for one edit (612). Narrow the view.'
-    assert call('viewLabel', 57, 'book:search') == 'All 57 results'
-    assert call('viewLabel', 612, 'book:search') == 'Too many for one edit (612). Narrow the search.'
-    assert call('viewButtonLabel', 'book:household') == 'Select all on this shelf'
-    assert call('viewButtonLabel', 'book:search') == 'Select all results'
+    # A grid is a shelf; a searched grid has results (16.0: every grid searches itself)
+    assert call('viewLabel', 57, False) == 'All 57 on this shelf'
+    assert call('viewLabel', 500, False) == 'All 500 on this shelf'
+    assert call('viewLabel', 612, False) == 'Too many for one edit (612). Narrow the view.'
+    assert call('viewLabel', 57, True) == 'All 57 results'
+    assert call('viewLabel', 612, True) == 'Too many for one edit (612). Narrow the search.'
+    assert call('viewButtonLabel', False) == 'Select all on this shelf'
+    assert call('viewButtonLabel', True) == 'Select all results'

@@ -5,8 +5,12 @@ page renders, in the same order, so the grids and the selection share one
 query rather than two that drift apart.
 
   books_query    the Books grid's WHERE (base.library_page builds the page from it)
-  search_query   Search's WHERE (books.search), which differs a little: see there
+  term_match     the search box's condition, shared with the grid's search hints
   view_ids       every id of a whitelisted grid view, all pages, for a selection
+
+The Books search used to be its own page (/books/search) with a slightly
+different query; since 16.0 every grid searches itself, so a search covers
+exactly the shelf in view (the loose end "search should match the grid").
 
 Movies and Music already have one implementation, Section.filtered, so
 view_ids calls that instead of copying it.
@@ -27,7 +31,15 @@ from utils.book_utils import shelf_filter, format_filter
 SCOPES = ('mine', 'household')
 VIEWS = {f'{kind}:{scope}': (kind, scope) for kind in (media.BOOK, media.VIDEO, media.RECORD)
          for scope in SCOPES}
-VIEWS['book:search'] = (media.BOOK, 'search')     # Search pages too (step 7)
+
+# What the Books search box looks in (as well as the viewer's tags)
+BOOK_SEARCH_COLUMNS = ['title', 'subtitle', 'author', 'publisher', 'isbn', 'publish_year']
+
+
+def term_match(term, data_user):
+    """(SQL condition on alias b, params) for the Books search box: every
+    word, folded, in one of BOOK_SEARCH_COLUMNS or `data_user`'s tags."""
+    return search.match(term, BOOK_SEARCH_COLUMNS, viewer_id=data_user)
 
 
 def from_goodreads(args, viewer_id):
@@ -71,8 +83,7 @@ def books_query(owner_ids, args, data_user, viewer_id=None):
 
     term = (args.get('search_term') or '').strip()
     if term:
-        match_sql, match_params = search.match(term, ['title', 'subtitle', 'author', 'publisher', 'isbn',
-                                                      'publish_year'], viewer_id=data_user)
+        match_sql, match_params = term_match(term, data_user)
         query += f' AND ({match_sql})'
         params += match_params
     if args.get('genre'):
@@ -97,53 +108,6 @@ def books_query(owner_ids, args, data_user, viewer_id=None):
         params += [data_user, *tags]
     gr_sql, gr_params = from_goodreads(args, data_user if viewer_id is None else viewer_id)
     return query + gr_sql, params + gr_params
-
-
-def search_query(conn, member_ids, args, viewer_id):
-    """(SQL, params) for Search (books.search): your household's books
-    matching ?search_term=, narrowed by the filters. No ORDER BY or paging.
-
-    Kept as Search has always behaved, which is not quite books_query: the
-    term doesn't look at the publisher, and tags you don't have are dropped
-    from the tag filter (so only unknown tags means no tag filter). Making
-    Search match the grid it came from is a ROADMAP loose end."""
-    term = (args.get('search_term') or '').strip()
-    # Every word, accents and punctuation ignored, in any of these or your
-    # tags on the book (utils/search.py, ROADMAP 7.2b)
-    match_sql, match_params = search.match(term, ['title', 'subtitle', 'author', 'isbn', 'publish_year'],
-                                           viewer_id=viewer_id)
-    marks = ','.join('?' * len(member_ids))
-    query = f'SELECT b.* FROM library_books b WHERE b.added_by IN ({marks}) AND ({match_sql})'
-    params = [*member_ids, *match_params]
-
-    # Removed (deaccessioned) books are hidden unless asked for
-    query += shelf_filter(args)
-    if args.get('genre'):
-        query += ' AND LOWER(b.genre) = LOWER(?)'
-        params.append(args.get('genre'))
-    # Book / Audiobook (8B.2)
-    fmt_sql, fmt_params = format_filter(args.get('format'))
-    query += fmt_sql
-    params.extend(fmt_params)
-    if args.get('read_status'):
-        query += ' AND EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ? AND c.status = ?)'
-        params.extend([viewer_id, args.get('read_status')])
-    rating = args.get('rating', type=int)
-    if rating:
-        query += ' AND EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ? AND r.rating >= ?)'
-        params.extend([viewer_id, rating])
-    tags = args.getlist('tags[]')
-    if tags:
-        known = {row['tag_name'] for row in conn.execute(
-            'SELECT DISTINCT tag_name FROM book_tags WHERE user_id = ?', (viewer_id,))}
-        wanted = [tag for tag in tags if tag in known]
-        if wanted:
-            tag_marks = ','.join('?' * len(wanted))
-            query += (' AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id'
-                      f' AND t.user_id = ? AND t.tag_name IN ({tag_marks}))')
-            params += [viewer_id, *wanted]
-    gr_sql, gr_params = from_goodreads(args, viewer_id)
-    return query + gr_sql, params + gr_params, match_sql, match_params
 
 
 def _args(args):
@@ -182,13 +146,7 @@ def view_ids(conn, user, view, args):
     else:
         owner_ids = [user.id]
 
-    if scope == 'search':
-        from models import get_library_members        # models imports utils; keep this one-way at import
-        query, params, _, _ = search_query(conn, get_library_members(user.id, conn), args, user.id)
-        sort_by, sort_order = sorting.choice(args, media.BOOK)
-        order_sql, order_params = sorting.order_by(sort_by, sort_order, user.id)
-        rows = conn.execute(query + order_sql, [*params, *order_params]).fetchall()
-    elif kind == media.BOOK:
+    if kind == media.BOOK:
         query, params = books_query(owner_ids, args, user.id, user.id)
         sort_by, sort_order = sorting.choice(args, media.BOOK)
         order_sql, order_params = sorting.order_by(sort_by, sort_order, user.id)

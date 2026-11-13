@@ -12,7 +12,10 @@
 
     {% include '_bulk_result.html' %}
 
-    {% include '_search_sort_filter.html' %}
+    {% set whose = "the household's" %}{# the box searches everyone's books here (16.0) #}
+    {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
+
+    {% include '_off_shelf_hint.html' %}
 
     {# Bulk edit: your marks on anything here, item edits on your own (and any, for an admin) #}
     {% if books %}

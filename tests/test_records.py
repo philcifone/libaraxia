@@ -268,7 +268,7 @@ def test_records_stay_out_of_the_library_and_movies(client, db, people):
     add_book(db, people['alice'], 'Dune')
     add_record(db, people['alice'], title='Hejira')
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/books/search?search_term=e',
+    for url in ('/base/index', '/base/shared-library', '/base/shared-library?search_term=e',
                 '/base/library/alice', '/videos/', '/videos/shared'):
         assert 'Hejira' not in client.get(url).get_data(as_text=True), url
     login(client, 'carol')

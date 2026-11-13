@@ -34,7 +34,8 @@
     {# Bulk edit on your own and the household's grids, never a friend's (read-only) #}
     {% if tab != 'friend' %}{% include '_bulk_result.html' %}{% endif %}
 
-    {% set whose = owner.username ~ "'s" if tab == 'friend' else 'your' %}
+    {# Whose shelf the box searches, so its count reads right (16.0) #}
+    {% set whose = owner.username ~ "'s" if tab == 'friend' else ("the household's" if tab == 'shared' else 'your') %}
     {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
 
 

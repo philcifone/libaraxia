@@ -194,7 +194,7 @@ def test_every_page_loads(app, client, db, people):
                        (alice,)).lastrowid
     db.commit()
     extra = ['/base/index?show_removed=1', f'/books/book/{removed}', '/user/alice', '/user/bob',
-             '/base/library/carol', '/wishlist/user/carol', '/books/search?q=dune',
+             '/base/library/carol', '/wishlist/user/carol', '/base/shared-library?q=dune',
              '/admin/users/%d/removal' % alice,
              f'/videos/{video}', f'/videos/edit/{video}', f'/read/rate_review/{video}',
              '/videos/?q=jaws&format=VHS&sort_by=runtime_minutes&sort_order=desc',

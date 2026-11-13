@@ -323,8 +323,8 @@ def test_empty_states(client, db, people):
     text = lambda url: ' '.join(client.get(url).get_data(as_text=True).split())
     assert 'Your library is empty' in text('/base/index') and '/user/import_goodreads_page' in text('/base/index')
     assert 'No books match these filters' in text('/base/index?genre=Nope')
-    page = text('/books/search?search_term=zzzz')
-    assert 'No books match &#34;zzzz&#34;' in page or 'No books match "zzzz"' in page
+    page = text('/base/index?search_term=zzzz')                 # the grid searches itself (16.0)
+    assert 'No books on your shelf match &#34;zzzz&#34;' in page and 'Clear the search' in page
     assert 'Your wishlist is empty' in text('/wishlist/view')
     feed = text('/feed/activity')
     assert 'Nothing in your feed yet' in feed and 'Find friends' not in feed   # link removed 2026-11-07
@@ -432,10 +432,16 @@ def test_view_bar_sorts_in_place(client, db, people):
     assert '<input type="hidden" name="member" value="%d">' % people['bob'] in sort_form
     assert 'action="/base/shared-library"' in shared[shared.index('id="filter-form"') - 10:][:200]
 
-    search = client.get('/books/search?search_term=dune').get_data(as_text=True)
+    search = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
     filter_form = search[search.index('id="filter-form"'):]
-    assert 'action="/books/search"' in filter_form[:100]
+    assert 'action="/base/shared-library"' in filter_form[:100]
     assert '<input type="hidden" name="search_term" value="dune">' in filter_form
+    # ...and a new search keeps the filters, sort and members in view (16.0)
+    filtered = client.get('/base/shared-library?genre=Fiction&sort_by=author&member=%d' % people['bob']).get_data(as_text=True)
+    box = filtered[filtered.index('role="search"') - 200:filtered.index('id="search_term"')]
+    assert 'action="/base/shared-library"' in box
+    for kept in ('name="genre" value="Fiction"', 'name="sort_by" value="author"', 'name="member" value="%d"' % people['bob']):
+        assert kept in box, kept
 
     for html in (page, shared, search):
         for form in re.findall(r'<form[^>]*method="GET".*?</form>', html, re.S | re.I):
@@ -459,7 +465,7 @@ def test_search_row_sits_under_the_tabs(client, people):
         row = page.index('search-form-container')
         assert tabs < row, url
         assert 'id="filter-toggle"' in page and 'aria-controls="filter-panel"' in page, url
-    search = client.get('/books/search?search_term=x').get_data(as_text=True)
+    search = client.get('/base/shared-library?search_term=x').get_data(as_text=True)
     assert 'search-form-container' in search and 'pt-20' in search
     wishlist = client.get('/wishlist/view').get_data(as_text=True)
     assert 'id="search-toggle"' not in wishlist
@@ -1225,7 +1231,8 @@ def test_infinite_scroll_finds_the_grid_by_data_not_layout_classes():
 def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
     """16.0 steps 9-10: Shelf lays a still glare over every cover (the
     .cover-sheen layer, with --sheen-shift for a tilt to drive later); the
-    feed shows days, not timestamps (F13); search starts with its crumbs (F11)."""
+    feed shows days, not timestamps (F13); a search keeps its page's
+    heading above the search row (F11; since 16.0 the grid itself)."""
     css = pathlib.Path('static/styles.css').read_text()
     rule = css[css.index(':root[data-style="shelf"] .cover-sheen {'):]
     rule = rule[:rule.index('}')]
@@ -1234,8 +1241,8 @@ def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
     assert '{{ activity.date[:10] }}' in pathlib.Path('templates/activity_feed.html').read_text()
     add_book(db, people['alice'], title='Dune')
     login(client, 'alice')
-    page = client.get('/books/search?search_term=dune').get_data(as_text=True)
-    assert page.index('aria-label="Breadcrumb"') < page.index('search-form-container')
+    page = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
+    assert page.index('<h1') < page.index('search-form-container')
 
 
 def test_notifications_card_has_no_heading_of_its_own(client, db, people):
