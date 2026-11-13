@@ -76,7 +76,7 @@ Shorter, still warm help text and confirm messages, with the same information. A
 ## 8. The audit (the main goal)
 
 - **Screenshots I can look at myself:** a throwaway Playwright harness in the scratchpad (not committed, not added to requirements), run against the dev server on a copy of the DB. It logs in as two seeded users who are friends and share a household. It visits every GET page (the same list as `test_every_page_loads`) in house / classic / outrun (dark only) / shelf × light / dark × 390px and 1280px widths, and saves contact sheets. Each step's before/after is compared on those sheets.
-- **A findings table in the spec:** page × style, what's off, and the decision. **Fix now** covers blatant theme slips I don't need to ask about: a corner, font, border width or colour that ignores the style's tokens, misaligned or unbalanced padding, a missing `page_heading` or `crumbs`. **Notes for Phil** covers anything else, left unchanged. The table is filled in during step 1 and kept up to date.
+- **A findings table in the spec:** page × style, what's off, and the decision. Consistency findings are fixed without asking (Phil, 2026-11-13); only a merge that would change a look elsewhere goes to Phil. The table is filled in during step 1 and kept up to date.
 
 ---
 
@@ -94,18 +94,18 @@ Audit of 2026-11-12: 32 pages × 7 style/mode pairs × phone and desktop, on a c
 | F6 | Reviews, Collections, profile rows | Shelf | the ledge runs under the star and name captions, not under the covers, so the books don't stand on it | step 6: cased rows put the ledge right under the covers (one row height, `h-28`, makes that a fixed offset); captions hang below the ledge like the grid's badges |
 | F7 | Wishlist | Shelf | full paper cards with boxed covers floating inside | brief: step 7 |
 | F8 | Do I Have This? matches | Shelf | plain paper cards, cover top-aligned | step 7: each match is a `.case-card` with its cover standing on the ledge; the "You own this" banner stays paper (it's text) |
-| F9 | Notifications, empty | Shelf | the empty "No recent notifications" panel is a case with nothing on its shelf | fix now (step 10): the case goes on cards that hold an item, the empty state is paper, per the rule |
-| F10 | Collection status page ("Read"), Reviews "See all" | all styles | plain `<h1>`, not `page_heading`, so no heading card (and no case in Shelf), unlike every other page | fix now (step 10) |
-| F11 | Search results | all styles | the search bar sits above the crumbs, and the page has no heading; every other drill-down page starts with crumbs | fix now (step 10): crumbs first; heading as the other grids have it |
-| F12 | Settings | all styles | heading card is 7xl wide, the tabs and panels under it 4xl, so the heading overhangs | fix now (step 10): one width for the page |
-| F13 | Feed | all styles | timestamps raw (`2026-11-13 04:15:19`), unlike the dates elsewhere | note for Phil (wording/format, not style) |
-| F14 | Profile, Notifications, Have, Friends | all styles | page widths differ (3xl / 4xl / 7xl), the "4xl / 7xl mix" 16.0 mentions | note for Phil: propose 4xl for single-column pages, 7xl for grids, in step 10 if he agrees |
-| F15 | Profile | all styles | no page heading card; "Carol's Profile" is inside the header card | note for Phil (the header card with the avatar works as the heading; a case round it would break the rule's "tools are paper") |
-| F16 | Reviews "See all" cards | Shelf | each card is about one item with a cover, so the rule says case-card | note for Phil (page not named in the brief) |
+| F9 | Notifications, empty | Shelf | the empty "No recent notifications" panel is a case with nothing on its shelf (inconsistent with the rule, not broken) | step 10: an empty state is paper |
+| F10 | Collection status page ("Read"), Reviews "See all" | all styles | plain `<h1>`, not `page_heading`, so no heading card (and no case in Shelf), unlike every other page | step 10: every heading is a heading card, app-wide |
+| F11 | Search results | all styles | the search bar sits above the crumbs, and the page has no heading; every other drill-down page starts with crumbs | step 10: crumbs first, then the search bar |
+| F12 | Settings | all styles | heading card is 7xl wide, the tabs and panels under it 4xl, so the heading overhangs | step 10: heading as wide as its content (see F14) |
+| F13 | Feed | all styles | timestamps raw (`2026-11-13 04:15:19`), unlike the dates elsewhere | step 10: the same date format as the rest of the app |
+| F14 | Profile, Notifications, Have, Friends | all styles | page widths differ (3xl / 4xl / 7xl), the "4xl / 7xl mix" 16.0 mentions | step 10: one rule for every page and style: grids and multi-column pages 7xl, single-column pages (forms, settings, profile, notifications, item tools) 4xl, and the heading card always as wide as the content under it |
+| F15 | Profile | all styles | no page heading card; "Carol's Profile" is inside the header card | step 10: "Carol's Profile" moves into a heading card like every page; the avatar, bio and actions stay in the paper card below |
+| F16 | Reviews "See all" cards | Shelf | each card is about one item with a cover, so the rule says case-card | step 10: each card is a `.case-card` with its cover on the ledge, per the rule |
 
-Notes for Phil (seen, not changed this phase):
-- Profile: the Collections and Wishlist rows aren't cased yet (one word each with `cased`).
-- F13 to F16 above.
+Decided 2026-11-13 (Phil): consistency calls across pages and styles are Claude's to make, so every finding above is scheduled, none is waiting on Phil. Ask only when unifying two similar things would change how something already looks elsewhere.
+
+Still out of scope (Phil's earlier call): the profile's Collections and Wishlist rows aren't cased (one word each with `cased`).
 
 ## 10. Execution steps (one commit each)
 
