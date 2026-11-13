@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading, section_icons %}
 {# Add a book, a movie or a vinyl (Phase 8.5, 8.7): one page for every media
    type. Rendered by books.add_book and media_section's add_item (Add Movie,
    Add Vinyl). On top, a lookup card with up to three tabs, then the form
@@ -53,6 +53,8 @@
 <div id="add-item" data-type="{{ m.type }}"{% if request.method == 'GET' and code_value %} data-auto-lookup="1"{% endif %}{% if request.method == 'GET' and values.lookup_url %} data-lookup-url="{{ values.lookup_url }}"{% endif %} data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
      class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
     {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun) }}
+    {# The page's heading card above the lookups (16.0), as on every page #}
+    {{ page_heading('bookmark' if to_wishlist else section_icons[m.type], heading) }}
 
     <!-- Lookups: fill the form from a search, a typed code or a scan -->
     <div class="bg-secondary rounded-lg overflow-hidden mb-8 card">
@@ -146,8 +148,6 @@
 
     <!-- The form -->
     <div class="bg-secondary-bg rounded-xl p-4 sm:p-8 card">
-        <h1 class="text-3xl font-display text-content-primary mb-8 text-center">{{ heading }}</h1>
-
         {# Already on the household's shelf (or your wishlist): from the server
            after a refused submit, or filled in by add_item.js after a lookup #}
         <div id="duplicate-notice" class="{{ '' if duplicates else 'hidden ' }}mb-6 p-4 border-2 border-accent rounded-lg bg-primary text-sm space-y-2" role="alert">

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading, section_icons %}
 {# Edit a book (blueprints/books.edit_book). The fields are the shared
    _item_fields.html, so Add Book, Add Movie and both edit pages look the
    same; "Find a better cover" (cover_finder.js) is on Add Book too. #}
@@ -10,10 +10,9 @@
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
     {{ crumbs([('Library', url_for('base.index')), (book['title'], url_for('books.show_book', id=book['id']))], 'Edit') }}
+    {{ page_heading(section_icons['book'], 'Edit Book') }}
 
     <div class="bg-secondary-bg rounded-xl p-4 sm:p-8 card">
-        <h1 class="text-3xl font-display text-content-primary mb-8 text-center">Edit Book</h1>
-
         <form method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-6" id="item-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% with cover_url=url_for('static', filename=book['cover_image_url']) if book['cover_image_url']|upload_exists else none,

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs, icon %}
+{% from '_icons.html' import crumbs, icon, heading_card %}
 
 {% block title %}{{ book['title'] }} - Details{% endblock %}
 {# Shared by books and videos: `m` holds the wording for this media type
@@ -19,32 +19,36 @@
         {{ crumbs([(m.section, url_for(m.home))], book['title']) }}
         {% endif %}
 
+        <!-- Item heading: its own heading card above the details (16.0), as on every page -->
+        {# A format with an icon (utils/media.FORMAT_ICONS: VHS, DVD,
+           audiobook, LP, CD, cassette): title on the left, the icon on
+           the right, since no grid shows a format badge. Anything else
+           (a plain book, an EP): the title centred. An unshelved movie or
+           album has no format (media.shown_format): no copy, no icon. #}
+        {% set shown_format = book|item_format %}
+        {% set format_icon = shown_format|format_icon %}
+        {# (set out here: a {% call %} block's own sets don't reach the details below) #}
+        {% call heading_card('mb-8') %}
+        {# px: the title and icon sit well in from the card's sides #}
+        <header class="py-2 px-3 md:px-6 {{ 'flex items-center justify-between gap-6' if format_icon else 'text-center' }}">
+            <div class="min-w-0">
+                <h1 class="text-4xl font-display text-content-primary mb-2">
+                    {{ book['title'] }}
+                    {% if book['subtitle'] %}
+                        <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
+                    {% endif %}
+                </h1>
+                <p class="text-xl text-content-secondary italic">{{ m.by }} {{ book['author'] }}</p>
+            </div>
+            {% if format_icon %}
+            <span class="shrink-0 text-content-secondary" role="img"
+                  aria-label="{{ shown_format|format_label }}" title="{{ shown_format|format_label }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
+            {% endif %}
+        </header>
+        {% endcall %}
+
         <!-- Main Book Content Section -->
         <div class="case-card bg-secondary rounded-xl p-4 md:p-8 mb-8 card">
-            <!-- Book Header -->
-            {# A format with an icon (utils/media.FORMAT_ICONS: VHS, DVD,
-               audiobook, LP, CD, cassette): title on the left, the icon on
-               the right, since no grid shows a format badge. Anything else
-               (a plain book, an EP): the title centred. An unshelved movie or
-               album has no format (media.shown_format): no copy, no icon. #}
-            {% set shown_format = book|item_format %}
-            {% set format_icon = shown_format|format_icon %}
-            {# px: the title and icon sit well in from the card's sides #}
-            <header class="mb-8 px-3 md:px-6 {{ 'flex items-center justify-between gap-6' if format_icon else 'text-center' }}">
-                <div class="min-w-0">
-                    <h1 class="text-4xl font-display text-content-primary mb-2">
-                        {{ book['title'] }}
-                        {% if book['subtitle'] %}
-                            <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
-                        {% endif %}
-                    </h1>
-                    <p class="text-xl text-content-secondary italic">{{ m.by }} {{ book['author'] }}</p>
-                </div>
-                {% if format_icon %}
-                <span class="shrink-0 text-content-secondary" role="img"
-                      aria-label="{{ shown_format|format_label }}" title="{{ shown_format|format_label }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
-                {% endif %}
-            </header>
 
             <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
                 <!-- Book Cover Section -->

@@ -1873,6 +1873,35 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 :root[data-style="shelf"] .btn-outline { border-color: rgb(var(--rule-strong)); }
 :root[data-style="shelf"] .fab { box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-lg); }
 
+/* Tabs (16.0, Phil: with an accent line under the active tab, the open
+   tab beside it read as the one joined to the page, like a file folder).
+   Here the active tab is the raised one: paper, accent text, no line; the
+   others are recessed, a shade darker and pressed in from below, so the
+   eye lands on the one in front. Every tab bar in Shelf: profile, settings,
+   wishlist, collections, the Books | Movies | Music switch, stats.
+   The Add page's lookup tabs (.search-method-btn, add_item.js sets
+   data-active) are tabs too.
+   Recessed means darker than the raised paper in both modes: --fill in
+   light, but in dark --fill is the lighter one, so there it's --paper. */
+:root[data-style="shelf"] { --tab-recess: var(--fill); --tab-recess-hover: var(--paper); }
+:root[data-style="shelf"][data-mode="dark"] { --tab-recess: var(--paper); --tab-recess-hover: 38 30 24; }
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) { --tab-recess: var(--paper); --tab-recess-hover: 38 30 24; }
+}
+:root[data-style="shelf"] :is(.tab, .search-method-btn) {
+    background-color: rgb(var(--tab-recess));
+    box-shadow: inset 0 -6px 8px -6px rgb(0 0 0 / .18);
+}
+:root[data-style="shelf"] :is(.tab, .search-method-btn):hover { background-color: rgb(var(--tab-recess-hover)); }
+:root[data-style="shelf"] :is(.tab-active, .tab-button.active, [data-tabs] .tab[aria-selected="true"],
+                              .search-method-btn[data-active="true"]) {
+    background-color: rgb(var(--surface));
+    border-bottom-color: transparent;
+    box-shadow: none;
+    color: rgb(var(--accent-text));     /* as .tab's active (the lookup tabs had only the line) */
+    font-weight: 700;
+}
+
 /* Form fields: paper, set slightly into the page */
 :root[data-style="shelf"] :is(
     input[type="text"], input[type="email"], input[type="password"], input[type="search"],

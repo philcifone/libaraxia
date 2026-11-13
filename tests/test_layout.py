@@ -1023,3 +1023,21 @@ def test_one_cover_component(app):
     for path in pathlib.Path('static').glob('*.js'):
         if path.name != 'common.js':
             assert 'class="cover-box' not in path.read_text(), path
+
+
+def test_item_add_and_edit_pages_have_one_heading_card(client, db, people):
+    """Style pass (16.0): the item page's title and the Add and Edit pages'
+    headings are heading cards above the page's cards (in Shelf, a small
+    bookcase), one per page, made by heading_card() like every other page."""
+    alice = people['alice']
+    book = add_book(db, alice, title='Dune')
+    db.commit()
+    login(client, 'alice')
+    for url in (f'/books/book/{book}', '/books/add', '/videos/add', '/records/add',
+                '/wishlist/add?type=book', f'/books/edit/{book}'):
+        page = client.get(url).get_data(as_text=True)
+        assert page.count('class="page-heading ') == 1, url
+    item = client.get(f'/books/book/{book}').get_data(as_text=True)
+    # the title is in the heading card, before the details card
+    heading = item.index('class="page-heading ')
+    assert heading < item.index('<h1', heading) < item.index('Dune', heading) < item.index('case-card', heading)
