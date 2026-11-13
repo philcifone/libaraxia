@@ -11,7 +11,7 @@
 
     {% with top_padding=true %}{% include '_search_sort_filter.html' %}{% endwith %}
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2 mb-4">
+    <div class="page-frame mt-2 mb-4">
         {{ crumbs([('Library', url_for('base.index'))], 'Search' ~ (': ' ~ search_term if search_term else ''), class='') }}
     </div>
 

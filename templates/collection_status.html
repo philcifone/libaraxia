@@ -5,7 +5,7 @@
 {% block body_class %}bg-primary-bg min-h-screen{% endblock %}
 
 {% block content %}
-    <main class="container mx-auto px-4 pt-20">
+    <main class="page-frame pt-20">
         {% set shelf_name = collection.name if is_custom else status_labels[status] %}
         {% if is_own_profile %}
         {{ crumbs([('Collections', url_for('collections.view_collections', type=media_type))], shelf_name) }}

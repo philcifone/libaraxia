@@ -181,7 +181,7 @@
    Edit pages' (import it beside page_heading) #}
 {% set section_icons = {'book': 'library', 'video': 'vhs', 'record': 'disc'} %}
 {% macro section_heading(media_type, name) -%}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
+<div class="page-frame pt-2 pb-6">
     {{ page_heading(section_icons[media_type], name, class='') }}
 </div>
 {%- endmacro %}

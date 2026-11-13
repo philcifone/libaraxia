@@ -10,7 +10,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
+    <div class="page-frame pt-20 pb-32">
         {{ crumbs([(target_username, url_for('user.profile', username=target_username))], 'Wishlist') }}
         {{ page_heading('bookmark', target_username ~ "'s Wishlist", "What " ~ target_username ~ " would like to own", class='mb-8') }}
 

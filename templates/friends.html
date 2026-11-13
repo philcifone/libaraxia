@@ -7,10 +7,10 @@
 {% from '_icons.html' import page_heading %}
 
 {% block title %}Friends - libaraxia{% endblock %}
-{% block body_class %}bg-primary text-content-primary p-6{% endblock %}
+{% block body_class %}bg-primary text-content-primary{% endblock %}
 
 {% block content %}
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 space-y-8">
+<main class="page-frame pt-20 pb-16 space-y-8">
     {{ page_heading('users', 'Friends', class='') }}
 
     {% if friend_requests %}

@@ -12,7 +12,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
+    <main class="page-frame pt-20 pb-24">
         {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], heading) }}
         <h1 class="text-3xl font-display text-content-primary text-center mb-6">{{ heading }}</h1>
         {{ section_switch(media_type, urls=section_urls, wrap=False, class='mb-8') }}

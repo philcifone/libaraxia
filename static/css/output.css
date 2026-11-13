@@ -1495,6 +1495,36 @@ textarea {
   }
 }
 
+/* ---- The page frame (16.0) ----
+       Every wide page (grids, shelves, wishlist, collections, reviews, the
+       feed, friends): its toolbars, heading, bookcase and grid all share
+       this one width and gutter, so they line up on every screen. Single-
+       column pages (profile, forms, settings panes) are narrower on purpose
+       and set their own max-w. Phil, 2026-11-13: the wishlist grid on an
+       iPhone, a 16px gutter each side, is the reference. */
+
+.page-frame {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-frame {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-frame {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
 /* ---- Cards and buttons ----
        The look comes from the shape variables of the active style (see Themes).
        .card       a panel (static: shadow, no movement)
@@ -2954,10 +2984,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .max-w-6xl {
   max-width: 72rem;
-}
-
-.max-w-7xl {
-  max-width: 80rem;
 }
 
 .max-w-\[120px\] {
@@ -5285,8 +5311,11 @@ dialog::backdrop {
        running back into it on the grid's 1:2 slant. */
   --side-w: calc(var(--ledge-top) / 2);
   position: relative;
+  /* Room for the top face, and for the right face inside the page frame,
+       as the grid has: a case and the grid beside it end at the same place
+       (Phil, 2026-11-13: the side used to overhang the gutter) */
   margin-top: var(--case-run);
-  /* room for the top face; the side overhangs the gutter */
+  margin-right: var(--case-run);
   border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
   border-bottom-width: 0;
   border-radius: 0;
@@ -5615,6 +5644,8 @@ dialog::backdrop {
   --side-w: calc(var(--ledge-top) / 2);
   position: relative;
   margin-top: var(--case-run);
+  margin-right: var(--case-run);
+  /* the right face inside the page frame, as the grid's */
   padding: 1.25rem 0 .25rem;
   /* the last ledge sits just above the framed bottom */
   border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
@@ -5733,44 +5764,32 @@ dialog::backdrop {
   padding: 0;
 }
 
-/* A heading or a note inside the case (Collections' "Reading Shelves",
-   "Custom Collections") lines up with the shelves' labels */
+/* A note inside the case (Collections: "No book collections yet", the
+   profile's Books / Movies / Music) lines up with the shelves' labels.
+   The case has no visible headings (Phil, 2026-11-13: a heading on a
+   plank of its own read as an empty shelf). */
 
-:root[data-style="shelf"] .shelf-case :is(.shelf-case-heading, .shelf-case-note) {
+:root[data-style="shelf"] .shelf-case .shelf-case-note {
   padding: 0 var(--row-pad);
 }
 
-/* ...and a heading stands on a shelf of its own (Phil, 2026-11-13), a
-   plank like the rows', lit the same way */
+/* Collections: your custom collections' rows after the status rows, the
+   gap between any two shelves */
 
-:root[data-style="shelf"] .shelf-case .shelf-case-heading {
-  padding-bottom: calc(.6rem + var(--ledge-h));
-  background-image:
-        /* the top face running back into the left panel (see .shelf-case) */
-        conic-gradient(from 26.57deg at 0 100%, rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
-        linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side))),
-        linear-gradient(var(--ledge-lit), var(--ledge-lit)),
-        linear-gradient(rgb(0 0 0 / var(--front-shade)), rgb(0 0 0 / var(--front-shade))),
-        linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
-        linear-gradient(rgb(var(--shelf-top)), rgb(var(--shelf-top))),
-        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
-  background-size: var(--side-w) var(--ledge-top), var(--side-w) var(--ledge-top),
-        100% var(--ledge-lit-w), 100% 1px, 100% var(--ledge-top), 100% var(--ledge-top), 100% var(--ledge-front);
-  /* A percentage position lines the layer's own bottom up with the box's
-       (100% = flush with the bottom), so each offset is just what sits
-       below that layer: the front edge under the top face, and the lit line
-       on the front edge's top. */
-  background-position:
-        0 calc(100% - var(--ledge-front)),
-        0 calc(100% - var(--ledge-front)),
-        0 calc(100% - var(--ledge-front) + var(--ledge-lit-w)),
-        0 100%,
-        0 calc(100% - var(--ledge-front)),
-        0 calc(100% - var(--ledge-front)),
-        0 100%;
-  background-repeat: no-repeat;
-  box-shadow: 0 10px 12px -8px rgb(0 0 0 / var(--under-shade));
-  /* its shadow on the wall below */
+:root[data-style="shelf"] .shelf-case .shelf-more {
+  margin-top: 1.75rem;
+}
+
+/* The profile's Collections and Wishlist (user.html): the paper card goes,
+   so its heading stands above the bookcase, as the wishlist's section
+   headings stand above its grid */
+
+:root[data-style="shelf"] .case-wrap {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* Where a row's ledge meets the left panel. The row (the scroller) starts

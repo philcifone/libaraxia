@@ -8,7 +8,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+    <main class="page-frame pt-20 pb-16">
         {{ page_heading('collections', 'Collections', class='mb-8') }}
 
         <div class="bg-secondary rounded-xl overflow-hidden card mb-8">
@@ -27,16 +27,18 @@
            row (shelf-case, _shelf_rows.html). Making a collection is a tool,
            so it has its own card below. #}
         <section class="shelf-case bg-secondary rounded-lg p-4 sm:p-8 mb-8 card" aria-labelledby="status-shelves">
-            <h2 id="status-shelves" class="shelf-case-heading text-2xl font-display text-content-primary mb-6">
+            {# No visible headings: the statuses and your collections read as
+               shelves on their own (Phil, 2026-11-13). Kept for screen readers. #}
+            <h2 id="status-shelves" class="sr-only">
                 {{ {'book': 'Reading', 'video': 'Watching', 'record': 'Listening'}[media_type] }} Shelves
             </h2>
             {% with shelves=status_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
 
-            <h2 id="custom-shelves" class="shelf-case-heading text-2xl font-display text-content-primary mt-10 mb-6">Custom Collections</h2>
+            <h2 id="custom-shelves" class="sr-only">Custom Collections</h2>
             {% if custom_shelves %}
-                {% with shelves=custom_shelves %}{% include '_shelf_rows.html' %}{% endwith %}
+                <div class="shelf-more mt-4">{% with shelves=custom_shelves %}{% include '_shelf_rows.html' %}{% endwith %}</div>
             {% else %}
-                <p class="shelf-case-note text-content-secondary text-center italic">No {{ m.noun }} collections yet</p>
+                <p class="shelf-case-note text-content-secondary text-center italic mt-6">No {{ m.noun }} collections yet</p>
             {% endif %}
         </section>
 

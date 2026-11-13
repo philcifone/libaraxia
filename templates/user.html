@@ -228,10 +228,12 @@
         </section>
 
         <!-- Collections (8C): each section's statuses in use, rows that scroll sideways -->
-        {# shelf-case (16.0): in Shelf, one bookcase with a shelf per row, as on Reviews #}
+        {# case-wrap + shelf-case (16.0): a paper card in most styles; in Shelf
+           the card goes (case-wrap), its heading stands above the bookcase,
+           and the rows are one bookcase with a shelf per row, as on Reviews #}
         {% if profile_shelves %}
-        <section class="shelf-case bg-secondary rounded-xl p-4 sm:p-6 card">
-            <div class="shelf-case-heading flex items-center justify-between gap-4 mb-6">
+        <section class="case-wrap bg-secondary rounded-xl p-4 sm:p-6 card">
+            <div class="flex items-center justify-between gap-4 mb-6">
                 <h2 class="text-2xl font-display text-content-primary">Collections</h2>
                 {% if is_own_profile %}
                 <a href="{{ url_for('collections.view_collections') }}" class="text-accent hover:text-accent-hover transition-colors text-sm">All collections →</a>
@@ -239,7 +241,7 @@
                 <a href="{{ url_for('base.friend_library', username=user['username']) }}" class="text-accent hover:text-accent-hover transition-colors text-sm">{{ user['username'] }}'s library →</a>
                 {% endif %}
             </div>
-            <div class="space-y-6">
+            <div class="shelf-case space-y-6">
                 {% for section_name, rows in profile_shelves %}
                 <div>
                     {% if profile_shelves|length > 1 %}<h3 class="shelf-case-note text-sm uppercase tracking-wider text-content-secondary mb-3">{{ section_name }}</h3>{% endif %}
@@ -253,15 +255,15 @@
         <!-- Wishlist Section -->
         {# Wishlist (8D): a row per section, each linked to that tab of the wishlist #}
         {% if wishlist_shelves %}
-        <section class="shelf-case bg-secondary rounded-xl p-4 sm:p-6 card">
-            <div class="shelf-case-heading flex items-center justify-between gap-4 mb-6">
+        <section class="case-wrap bg-secondary rounded-xl p-4 sm:p-6 card">
+            <div class="flex items-center justify-between gap-4 mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
                 </h2>
                 <a href="{{ url_for('wishlist.view_wishlist') if is_own_profile else url_for('wishlist.view_user_wishlist', username=user['username']) }}"
                    class="text-accent hover:text-accent-hover transition-colors text-sm">View all →</a>
             </div>
-            {% with shelves=wishlist_shelves, shelf_cols='grid-cols-1' %}{% include '_shelf_rows.html' %}{% endwith %}
+            <div class="shelf-case">{% with shelves=wishlist_shelves, shelf_cols='grid-cols-1' %}{% include '_shelf_rows.html' %}{% endwith %}</div>
         </section>
         {% endif %}
 

@@ -1123,3 +1123,36 @@ def test_wishlists_are_the_library_grid_with_a_quick_add(client, db, people):
     assert '.wishlist-quick-add { display: none; }' in css
     # A coverless item two links deep gets its own width (iPhone Safari: spine only)
     assert ':root[data-style="shelf"] .wishlist-grid.shelf-grid.grid .no-cover {' in css
+
+
+def test_one_page_frame_and_cases_inside_it():
+    """16.0 (Phil, 2026-11-13: headings, grids and pages one width): wide
+    pages share .page-frame (no hand-written max-w-7xl gutters, no
+    Tailwind `container`, no padding on <body> pushing a page further in),
+    and in Shelf every case keeps its right face inside the frame, as the
+    grid does, so a heading case and the grid under it end together."""
+    templates = pathlib.Path('templates')
+    for path in templates.glob('*.html'):
+        src = path.read_text()
+        assert 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' not in src, path
+        assert not re.search(r'block body_class %\}[^{]*\bp-6\b', src), path
+        if path.name != '_empty_state.html':
+            assert 'container mx-auto' not in src, path
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '@apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;' in css
+    assert css.count('margin-right: var(--case-run);') >= 2      # small cases, stacked shelves (the grid has its own)
+
+
+def test_case_headings_stand_outside_the_bookcase(client, db, people):
+    """Collections has no visible headings inside its case (screen readers
+    keep them); the profile's headings sit above their bookcases."""
+    login(client, 'alice')
+    page = client.get('/collections/collections').get_data(as_text=True)
+    assert '<h2 id="status-shelves" class="sr-only">' in page
+    assert '<h2 id="custom-shelves" class="sr-only">' in page
+    assert 'shelf-case-heading' not in page
+    css = pathlib.Path('static/styles.css').read_text()
+    assert 'shelf-case-heading' not in css
+    assert ':root[data-style="shelf"] .case-wrap {' in css
+    src = pathlib.Path('templates/user.html').read_text()
+    assert src.count('class="case-wrap ') == 2 and 'shelf-case-heading' not in src

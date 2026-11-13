@@ -9,7 +9,7 @@
 
 {% block content %}
     <!-- Main Content Container -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+    <div class="page-frame pt-20 pb-10">
         {# Where you came from: a friend's wishlist, yours, or the section #}
         {% if wishlist_owner and wishlist_owner_entry %}
         {{ crumbs([(wishlist_owner ~ "'s Wishlist", url_for('wishlist.view_user_wishlist', username=wishlist_owner))], book['title']) }}
