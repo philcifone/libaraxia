@@ -1733,62 +1733,6 @@ textarea {
   display: none;
 }
 
-/* Activity feed covers (8B.7): the picture's own shape, never cropped.
-       Only maximums, so the browser scales it to fit inside 6rem x 10rem
-       keeping its proportions: a book fills the width, a square album is
-       6rem square, a tall VHS box is 10rem high and narrower. The box is
-       the image, so the rounded corners and shadow hug it. (Stored covers
-       are usually bigger than this; a smaller one shows at its own size.) */
-
-/* An activity card's layout (16.0, activity_feed.html): cover, activity,
-       like row. Desktop: the cover on the left spanning both rows, the
-       activity beside it taking the spare height, the like row at its foot.
-       Phone: the activity full width, then the cover and the like row side
-       by side (beside a cover the text column was ~150px, a word a line). */
-
-.feed-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: 1fr auto;
-  grid-template-areas: "cover main" "cover actions";
-  -moz-column-gap: 1rem;
-       column-gap: 1rem;
-  row-gap: .75rem;
-}
-
-.feed-row > .feed-cover {
-  grid-area: cover;
-  align-self: start;
-}
-
-.feed-row > .feed-main {
-  grid-area: main;
-}
-
-.feed-row > .feed-actions {
-  grid-area: actions;
-}
-
-@media (max-width: 639px) {
-  .feed-row {
-    grid-template-rows: auto auto;
-    grid-template-areas: "main main" "cover actions";
-    row-gap: 1rem;
-  }
-
-  .feed-row > .feed-cover {
-    align-self: end;
-  }
-}
-
-.feed-cover-img {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 6rem;
-  max-height: 10rem;
-}
-
 /* The camera picker (scanner.js sets .hidden when there's one camera):
        its `flex` class would otherwise beat the hidden attribute. */
 
@@ -2473,8 +2417,8 @@ img.book-cover-img:not([data-loaded]) {
   right: 0.5rem;
 }
 
-.right-4 {
-  right: 1rem;
+.right-3 {
+  right: 0.75rem;
 }
 
 .right-\[30px\] {
@@ -2491,6 +2435,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .top-2 {
   top: 0.5rem;
+}
+
+.top-3 {
+  top: 0.75rem;
 }
 
 .top-4 {
@@ -2782,10 +2730,6 @@ img.book-cover-img:not([data-loaded]) {
   height: 8rem;
 }
 
-.h-36 {
-  height: 9rem;
-}
-
 .h-4 {
   height: 1rem;
 }
@@ -3032,10 +2976,6 @@ img.book-cover-img:not([data-loaded]) {
 
 .shrink-0 {
   flex-shrink: 0;
-}
-
-.flex-grow {
-  flex-grow: 1;
 }
 
 .basis-full {
@@ -3529,10 +3469,6 @@ img.book-cover-img:not([data-loaded]) {
   background-color: rgb(var(--fill) / var(--tw-bg-opacity, 1));
 }
 
-.bg-primary\/50 {
-  background-color: rgb(var(--paper) / 0.5);
-}
-
 .bg-red-600 {
   --tw-bg-opacity: 1;
   background-color: rgb(var(--red-strong) / var(--tw-bg-opacity, 1));
@@ -3993,11 +3929,6 @@ img.book-cover-img:not([data-loaded]) {
   color: rgb(var(--on-accent) / var(--tw-text-opacity, 1));
 }
 
-.text-purple-500 {
-  --tw-text-opacity: 1;
-  color: rgb(var(--purple) / var(--tw-text-opacity, 1));
-}
-
 .text-red-400 {
   --tw-text-opacity: 1;
   color: rgb(var(--red) / var(--tw-text-opacity, 1));
@@ -4076,12 +4007,6 @@ img.book-cover-img:not([data-loaded]) {
 .shadow-lg {
   --tw-shadow: var(--sh-lg);
   --tw-shadow-colored: var(--sh-lg);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
-
-.shadow-md {
-  --tw-shadow: var(--sh-md);
-  --tw-shadow-colored: var(--sh-md);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
@@ -5870,8 +5795,8 @@ and to the right for its faces */
   --box-depth: 6px;
 }
 
-/* A case card's cover stands on the case's ledge (.case-cover: the feed,
-   Do I Have This? matches; 16.0, Phil: "lower the book box to sit on the
+/* A case card's cover stands on the case's ledge (.case-cover: Do I Have
+   This? matches; 16.0, Phil: "lower the book box to sit on the
    shelf"): at the foot of the card, pulled down through the card's bottom
    padding (1.5rem in Shelf, above) so its base stands a little into the
    ledge's top face, as the grid's books do. The text beside it keeps the

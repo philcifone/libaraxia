@@ -389,7 +389,7 @@ def test_feed_words_video_activity(client, db, people):
     page = client.get('/feed/activity').get_data(as_text=True)
     assert 'added a new movie' in page
     assert 'reviewed a movie' in page
-    assert 'watched' in page and 'directed by' in page
+    assert 'watched' in page and 'Steven Spielberg' in page     # the creator, as on Reviews (no "directed by")
 
 
 # --- videos stay out of book features ----------------------------------------

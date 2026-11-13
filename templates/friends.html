@@ -28,9 +28,9 @@
             {% for friend in friends %}
             {# A friend (16.0): the avatar and name open their profile, the
                counts say what's on their shelves, and "See their shelf"
-               opens it. In Shelf, a small bookcase (case-card). #}
+               opens it. A plain card in every style (Phil, 2026-11-13). #}
             {% set profile_url = url_for('user.profile', username=friend.username) %}
-            <div class="case-card bg-secondary rounded-xl p-5 card flex items-center gap-4" data-friend="{{ friend.id }}">
+            <div class="bg-secondary rounded-xl p-5 card flex items-center gap-4" data-friend="{{ friend.id }}">
                 <a href="{{ profile_url }}" class="shrink-0" tabindex="-1" aria-hidden="true" data-friend-avatar>
                     {% if friend.avatar_url|upload_exists %}
                     <img src="{{ url_for('static', filename=friend.avatar_url) }}" alt=""

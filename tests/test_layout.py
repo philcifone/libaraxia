@@ -1048,7 +1048,7 @@ def test_item_add_and_edit_pages_have_one_heading_card(client, db, people):
     item = client.get(f'/books/book/{book}').get_data(as_text=True)
     # the title is in the heading card, before the details card
     heading = item.index('class="page-heading ')
-    assert heading < item.index('<h1', heading) < item.index('Dune', heading) < item.index('case-card', heading)
+    assert heading < item.index('<h1', heading) < item.index('Dune', heading) < item.index('cover-stand', heading)
 
 
 def test_shelf_site_title_stays_cream():
@@ -1060,16 +1060,17 @@ def test_shelf_site_title_stays_cream():
 
 
 def test_feed_card_layout(client, db, people):
-    """Style pass (16.0): an activity card is a small grid (cover, activity,
-    like row), the like row in the layout instead of pinned in a corner, and
-    in Shelf the cover stands on the case's ledge."""
+    """Style pass (16.0, Phil 2026-11-13): an activity card is the Reviews
+    list's card: cover left, title, creator, one line of rating / who did
+    what / when, the review clamped, then the like (no corner-pinned like,
+    no card grid of its own)."""
     feed = pathlib.Path('templates/activity_feed.html').read_text()
-    assert 'class="feed-row"' in feed and 'feed-main' in feed and 'feed-actions' in feed
-    assert 'absolute bottom-6 right-6' not in feed and 'pb-16' not in feed
-    css = pathlib.Path('static/styles.css').read_text()
-    assert 'grid-template-areas: "cover main" "cover actions";' in css
-    assert 'grid-template-areas: "main main" "cover actions";' in css     # phone
-    assert ':root[data-style="shelf"] .case-card .case-cover {\n    align-self: end;' in css
+    reviews = pathlib.Path('templates/reviews_list.html').read_text()
+    card = 'bg-secondary rounded-lg p-4 card flex gap-4 min-w-0'
+    assert card in feed and card in reviews
+    assert 'feed-row' not in feed and 'absolute bottom-6 right-6' not in feed and 'pb-16' not in feed
+    assert "'w-20 max-h-32 object-contain rounded shadow-sm'" in feed
+    assert 'feed-row' not in pathlib.Path('static/styles.css').read_text()
 
 
 def test_stacked_shelves_in_one_bookcase(client, db, people):
@@ -1178,8 +1179,7 @@ def test_have_matches_are_small_bookcases(client, db, people):
     add_book(db, people['alice'], title='Dune', cover='uploads/x.jpg')
     login(client, 'alice')
     page = client.get('/have/?q=dune').get_data(as_text=True)
-    assert 'class="case-card flex gap-4 ' in page and 'case-cover' in page
-    assert 'class="feed-cover case-cover ' in pathlib.Path('templates/activity_feed.html').read_text()
+    assert 'class="case-card flex gap-6 ' in page and 'case-cover' in page   # gap-6: room for the box's side
 
 
 def test_have_album_covers_are_square(client, db, people):
@@ -1190,7 +1190,7 @@ def test_have_album_covers_are_square(client, db, people):
     db.execute("UPDATE books SET cover_image_url = 'uploads/x.jpg' WHERE id = ?", (album,)); db.commit()
     login(client, 'alice')
     page = client.get('/have/?q=mule').get_data(as_text=True)
-    match = page[page.index('class="case-card flex gap-4 '):]
+    match = page[page.index('class="case-card flex gap-6 '):]
     match = match[:match.index('</a>')]
     assert 'max-w-[5rem]' not in match
     assert re.search(r'class="[^"]*\bh-24\b[^"]*\bw-24\b', match)   # the picture, or the square placeholder
