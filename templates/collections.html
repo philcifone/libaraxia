@@ -39,6 +39,8 @@
                 <div class="shelf-more mt-4">{% with shelves=custom_shelves %}{% include '_shelf_rows.html' %}{% endwith %}</div>
             {% else %}
                 <p class="shelf-case-note text-content-secondary text-center italic mt-6">No {{ m.noun }} collections yet</p>
+                {# the case's bottom ledge in Shelf (hidden elsewhere: .shelf-row:empty) #}
+                <div class="shelf-row mt-4"></div>
             {% endif %}
         </section>
 

@@ -2082,8 +2082,13 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     position: relative;
     margin-top: var(--case-run);
     margin-right: var(--case-run);      /* the right face inside the page frame, as the grid's */
-    padding: 1.25rem 0 .25rem;          /* the last ledge sits just above the framed bottom */
+    /* No framed bottom: the last ledge is the case's bottom, as on the grid
+       (Phil, 2026-11-13: a frame just under the last shelf read as a second
+       shelf). So a case always ends with a ledge (Collections puts a bare
+       one under its "no collections" note). */
+    padding: 1.25rem 0 0;
     border: var(--frame) solid rgb(var(--shelf-frame, var(--shelf-front)));
+    border-bottom-width: 0;
     border-radius: 0;
     background-color: rgb(var(--shelf-back));
     background-image: linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side)));
@@ -2091,8 +2096,8 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     background-repeat: no-repeat;
     box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
-/* the right face also runs down past the framed bottom */
-:root[data-style="shelf"] .shelf-case::after { height: calc(100% + 2 * var(--frame) + var(--case-run)); }
+/* the right face runs from the top face down to the last ledge */
+:root[data-style="shelf"] .shelf-case::after { height: calc(100% + var(--frame) + var(--case-run)); }
 /* One shelf per row of the case, whatever the page's columns elsewhere */
 :root[data-style="shelf"] .shelf-case .grid:has(> .shelf-item) {
     grid-template-columns: minmax(0, 1fr);
@@ -2121,7 +2126,8 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 :root[data-style="shelf"] .shelf-case .shelf-row {
     --shelf-y: calc(var(--box-depth) + 7rem - var(--row-sink));     /* h-28 = 7rem */
     align-items: flex-start;            /* covers top-aligned: their bases meet the ledge */
-    padding: var(--box-depth) var(--row-pad) calc(var(--ledge-h) - var(--row-sink) + 2px);
+    --row-top: var(--box-depth);        /* the padding over the covers: their top faces */
+    padding: var(--row-top) var(--row-pad) calc(var(--ledge-h) - var(--row-sink));
     scroll-padding-inline: var(--row-pad);
     /* No rubber-band past either end (Phil, 2026-11-13: on a phone the row
        stretched past its start and pulled the ledge with it, leaving a gap) */
@@ -2170,6 +2176,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 :root[data-style="shelf"] .shelf-case .shelf-row:empty {
     display: block;
     --shelf-y: 26px;
+    --row-top: 0px;
     height: calc(26px + var(--ledge-h));
     padding: 0;
 }
@@ -2211,8 +2218,8 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     position: absolute;
     left: 0;
     width: var(--side-w);
-    margin-top: calc(-1 * var(--box-depth));
-    height: calc(var(--box-depth) + 7rem - var(--row-sink) + var(--ledge-h));
+    margin-top: calc(-1 * var(--row-top));         /* up to the row's top */
+    height: calc(var(--shelf-y) + var(--ledge-h));  /* down to its ledge's foot */
     pointer-events: none;
     background-image:
         conic-gradient(from 26.57deg at 0 100%, rgb(var(--shelf-top)) 0 63.43deg, transparent 0),

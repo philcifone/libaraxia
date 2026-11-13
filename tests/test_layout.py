@@ -1154,5 +1154,10 @@ def test_case_headings_stand_outside_the_bookcase(client, db, people):
     css = pathlib.Path('static/styles.css').read_text()
     assert 'shelf-case-heading' not in css
     assert ':root[data-style="shelf"] .case-wrap {' in css
+    # No framed bottom under the last shelf (it read as a second shelf); a
+    # case that ends with Collections' note gets a bare ledge to stand on
+    case = css[css.index(':root[data-style="shelf"] .shelf-case {'):]
+    assert 'border-bottom-width: 0;' in case[:case.index('}')]
+    assert '<div class="shelf-row mt-4"></div>' in pathlib.Path('templates/collections.html').read_text()
     src = pathlib.Path('templates/user.html').read_text()
     assert src.count('class="case-wrap ') == 2 and 'shelf-case-heading' not in src
