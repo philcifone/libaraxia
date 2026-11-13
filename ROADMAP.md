@@ -2,7 +2,7 @@
 
 The single list of **open** work for Libaraxia, in the order to do it. Tick items (`[x]`) as they land; when a phase is finished, move it to [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md) with its date and keep only its line in the table below.
 
-Finished phases (0–8F, 10, 11–13b, 14a, 14b and 14c) are in the archive, verbatim and with their original numbers, because code comments cite them ("ROADMAP 7.2b", "8B.3", "10.1"). Grep the archive for those.
+Finished phases (0–8F, 10, 11–13b, 14a, 14b, 14c and 15) are in the archive, verbatim and with their original numbers, because code comments cite them ("ROADMAP 7.2b", "8B.3", "10.1"). Grep the archive for those.
 
 Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 
@@ -16,7 +16,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 14a | Bulk edit: select on every grid, eight actions, review, undo | Done 2026-11-11, [archive](docs/ROADMAP-ARCHIVE.md#phase-14a-bulk-edit) |
 | 14b | Granular Goodreads import, site and personal backups, "Unshelved" | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import) |
 | 14c | Tweaks after 14b: CSRF, undated sessions, Settings for everyone, profile tabs, cyclers, Shelf bookcases and boxed covers, username collisions | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14c-tweaks-after-14b) |
-| 15 | [Movies & TV, cover crop](#phase-15-movies--tv-cover-crop) | Done on its branch (15.1 and 15.3); to merge and archive. Lending moved to 17.1 |
+| 15 | Movies & TV (a Kind and Season on videos, TMDb TV lookup), free-form cover crop | Done 2026-11-12 (15.3 on 2026-11-10), [archive](docs/ROADMAP-ARCHIVE.md#phase-15-movies--tv-cover-crop). Lending moved to 17.1 |
 | 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | A final layout pass and a code review, then screenshots of the finished app |
 | 17 | [Future roadmap](#phase-17-future-roadmap) | After the portfolio; shown on the showcase site as what's next |
 
@@ -65,30 +65,7 @@ From Phil, 2026-11-08 (was Phase 9, then 13). Its own phase: a whole selection-a
 
 14c (tweaks after 14b) is done: [archive](docs/ROADMAP-ARCHIVE.md#phase-14c-tweaks-after-14b).
 
-## Phase 15: Movies & TV, cover crop
-
-From Phil, 2026-11-09 (loose notes, sorted). The format icons from the same note (turntable for LP, disc-2 for CD, cassette-tape for Cassette on the Music grid) were done the same day, in `_format_icon.html`.
-
-### 15.1 Movies & TV 🟢 (done 2026-11-12, branch phase-15-movies-tv)
-Decided 2026-11-09 (Phil). Today a TV season box set is a video row like any film, so the section says "Movies" about things that aren't. Same physical object (a DVD or tape), same statuses (watched / want to watch), same shelf: it doesn't get its own media type, which would mean another view, blueprint section, statuses, stats tab and lookup for one distinction. Renaming the section back to "Video" was the other option: less work, but no movie/TV filter.
-- [x] **Migration 034** (030 was planned here, but 031-033 shipped first; keep numbers in order): `books.video_kind` (`'movie'` / `'tv'`; NULL means movie, so existing rows need no backfill) and `books.season` (free text: "Season 2", "Complete series"). A lookup table for the kinds, like `media_types`, if it stays in step with `utils/media.py`; a CHECK is fine for two values. Fold it into `create_database.sql` and the ledger. Check `library_videos` (and the other views) expose the new columns; the export and `card_json` carry them. Done: a `video_kinds` lookup table (`movie`, `tv`; `media.VIDEO_KINDS`, test-checked); the app stores NULL for a movie (`media.video_kind`), so a movie has one spelling. The export appends Kind and Season.
-- [x] **UI wording:** the section is **"Movies & TV"** (sidebar, headings, flashes, feed, the Books | Movies | Music switch if it fits at phone width, else "Movies" there only), through `media.media_labels()`. Code, URLs and the DB keep "video". Item wording per kind where it reads oddly ("Add TV show", "Director" becomes "Creator" for TV). Done: the switch fits at 375 px in all four styles, so it says Movies & TV too. Section words are "movie or show" / "movies and shows"; an item's page, edit form, flashes and feed lines use its kind's (`media.KIND_WORDS`, `item_labels`).
-- [x] **Form:** Kind (Movie / TV) and Season on the add and edit form (`_item_fields.html`); Season only shown for TV. Done: two radios and a Season field at the top, shown and worded by CSS `:has()` (no script); switching back to Movie drops the season; the wishlist's add too; the add button has a TV show entry (`?kind=tv`).
-- [x] **Grid:** a "TV" badge on the cover beside the format badge, a Kind filter in the panel, "S2" or the season text in list view. Done: no TV badge after all (Phil, 2026-11-12: the title says it, and it collided with Unshelved); list view says "· TV, S2" after the creator. An unshelved movie or album has no format: Add hides Format while "Not on my shelf" is ticked and saves none, and pages show none (`media.shown_format`; the stored value stays for "I own it now"; wishlist entries keep theirs). Kind filter in `Section.filtered`, so bulk's select-all matches (`test_grid_query` covers it); offered once the shelf has both kinds.
-- [x] **Lookup:** TMDb searches `/search/movie` and `/search/tv` together; a candidate's kind fills Kind (also in Do I have this? online candidates, `utils/have_online.py`). Runtime for a set is the total, or left empty. Done: one `/search/multi` call (both kinds, TMDb's order); runtime left empty for a show; a barcode product's "Complete First Season" is split off (`split_season`) and fills Season. Checked against the live TMDb on the add page.
-- [x] Stats: hours watched stay one number; a by-kind split is a nice-to-have. Done (one query): with any TV, the Movies & TV overview says "On the shelf: 3 movies and 2 TV shows. Watched: ..." and the creator tile and top list say "Directors and creators".
-- [x] Tests: migration on an existing DB (NULL = movie), the form round-trip, filter, TMDb TV candidate, wording. In `tests/test_movies_tv.py` and `test_migrations.py` (034); `test_grid_query`'s parity check covers the Kind filter for bulk edit.
-
-### 15.3 Free-form cover crop and perspective tool 🟢 (done 2026-11-10)
-For fetched covers with borders, scans of a whole sleeve and phone photos taken at an angle.
-- [x] A full-screen `<dialog>` on Add and Edit (Books, Movies, Music and the wishlist's add), opened by "Crop / straighten" under the cover preview. Crop mode (drag the corners, any ratio) and Perspective mode (each corner on its own, pulled back to a rectangle); rotate left/right, ratio menu (Free, Original, 1:1, 2:3, 3:4, DVD) with portrait/landscape, Reset; Crop keeps the tool open for tweaks, then Undo / Cancel / Save. Pointer events (mouse, touch, pen), keyboard (arrows nudge a handle, Shift x10, Enter crops, Esc cancels, Ctrl+Z undoes) and a 3x loupe while dragging a corner.
-- [x] Non-destructive until the form is saved: the browser sends only geometry (fractions of the image); `utils/cover_crop.py` renders from the server's copy (rect crop or a pure-Python homography for Perspective), previews are never stored, Save writes `crop_source` / `cover_crop` and the page's own Save stores the cover. A picked photo is staged once at up to 2400 px (`uploads/crop/`, EXIF and GPS stripped, swept after 24 h) so a phone photo isn't shrunk to 500x1000 before cropping. Old files go through `delete_image_file()`; only staged files are ever deleted because the browser named them.
-- [x] Tests: `tests/test_cover_crop.py` (geometry validation, rendering, routes, all save routes, path safety) and `tests/test_cover_crop_js.py` (the JS helpers under node, checked against the server's renderer).
-- Later ideas, not planned:
-  - [ ] Keep a high-res original next to each saved cover, so a re-crop of a saved cover isn't limited to its 500x1000 copy.
-  - [ ] Auto-detect the cover's corners for Perspective.
-  - [ ] A fine-angle straighten slider.
-  - [ ] Avatars.
+15 (Movies & TV, cover crop) is done: [archive](docs/ROADMAP-ARCHIVE.md#phase-15-movies--tv-cover-crop).
 
 ---
 
@@ -156,6 +133,12 @@ The code is there (Flask-Mail, `utils/email_utils.py`: verification emails, `EMA
 - [ ] Set SPF / DKIM / DMARC for the sending domain; send a test; turn `EMAIL_VERIFICATION_REQUIRED` on.
 - [ ] Write the steps in the README (a "Email (optional)" section: provider settings, DNS records, the `.env` lines, how to test, what users see) and in `deploy/README.md` for prod.
 - [ ] While there: password reset by email, which needs the same setup.
+
+### 17.5 Fediverse integration? 🟢 (low priority, low likelihood)
+Added 2026-11-12 (Phil). Unsure it's possible or wanted; an idea to look into, not a plan. Low priority and unlikely to happen; do it last, if at all. BookWyrm (ActivityPub, books and reviews) is the nearest existing thing, so this would be a small slice of what it does, not a new protocol.
+- [ ] Spec first. Decide before building: what, if anything, goes public (a finished book, a review, a status line), and whether that fits the access model, which has no per-item privacy and shows things only to your circle. Anything federated is public and can't be recalled, so it would need to be opt-in per user and per post.
+- [ ] The smallest useful version: each opted-in user gets an ActivityPub actor (WebFinger, an actor document, an outbox, HTTP signatures) that publishes reviews or "finished" posts to followers on Mastodon and the like. Read-only first; no inbox, replies or boosts.
+- [ ] Open questions: needs a public hostname and HTTPS (prod has that), a background queue for delivery with retries, and moderation (blocking a domain or actor) once anything comes in. Check whether a bridge or an existing tool (a feed-to-fediverse bridge over an RSS feed of public reviews) gets most of the value with none of this.
 
 ---
 

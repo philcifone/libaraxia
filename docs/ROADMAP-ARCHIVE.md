@@ -1,7 +1,7 @@
 # Roadmap archive
 
 Completed phases of [ROADMAP.md](../ROADMAP.md), moved here on 2026-11-08
-(11 to 13b on 2026-11-09, 14a on 2026-11-11, 14b on 2026-11-12) so the live roadmap stays short. Kept verbatim, with their original numbers: code
+(11 to 13b on 2026-11-09, 14a on 2026-11-11, 14b and 15 on 2026-11-12) so the live roadmap stays short. Kept verbatim, with their original numbers: code
 comments and commit messages cite them ("ROADMAP 7.2b", "8B.3", "10.1"), so
 grep here for those. Items that were still open when the phase was archived
 are marked as moved; they live in ROADMAP.md now.
@@ -997,6 +997,33 @@ Noted while testing 14b; after its wrap-up, before Phase 15.
 - [x] **Collisions:** usernames can't be a page's name or a case twin (migration 033); no page renders an element id twice.
 - [x] **Feed:** long reviews clamped with Read more (one made a card ~9,000px tall on a phone); notification sections as bookcases.
 - [x] **Item page cards as bookcases** (Phil, 2026-11-12: keep): the details, Household Reviews and your-info cards are `.case-card`; the cover is a free box.
+
+## Phase 15: Movies & TV, cover crop
+
+From Phil, 2026-11-09 (loose notes, sorted). The format icons from the same note (turntable for LP, disc-2 for CD, cassette-tape for Cassette on the Music grid) were done the same day, in `_format_icon.html`.
+
+### 15.1 Movies & TV 🟢 (done 2026-11-12; built on branch phase-15-movies-tv, merged to main and deployed 2026-11-12)
+Decided 2026-11-09 (Phil). Today a TV season box set is a video row like any film, so the section says "Movies" about things that aren't. Same physical object (a DVD or tape), same statuses (watched / want to watch), same shelf: it doesn't get its own media type, which would mean another view, blueprint section, statuses, stats tab and lookup for one distinction. Renaming the section back to "Video" was the other option: less work, but no movie/TV filter.
+- [x] **Migration 034** (030 was planned here, but 031-033 shipped first; keep numbers in order): `books.video_kind` (`'movie'` / `'tv'`; NULL means movie, so existing rows need no backfill) and `books.season` (free text: "Season 2", "Complete series"). A lookup table for the kinds, like `media_types`, if it stays in step with `utils/media.py`; a CHECK is fine for two values. Fold it into `create_database.sql` and the ledger. Check `library_videos` (and the other views) expose the new columns; the export and `card_json` carry them. Done: a `video_kinds` lookup table (`movie`, `tv`; `media.VIDEO_KINDS`, test-checked); the app stores NULL for a movie (`media.video_kind`), so a movie has one spelling. The export appends Kind and Season.
+- [x] **UI wording:** the section is **"Movies & TV"** (sidebar, headings, flashes, feed, the Books | Movies | Music switch if it fits at phone width, else "Movies" there only), through `media.media_labels()`. Code, URLs and the DB keep "video". Item wording per kind where it reads oddly ("Add TV show", "Director" becomes "Creator" for TV). Done: the switch fits at 375 px in all four styles, so it says Movies & TV too. Section words are "movie or show" / "movies and shows"; an item's page, edit form, flashes and feed lines use its kind's (`media.KIND_WORDS`, `item_labels`).
+- [x] **Form:** Kind (Movie / TV) and Season on the add and edit form (`_item_fields.html`); Season only shown for TV. Done: two radios and a Season field at the top, shown and worded by CSS `:has()` (no script); switching back to Movie drops the season; the wishlist's add too; the add button has a TV show entry (`?kind=tv`).
+- [x] **Grid:** a "TV" badge on the cover beside the format badge, a Kind filter in the panel, "S2" or the season text in list view. Done: no TV badge after all (Phil, 2026-11-12: the title says it, and it collided with Unshelved); list view says "· TV, S2" after the creator. An unshelved movie or album has no format: Add hides Format while "Not on my shelf" is ticked and saves none, and pages show none (`media.shown_format`; the stored value stays for "I own it now"; wishlist entries keep theirs). Kind filter in `Section.filtered`, so bulk's select-all matches (`test_grid_query` covers it); offered once the shelf has both kinds.
+- [x] **Lookup:** TMDb searches `/search/movie` and `/search/tv` together; a candidate's kind fills Kind (also in Do I have this? online candidates, `utils/have_online.py`). Runtime for a set is the total, or left empty. Done: one `/search/multi` call (both kinds, TMDb's order); runtime left empty for a show; a barcode product's "Complete First Season" is split off (`split_season`) and fills Season. Checked against the live TMDb on the add page.
+- [x] Stats: hours watched stay one number; a by-kind split is a nice-to-have. Done (one query): with any TV, the Movies & TV overview says "On the shelf: 3 movies and 2 TV shows. Watched: ..." and the creator tile and top list say "Directors and creators".
+- [x] Tests: migration on an existing DB (NULL = movie), the form round-trip, filter, TMDb TV candidate, wording. In `tests/test_movies_tv.py` and `test_migrations.py` (034); `test_grid_query`'s parity check covers the Kind filter for bulk edit.
+
+### 15.3 Free-form cover crop and perspective tool 🟢 (done 2026-11-10)
+For fetched covers with borders, scans of a whole sleeve and phone photos taken at an angle.
+- [x] A full-screen `<dialog>` on Add and Edit (Books, Movies, Music and the wishlist's add), opened by "Crop / straighten" under the cover preview. Crop mode (drag the corners, any ratio) and Perspective mode (each corner on its own, pulled back to a rectangle); rotate left/right, ratio menu (Free, Original, 1:1, 2:3, 3:4, DVD) with portrait/landscape, Reset; Crop keeps the tool open for tweaks, then Undo / Cancel / Save. Pointer events (mouse, touch, pen), keyboard (arrows nudge a handle, Shift x10, Enter crops, Esc cancels, Ctrl+Z undoes) and a 3x loupe while dragging a corner.
+- [x] Non-destructive until the form is saved: the browser sends only geometry (fractions of the image); `utils/cover_crop.py` renders from the server's copy (rect crop or a pure-Python homography for Perspective), previews are never stored, Save writes `crop_source` / `cover_crop` and the page's own Save stores the cover. A picked photo is staged once at up to 2400 px (`uploads/crop/`, EXIF and GPS stripped, swept after 24 h) so a phone photo isn't shrunk to 500x1000 before cropping. Old files go through `delete_image_file()`; only staged files are ever deleted because the browser named them.
+- [x] Tests: `tests/test_cover_crop.py` (geometry validation, rendering, routes, all save routes, path safety) and `tests/test_cover_crop_js.py` (the JS helpers under node, checked against the server's renderer).
+- Later ideas, not planned:
+  - [ ] Keep a high-res original next to each saved cover, so a re-crop of a saved cover isn't limited to its 500x1000 copy.
+  - [ ] Auto-detect the cover's corners for Perspective.
+  - [ ] A fine-angle straighten slider.
+  - [ ] Avatars.
+
+---
 
 ## Done
 
