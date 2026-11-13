@@ -27,8 +27,8 @@
                 <button type="submit" class="px-5 py-2 bg-accent hover:bg-accent-hover text-on-accent font-bold rounded-lg btn">Back up now</button>
             </form>
             <p class="text-sm text-content-secondary flex-1 min-w-[16rem]">
-                Backups stay until you delete them. Each user's own library backups (Profile, before Goodreads
-                imports) are separate and only change that user's data.
+                Backups stay until you delete them. Each user's own library backups (Settings, and before a
+                Goodreads import) are separate and only change that user's data.
             </p>
         </section>
 
@@ -67,10 +67,9 @@
         {% endif %}
 
         <p class="text-sm text-content-secondary">
-            Stored on the server in <code class="break-all">{{ where }}</code> (set <code>BACKUP_DIR</code> to move them).
-            They live on the same disk as the library, so they protect against mistakes, not against losing the disk:
-            keep your own copies or snapshots of that folder too. The download is the database only; the covers are in
-            each backup's folder.
+            Stored on the server in <code class="break-all">{{ where }}</code> (<code>BACKUP_DIR</code> moves them), on the
+            same disk as the library: they undo mistakes, not a dead disk, so keep copies or snapshots of that folder
+            too. The download is the database only; the covers are in each backup's folder.
         </p>
     </div>
 {% endblock %}

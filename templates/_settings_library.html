@@ -60,9 +60,9 @@
 <section id="library-backups" class="bg-secondary rounded-xl p-6 card">
     <h2 class="text-2xl font-display text-content-primary mb-1">Library backups</h2>
     <p class="text-sm text-content-secondary mb-4 max-w-3xl">
-        A backup of your own library: the items you added and their covers, and your statuses, ratings, reviews,
-        reading sessions, wishlist, tags, collections and goals. Restoring one puts all of that back as it was and
-        never changes anyone else's data. Libaraxia also backs up before every Goodreads import.
+        Your own library: the items you added and their covers, and your statuses, ratings, reviews, sessions,
+        wishlist, tags, collections and goals. Restoring puts all of it back as it was and never touches anyone
+        else's data. Libaraxia also backs up before every Goodreads import.
     </p>
     <form method="POST" action="{{ url_for('user.personal_backup_create') }}" class="mb-4">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -79,7 +79,7 @@
                 <span class="block text-sm text-content-secondary">{{ b.kind_label }} · {{ b.counts.books }} items, {{ b.counts.reviews }} reviews, {{ b.counts.sessions }} sessions</span>
             </div>
             <form method="POST" action="{{ url_for('user.personal_backup_restore', name=b.name) }}"
-                  data-confirm="Put your library back to {{ when }}? Your items, statuses, ratings, reviews, sessions, wishlist, tags, collections and goals go back to how they were then. Items you added since are removed, except ones someone else has data on. Nobody else's data changes. This can't be undone.">
+                  data-confirm="Put your library back to {{ when }}? Everything of yours goes back to how it was then, and items you added since are removed (unless someone else has data on them). Nobody else's data changes. This can't be undone.">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline px-3 py-1 text-sm rounded-lg">Restore</button>
             </form>
