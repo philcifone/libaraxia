@@ -476,7 +476,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Only initialize on library index and search results pages
     // Check for the book container by ID which persists across view changes
     const bookContainer = document.getElementById('book-container');
-    const dataContainer = document.querySelector('.container[data-current-page]');
+    // The grid's wrapper (_book_grid.html), found by its data, not a layout
+    // class: keyed on Tailwind's .container, the 16.0 page frame silently
+    // switched infinite scroll off (Phil saw only the first page)
+    const dataContainer = document.querySelector('[data-current-page]');
     if (bookContainer && dataContainer) {
         new InfiniteScroll();
     }

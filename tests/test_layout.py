@@ -1192,3 +1192,14 @@ def test_have_album_covers_are_square(client, db, people):
     match = match[:match.index('</a>')]
     assert 'max-w-[5rem]' not in match
     assert re.search(r'class="[^"]*\bh-24\b[^"]*\bw-24\b', match)   # the picture, or the square placeholder
+
+
+def test_infinite_scroll_finds_the_grid_by_data_not_layout_classes():
+    """The grid's paging state lives on its wrapper (data-current-page);
+    script.js found it as `.container[data-current-page]`, so swapping the
+    wrapper's width class for .page-frame (16.0) stopped the grid at its
+    first page. Find it by the data attribute only."""
+    js = pathlib.Path('static/script.js').read_text()
+    assert "document.querySelector('[data-current-page]')" in js
+    assert not re.search(r"querySelector\('\.[\w-]+\[data-current-page\]", js)
+    assert 'data-current-page=' in pathlib.Path('templates/_book_grid.html').read_text()
