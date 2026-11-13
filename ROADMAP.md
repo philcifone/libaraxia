@@ -75,6 +75,7 @@ From Phil, 2026-11-08: for a portfolio, not commercial or public use.
 
 ### 16.0 Final layout pass 🟠
 Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app- and style-wide over the pages that grew piece by piece and still read as stacked cards: Activity Feed, Notifications, Friends, Wishlist, Settings and Admin, the review pages, Do I Have This?. Spacing, widths (the 4xl / 7xl mix), card nesting, headings, phone layouts, and the Shelf bookcase look where it belongs (in Shelf it's on headings, the feed, notifications and the item page so far). Check all four styles in both modes.
+**Spec: [docs/STYLE-TWEAKS-SPEC.md](docs/STYLE-TWEAKS-SPEC.md)** (approved 2026-11-12, from Phil's style-tweaks brief): the bookcase rule, a refactor to shared tokens and one cover component, Shelf tweaks, Friends and profile changes, cover glare. Branch `phase-16-style-pass`, one commit per step (spec section 10).
 - [ ] Walk every page at phone and desktop width in each style; list what's off; fix in one pass.
 - [ ] Feed: the dismiss X and the like/comment row sit in fixed corners; give them a place in the layout.
 
