@@ -1049,3 +1049,16 @@ def test_shelf_site_title_stays_cream():
     css = pathlib.Path('static/styles.css').read_text()
     assert ':is(.font-display.text-content-primary, .no-cover):not(.site-title)' in css
     assert ':root[data-style="shelf"] .topbar .site-title { color: rgb(245 232 206); }' in css
+
+
+def test_feed_card_layout(client, db, people):
+    """Style pass (16.0): an activity card is a small grid (cover, activity,
+    like row), the like row in the layout instead of pinned in a corner, and
+    in Shelf the cover stands on the case's ledge."""
+    feed = pathlib.Path('templates/activity_feed.html').read_text()
+    assert 'class="feed-row"' in feed and 'feed-main' in feed and 'feed-actions' in feed
+    assert 'absolute bottom-6 right-6' not in feed and 'pb-16' not in feed
+    css = pathlib.Path('static/styles.css').read_text()
+    assert 'grid-template-areas: "cover main" "cover actions";' in css
+    assert 'grid-template-areas: "main main" "cover actions";' in css     # phone
+    assert ':root[data-style="shelf"] .feed-card .feed-cover {\n    align-self: end;' in css

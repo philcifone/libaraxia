@@ -793,7 +793,31 @@
        6rem square, a tall VHS box is 10rem high and narrower. The box is
        the image, so the rounded corners and shadow hug it. (Stored covers
        are usually bigger than this; a smaller one shows at its own size.) */
-    .feed-cover {
+    /* An activity card's layout (16.0, activity_feed.html): cover, activity,
+       like row. Desktop: the cover on the left spanning both rows, the
+       activity beside it taking the spare height, the like row at its foot.
+       Phone: the activity full width, then the cover and the like row side
+       by side (beside a cover the text column was ~150px, a word a line). */
+    .feed-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-rows: 1fr auto;
+        grid-template-areas: "cover main" "cover actions";
+        column-gap: 1rem;
+        row-gap: .75rem;
+    }
+    .feed-row > .feed-cover { grid-area: cover; align-self: start; }
+    .feed-row > .feed-main { grid-area: main; }
+    .feed-row > .feed-actions { grid-area: actions; }
+    @media (max-width: 639px) {
+        .feed-row {
+            grid-template-rows: auto auto;
+            grid-template-areas: "main main" "cover actions";
+            row-gap: 1rem;
+        }
+        .feed-row > .feed-cover { align-self: end; }
+    }
+    .feed-cover-img {
         display: block;
         width: auto;
         height: auto;
@@ -2037,6 +2061,16 @@ and to the right for its faces */
 
 /* Feed and notifications covers: a little deeper than a row's */
 :root[data-style="shelf"] .case-card { --box-depth: 6px; }
+
+/* The feed card's cover stands on the case's ledge (16.0, Phil: "lower the
+   book box to sit on the shelf"): at the foot of the card, pulled down
+   through the card's bottom padding so its base stands a little into the
+   ledge's top face, as the grid's books do. The text column beside it keeps
+   the padding, so the like row sits clear above the ledge. */
+:root[data-style="shelf"] .feed-card .feed-cover {
+    align-self: end;
+    margin-bottom: calc(-1.5rem - var(--ledge-top) / 2);
+}
 
 /* Wishlist cards: the cover shown whole, standing in the card's top as a
    box, instead of cropped to fill it */
