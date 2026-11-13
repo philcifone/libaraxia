@@ -2557,15 +2557,25 @@ and to the right for its faces */
    The entries plus the welcome and Log out are taller than a
    small phone (667px); the nav scrolls, but Admin and Log out shouldn't
    hide below the fold. Height is what runs out, so this keys on height:
-   a smaller avatar, tighter link rows. Unlayered, so it beats the
-   Tailwind padding utilities on the same elements. */
-@media (max-height: 760px) {
+   a smaller avatar, link rows that shrink with the height. Unlayered, so
+   it beats the Tailwind padding utilities on the same elements.
+   16.0 (Phil, 2026-11-13: "more padding between avatar and top bar"): the
+   avatar clears the 4rem top bar by 20px, as it does on a tall screen (it
+   was 2px), and the rows are fluid instead of one fixed squeeze, which
+   left up to 170px empty under Log out: about 9px on a 667px screen, up to
+   the full .75rem at about 730px, so the column ends about 20px above the
+   drawer's bottom. The tall layout needs 770px, hence 800. */
+@media (max-height: 800px) {
+    #sidebar { --side-row: clamp(.3rem, calc(.4rem + (100vh - 627px) / 18), .75rem); }
+    @supports (height: 100dvh) {
+        #sidebar { --side-row: clamp(.3rem, calc(.4rem + (100dvh - 627px) / 18), .75rem); }
+    }
     #sidebar .sidebar-head { padding-top: 0; padding-bottom: .75rem; }
-    #sidebar .sidebar-avatar { width: 2.75rem; height: 2.75rem; margin-top: 3.4rem; margin-bottom: .5rem; font-size: 1.1rem; }
-    #sidebar .sidebar-head h2 { font-size: 1.05rem; }
+    #sidebar .sidebar-avatar { width: 3rem; height: 3rem; margin-top: 4.5rem; margin-bottom: .5rem; font-size: 1.2rem; }
+    #sidebar .sidebar-head h2 { font-size: 1.1rem; }
     #sidebar > div { padding-top: .75rem; padding-bottom: .75rem; }
-    #sidebar .nav-link { padding: .4rem .75rem; }     /* .75rem: "Do I Have This?" on one line */
-    #sidebar form button { padding-top: .5rem; padding-bottom: .5rem; }
+    #sidebar .nav-link { padding: var(--side-row) .75rem; }     /* .75rem: "Do I Have This?" on one line */
+    #sidebar form button { padding-top: var(--side-row); padding-bottom: var(--side-row); }
 }
 
 /* ---- Sidebar icon row (Phil, 2026-11-09) ----

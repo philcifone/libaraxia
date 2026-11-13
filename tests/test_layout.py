@@ -197,6 +197,21 @@ def test_sidebar_has_the_mode_shortcut(client, db, people):
     assert db.execute('SELECT color_mode FROM users WHERE id = ?', (people['bob'],)).fetchone()[0] == 'light'
 
 
+def test_short_screen_sidebar_clears_the_top_bar_and_fills_the_drawer():
+    """16.0 (Phil, 2026-11-13): on a phone-height screen the compact sidebar
+    put the avatar 2px under the 4rem top bar and ended 170px short. The
+    avatar's top (.75rem padding + its margin) clears the bar by 20px, the
+    rows grow with the height, and the breakpoint covers the tall layout's
+    770px. Measured in a browser at 600-844px tall; this guards the numbers."""
+    css = (ROOT / 'static/styles.css').read_text()
+    block = css[css.index('@media (max-height: 800px)'):]
+    block = block[:block.index('\n}\n')]
+    assert 'margin-top: 4.5rem' in block                       # 12px + 72px = 64px bar + 20px
+    assert '#sidebar .nav-link { padding: var(--side-row) .75rem; }' in block
+    assert 'clamp(.3rem, calc(.4rem + (100dvh - 627px) / 18), .75rem)' in block
+    assert '@media (max-height: 760px)' not in css
+
+
 def test_book_page_cover_has_no_film_frame(client, db, people):
     """The 7.1 film frame came off books (Phil, 2026-11-05). Its CSS is parked
     in docs/parked/film-frame.css for VHS/DVD, not loaded by the app."""
