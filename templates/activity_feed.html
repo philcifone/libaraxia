@@ -24,7 +24,7 @@
                        Phone: the activity full width, then the cover and the like row
                        side by side at the foot. In Shelf the cover stands on the
                        case's ledge. #}
-                    <div class="case-card feed-card bg-secondary rounded-lg p-6 relative card">
+                    <div class="feed-card bg-secondary rounded-lg p-6 relative card">
                         {% if activity.user_id == current_user.id %}
                         <!-- Dismiss: your own activities only, top right -->
                         <form method="POST" action="/feed/dismiss_activity" class="absolute top-4 right-4" data-confirm="Are you sure you want to dismiss this activity from the feed? This will hide it for all users.">

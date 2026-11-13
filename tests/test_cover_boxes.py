@@ -60,10 +60,13 @@ def test_item_page_cover_is_a_box_without_a_bookcase():
     assert detail.count('case-card') == 3          # details, household reviews, your info
 
 
-def test_feed_and_notifications_are_bookcases(client, db, people):
+def test_feed_and_notifications_are_cards_like_reviews(client, db, people):
+    """Phil, 2026-11-13: the feed and notifications went back from small
+    bookcases to the rounded cards the Reviews lists use."""
     login(client, 'alice')
-    assert 'class="case-card' in client.get('/friends/notifications_page').get_data(as_text=True)
-    assert 'case-card' in (ROOT / 'templates/activity_feed.html').read_text()
+    assert 'case-card' not in client.get('/friends/notifications_page').get_data(as_text=True)
+    feed = (ROOT / 'templates/activity_feed.html').read_text()
+    assert 'case-card' not in feed and 'class="feed-card bg-secondary rounded-lg p-6 relative card"' in feed
 
 
 def test_feed_reviews_are_clamped():

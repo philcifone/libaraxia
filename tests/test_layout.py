@@ -954,7 +954,9 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     book = add_book(db, people['alice'], cover='uploads/c.jpg')
     login(client, 'alice')
     html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="book"' in html
+    assert 'class="cover-stand w-full max-w-[300px]" data-media="book"' in html
+    # An ID badge at every width: the facts beside the cover, two columns on a phone
+    assert 'grid-cols-[7rem_minmax(0,1fr)]' in html and 'class="item-facts ' in html
     assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
 
 

@@ -50,12 +50,18 @@
         <!-- Main Book Content Section -->
         <div class="case-card bg-secondary rounded-xl p-4 md:p-8 mb-8 card">
 
-            <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
+            {# An ID badge (Phil, 2026-11-13): the cover with the facts beside it
+               at every width, two columns of facts on a phone. Below md the
+               description and the rest run full width under the badge; from md
+               they stand beside the cover, under the facts (the cover spans
+               both rows; the second row is 1fr, so the cover's height never
+               stretches the facts' row). #}
+            <div class="grid grid-cols-[7rem_minmax(0,1fr)] sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[300px_minmax(0,1fr)] md:grid-rows-[auto_1fr] gap-x-4 gap-y-6 md:gap-8">
                 <!-- Book Cover Section -->
-                <div class="space-y-4">
+                <div class="md:row-span-2">
                     {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
-                    <div class="cover-stand w-72 md:w-full max-w-[300px] mx-auto" data-media="{{ m.type }}">
+                    <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}">
                         {% if book.cover_image_url|upload_exists %}
                             {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
                         {% else %}
@@ -64,11 +70,9 @@
                     </div>
                 </div>
 
-                <!-- Book Details Section -->
-                <div class="space-y-6">
-                    <!-- Details Grid -->
-                    <div class="p-4 bg-primary rounded-lg">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- The facts, beside the cover -->
+                <div class="item-facts self-start p-3 md:p-4 bg-primary rounded-lg">
+                        <div class="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 md:gap-6">
                             {% if m.type == 'record' %}
                             {% set details = [
                                 ('Format', shown_format|format_label),
@@ -100,15 +104,20 @@
                                 ('Genre', book['genre'])
                             ] %}
                             {% endif %}
+                            {# A code (ISBN, barcode, catalogue number) is one long word:
+                               on a phone it takes the badge's full width rather than
+                               break mid-number in a half column #}
                             {% for item in details if item[0] != 'Format' or item[1] %}
-                            <div class="space-y-1">
+                            <div class="space-y-1 {{ 'col-span-2 lg:col-span-1' if item[0] in ('ISBN', m.code, 'Cat. No.', 'Catalogue Number') }}">
                                 <span class="label text-sm pb-1">{{ item[0] }}</span>
-                                <p class="text-content-primary font-medium break-words">{{ item[1] }}</p>
+                                <p class="text-sm md:text-base text-content-primary font-medium break-words">{{ item[1] }}</p>
                             </div>
                             {% endfor %}
                         </div>
-                    </div>
+                </div>
 
+                <!-- The rest: under the badge on a phone, beside the cover from md -->
+                <div class="col-span-2 md:col-span-1 md:col-start-2 space-y-6">
                     <!-- Description Section -->
                     <div class="bg-primary rounded-lg p-4">
                         <h2 class="text-xl font-display text-content-primary mb-4">{{ m.about }}</h2>

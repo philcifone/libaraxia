@@ -2918,10 +2918,6 @@ img.book-cover-img:not([data-loaded]) {
   width: 1.75rem;
 }
 
-.w-72 {
-  width: 18rem;
-}
-
 .w-8 {
   width: 2rem;
 }
@@ -3140,6 +3136,10 @@ img.book-cover-img:not([data-loaded]) {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.grid-cols-\[7rem_minmax\(0\2c 1fr\)\] {
+  grid-template-columns: 7rem minmax(0,1fr);
+}
+
 .flex-col {
   flex-direction: column;
 }
@@ -3243,6 +3243,10 @@ img.book-cover-img:not([data-loaded]) {
 
 .gap-y-3 {
   row-gap: 0.75rem;
+}
+
+.gap-y-6 {
+  row-gap: 1.5rem;
 }
 
 .space-x-2 > :not([hidden]) ~ :not([hidden]) {
@@ -8317,6 +8321,10 @@ html[data-gr-bar="on"] body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .sm\:grid-cols-\[10rem_minmax\(0\2c 1fr\)\] {
+    grid-template-columns: 10rem minmax(0,1fr);
+  }
+
   .sm\:flex-row {
     flex-direction: row;
   }
@@ -8399,8 +8407,20 @@ html[data-gr-bar="on"] body {
 }
 
 @media (min-width: 768px) {
+  .md\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+
   .md\:col-span-2 {
     grid-column: span 2 / span 2;
+  }
+
+  .md\:col-start-2 {
+    grid-column-start: 2;
+  }
+
+  .md\:row-span-2 {
+    grid-row: span 2 / span 2;
   }
 
   .md\:h-6 {
@@ -8413,10 +8433,6 @@ html[data-gr-bar="on"] body {
 
   .md\:w-6 {
     width: 1.5rem;
-  }
-
-  .md\:w-full {
-    width: 100%;
   }
 
   .md\:flex-none {
@@ -8439,8 +8455,24 @@ html[data-gr-bar="on"] body {
     grid-template-columns: 300px 1fr;
   }
 
-  .md\:grid-cols-\[300px_1fr\] {
-    grid-template-columns: 300px 1fr;
+  .md\:grid-cols-\[300px_minmax\(0\2c 1fr\)\] {
+    grid-template-columns: 300px minmax(0,1fr);
+  }
+
+  .md\:grid-rows-\[auto_1fr\] {
+    grid-template-rows: auto 1fr;
+  }
+
+  .md\:gap-6 {
+    gap: 1.5rem;
+  }
+
+  .md\:gap-8 {
+    gap: 2rem;
+  }
+
+  .md\:p-4 {
+    padding: 1rem;
   }
 
   .md\:p-6 {
@@ -8465,9 +8497,18 @@ html[data-gr-bar="on"] body {
     font-size: 2.25rem;
     line-height: 2.5rem;
   }
+
+  .md\:text-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
 }
 
 @media (min-width: 1024px) {
+  .lg\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+
   .lg\:w-1\/4 {
     width: 25%;
   }
