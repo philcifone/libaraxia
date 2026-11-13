@@ -77,7 +77,7 @@ From Phil, 2026-11-08: for a portfolio, not commercial or public use.
 Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app- and style-wide over the pages that grew piece by piece and still read as stacked cards: Activity Feed, Notifications, Friends, Wishlist, Settings and Admin, the review pages, Do I Have This?. Spacing, widths (the 4xl / 7xl mix), card nesting, headings, phone layouts, and the Shelf bookcase look where it belongs (in Shelf it's on headings, the feed, notifications and the item page so far). Check all four styles in both modes.
 **Spec: [docs/STYLE-TWEAKS-SPEC.md](docs/STYLE-TWEAKS-SPEC.md)** (approved 2026-11-12, from Phil's style-tweaks brief): the bookcase rule, a refactor to shared tokens and one cover component, Shelf tweaks, Friends and profile changes, cover glare. Branch `phase-16-style-pass`, one commit per step (spec section 10).
 - [ ] Walk every page at phone and desktop width in each style; list what's off; fix in one pass.
-- [ ] Feed: the dismiss X and the like/comment row sit in fixed corners; give them a place in the layout.
+- [x] Feed: the dismiss X and the like/comment row sit in fixed corners; give them a place in the layout. Done 2026-11-13: the feed card is the Reviews list's card, the like in its own row (style pass steps 5 and the taste pass).
 
 ### 16.0b Code review 🟠
 The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.

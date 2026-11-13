@@ -107,7 +107,7 @@ Audit of 2026-11-12: 32 pages × 7 style/mode pairs × phone and desktop, on a c
 
 Decided 2026-11-13 (Phil): consistency calls across pages and styles are Claude's to make, so every finding above is scheduled, none is waiting on Phil. Ask only when unifying two similar things would change how something already looks elsewhere.
 
-The feed card's phone layout: Phil wants another pass at it (2026-11-13), after step 6.
+The feed card's phone layout: done (Phil, 2026-11-13: "we fixed but didn't tick"); the card is the Reviews list's card on every width.
 
 The profile's Collections and Wishlist rows: done in step 7, each one `.shelf-case`.
 
