@@ -11,9 +11,9 @@ Phil's brief (`style-tweaks.md`, 2026-11-12): the styles look right overall, but
 **Decisions so far (Phil, 2026-11-12):**
 - The "rounded / themed cards" Appearance toggle is **dropped for now**. Settle the bookcase rule first; revisit only if the rule doesn't fix the "which card gets a case" problem.
 - **Collections (Shelf style):** the whole page is one bookcase. Each collection is a shelf whose covers scroll sideways (the same treatment as Reviews).
-- **Wishlist and a friend's wishlist (Shelf style):** the same as Collections. One bookcase, one sideways-scrolling shelf per section (Books, Movies & TV, Music), covers only (title and author for screen readers). The note, Move to shelf and Remove are on the item page, which already has all three (`book_detail.html` ~L148-200).
+- **Wishlist and a friend's wishlist (Shelf style):** ~~the same as Collections~~. Changed 2026-11-13 (Phil): "laid out exactly like the main page shelves, not these taller shelves": each section is the library's bookcase grid, covers only (title and author for screen readers), with a round (+) on each cover's top-left corner that adds it to your shelf. The note and Remove are on the item page (`book_detail.html` ~L148-200).
 - **Do I Have This?:** its results get the bookcase wrap.
-- **Still unchanged** (notes list): the profile's Collections and Wishlist rows. With the `cased` option they can be switched on later in one word each.
+- **Profile rows** (2026-11-13, after Phil saw Reviews): the profile's Collections and Wishlist rows are each one `.shelf-case`, like the Collections page.
 
 One commit per step on `phase-16-style-pass`. Phil reviews and merges; Claude does not push.
 
@@ -28,7 +28,7 @@ Rule of thumb: **if you'd put it on a shelf, it's in a case; if you'd use it, it
 | A card about one item or one person | small bookcase (`.case-card`) with its cover/avatar on the ledge | feed, notifications, item details and reviews (already), Friends cards (new) |
 | Tools and text | plain paper card, never a case | forms, lookups, search, filters, tab bars, settings, stats, empty states, the profile header |
 
-The only place the rule says "case" that this phase leaves alone is the profile's Collections and Wishlist rows (notes list).
+Every place the rule says "case" gets one; the profile rows were the last (step 7).
 
 ## 2. Refactor: one source per element (no visual change)
 
@@ -50,7 +50,8 @@ The only place the rule says "case" that this phase leaves alone is the profile'
 - **Activity feed card:** the cover sits at the bottom of the card so it stands on the ledge. The details column has the activity line first, then the title. The like button moves into the layout: a footer row in the details column, clear of the ledge with real bottom padding, so it is no longer pinned in the corner. That also does 16.0's "give them a place in the layout" item. The dismiss X stays top right. `pb-16` goes once nothing needs it. Built as a small grid (`.feed-row`, every style): desktop has the cover on the left and the activity and then the like row beside it; a phone has the activity full width, then the cover and the like row side by side (beside the cover the text had ~150px, a word a line). The four activity types share one structure now (they were four copies).
 - **Reviews:** the section becomes one bookcase whose shelves are the existing rows (your reviews, friends', not yet reviewed). Each row's label, count and See all sit on the back wall, and its covers stand on a full-width ledge with the sideways scroll unchanged. This is a `cased` option on `_shelf_rows.html` (drops the row's `bg-primary` panel so the wall shows). It is the one "stacked shelves" component that the next three bullets reuse. Built: the page puts `shelf-case` on the element round `_shelf_rows.html` (no flag in the partial); the covers' one height (`h-28`) puts the ledge at a fixed depth (`--shelf-y`), painted with `background-attachment: local` so it runs the whole scroll width; an empty shelf is a bare ledge. Other styles: pixel-identical.
 - **Collections** (built): one case holding the status shelves and then the custom collections (their headings on the back wall), a shelf per row in Shelf; "New collection" (the create form) is its own paper card below, in every style. The button says "Create collection" (it said "Create Shelf"; in the UI a shelf is what you own). The Goodreads shelves card stays paper.
-- **Wishlist and a friend's wishlist** (Shelf only; other styles keep today's cards): one bookcase, a sideways-scrolling shelf per section (Books, Movies & TV, Music). The shelf's label shows the section and count, and the tabs still choose which shelves show. `_shelf_rows.html` needs one addition: an optional per-cover link (`cover.url`), since a wishlist cover opens its item, not the row's page. Today a row is a single link. `wishlist.js`'s filter hides the covers that don't match, and the counts update. The page feeds the rows through `utils/shelves.py` like Collections, not new markup. Simplest build: the page renders the cased rows in Shelf and the cards elsewhere (`data-style` is known server-side), with the filter working on both.
+- **Wishlist and a friend's wishlist** (built in step 7): ~~stacked rows~~; each section (Books, Movies & TV, Music) is the library grid's bookcase. One markup for every style, since the cycler switches styles without a reload: `_wishlist_card.html` is shared by both pages and carries the grid's hooks (`book-item`, `book-cover`, `book-link`, `book-info`) inside a `.wishlist-grid.shelf-grid` per section, so the grid's rules draw it as they are. Shelf drops the card's chrome and its button for a round (+) on the cover's corner (`.wishlist-quick-add`, the same POST as the button, with a confirm, named "Add <title> to your <shelf>" for screen readers). House, OG and Outrun keep the cards, unchanged pixel for pixel. A friend's wishlist now uses the same card (it had its own copy) with `page_heading`, sections per type and the item page's shop searches (`media.buy_links`) in place of the hard-coded ThriftBooks / Bookshop pair. The Music grid takes the album shelf height (`:is(#book-container, .wishlist-grid)`), and the Movies rack easter egg is scoped to `#book-container` so it stays on the library.
+- **Stacked shelves, fixes (step 7):** no rubber-band at either end of a row (`overscroll-behavior-x: none`, plus the ledge drawn a second time fixed to the row for a browser that bounces anyway), and a plank under each case heading (`.shelf-case-heading`), matching the row ledges.
 - **Do I Have This?** (`have.html`): each match is a card about one item, so it becomes a `.case-card` with its cover standing on the ledge and the details beside it (audit F8). The "You own this" banner and the search card stay paper.
 - **Friends page:** each friend card is a `.case-card`.
 
@@ -107,7 +108,7 @@ Decided 2026-11-13 (Phil): consistency calls across pages and styles are Claude'
 
 The feed card's phone layout: Phil wants another pass at it (2026-11-13), after step 6.
 
-The profile's Collections and Wishlist rows: revisit once Phil has seen the cased Reviews page (step 6), the same layout (Phil, 2026-11-13). One word each with `cased`.
+The profile's Collections and Wishlist rows: done in step 7, each one `.shelf-case`.
 
 ## 10. Execution steps (one commit each)
 
@@ -118,7 +119,7 @@ The profile's Collections and Wishlist rows: revisit once Phil has seen the case
 4. Shelf tabs, Add page heading, item heading (section 4, first three).
 5. Feed card layout (section 4).
 6. Stacked shelves: `cased` rows with per-cover links, then Reviews and Collections.
-7. Wishlist (yours and a friend's) on stacked shelves; Do I Have This? results in a case.
+7. Wishlist (yours and a friend's) as the library's bookcase grid with the (+) quick add; the profile's rows cased; Do I Have This? results in a case.
 8. Friends page and profile changes, books in common (section 5).
 9. Static cover glare.
 10. The audit's "fix now" findings.

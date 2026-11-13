@@ -38,12 +38,12 @@ def view_user_wishlist(username):
         flash('You must be friends to view this wishlist!', 'warning')
         return redirect(url_for('user.profile', username=username))
 
-    # Get wishlist books for the target user
-    wishlist_books = _wishlist_rows(conn, target_user_id)
+    # One section per type, like your own wishlist page
+    sections = [s for s in _wishlist_sections(_wishlist_rows(conn, target_user_id)) if s[2]]
 
     return render_template(
         "user_wishlist.html",
-        wishlist_books=wishlist_books,
+        sections=sections,
         target_username=username,
         target_user=target_user
     )
@@ -60,6 +60,12 @@ def _wishlist_rows(conn, user_id):
     """, (user_id,)).fetchall()
 
 
+def _wishlist_sections(rows):
+    """Wishlist rows split by type, in tab order: (key, labels, rows)."""
+    return [(key, media.media_labels(kind), [r for r in rows if media.media_type_of(r) == kind])
+            for kind, key in WISHLIST_TABS.items()]
+
+
 @wishlist_blueprint.route("/view", methods=["GET", "POST"])
 @login_required
 def view_wishlist():
@@ -73,10 +79,7 @@ def view_wishlist():
     # Old tab names still work: "both" (before Vinyls), "vinyls" (before Music)
     show = {"both": "all", "vinyls": "music"}.get(show, show)
     show = show if show in WISHLIST_TABS.values() or show == "all" else "all"
-    rows = _wishlist_rows(get_db(), current_user.id)
-    # One section per type, in tab order: (key, labels, rows)
-    sections = [(key, media.media_labels(kind), [r for r in rows if media.media_type_of(r) == kind])
-                for kind, key in WISHLIST_TABS.items()]
+    sections = _wishlist_sections(_wishlist_rows(get_db(), current_user.id))
     total = sum(len(items) for _, _, items in sections)
     tabs = [(key, "Books" if m["type"] == media.BOOK else m["section"], len(items))
             for key, m, items in sections] + [("all", "All", total)]

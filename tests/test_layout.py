@@ -797,7 +797,7 @@ def test_shelf_album_rows_are_as_tall_as_a_column_is_wide():
     --cover-h is a column's width (container units on the grid's parent),
     with the column count per breakpoint, not books' fixed height."""
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':has(> #book-container.shelf-grid.grid[data-media="record"])' in css
+    assert ':has(> :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"])' in css
     assert '--cover-h: round(down, var(--col-w), 1px);' in css
     for cols in ('--cols: 3;', '--cols: 4;', '--cols: 5;'):
         assert cols in css
@@ -1082,4 +1082,38 @@ def test_stacked_shelves_in_one_bookcase(client, db, people):
     css = pathlib.Path('static/styles.css').read_text()
     assert '.shelf-row:empty { display: none; }' in css
     assert ':root[data-style="shelf"] .shelf-case .shelf-row:empty {' in css
-    assert 'background-attachment: local;       /* the ledge runs the whole scroll width */' in css
+    assert "background-attachment: local, local, local, local, local, local, local, scroll, scroll;" in css
+    assert "overscroll-behavior-x: none;" in css          # no rubber-band past the last cover
+
+
+def test_wishlists_are_the_library_grid_with_a_quick_add(client, db, people):
+    """16.0 step 7: your wishlist and a friend's share one card
+    (_wishlist_card.html) and the library grid's hooks, so the Shelf style
+    draws each section as the library's bookcase. Yours has the round (+)
+    on the cover (a POST to move_to_library, named for screen readers) as
+    well as the card's button; a friend's has shop searches and no (+)."""
+    book = add_book(db, people['carol'], title='Wanted Book')
+    db.execute('INSERT INTO wishlist (user_id, book_id, notes) VALUES (?, ?, ?)', (people['carol'], book, 'gift'))
+    db.commit()
+    login(client, 'carol')
+    page = client.get('/wishlist/view').get_data(as_text=True)
+    assert 'class="wishlist-grid shelf-grid grid ' in page and 'data-media="book"' in page
+    assert 'wishlist-item book-item' in page and 'class="book-info ' in page
+    quick = page.index('class="wishlist-quick-add"')
+    action = f'action="/wishlist/move_to_library/{book}"'
+    assert page.rfind(action, 0, quick) > page.index('class="cover-anchor"')   # on the cover
+    assert 'aria-label="Add Wanted Book to your Library"' in page
+    assert page.count(action) == 2                                          # the (+) and the button
+
+    login(client, 'alice')                                                   # carol's friend
+    page = client.get('/wishlist/user/carol').get_data(as_text=True)
+    assert 'class="wishlist-grid shelf-grid grid ' in page and 'wishlist-item book-item' in page
+    assert 'page-heading' in page and '?wishlist_owner=carol' in page
+    assert 'wishlist-quick-add' not in page and 'move_to_library' not in page
+    assert 'bookshop.org' in page                                            # media.buy_links
+
+    css = pathlib.Path('static/styles.css').read_text()
+    # The Movies rack easter egg stays on the library grid, not the wishlist's
+    assert not re.search(r'\[data-rack="store"\][^{]*?(?<!#book-container)\.shelf-grid', css)
+    assert ':root[data-style="shelf"] .shelf-grid.grid .wishlist-quick-add {' in css
+    assert '.wishlist-quick-add { display: none; }' in css

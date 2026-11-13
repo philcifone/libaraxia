@@ -1534,11 +1534,12 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    the grid's container (its parent, a size container for this): the width,
    less the frame, the side padding and the gaps, over the columns
    (Tailwind's 2 / md 3 / lg 4 / xl 5; 3 on the Shelf phone). Rounded down to
-   whole px so the ledges, one repeating gradient, don't drift. */
-:root[data-style="shelf"] :has(> #book-container.shelf-grid.grid[data-media="record"]) {
+   whole px so the ledges, one repeating gradient, don't drift. The
+   wishlist's Music grid too (:is() keeps the id's weight). */
+:root[data-style="shelf"] :has(> :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"]) {
     container-type: inline-size;
 }
-:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+:root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] {
     --cols: 2;
     --frame: 12px;
     --pad-x: 1.25rem;
@@ -1547,16 +1548,16 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --cover-h: round(down, var(--col-w), 1px);
 }
 @media (min-width: 768px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] { --cols: 3; }
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] { --cols: 3; }
 }
 @media (min-width: 1024px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] { --cols: 4; }
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] { --cols: 4; }
 }
 @media (min-width: 1280px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] { --cols: 5; }
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] { --cols: 5; }
 }
 @media (max-width: 767px) {
-    :root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] {
+    :root[data-style="shelf"] :is(#book-container, .wishlist-grid).shelf-grid.grid[data-media="record"] {
         --cols: 3;
         --frame: 8px;
         --pad-x: .75rem;
@@ -2070,7 +2071,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 /* the right face also runs down past the framed bottom */
 :root[data-style="shelf"] .shelf-case::after { height: calc(100% + 2 * var(--frame) + var(--case-run)); }
 /* One shelf per row of the case, whatever the page's columns elsewhere */
-:root[data-style="shelf"] .shelf-case > .grid {
+:root[data-style="shelf"] .shelf-case .grid:has(> .shelf-item) {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 1.75rem;
 }
@@ -2099,6 +2100,9 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     align-items: flex-start;            /* covers top-aligned: their bases meet the ledge */
     padding: var(--box-depth) var(--row-pad) calc(var(--ledge-h) - var(--row-sink) + 2px);
     scroll-padding-inline: var(--row-pad);
+    /* No rubber-band past either end (Phil, 2026-11-13: on a phone the row
+       stretched past its start and pulled the ledge with it, leaving a gap) */
+    overscroll-behavior-x: none;
     background-image:
         /* front edge: the lit arris along its top, a shaded bottom pixel */
         linear-gradient(var(--ledge-lit), var(--ledge-lit)),
@@ -2110,7 +2114,11 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front))),
         /* its shadow on the wall below, and the wall darkening toward it above */
         linear-gradient(to bottom, rgb(0 0 0 / var(--under-shade)), transparent),
-        linear-gradient(to bottom, transparent, rgb(0 0 0 / var(--wall-shade)));
+        linear-gradient(to bottom, transparent, rgb(0 0 0 / var(--wall-shade))),
+        /* the same two faces again, fixed to the row rather than its
+           content: a browser that bounces anyway shows ledge, not a gap */
+        linear-gradient(rgb(var(--shelf-top)), rgb(var(--shelf-top))),
+        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
     background-size:
         100% var(--ledge-lit-w),
         100% 1px,
@@ -2118,7 +2126,9 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         100% var(--ledge-top),
         100% var(--ledge-front),
         100% 14px,
-        100% 26px;
+        100% 26px,
+        100% var(--ledge-top),
+        100% var(--ledge-front);
     background-position:
         0 calc(var(--shelf-y) + var(--ledge-top)),
         0 calc(var(--shelf-y) + var(--ledge-h) - 1px),
@@ -2126,9 +2136,12 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         0 var(--shelf-y),
         0 calc(var(--shelf-y) + var(--ledge-top)),
         0 calc(var(--shelf-y) + var(--ledge-h)),
-        0 calc(var(--shelf-y) - 26px);
+        0 calc(var(--shelf-y) - 26px),
+        0 var(--shelf-y),
+        0 calc(var(--shelf-y) + var(--ledge-top));
     background-repeat: no-repeat;
-    background-attachment: local;       /* the ledge runs the whole scroll width */
+    /* the ledge runs the whole scroll width; the last two layers stay put */
+    background-attachment: local, local, local, local, local, local, local, scroll, scroll;
 }
 /* An empty shelf: just its ledge (and the wall above it) */
 :root[data-style="shelf"] .shelf-case .shelf-row:empty {
@@ -2140,6 +2153,30 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 /* A heading or a note inside the case (Collections' "Reading Shelves",
    "Custom Collections") lines up with the shelves' labels */
 :root[data-style="shelf"] .shelf-case :is(.shelf-case-heading, .shelf-case-note) { padding: 0 var(--row-pad); }
+/* ...and a heading stands on a shelf of its own (Phil, 2026-11-13), a
+   plank like the rows', lit the same way */
+:root[data-style="shelf"] .shelf-case .shelf-case-heading {
+    padding-bottom: calc(.6rem + var(--ledge-h));
+    background-image:
+        linear-gradient(var(--ledge-lit), var(--ledge-lit)),
+        linear-gradient(rgb(0 0 0 / var(--front-shade)), rgb(0 0 0 / var(--front-shade))),
+        linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
+        linear-gradient(rgb(var(--shelf-top)), rgb(var(--shelf-top))),
+        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
+    background-size: 100% var(--ledge-lit-w), 100% 1px, 100% var(--ledge-top), 100% var(--ledge-top), 100% var(--ledge-front);
+    /* A percentage position lines the layer's own bottom up with the box's
+       (100% = flush with the bottom), so each offset is just what sits
+       below that layer: the front edge under the top face, and the lit line
+       on the front edge's top. */
+    background-position:
+        0 calc(100% - var(--ledge-front) + var(--ledge-lit-w)),
+        0 100%,
+        0 calc(100% - var(--ledge-front)),
+        0 calc(100% - var(--ledge-front)),
+        0 100%;
+    background-repeat: no-repeat;
+    box-shadow: 0 10px 12px -8px rgb(0 0 0 / var(--under-shade));   /* its shadow on the wall below */
+}
 /* Captions (stars, a reviewer) hang below the ledge, under their cover */
 :root[data-style="shelf"] .shelf-case .shelf-figure figcaption { margin-top: calc(var(--ledge-h) - var(--row-sink)); }
 
@@ -2179,32 +2216,53 @@ and to the right for its faces */
     margin-bottom: calc(-1.5rem - var(--ledge-top) / 2);
 }
 
-/* Wishlist cards: the cover shown whole, standing in the card's top as a
-   box, instead of cropped to fill it */
-:root[data-style="shelf"] .cover-slot {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    height: 19rem;
-    padding: calc(var(--box-depth) + 1rem) calc(var(--box-depth) + 1rem) .75rem 1rem;
-    --box-depth: 7px;
+/* Wishlists (yours and a friend's, _wishlist_card.html): each section is
+   the library's bookcase grid (Phil, 2026-11-13: "laid out exactly like the
+   main page shelves"). The cards carry the grid's hooks, so the grid rules
+   above draw them; this only takes off the card's own chrome, and hides
+   the full-width button and shop links (they're on the item page) in
+   favour of the round (+) on the cover's top-left corner. */
+:root[data-style="shelf"] .shelf-grid.grid .wishlist-item {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    transform: none;
 }
-:root[data-style="shelf"] .cover-slot .cover-box > img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: calc(19rem - 1.75rem - 7px);
-    object-fit: contain;
+:root[data-style="shelf"] .shelf-grid.grid .wishlist-actions { display: none; }
+/* .cover-anchor hugs the cover (a flex item of the bottom-aligned
+   .book-cover), so the (+) lands on the cover's corner, not the column's */
+.cover-anchor { display: block; position: relative; max-width: 100%; }
+.wishlist-quick-add { display: none; }
+:root[data-style="shelf"] .shelf-grid.grid .wishlist-quick-add {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;                     /* over the box's top face */
+    transform: translate(-35%, -35%);
 }
-:root[data-style="shelf"] .cover-slot .no-cover {
-    width: auto;
-    height: 100%;
-    aspect-ratio: 2 / 3;
+:root[data-style="shelf"] .wishlist-quick-add button {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;          /* a badge is round in every Shelf mode */
+    background: rgb(var(--accent));
+    color: rgb(var(--on-accent));
+    border: 2px solid rgb(var(--surface));
+    box-shadow: 0 1px 3px rgb(0 0 0 / .35);
 }
-:root[data-style="shelf"] .cover-slot[data-media="record"] .no-cover { aspect-ratio: 1; }
-
-/* Covers on cards (wishlist) and in the feed: square corners like a book */
-:root[data-style="shelf"] .wishlist-item img { border-radius: 0; }
+:root[data-style="shelf"] .wishlist-quick-add button:hover { background: rgb(var(--accent-hover)); }
+:root[data-style="shelf"] .wishlist-quick-add button:focus-visible {
+    outline: 3px solid rgb(var(--accent));
+    outline-offset: 2px;
+}
+:root[data-style="shelf"] .wishlist-quick-add svg { width: 1rem; height: 1rem; }
+@media (max-width: 767px) {
+    :root[data-style="shelf"] .wishlist-quick-add button { width: 1.75rem; height: 1.75rem; }
+}
 
 
 /* ---- Shelf: the movie rack (Movies grids, ROADMAP 10.1) ----
@@ -2220,7 +2278,7 @@ and to the right for its faces */
    slogan. The light is a shop's fluorescent tubes: even and cool, so the
    bookcase's shading is turned well down and the cases cast no shadow.
    Music keeps the wooden bookcase. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] {
     --rack-blue: 30 50 114;
     --rack-yellow: 236 176 16;
     --shelf-frame: 252 252 250;
@@ -2237,14 +2295,14 @@ and to the right for its faces */
     --box-contact: 0 0 #0000;
     --box-cast: 0 0 #0000;
 }
-:root[data-style="shelf"][data-rack="store"][data-mode="dark"] .shelf-grid.grid[data-media="video"] {
+:root[data-style="shelf"][data-rack="store"][data-mode="dark"] #book-container.shelf-grid.grid[data-media="video"] {
     --shelf-frame: 222 225 229;
     --shelf-back: 206 210 215;
     --shelf-top: 236 238 241;
     --shelf-side: 190 194 200;
 }
 @media (prefers-color-scheme: dark) {
-    :root[data-style="shelf"][data-rack="store"]:not([data-mode="light"]) .shelf-grid.grid[data-media="video"] {
+    :root[data-style="shelf"][data-rack="store"]:not([data-mode="light"]) #book-container.shelf-grid.grid[data-media="video"] {
         --shelf-frame: 222 225 229;
         --shelf-back: 206 210 215;
         --shelf-top: 236 238 241;
@@ -2256,7 +2314,7 @@ and to the right for its faces */
    cropped). A movie with no poster shows its title and director on the case
    instead (just the title when it's long), so coverless boxes still read.
    The case is the .book-cover itself, a fixed shape, so the rack is even. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover {
     height: var(--cover-h);
     width: auto;
     max-width: 100%;
@@ -2277,7 +2335,7 @@ and to the right for its faces */
     --case-depth: 7px;
 }
 @media (max-width: 767px) {
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover {
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover {
         --case-pad: 5px;
         --case-pad-l: calc(var(--cover-h) * 5 / 8 * .15 + 4px);
         --case-depth: 5px;
@@ -2291,8 +2349,8 @@ and to the right for its faces */
    face by its own width, skewX shifts the top right by its height, so the
    two meet at the far corner. Both sit just outside the front's border
    (hence the 1.5px), under the badges and the label. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::before,
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::after {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::before,
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::after {
     content: "";
     position: absolute;
     box-sizing: border-box;
@@ -2300,7 +2358,7 @@ and to the right for its faces */
     pointer-events: none;
     transform-origin: 0 100%;       /* bottom-left: the edge on the front */
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::before {   /* right side */
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::before {   /* right side */
     top: -1.5px;
     left: calc(100% + 1.5px);
     width: var(--case-depth);
@@ -2310,7 +2368,7 @@ and to the right for its faces */
     background: #c9cbd0;
     transform: skewY(-45deg);
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover::after {    /* top */
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover::after {    /* top */
     bottom: calc(100% + 1.5px);
     left: -1.5px;
     width: calc(100% + 3px);
@@ -2319,7 +2377,7 @@ and to the right for its faces */
     background: #e6e7ea;
     transform: skewX(-45deg);
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-cover-img {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-cover-img {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -2328,45 +2386,45 @@ and to the right for its faces */
     filter: none;
     transform: none !important;     /* the case stays put on hover */
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
     padding: .25rem;
     background: transparent;
     border: 0;
     box-shadow: none;
     color: #1b1b1b;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-author { color: #444; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-long .no-cover-author { display: none; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-author { color: #444; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-long .no-cover-author { display: none; }
 @media (max-width: 767px) {
     /* the inset is about 60px wide here: smaller type, and words wrap whole
        (hyphenated if they must) instead of breaking anywhere */
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
         padding: .15rem 0;
         overflow-wrap: normal;
         hyphens: auto;
     }
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-title { font-size: .68rem; }
-    :root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-author { font-size: .58rem; }
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-title { font-size: .68rem; }
+    :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-author { font-size: .58rem; }
 }
 /* Keyboard focus rings the case (the .cover-box inside is display: contents) */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-link:focus-visible .book-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-link:focus-visible .book-cover {
     outline: 3px solid rgb(var(--accent));
     outline-offset: 3px;
 }
 /* In the rack the case itself is the box, so the cover inside it is flat:
    it fills the inset, with no faces, corners, shadow or ring of its own. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .cover-box {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .cover-box {
     width: 100%;
     height: 100%;
     max-width: none;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover) {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover) {
     border-radius: 0;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .book-link:focus-visible :is(.cover-box, .no-cover) {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .book-link:focus-visible :is(.cover-box, .no-cover) {
     outline: none;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::before {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::before {
     content: none;
 }
 /* The clear plastic sleeve of a rental case (Phil, 2026-11-10; the rack
@@ -2375,19 +2433,19 @@ and to the right for its faces */
    the case's margins to cover the whole front. White at low alpha, so it
    shows on the poster and the stripes and vanishes on the white plastic.
    Still, never animated. */
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] {
     --case-sheen:
         linear-gradient(112deg, transparent 26%, rgb(255 255 255 / .26) 35%, rgb(255 255 255 / .08) 42%, transparent 54%),
         linear-gradient(to bottom, rgb(255 255 255 / .16), transparent 20%);
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::after {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.cover-box, .no-cover)::after {
     inset: calc(-1 * var(--case-pad)) calc(-1 * var(--case-pad)) calc(-1 * var(--case-pad)) calc(-1 * var(--case-pad-l));
     width: auto;
     height: auto;
     background: var(--case-sheen);
     transform: none;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
     width: 100%;
     height: 100%;
     max-width: none;
@@ -2402,20 +2460,20 @@ and to the right for its faces */
    elsewhere is off in the rack); the pattern is the one from the old
    barcode sticker (ecdba30), at half scale. */
 .rack-print { display: none; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .rack-print { display: flex; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .cover-box { display: none; }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .rack-print { display: flex; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .cover-box { display: none; }
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover {
     padding-bottom: 14px;           /* clear of the barcode */
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] :is(.no-cover-title, .no-cover-author) {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] :is(.no-cover-title, .no-cover-author) {
     font-family: "VT323", ui-monospace, monospace;
     font-weight: 400;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover-title {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover-title {
     text-transform: uppercase;
     letter-spacing: .03em;
 }
-:root[data-style="shelf"][data-rack="store"] .shelf-grid.grid[data-media="video"] .no-cover::before {
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .no-cover::before {
     content: "";
     top: auto;
     bottom: 3px;

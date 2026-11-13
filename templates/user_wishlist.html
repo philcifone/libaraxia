@@ -1,98 +1,34 @@
 {% extends 'base.html' %}
-{% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
+{# A friend's wishlist (wishlist.view_user_wishlist): what they'd like to
+   own, one section per type (`sections`: key, labels, rows; empty ones
+   left out), each card with shop searches. The same card and grid as your
+   own wishlist (_wishlist_card.html), so the Shelf style shows it as the
+   library's bookcase. #}
 
-{% block title %}{{ target_username.capitalize() }}'s Wishlist{% endblock %}
+{% block title %}{{ target_username }}'s Wishlist - libaraxia{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <!-- Main Container -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
         {{ crumbs([(target_username, url_for('user.profile', username=target_username))], 'Wishlist') }}
+        {{ page_heading('bookmark', target_username ~ "'s Wishlist", "What " ~ target_username ~ " would like to own", class='mb-8') }}
 
-        <!-- Page Header -->
-        <div class="mb-8 text-center">
-            <h1 class="text-4xl font-display font-bold text-content-primary mb-2">
-                {{ target_username.capitalize() }}'s Wishlist
-            </h1>
-            <p class="text-content-secondary">Books {{ target_username }} wants to purchase</p>
-        </div>
-
-
-        <!-- Wishlist Books Grid -->
-        {% if wishlist_books %}
-        <div class="mt-8 mb-8">
-            <div class="container mx-auto px-4 py-8">
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                    {% for book in wishlist_books %}
-                    <div class="group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link">
-                        <a href="{{ url_for('books.show_book', id=book.id) }}?wishlist_owner={{ target_username }}"
-                           class="block flex-1">
-                            <div class="cover-slot aspect-w-3 aspect-h-4 relative" data-media="{{ book.media_type }}">
-                                {% if book.cover_image_url|upload_exists %}
-                                {{ cover_img(book.cover_image_url, book.title, 'object-cover w-full ' ~ ('aspect-square' if book.media_type == 'record' else 'h-72') ~ ' group-hover:opacity-90 transition-opacity duration-200') }}
-                                {% else %}
-                                {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
-                                {% endif %}
-                            </div>
-
-                            <div class="p-4 pb-2">
-                                <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-white">
-                                    {{ book.title }}
-                                </h3>
-                                <p class="text-content-secondary text-sm italic mb-2">
-                                    {{ labels_for(book).by }} {{ book.author }}
-                                </p>
-                                {% if book.notes %}
-                                <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">
-                                    "{{ book.notes }}"
-                                </p>
-                                {% endif %}
-                            </div>
-                        </a>
-
-                        <!-- Purchase Links (book shops: books only) -->
-                        {% if book.media_type == 'book' %}
-                        <div class="px-4 pb-4 space-y-2">
-                            <div class="grid grid-cols-2 gap-2">
-                                <a href="https://www.thriftbooks.com/browse/?b.search={{ book.title|urlencode }} {{ book.author|urlencode }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="px-2 py-2 bg-blue-600 hover:bg-blue-700 text-on-accent text-xs rounded flex items-center justify-center gap-1 btn"
-                                   title="Buy on ThriftBooks">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                    </svg>
-                                    ThriftBooks
-                                </a>
-                                <a href="https://bookshop.org/search?keywords={{ book.title|urlencode }} {{ book.author|urlencode }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="px-2 py-2 bg-green-600 hover:bg-green-700 text-on-accent text-xs rounded flex items-center justify-center gap-1 btn"
-                                   title="Buy on Bookshop.org">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                    </svg>
-                                    Bookshop.org
-                                </a>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
+        {% for key, m, items in sections %}
+        <section class="wishlist-section mb-12" aria-labelledby="wishlist-{{ key }}">
+            <h2 id="wishlist-{{ key }}" class="text-3xl font-display text-content-primary mb-6">
+                {{ m.plural|capitalize }} <span class="text-content-secondary text-xl">({{ items|length }})</span>
+            </h2>
+            <div class="wishlist-grid shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" data-media="{{ m.type }}">
+                {% for book in items %}
+                {% with owner=target_username %}{% include '_wishlist_card.html' %}{% endwith %}
+                {% endfor %}
             </div>
-        </div>
+        </section>
         {% else %}
-        <div class="text-center py-16">
-            <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto card">
-                <p class="text-content-secondary text-lg">
-                    {{ target_username.capitalize() }}'s wishlist is empty.
-                </p>
-            </div>
-        </div>
-        {% endif %}
+        {% with title=target_username ~ "'s wishlist is empty", text="Nothing on it yet." %}
+            {% include '_empty_state.html' %}
+        {% endwith %}
+        {% endfor %}
     </div>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}

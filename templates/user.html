@@ -228,9 +228,10 @@
         </section>
 
         <!-- Collections (8C): each section's statuses in use, rows that scroll sideways -->
+        {# shelf-case (16.0): in Shelf, one bookcase with a shelf per row, as on Reviews #}
         {% if profile_shelves %}
-        <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
-            <div class="flex items-center justify-between gap-4 mb-6">
+        <section class="shelf-case bg-secondary rounded-xl p-4 sm:p-6 card">
+            <div class="shelf-case-heading flex items-center justify-between gap-4 mb-6">
                 <h2 class="text-2xl font-display text-content-primary">Collections</h2>
                 {% if is_own_profile %}
                 <a href="{{ url_for('collections.view_collections') }}" class="text-accent hover:text-accent-hover transition-colors text-sm">All collections →</a>
@@ -241,7 +242,7 @@
             <div class="space-y-6">
                 {% for section_name, rows in profile_shelves %}
                 <div>
-                    {% if profile_shelves|length > 1 %}<h3 class="text-sm uppercase tracking-wider text-content-secondary mb-3">{{ section_name }}</h3>{% endif %}
+                    {% if profile_shelves|length > 1 %}<h3 class="shelf-case-note text-sm uppercase tracking-wider text-content-secondary mb-3">{{ section_name }}</h3>{% endif %}
                     {% with shelves=rows %}{% include '_shelf_rows.html' %}{% endwith %}
                 </div>
                 {% endfor %}
@@ -252,8 +253,8 @@
         <!-- Wishlist Section -->
         {# Wishlist (8D): a row per section, each linked to that tab of the wishlist #}
         {% if wishlist_shelves %}
-        <section class="bg-secondary rounded-xl p-4 sm:p-6 card">
-            <div class="flex items-center justify-between gap-4 mb-6">
+        <section class="shelf-case bg-secondary rounded-xl p-4 sm:p-6 card">
+            <div class="shelf-case-heading flex items-center justify-between gap-4 mb-6">
                 <h2 class="text-2xl font-display text-content-primary">
                     {% if is_own_profile %}Your Wishlist{% else %}{{ user['username'] }}'s Wishlist{% endif %}
                 </h2>
