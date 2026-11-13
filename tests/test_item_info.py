@@ -109,3 +109,17 @@ def test_household_reviews_follow_your_info_full_width(client, db, people):
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
     assert page.index('id="your-info"') < page.index('id="household-reviews"')
     assert 'max-w-4xl mx-auto px-4' not in page
+
+
+def test_a_plain_book_has_the_open_book_icon_like_movies_and_music(client, db, people):
+    """Phil, 2026-11-13: the title card's right-hand icon, as a movie's or an
+    album's format has, for a plain book too; an audiobook keeps its own."""
+    book = add_book(db, people['alice'], title='Dune')
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'role="img"\n                  aria-label="Book" title="Book"' in page
+    assert '<path d="M12 7v14"/>' in page
+    db.execute("UPDATE books SET format = 'Audiobook' WHERE id = ?", (book,))
+    db.commit()
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'aria-label="Audiobook"' in page and '<path d="M12 7v14"/>' not in page

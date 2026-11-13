@@ -22,11 +22,15 @@
         <!-- Item heading: its own heading card above the details (16.0), as on every page -->
         {# A format with an icon (utils/media.FORMAT_ICONS: VHS, DVD,
            audiobook, LP, CD, cassette): title on the left, the icon on
-           the right, since no grid shows a format badge. Anything else
-           (a plain book, an EP): the title centred. An unshelved movie or
-           album has no format (media.shown_format): no copy, no icon. #}
+           the right, since no grid shows a format badge. A plain book (no
+           stored format) gets Lucide's open book (Phil, 2026-11-13).
+           Anything else (an EP, a 7"): the title centred. An unshelved
+           movie or album has no format (media.shown_format): no copy, no
+           icon. #}
         {% set shown_format = book|item_format %}
         {% set format_icon = shown_format|format_icon %}
+        {% set format_name = shown_format|format_label if shown_format else '' %}
+        {% if not format_icon and m.type == 'book' %}{% set format_icon, format_name = 'book-open', 'Book' %}{% endif %}
         {# (set out here: a {% call %} block's own sets don't reach the details below) #}
         {% call heading_card('mb-8') %}
         {# px: the title and icon sit well in from the card's sides #}
@@ -42,7 +46,7 @@
             </div>
             {% if format_icon %}
             <span class="shrink-0 text-content-secondary" role="img"
-                  aria-label="{{ shown_format|format_label }}" title="{{ shown_format|format_label }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
+                  aria-label="{{ format_name }}" title="{{ format_name }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
             {% endif %}
         </header>
         {% endcall %}
