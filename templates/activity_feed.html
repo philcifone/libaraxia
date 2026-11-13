@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_covers.html' import cover_img %}
 {% from '_icons.html' import page_heading %}
 
 {% block title %}Activity Feed - Libaraxia{% endblock %}
@@ -38,9 +39,7 @@
                             <div class="flex-shrink-0">
                                 <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}" class="block">
                                     {% if activity.cover_image_url|upload_exists %}
-                                        <span class="cover-box"><img src="{{ url_for('static', filename=activity.cover_image_url) }}"
-                                             alt="{{ activity.title }}"
-                                             class="feed-cover rounded-lg shadow-md"></span>
+                                        {{ cover_img(activity.cover_image_url, activity.title, 'feed-cover rounded-lg shadow-md') }}
                                     {% else %}
                                         {% with title=activity.title, size='sm', box='w-24 h-36 rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                                     {% endif %}

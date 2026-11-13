@@ -664,8 +664,12 @@ def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
     login(client, 'alice')
     css = pathlib.Path('static/styles.css').read_text()
     assert '.cover-box { display: contents; }' in css
-    for path in ('templates/_book_grid.html', 'static/script.js'):
-        assert '<span class="cover-box"><img' in pathlib.Path(path).read_text(), path
+    # One cover component (16.0): the macro and its JS twin make the box, and
+    # the grid (server-rendered and infinite scroll) goes through them
+    assert '<span class="cover-box' in pathlib.Path('templates/_covers.html').read_text()
+    assert '<span class="cover-box"><img' in pathlib.Path('static/common.js').read_text()
+    assert 'cover_img(' in pathlib.Path('templates/_book_grid.html').read_text()
+    assert 'coverBoxHtml(' in pathlib.Path('static/script.js').read_text()
     # The egg: Movies only
     assert 'data-click="toggleRack"' in client.get('/videos/').get_data(as_text=True)
     assert 'data-click="toggleRack"' not in client.get('/base/index').get_data(as_text=True)
@@ -995,3 +999,27 @@ def test_every_rule_in_styles_css_ships_in_output_css():
     out = _css_selectors((ROOT / 'static/css/output.css').read_text())
     keyframe_steps = re.compile(r'^(from|to|[\d.]+%)$')
     assert sorted(s for s in src - out if not keyframe_steps.match(s)) == []
+
+
+def test_one_cover_component(app):
+    """Style pass (16.0): a cover picture's markup lives in cover_img()
+    (_covers.html) and coverBoxHtml() (common.js) only, so a change to the
+    cover reaches every page. The box carries a spare .cover-sheen layer,
+    hidden unless a style turns it on, and every value is escaped."""
+    with app.test_request_context():
+        macro = app.jinja_env.get_template('_covers.html').module.cover_img
+        html = str(macro('uploads/c.jpg', 'A <b> "title"', 'w-full', 'shrink-0', lazy=True, author='O\'Brien & co'))
+    assert html.startswith('<span class="cover-box shrink-0"><img src="/static/uploads/c.jpg"')
+    assert 'alt="A &lt;b&gt; &#34;title&#34;"' in html
+    assert 'data-author="O&#39;Brien &amp; co"' in html
+    assert 'loading="lazy"' in html and 'class="w-full"' in html
+    assert html.endswith('<span class="cover-sheen" aria-hidden="true"></span></span>')
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '.cover-sheen { display: none; }' in css
+    # Nobody hand-writes the box any more
+    for path in pathlib.Path('templates').rglob('*.html'):
+        if path.name != '_covers.html':
+            assert '<span class="cover-box' not in path.read_text(), path
+    for path in pathlib.Path('static').glob('*.js'):
+        if path.name != 'common.js':
+            assert 'class="cover-box' not in path.read_text(), path

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_covers.html' import cover_img %}
 {% from '_icons.html' import crumbs %}
 {% from '_shelves.html' import section_switch %}
 {# [+ Review] -> Book | Movie | Album lands here (reviews.find, ROADMAP 13):
@@ -36,8 +37,7 @@
                     <a href="{{ url_for('read.rate_review', book_id=r.id, from='reviews') }}"
                        class="flex items-center gap-4 bg-secondary rounded-lg p-3 card card-link">
                         {% if r.cover_image_url|upload_exists %}
-                        <span class="cover-box shrink-0"><img src="{{ url_for('static', filename=r.cover_image_url) }}" alt="" loading="lazy"
-                             class="w-12 max-h-20 object-contain rounded"></span>
+                        {{ cover_img(r.cover_image_url, '', 'w-12 max-h-20 object-contain rounded', 'shrink-0', lazy=True) }}
                         {% else %}
                         {% with title=r.title, size='sm', box='h-16 w-auto aspect-[2/3] shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}

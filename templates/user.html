@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_covers.html' import cover_img %}
 
 {% block title %}User Profile{% endblock %}
 {% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
@@ -338,9 +339,7 @@
                         <!-- Book Cover -->
                         <a href="{{ url_for('books.show_book', id=review.book_id) }}" class="flex-shrink-0" aria-label="{{ review.title }}">
                             {% if review.cover_image_url|upload_exists %}
-                            <span class="cover-box"><img src="{{ url_for('static', filename=review.cover_image_url) }}"
-                                 alt="{{ review.title }}"
-                                 class="h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow" /></span>
+                            {{ cover_img(review.cover_image_url, review.title, 'h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow') }}
                             {% else %}
                             {% with title=review.title, size='sm', box='h-32 w-auto aspect-[2/3] rounded-md' %}{% include '_no_cover.html' %}{% endwith %}
                             {% endif %}

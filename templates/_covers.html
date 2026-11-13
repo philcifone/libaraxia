@@ -1,0 +1,26 @@
+{# A cover picture on a display page (ROADMAP 16.0, style pass): the one place
+   its markup lives, so a change to the cover reaches every page. The JS twin
+   is coverBoxHtml() in common.js; keep the two in step. A missing cover is
+   _no_cover.html, the caller's {% else %}.
+
+   .cover-box is display: contents in every style but Shelf, which draws the
+   cover as a 3D box on it (styles.css "Shelf: every cover is a box"). Its
+   ::before and ::after are the box's side and top faces, so the empty
+   .cover-sheen span is the free layer for light across the front (hidden
+   everywhere else). Form previews and admin pages don't use this: their
+   pictures stay flat.
+
+     {% from '_covers.html' import cover_img %}
+     {{ cover_img(book.cover_image_url, book.title, 'w-full rounded-lg', lazy=True) }}
+
+   path:      the uploads path as stored (books.cover_image_url)
+   alt:       alt text ('' where the title is printed beside it)
+   img_class: classes for the <img>
+   box_class: classes for the box (flex placement: shrink-0, self-start)
+   lazy:      loading="lazy" (rows and lists, not the first screen)
+   author:    data-author, for the grid: common.js redraws a cover whose file
+              fails to load as the placeholder, titled with alt and this #}
+{% macro cover_img(path, alt='', img_class='', box_class='', lazy=False, author=none) -%}
+<span class="cover-box{{ ' ' ~ box_class if box_class }}"><img src="{{ url_for('static', filename=path) }}" alt="{{ alt }}"
+     {%- if author is not none %} data-author="{{ author }}"{% endif %}{% if lazy %} loading="lazy"{% endif %} class="{{ img_class }}"><span class="cover-sheen" aria-hidden="true"></span></span>
+{%- endmacro %}

@@ -917,9 +917,12 @@
         -webkit-line-clamp: 2;
         overflow: hidden;
     }
-    /* The wrapper round a grid cover's <img> (_book_grid.html): no box of
-       its own, except in the Shelf style's bookcase (the 3D box). */
+    /* The wrapper round a cover's <img> (cover_img() in _covers.html): no box
+       of its own, except in the Shelf style, which draws the 3D box on it.
+       .cover-sheen is a spare layer for light across the front (the box's
+       pseudo-elements are its faces); off unless a style turns it on. */
     .cover-box { display: contents; }
+    .cover-sheen { display: none; }
     .no-cover-sm { padding: .4rem .2rem .4rem .4rem; border-left-width: 4px; }
     .no-cover-sm .no-cover-title { font-size: clamp(.55rem, 14cqw, .8rem); -webkit-line-clamp: 4; }
 
@@ -1353,17 +1356,9 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --ledge: calc(var(--ledge-top) + var(--ledge-front));
     --shelf-gap: 44px;
     --shelf-pitch: calc(var(--cover-h) + var(--ledge) + var(--shelf-gap));
-    /* Light and shade. One lamp, above and a little left: the wall darkens
-       toward each shelf, the top face is darker at the back, the front
-       edge catches a line of light along its top and loses it at the
-       bottom. Alphas of black, so the video-store rack can turn them down. */
-    --wall-shade: .12;
-    --top-shade: .16;
-    --under-shade: .28;         /* the shadow a shelf casts on the wall below */
-    --case-shade: .22;          /* the frame's shadow on the inside of the case */
-    --front-shade: .2;          /* bottom 1px of the front edge */
-    --ledge-lit: rgb(255 255 255 / .2);     /* the lit arris of the front edge */
-    --ledge-lit-w: 1px;
+    /* Light and shade: the lamp tokens on :root (Shelf: the rest of the
+       app), the inside shade a little deeper in the big case */
+    --case-shade: .22;
     /* The books show their top and right faces, so we stand above and to
        the right of the case, and from there the inside of its left panel
        is in view: a strip half as wide as the shelf top is tall. The
@@ -1456,7 +1451,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     left: calc(-1 * var(--frame));
     width: calc(100% + 2 * var(--frame) + var(--case-run));
     height: var(--ledge-top);
-    background: linear-gradient(to top, rgb(0 0 0 / .06), transparent),   /* darker at the front edge's lip */
+    background: linear-gradient(to top, rgb(0 0 0 / var(--lip-shade)), transparent),   /* darker at the front edge's lip */
                 rgb(var(--case-top, var(--shelf-top)));
     clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
@@ -1718,8 +1713,21 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    two-tone line (top face, front edge) with a soft shadow under it. Paper
    panels sit on parchment; buttons are gently raised. No textures. */
 
-/* The ledge as a reusable background: bottom-anchored, --ledge tall */
+/* The ledge as a reusable background: bottom-anchored, --ledge tall.
+   And the lamp (16.0: one set for the grid, the small cases and the rows):
+   one light, above and a little left. The wall darkens toward each shelf,
+   the top face is darker at the back, the front edge catches a line of
+   light along its top and loses it at the bottom. Alphas of black, so the
+   video-store rack can turn them down. */
 :root[data-style="shelf"] {
+    --wall-shade: .12;
+    --top-shade: .16;
+    --under-shade: .28;         /* the shadow a shelf casts on the wall below */
+    --case-shade: .18;          /* the frame's shadow on the inside of a case */
+    --front-shade: .2;          /* bottom 1px of the front edge */
+    --lip-shade: .06;           /* a case's outside top face, at its front lip */
+    --ledge-lit: rgb(255 255 255 / .2);     /* the lit arris of the front edge */
+    --ledge-lit-w: 1px;
     --ledge-paint: linear-gradient(to bottom,
         rgb(var(--shelf-top)) 0 45%,
         rgb(var(--shelf-front)) 45% 100%);
@@ -1770,10 +1778,10 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     background-color: rgb(var(--shelf-back));
     background-image:
         /* front edge: lit arris, then a shaded bottom pixel */
-        linear-gradient(to bottom, rgb(255 255 255 / .2) 0 1px, transparent 1px calc(100% - 1px),
-                        rgb(0 0 0 / .2) calc(100% - 1px)),
+        linear-gradient(to bottom, var(--ledge-lit) 0 var(--ledge-lit-w), transparent var(--ledge-lit-w) calc(100% - 1px),
+                        rgb(0 0 0 / var(--front-shade)) calc(100% - 1px)),
         /* top face: darker at the back */
-        linear-gradient(to bottom, rgb(0 0 0 / .16), transparent),
+        linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
         /* left panel: the top face's wedge, then the strip above it */
         conic-gradient(from 26.57deg at 0 calc(100% - var(--ledge-front)),
                        rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
@@ -1782,7 +1790,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         linear-gradient(to bottom, rgb(var(--shelf-top)) 0 var(--ledge-top), rgb(var(--shelf-front)) var(--ledge-top)),
         /* the wall darkens toward the shelf, as in the grid */
         linear-gradient(to bottom, transparent calc(100% - var(--ledge-h) - 22px),
-                        rgb(0 0 0 / .12) calc(100% - var(--ledge-h)));
+                        rgb(0 0 0 / var(--wall-shade)) calc(100% - var(--ledge-h)));
     background-size:
         100% var(--ledge-front),
         100% var(--ledge-top),
@@ -1798,7 +1806,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         bottom,
         0 0;
     background-repeat: no-repeat;
-    box-shadow: inset 0 0 20px rgb(0 0 0 / .18), var(--sh-lg);
+    box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
 /* Activity feed and notification cards, and the item page's details and
@@ -1829,7 +1837,7 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     left: calc(-1 * var(--frame));
     width: calc(100% + 2 * var(--frame) + var(--case-run));
     height: var(--case-run);
-    background: linear-gradient(to top, rgb(0 0 0 / .06), transparent), rgb(var(--case-top, var(--shelf-top)));
+    background: linear-gradient(to top, rgb(0 0 0 / var(--lip-shade)), transparent), rgb(var(--case-top, var(--shelf-top)));
     clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
 :root[data-style="shelf"] :is(.page-heading, .case-card)::after {     /* right side */

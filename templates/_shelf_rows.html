@@ -1,3 +1,4 @@
+{% from '_covers.html' import cover_img %}
 {# Shelf cards (ROADMAP 8C/8D): each a link with its name and count over a
    row of covers that scrolls sideways (.shelf-row) instead of hiding what
    doesn't fit. Used by Collections, the profile's shelves and the profile's
@@ -39,8 +40,7 @@
                     {% set labelled = c.stars or c.by %}
                     {% if labelled %}<figure class="shelf-figure flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
                     {% if c.cover_image_url|upload_exists %}
-                    <span class="cover-box shrink-0"><img src="{{ url_for('static', filename=c.cover_image_url) }}" alt="{{ c.title }}"
-                         loading="lazy" class="{{ cover_h }} w-auto max-w-[8rem] rounded shadow-sm"></span>
+                    {{ cover_img(c.cover_image_url, c.title, cover_h ~ ' w-auto max-w-[8rem] rounded shadow-sm', 'shrink-0', lazy=True) }}
                     {% else %}
                     {# A cover's shape at the row's height (2:3), titled, whatever the row #}
                     {% with title=c.title, size='sm', box=cover_h ~ ' w-auto aspect-[2/3] shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}

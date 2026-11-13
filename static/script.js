@@ -402,9 +402,9 @@ class InfiniteScroll {
 
 
         const coverImage = book.cover_image_url   // cover-box: as _book_grid.html
-            ? `<span class="cover-box"><img src="/static/${this.escapeHtml(book.cover_image_url)}"
-                    alt="${this.escapeHtml(book.title)}" data-author="${this.escapeHtml(book.author || '')}"
-                    class="book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200" /></span>`
+            ? coverBoxHtml(book.cover_image_url, book.title,
+                'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200',
+                { author: book.author || '' })
             : noCoverHtml(book.title, book.author);
 
         // List view's columns: year, your status, your rating (card_json)

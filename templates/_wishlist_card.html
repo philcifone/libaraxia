@@ -1,3 +1,4 @@
+{% from '_covers.html' import cover_img %}
 {# One wishlist item on your wishlist page (wishlist.html): cover, title,
    creator, your note, and the button that moves it onto your shelf (the
    Library for a book, Movies for a movie, Vinyls for a record). Needs `book` (a wishlist row:
@@ -9,8 +10,7 @@
     <a href="{{ item_url(book) }}" class="block flex-1">
         <div class="cover-slot relative" data-media="{{ book.media_type }}">
             {% if book.cover_image_url|upload_exists %}
-            <span class="cover-box"><img src="{{ url_for('static', filename=book.cover_image_url) }}" alt="{{ book.title }}"
-                 class="object-cover w-full {{ 'aspect-square' if book.media_type == 'record' else 'h-72' }} group-hover:opacity-90 transition-opacity duration-200"></span>
+            {{ cover_img(book.cover_image_url, book.title, 'object-cover w-full ' ~ ('aspect-square' if book.media_type == 'record' else 'h-72') ~ ' group-hover:opacity-90 transition-opacity duration-200') }}
             {% else %}
             {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
             {% endif %}
