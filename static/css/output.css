@@ -5773,27 +5773,40 @@ dialog::backdrop {
   /* its shadow on the wall below */
 }
 
-/* Where a row's ledge meets the left panel: the top face's wedge and the
-   strip above it, over the ledge the row paints. Absolutely positioned
-   with .shelf-item (not the scrolling row) as its containing block, so it
-   stays at the case's side while the covers scroll, and paints over them
-   there, as the panel would. Vertically it takes its static place, the
-   top of the row's content box, moved up over the row's top padding. */
+/* Where a row's ledge meets the left panel. The row (the scroller) starts
+   at the panel's inner face, so covers scrolling left go behind the board
+   in every browser (Phil, 2026-11-13; painting a piece over them failed in
+   iPhone Safari, which drew the scroller on top). Its own padding is less
+   by the strip, so the covers rest where they did. The strip's slice of
+   the ledge is this piece, positioned with .shelf-item (outside the
+   scroller, so it never moves): the top face's wedge running back into
+   the panel, the panel above it, the front edge crossing in front. It
+   takes its static place, the top of the row's content box, moved up
+   over the row's top padding. */
+
+:root[data-style="shelf"] .shelf-case .shelf-row {
+  margin-left: var(--side-w);
+  padding-left: calc(var(--row-pad) - var(--side-w));
+  scroll-padding-inline-start: calc(var(--row-pad) - var(--side-w));
+}
 
 :root[data-style="shelf"] .shelf-case .shelf-row::after {
   content: '';
   position: absolute;
   left: 0;
-  z-index: 1;
   width: var(--side-w);
-  /* from the row's top (its padding is the boxes' faces) down through
-       the top face, so a cover scrolling past goes behind the panel */
   margin-top: calc(-1 * var(--box-depth));
-  height: calc(var(--box-depth) + 7rem - var(--row-sink) + var(--ledge-top));
+  height: calc(var(--box-depth) + 7rem - var(--row-sink) + var(--ledge-h));
   pointer-events: none;
-  background:
+  background-image:
         conic-gradient(from 26.57deg at 0 100%, rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
-        rgb(var(--shelf-side));
+        linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side))),
+        linear-gradient(to bottom, var(--ledge-lit) 0 var(--ledge-lit-w), transparent var(--ledge-lit-w) calc(100% - 1px),
+                        rgb(0 0 0 / var(--front-shade)) calc(100% - 1px)),
+        linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
+  background-size: 100% var(--ledge-top), 100% calc(100% - var(--ledge-front)), 100% var(--ledge-front), 100% var(--ledge-front);
+  background-position: 0 calc(100% - var(--ledge-front)), 0 0, bottom, bottom;
+  background-repeat: no-repeat;
 }
 
 /* Captions (stars, a reviewer) hang below the ledge, under their cover */
