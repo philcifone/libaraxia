@@ -34,12 +34,12 @@ The only place the rule says "case" that this phase leaves alone is the profile'
 
 - **Shelf lighting tokens.** The grid (`styles.css` ~L1348) and the small case (~L1752) each hard-code the lamp: wall shade .12, top-face shade .16, lit arris .2, front shade .2, inset case shade. These move to one set of tokens on `:root[data-style="shelf"]`, used by both, plus `.shelf-row`'s ledge (`--ledge-paint`). The rack keeps overriding them as it does now.
 - **One cover component.** Today 11 templates hand-write `<span class="cover-box"><img …></span>`, as do `common.js` and `script.js`. New macro `cover(src, alt, class)` in `templates/_covers.html`, with `_no_cover.html` kept as its fallback, and a `coverBoxHtml()` twin in `common.js` beside `noCoverHtml()`. The macro also adds one empty `<span class="cover-sheen" aria-hidden="true">`. That free layer is what the glare (section 6) needs, because the box's `::before` and `::after` are already the side and top faces. Form previews and admin pages stay unwrapped, as now.
-- **Heading text tokens.** `--heading-ink` and `--placeholder-ink` default to `var(--ink)` in every style, so nothing changes until section 3 sets them. Used by `.font-display` headings, `.page-title` and `.no-cover-title`.
+- **Heading text token** (moved to step 3 when built): a blanket `.font-display` colour would override headings that inherit `text-on-accent` (the "You own this" banner), so it's Shelf-only and targets `.font-display.text-content-primary` and `.no-cover` (`--heading-ink`).
 - Raw Tailwind colours (`border-gray-700`, `bg-orange-600`, `text-white` …) are already re-pointed at tokens in `tailwind.config.js`, so they theme correctly. I only switch them to the semantic names (`border-rule`, `text-content-primary`) where a step already touches that markup. No sweep.
 
 ## 3. Shelf: colour and light
 
-- Headings and placeholder titles: light mode uses a dark walnut brown instead of near-black ink (proposed `74 50 30`, #4a321e). Dark mode uses a very light cream (proposed `248 239 222`, #f8efde). Both must stay >= 4.5:1 on `--surface`, `--paper` and `--shelf-back`; I'll check and record the ratios in the spec.
+- Headings and placeholder titles (built): light mode walnut `92 62 38` (#5c3e26), since Shelf's ink was already a brown-black (#2b2118) and a smaller step wouldn't show; 9.1:1 on surface, 6.5:1 on the bookcase's back wall. Dark mode a warmer cream `245 232 206` (#f5e8ce; the ink was #f2e7d4), 10.9:1 or more.
 - A subtle contact shadow on the shelf's top face under each box, falling slightly right to match the lamp (above-left). The existing cast shadow behind (`--box-cast`) stays. This is one token, `--box-contact`, so the grid, rows, cards and item page all change together. The grid's own value is tuned to its depth.
 
 ## 4. Shelf: page changes

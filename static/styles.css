@@ -1577,15 +1577,8 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
         --box-side: 136 139 146;
     }
 }
-/* The shadows a box casts, from the same lamp as the rows and the item page
-   (their covers already had one; the bookcase's had none): a thin contact
-   shadow on the shelf under its base, and a soft one on the wall to the
-   right of its side face. Plain box-shadows rather than a drop-shadow
-   filter: there can be hundreds of covers on the page. */
-:root[data-style="shelf"] .shelf-grid.grid {
-    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4);
-    --box-cast: 4px 0 4px rgb(0 0 0 / .2);
-}
+/* The shadows a box casts (--box-contact, --box-cast) are the ones every
+   Shelf cover uses, set once in "Shelf: every cover is a box" below. */
 :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] { --box-depth: 4px; }
 @media (max-width: 767px) {
     :root[data-style="shelf"] .shelf-grid.grid { --box-depth: 5px; }
@@ -1742,6 +1735,20 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 :root[data-style="shelf"] .topbar .site-title { color: rgb(var(--shelf-label)); }
 :root[data-style="shelf"] .topbar .hamburger-bar { background-color: rgb(var(--shelf-label)); }
 :root[data-style="shelf"] #hamburger:hover { background-color: rgb(255 255 255 / .1); }
+
+/* Headings and placeholder covers in walnut instead of the near-black ink,
+   which read harsh against the wood (16.0, Phil); in dark mode a warmer
+   cream than the body text. 6.5:1 on the bookcase's back wall, the
+   palest it sits on (10.9:1 in dark). Headings are the display-font ones
+   in the primary text colour; the accent and on-accent ones keep theirs. */
+:root[data-style="shelf"] { --heading-ink: 92 62 38; }      /* #5c3e26 */
+:root[data-style="shelf"][data-mode="dark"] { --heading-ink: 245 232 206; }   /* #f5e8ce */
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) { --heading-ink: 245 232 206; }
+}
+:root[data-style="shelf"] :is(.font-display.text-content-primary, .no-cover) {
+    color: rgb(var(--heading-ink));
+}
 
 /* Sidebar drawer: paper with a wooden edge. No shadow: the closed drawer
    is only translated off-screen, so a shadow would show along the left edge. */
@@ -1901,7 +1908,14 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
     --box-depth: 5px;
     --box-top: 226 224 218;
     --box-side: 196 193 186;
-    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4);
+    /* The shadows a box casts, from the lamp (above and a little left).
+       Plain box-shadows rather than a drop-shadow filter: there can be
+       hundreds of covers on a page. Contact: a thin dark line where the
+       base meets the shelf, then (16.0, Phil: "a subtle drop shadow on the
+       shelf underneath the book") a soft one on the top face, falling back
+       and to the right, away from the lamp. Cast: soft, on the wall to the
+       right of the side face. */
+    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4), 5px 4px 6px -3px rgb(0 0 0 / .3);
     --box-cast: 4px 0 4px rgb(0 0 0 / .2);
 }
 :root[data-style="shelf"][data-mode="dark"] {
