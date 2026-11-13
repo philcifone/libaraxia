@@ -5,7 +5,10 @@
 {% block body_class %}bg-primary-bg min-h-screen{% endblock %}
 
 {% block content %}
-    <main class="page-frame pt-20">
+    {# No frame on <main>: the grid and the bulk banner bring their own
+       .page-frame, and a frame inside a frame doubles the gutters #}
+    <main class="pt-20">
+        <div class="page-frame">
         {% set shelf_name = collection.name if is_custom else status_labels[status] %}
         {% if is_own_profile %}
         {{ crumbs([('Collections', url_for('collections.view_collections', type=media_type))], shelf_name) }}
@@ -24,6 +27,7 @@
                 {% endif %}
             </h1>
         </div>
+        </div>
 
         {% if is_own_profile %}{% include '_bulk_result.html' %}{% endif %}
 
@@ -33,7 +37,7 @@
             {% if bulk_select %}{% include '_bulk_select.html' %}{% endif %}
 
             {% if not books %}
-            <div class="col-span-full py-16 text-center">
+            <div class="page-frame py-16 text-center">
                 <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto card">
                     <p class="text-content-secondary text-lg italic">
                         Nothing on this shelf yet.
