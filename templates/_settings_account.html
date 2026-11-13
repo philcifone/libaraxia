@@ -136,6 +136,25 @@
                         {% endfor %}
                     </div>
                 </div>
+                {# Tilt glare (16.0 step 12, Shelf only): the light on the covers
+                   moves as you tilt your phone. Saved per device by tilt.js, not
+                   with the rest of Appearance, so no .theme-opt here #}
+                <div data-tilt-picker>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-content-secondary w-12">Tilt</span>
+                        <div class="flex" role="group" aria-label="Tilt glare">
+                            {% for key, name in [('off', 'Off'), ('on', 'On')] %}
+                            <button type="button" data-click="setTilt" data-value="{{ key }}"
+                                    class="tilt-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
+                                    aria-pressed="{{ 'true' if key == 'off' else 'false' }}">
+                                {{ name }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <p class="mt-1 text-sm text-content-secondary">The light on covers moves as you tilt your phone. Saved on this device only.</p>
+                    <p data-tilt-note class="mt-1 text-sm text-content-secondary" hidden></p>
+                </div>
                 {# Accent (8B.5): both styles; Classic shows each swatch's dark shade (styles.css) #}
                 <div class="flex items-center gap-3" data-accent-picker>
                     <span class="text-sm text-content-secondary w-12">Accent</span>

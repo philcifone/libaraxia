@@ -128,7 +128,7 @@ The item page's details card is an ID badge at every width (Phil, same day): the
 9. Static cover glare. Done (2026-11-13): `.cover-sheen` in Shelf, a fixed diagonal band (alpha .10 on paper, .16 on cases and sleeves, off on the rental rack, which has its own); its position reads `--sheen-shift`, the hook for step 12.
 10. The audit's "fix now" findings.
 11. Wording pass.
-12. (Gated on Phil) tilt glare.
+12. Tilt glare. Done (2026-11-13, Phil's go): `static/tilt.js`; a Tilt Off / On switch in Appearance, Shelf only, saved per device. The band slides up to 30% either way against the pose you hold the phone in (which drifts slowly after you); an iPhone asks permission when you turn it on.
 
 Steps 3 to 11 each end with a fresh screenshot set reviewed against the previous one, `npm run build:css` when classes change, and `pytest`.
 

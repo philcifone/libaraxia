@@ -1072,8 +1072,8 @@
     }
 
     /* Appearance picker (profile): pressed option is filled */
-    .theme-opt { @apply text-content-secondary hover:bg-primary-hover; }
-    .theme-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
+    .theme-opt, .tilt-opt { @apply text-content-secondary hover:bg-primary-hover; }
+    .theme-opt[aria-pressed="true"], .tilt-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
 
     /* Long-form text (descriptions, reviews): keep monospace lines readable */
     .measure {
@@ -1997,6 +1997,9 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 }
 :root[data-style="shelf"] :is([data-media="video"], [data-media="record"]) .cover-sheen { --sheen-a: .16; }
 :root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .cover-sheen { display: none; }
+/* Tilt (tilt.js) slides the band through --sheen-shift; the switch in
+   Appearance only shows in Shelf, the one style with a sheen */
+:root:not([data-style="shelf"]) [data-tilt-picker] { display: none; }
 :root[data-style="shelf"] :is(.cover-box, .no-cover) {
     position: relative;
     border-radius: 0 0 0 var(--cover-r);
