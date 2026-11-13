@@ -1205,3 +1205,19 @@ def test_infinite_scroll_finds_the_grid_by_data_not_layout_classes():
     assert "document.querySelector('[data-current-page]')" in js
     assert not re.search(r"querySelector\('\.[\w-]+\[data-current-page\]", js)
     assert 'data-current-page=' in pathlib.Path('templates/_book_grid.html').read_text()
+
+
+def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
+    """16.0 steps 9-10: Shelf lays a still glare over every cover (the
+    .cover-sheen layer, with --sheen-shift for a tilt to drive later); the
+    feed shows days, not timestamps (F13); search starts with its crumbs (F11)."""
+    css = pathlib.Path('static/styles.css').read_text()
+    rule = css[css.index(':root[data-style="shelf"] .cover-sheen {'):]
+    rule = rule[:rule.index('}')]
+    assert 'display: block;' in rule and 'var(--sheen-shift, 0%)' in rule and 'pointer-events: none;' in rule
+    assert '.cover-sheen { display: none; }' in css                     # every other style
+    assert '{{ activity.date[:10] }}' in pathlib.Path('templates/activity_feed.html').read_text()
+    add_book(db, people['alice'], title='Dune')
+    login(client, 'alice')
+    page = client.get('/books/search?search_term=dune').get_data(as_text=True)
+    assert page.index('aria-label="Breadcrumb"') < page.index('search-form-container')

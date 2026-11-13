@@ -95,14 +95,14 @@ Audit of 2026-11-12: 32 pages × 7 style/mode pairs × phone and desktop, on a c
 | F6 | Reviews, Collections, profile rows | Shelf | the ledge runs under the star and name captions, not under the covers, so the books don't stand on it | step 6: cased rows put the ledge right under the covers (one row height, `h-28`, makes that a fixed offset); captions hang below the ledge like the grid's badges |
 | F7 | Wishlist | Shelf | full paper cards with boxed covers floating inside | brief: step 7 |
 | F8 | Do I Have This? matches | Shelf | plain paper cards, cover top-aligned | step 7: each match is a `.case-card` with its cover standing on the ledge; the "You own this" banner stays paper (it's text) |
-| F9 | Notifications, empty | Shelf | the empty "No recent notifications" panel is a case with nothing on its shelf (inconsistent with the rule, not broken) | step 10: an empty state is paper |
-| F10 | Collection status page ("Read"), Reviews "See all" | all styles | plain `<h1>`, not `page_heading`, so no heading card (and no case in Shelf), unlike every other page | step 10: every heading is a heading card, app-wide |
-| F11 | Search results | all styles | the search bar sits above the crumbs, and the page has no heading; every other drill-down page starts with crumbs | step 10: crumbs first, then the search bar |
-| F12 | Settings | all styles | heading card is 7xl wide, the tabs and panels under it 4xl, so the heading overhangs | step 10: heading as wide as its content (see F14) |
-| F13 | Feed | all styles | timestamps raw (`2026-11-13 04:15:19`), unlike the dates elsewhere | step 10: the same date format as the rest of the app |
+| F9 | Notifications, empty | Shelf | the empty "No recent notifications" panel is a case with nothing on its shelf (inconsistent with the rule, not broken) | Moot (2026-11-13): notifications are the rounded Reviews cards again, no case |
+| F10 | Collection status page ("Read"), Reviews "See all" | all styles | plain `<h1>`, not `page_heading`, so no heading card (and no case in Shelf), unlike every other page | On hold: touches headings, which Phil may undo app-wide (2026-11-13) |
+| F11 | Search results | all styles | the search bar sits above the crumbs, and the page has no heading; every other drill-down page starts with crumbs | Done (2026-11-13): crumbs first, then the search bar |
+| F12 | Settings | all styles | heading card is 7xl wide, the tabs and panels under it 4xl, so the heading overhangs | On hold: touches headings (see F10) |
+| F13 | Feed | all styles | timestamps raw (`2026-11-13 04:15:19`), unlike the dates elsewhere | Done (2026-11-13): the date only (`YYYY-MM-DD`), as on the Reviews cards |
 | F14 | Profile, Notifications, Have, Friends | all styles | page widths differ (3xl / 4xl / 7xl), the "4xl / 7xl mix" 16.0 mentions | Wide pages done in step 7d: one `.page-frame` (7xl, 16px / 24px / 32px gutter) for every wide page; the library grid had Tailwind's `container` (other widths per breakpoint) and six pages (Shelves, Household, a friend's, Movies/Music grids, Friends, Feed) had `p-6` on `<body>`, 24px further in than the rest; Shelf cases keep their right face inside the frame, as the grid does (Phil, 2026-11-13: the wishlist grid on an iPhone is the reference). Rest in step 10: one rule for every page and style: grids and multi-column pages 7xl, single-column pages (forms, settings, profile, notifications, item tools) 4xl, and the heading card always as wide as the content under it |
-| F15 | Profile | all styles | no page heading card; "Carol's Profile" is inside the header card | step 10: "Carol's Profile" moves into a heading card like every page; the avatar, bio and actions stay in the paper card below |
-| F16 | Reviews "See all" cards | Shelf | each card is about one item with a cover, so the rule says case-card | step 10: each card is a `.case-card` with its cover on the ledge, per the rule |
+| F15 | Profile | all styles | no page heading card; "Carol's Profile" is inside the header card | On hold: touches headings (see F10) |
+| F16 | Reviews "See all" cards | Shelf | each card is about one item with a cover, so the rule says case-card | Dropped (2026-11-13): Phil is using the bookcase on fewer cards, and the feed now copies these |
 
 Decided 2026-11-13 (Phil): consistency calls across pages and styles are Claude's to make, so every finding above is scheduled, none is waiting on Phil. Ask only when unifying two similar things would change how something already looks elsewhere.
 
@@ -125,7 +125,7 @@ Taste pass (Phil, 2026-11-13): the bookcases are being used more sparingly. The 
 The item page's details card is an ID badge at every width (Phil, same day): the cover with the facts beside it, two columns of facts on a phone (codes such as the ISBN span both), the description and the rest under the badge on a phone and beside the cover from md. Desktop is unchanged.
 
 8. Friends page and profile changes, books in common (section 5). Done: Friends cards are `.case-card`s, avatar and name to the profile, "See their shelf", counts as text; Friends lit in the sidebar on anyone else's profile; the profile's actions in one row with full labels (Remove from your household, Leave household, Unfriend, Invite to your household, Join their household, Cancel invite, Accept friend request, Add friend) and consequence confirms; "friend at a glance" under the name (In your household, N books in common via `book_matching.books_in_common`), the reading goal staying under the bio. Also: Do I Have This? album covers are square (a book's 5rem width cap squeezed them, every style).
-9. Static cover glare.
+9. Static cover glare. Done (2026-11-13): `.cover-sheen` in Shelf, a fixed diagonal band (alpha .10 on paper, .16 on cases and sleeves, off on the rental rack, which has its own); its position reads `--sheen-shift`, the hook for step 12.
 10. The audit's "fix now" findings.
 11. Wording pass.
 12. (Gated on Phil) tilt glare.

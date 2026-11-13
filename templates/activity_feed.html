@@ -72,7 +72,8 @@
                                 {% else %}added it to their library{% endif %}
                             {%- endif -%}
                         </span>
-                        <span class="text-content-secondary">{{ activity.date }}</span>
+                        {# The day, as Reviews shows it: additions carry a time, reviews a date (F13) #}
+                        {% if activity.date %}<span class="text-content-secondary">{{ activity.date[:10] }}</span>{% endif %}
                     </p>
 
                     {% if activity.type == 'review_added' and activity.comment %}

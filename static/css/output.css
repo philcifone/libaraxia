@@ -5475,6 +5475,36 @@ dialog::backdrop {
   box-shadow: none;
 }
 
+/* Glare (16.0 step 9): the lamp's light caught across the front of every
+   cover, a soft diagonal band (the rental cases' sheen, below, much
+   fainter: paper doesn't shine like plastic). Still: no hover, no motion.
+   --sheen-shift moves the band across the cover; 0 here, and the place a
+   tilt-driven glare would set it. Movies and music are in plastic, a
+   little brighter. The rack's cases have their own sheen. */
+
+:root[data-style="shelf"] .cover-sheen {
+  --sheen-a: .10;
+  display: block;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+        linear-gradient(112deg,
+            transparent calc(24% + var(--sheen-shift, 0%)),
+            rgb(255 255 255 / var(--sheen-a)) calc(34% + var(--sheen-shift, 0%)),
+            rgb(255 255 255 / calc(var(--sheen-a) / 3)) calc(42% + var(--sheen-shift, 0%)),
+            transparent calc(54% + var(--sheen-shift, 0%)));
+}
+
+:root[data-style="shelf"] :is([data-media="video"], [data-media="record"]) .cover-sheen {
+  --sheen-a: .16;
+}
+
+:root[data-style="shelf"][data-rack="store"] #book-container.shelf-grid.grid[data-media="video"] .cover-sheen {
+  display: none;
+}
+
 :root[data-style="shelf"] :is(.cover-box, .no-cover) {
   position: relative;
   border-radius: 0 0 0 var(--cover-r);
