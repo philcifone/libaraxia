@@ -100,12 +100,15 @@
         <ul class="space-y-3">
             {% for row in result.matches %}
             {% set lm = labels_for(row) %}
-            <li>
-                <a href="{{ item_url(row) }}" class="flex gap-4 bg-secondary rounded-xl card card-link p-3 sm:p-4">
+            {# Each match is a small bookcase in Shelf (case-card), its cover
+               standing on the ledge (case-cover); a card elsewhere. flow-root:
+               the case's top-face margin adds to the list's gap, not into it #}
+            <li class="flow-root">
+                <a href="{{ item_url(row) }}" class="case-card flex gap-4 bg-secondary rounded-xl card card-link p-3 sm:p-4">
                     {% if row.cover_image_url|upload_exists %}
-                    {{ cover_img(row.cover_image_url, '', 'h-24 w-auto max-w-[5rem] rounded shadow-sm', 'self-start shrink-0', lazy=True) }}
+                    {{ cover_img(row.cover_image_url, '', 'h-24 w-auto max-w-[5rem] rounded shadow-sm', 'case-cover self-start shrink-0', lazy=True) }}
                     {% else %}
-                    {% with title=row.title, size='sm', box='h-24 w-auto aspect-[2/3] self-start shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=row.title, size='sm', box='case-cover h-24 w-auto aspect-[2/3] self-start shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                     <div class="min-w-0 flex-1">
                         <p class="font-semibold text-content-primary">{{ row.title }}</p>

@@ -119,7 +119,7 @@ The profile's Collections and Wishlist rows: done in step 7, each one `.shelf-ca
 4. Shelf tabs, Add page heading, item heading (section 4, first three).
 5. Feed card layout (section 4).
 6. Stacked shelves: `cased` rows with per-cover links, then Reviews and Collections.
-7. Wishlist (yours and a friend's) as the library's bookcase grid with the (+) quick add; the profile's rows cased; Do I Have This? results in a case.
+7. Wishlist (yours and a friend's) as the library's bookcase grid with the (+) quick add; the profile's rows cased; Do I Have This? results in a case. Done (7a-7f): each match is a `.case-card` with its cover on the ledge, through `.case-cover`, the hook the feed's cover now shares; a case that is a link doesn't move on hover in Shelf.
 8. Friends page and profile changes, books in common (section 5).
 9. Static cover glare.
 10. The audit's "fix now" findings.

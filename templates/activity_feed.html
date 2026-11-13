@@ -42,7 +42,7 @@
 
                         <div class="feed-row">
                             <!-- Cover -->
-                            <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}" class="feed-cover block flex-shrink-0">
+                            <a href="/books/book/{{ activity.book_id }}" aria-label="{{ activity.title }}" class="feed-cover case-cover block flex-shrink-0">
                                 {% if activity.cover_image_url|upload_exists %}
                                     {{ cover_img(activity.cover_image_url, activity.title, 'feed-cover-img rounded-lg shadow-md') }}
                                 {% else %}

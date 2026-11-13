@@ -1061,7 +1061,7 @@ def test_feed_card_layout(client, db, people):
     css = pathlib.Path('static/styles.css').read_text()
     assert 'grid-template-areas: "cover main" "cover actions";' in css
     assert 'grid-template-areas: "main main" "cover actions";' in css     # phone
-    assert ':root[data-style="shelf"] .feed-card .feed-cover {\n    align-self: end;' in css
+    assert ':root[data-style="shelf"] .case-card .case-cover {\n    align-self: end;' in css
 
 
 def test_stacked_shelves_in_one_bookcase(client, db, people):
@@ -1161,3 +1161,14 @@ def test_case_headings_stand_outside_the_bookcase(client, db, people):
     assert '<div class="shelf-row mt-4"></div>' in pathlib.Path('templates/collections.html').read_text()
     src = pathlib.Path('templates/user.html').read_text()
     assert src.count('class="case-wrap ') == 2 and 'shelf-case-heading' not in src
+
+
+def test_have_matches_are_small_bookcases(client, db, people):
+    """16.0 step 7: Do I Have This? matches are case cards in Shelf, the
+    cover standing on the ledge through the shared .case-cover hook (the
+    feed's too)."""
+    add_book(db, people['alice'], title='Dune', cover='uploads/x.jpg')
+    login(client, 'alice')
+    page = client.get('/have/?q=dune').get_data(as_text=True)
+    assert 'class="case-card flex gap-4 ' in page and 'case-cover' in page
+    assert 'class="feed-cover case-cover ' in pathlib.Path('templates/activity_feed.html').read_text()

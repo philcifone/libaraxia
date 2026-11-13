@@ -2260,15 +2260,19 @@ and to the right for its faces */
 /* Feed and notifications covers: a little deeper than a row's */
 :root[data-style="shelf"] .case-card { --box-depth: 6px; }
 
-/* The feed card's cover stands on the case's ledge (16.0, Phil: "lower the
-   book box to sit on the shelf"): at the foot of the card, pulled down
-   through the card's bottom padding so its base stands a little into the
-   ledge's top face, as the grid's books do. The text column beside it keeps
-   the padding, so the like row sits clear above the ledge. */
-:root[data-style="shelf"] .feed-card .feed-cover {
+/* A case card's cover stands on the case's ledge (.case-cover: the feed,
+   Do I Have This? matches; 16.0, Phil: "lower the book box to sit on the
+   shelf"): at the foot of the card, pulled down through the card's bottom
+   padding (1.5rem in Shelf, above) so its base stands a little into the
+   ledge's top face, as the grid's books do. The text beside it keeps the
+   padding, so the feed's like row sits clear above the ledge. */
+:root[data-style="shelf"] .case-card .case-cover {
     align-self: end;
     margin-bottom: calc(-1.5rem - var(--ledge-top) / 2);
 }
+/* A case that is a link stays put on hover, as the grid's covers do (Phil:
+   no hover animation on the bookcases) */
+:root[data-style="shelf"] .case-card.card-link:is(:hover, :focus-visible) { transform: none; }
 
 /* Wishlists (yours and a friend's, _wishlist_card.html): each section is
    the library's bookcase grid (Phil, 2026-11-13: "laid out exactly like the
