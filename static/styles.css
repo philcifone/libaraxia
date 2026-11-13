@@ -686,11 +686,20 @@
        Every wide page (grids, shelves, wishlist, collections, reviews, the
        feed, friends): its toolbars, heading, bookcase and grid all share
        this one width and gutter, so they line up on every screen. Single-
-       column pages (profile, forms, settings panes) are narrower on purpose
-       and set their own max-w. Phil, 2026-11-13: the wishlist grid on an
-       iPhone, a 16px gutter each side, is the reference. */
+       column pages use .page-frame-narrow: the same gutters, 4xl. One of
+       the two on every page, never one inside another and never a page's
+       own max-w (tests/test_pages.py checks every page). Phil, 2026-11-13:
+       the wishlist grid on an iPhone, a 16px gutter each side, is the
+       reference.
+         .page-frame         grids, shelves, bookcases, two-column pages
+                             (the item page, Rate & Review), lists of cards
+         .page-frame-narrow  one column: the profile, notifications, forms
+                             (add, edit, import), Do I Have This?, admin pages */
     .page-frame {
         @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    }
+    .page-frame-narrow {
+        @apply max-w-4xl mx-auto px-4 sm:px-6 lg:px-8;
     }
 
     /* ---- Cards and buttons ----

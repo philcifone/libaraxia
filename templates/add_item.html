@@ -51,7 +51,7 @@
 
 {% block content %}
 <div id="add-item" data-type="{{ m.type }}"{% if request.method == 'GET' and code_value %} data-auto-lookup="1"{% endif %}{% if request.method == 'GET' and values.lookup_url %} data-lookup-url="{{ values.lookup_url }}"{% endif %} data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
-     class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+     class="page-frame-narrow pt-20 pb-10">
     {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun) }}
     {# The page's heading card above the lookups (16.0), as on every page #}
     {{ page_heading('bookmark' if to_wishlist else section_icons[m.type], heading) }}

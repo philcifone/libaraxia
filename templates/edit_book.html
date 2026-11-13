@@ -8,7 +8,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+<div class="page-frame-narrow pt-20 pb-10">
     {{ crumbs([('Library', url_for('base.index')), (book['title'], url_for('books.show_book', id=book['id']))], 'Edit') }}
     {{ page_heading(section_icons['book'], 'Edit Book') }}
 

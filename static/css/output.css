@@ -1499,9 +1499,15 @@ textarea {
        Every wide page (grids, shelves, wishlist, collections, reviews, the
        feed, friends): its toolbars, heading, bookcase and grid all share
        this one width and gutter, so they line up on every screen. Single-
-       column pages (profile, forms, settings panes) are narrower on purpose
-       and set their own max-w. Phil, 2026-11-13: the wishlist grid on an
-       iPhone, a 16px gutter each side, is the reference. */
+       column pages use .page-frame-narrow: the same gutters, 4xl. One of
+       the two on every page, never one inside another and never a page's
+       own max-w (tests/test_pages.py checks every page). Phil, 2026-11-13:
+       the wishlist grid on an iPhone, a 16px gutter each side, is the
+       reference.
+         .page-frame         grids, shelves, bookcases, two-column pages
+                             (the item page, Rate & Review), lists of cards
+         .page-frame-narrow  one column: the profile, notifications, forms
+                             (add, edit, import), Do I Have This?, admin pages */
 
 .page-frame {
   margin-left: auto;
@@ -1520,6 +1526,28 @@ textarea {
 
 @media (min-width: 1024px) {
   .page-frame {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.page-frame-narrow {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 56rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-frame-narrow {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-frame-narrow {
     padding-left: 2rem;
     padding-right: 2rem;
   }
@@ -2967,14 +2995,6 @@ summary.chip::-webkit-details-marker {
 
 .max-w-4xl {
   max-width: 56rem;
-}
-
-.max-w-5xl {
-  max-width: 64rem;
-}
-
-.max-w-6xl {
-  max-width: 72rem;
 }
 
 .max-w-\[120px\] {

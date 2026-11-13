@@ -98,12 +98,15 @@ class _Frames(HTMLParser):
     nest, so only the ones that close are counted)."""
     def __init__(self):
         super().__init__()
-        self.stack, self.nested = [], 0
+        self.stack, self.nested, self.frames = [], 0, 0
 
     def handle_starttag(self, tag, attrs):
         if tag in VOID:
             return
-        framed = 'page-frame' in (dict(attrs).get('class') or '').split()
+        classes = (dict(attrs).get('class') or '').split()
+        framed = 'page-frame' in classes or 'page-frame-narrow' in classes
+        if framed:
+            self.frames += 1
         if framed and any(self.stack):
             self.nested += 1
         self.stack.append(framed)
@@ -121,6 +124,31 @@ def nested_frames(html):
     parser = _Frames()
     parser.feed(html)
     return parser.nested
+
+
+# Pages with a layout of their own: the sign-in cards (no sidebar, centred)
+UNFRAMED = ('/auth/',)
+# A page's own width, which the two frames replace (16.0 F14)
+OWN_WIDTH = re.compile(r'class="[^"]*\bmax-w-(?:3|4|5|6|7)xl mx-auto\b')
+
+
+def frame_problems(url, html):
+    """16.0 F14 (Phil, 2026-11-13: "do the page widths"): every page sits in
+    .page-frame (7xl) or .page-frame-narrow (4xl), the same gutters, and no
+    page sets its own outer width. [] when the page follows that."""
+    parser = _Frames()
+    parser.feed(html)
+    problems = []
+    page = '<html' in html                 # not a fragment (a dialog's content)
+    if page and not url.startswith(UNFRAMED) and not parser.frames:
+        problems.append('no .page-frame or .page-frame-narrow')
+    if parser.nested:
+        problems.append('a frame inside a frame')
+    # Settings: its heading spans 7xl over 4xl panes (F12). That's a heading
+    # question, on hold with the rest (Phil, 2026-11-13), so it's left as is
+    if url != '/user/settings':
+        problems += [f'own width: {m.group(0)}' for m in OWN_WIDTH.finditer(html)]
+    return problems
 
 
 def test_nested_frame_checker():
@@ -156,7 +184,7 @@ def test_every_page_loads(app, client, db, people):
         if r.status_code == 200 and r.mimetype == 'text/html':
             assert unbalanced_tags(r.get_data(as_text=True)) == [], url
             assert duplicate_ids(r.get_data(as_text=True)) == [], url
-            assert nested_frames(r.get_data(as_text=True)) == 0, url
+            assert frame_problems(url, r.get_data(as_text=True)) == [], url
         checked.append(url)
     assert len(checked) > 35
 

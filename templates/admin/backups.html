@@ -9,7 +9,7 @@
 {% macro when(b) -%}{{ b.created_at.strftime('%-d %b %Y, %H:%M') }}{%- endmacro %}
 
 {% block content %}
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 space-y-6">
+    <div class="page-frame-narrow pt-20 pb-12 space-y-6">
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Backups') }}
 
         <div>

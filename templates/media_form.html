@@ -9,7 +9,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+<div class="page-frame-narrow pt-20 pb-10">
     {{ crumbs([(m.section, url_for(m.home)), (video['title'], url_for(m.bp ~ '.show_' ~ m.item, id=video['id']))], 'Edit') }}
     {{ page_heading(section_icons[m.type], 'Edit ' ~ m.Noun) }}
 

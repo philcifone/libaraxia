@@ -8,7 +8,7 @@
 {% block body_class %}bg-primary dark:bg-primary light:bg-primary-light min-h-screen{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto pt-20 pb-8 px-4 space-y-6">
+<div class="page-frame-narrow pt-20 pb-8 space-y-6">
     {{ crumbs([('Settings', url_for('user.settings', _anchor='library'))], 'Goodreads Import', class='') }}
 
     {{ page_heading('library', 'Import from Goodreads', subtitle='Your reading history from a Goodreads CSV export', class='') }}

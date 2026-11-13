@@ -13,7 +13,7 @@
 {% block body_class %}bg-primary min-h-screen{% endblock %}
 
 {% block content %}
-    <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+    <main class="page-frame-narrow pt-20 pb-16">
         {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], 'Review ' ~ m.a ~ ' ' ~ m.noun) }}
         {{ section_switch(media_type, urls=section_urls, wrap=False, class='mb-6') }}
 
