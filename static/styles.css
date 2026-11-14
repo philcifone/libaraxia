@@ -2157,6 +2157,266 @@ html:has(.item3d[open]) { overflow: hidden; }
     }
 }
 
+/* ---- Paper cards (Phil, 2026-11-14; Shelf only) ----
+   Cards that aren't bookcases drawn as library paper, on the profile so
+   far:
+   .catalog-card (the top card) is a card from the card catalogue: index
+   card stock, typed, a red rule across the top and a red margin line
+   down the left (the avatar sits in the margin, the text beside it), the
+   call number typed above the rule (920, biography, then the first three
+   letters of the name), the card number 42 at the foot, and the hole
+   punched for the drawer's rod.
+   .library-card (Friends) is a library book card standing in its pocket:
+   buff card stock, printed red and blue rules, a Date column of violet
+   date stamps (when you became friends) beside the borrowers' names, one
+   blank ruled line below them, and the kraft pocket across the bottom.
+   (Tried and dropped for the top card: an open-book spread, which every
+   card would have needed its contents split for; and a leaf torn from a
+   book with a dog-ear.)
+
+   How they're drawn: the card's own background, border and shadow go;
+   ::before is the card stock and ::after the pocket, behind the content
+   (isolation keeps their z-index inside the card). The shadow is a
+   drop-shadow filter on the card, so it follows the punched hole and the
+   pocket's notch; it doesn't touch the text, which sits on opaque card.
+   The printed and stamped bits (.page-furniture, .due-stamp, .blank-line)
+   are hidden in other styles.
+
+   Inside, the palette is Shelf light's in both modes (dark ink on card),
+   with the light accent, so every class in the card reads on it. */
+.page-furniture, .due-stamp, .blank-line { display: none; }
+
+:root[data-style="shelf"] :is(.catalog-card, .library-card) {
+    --paper: 240 230 208;       /* fields and tiles on the card, a shade down */
+    --surface: 251 245 230;
+    --fill: 233 221 198;
+    --rule: 214 197 166;
+    --rule-strong: 150 120 86;
+    --ink: 43 33 24;
+    --ink-2: 72 56 41;
+    --muted: 98 80 62;
+    --faint: 118 100 80;
+    --heading-ink: 43 33 24;    /* typed, so the headings are in the ink too */
+    --accent: var(--acc-l, 121 116 14);
+    --accent-hover: var(--acc-l-hover, 95 91 11);
+    --accent-text: var(--accent);
+    --accent-text-hover: var(--accent-hover);
+    --on-accent: 252 248 240;
+    --print-red: 178 58 48;     /* the printed rules and headings */
+    --print-blue: 96 128 168;   /* the printed ruled lines */
+    /* A faint grain: brown noise at up to 7% (an SVG filter as a data:
+       image, which the CSP's img-src allows) */
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .3 0 0 0 0 .18 .07 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    position: relative;
+    isolation: isolate;
+    color: rgb(var(--ink));
+    font-family: "Courier Prime", "Courier New", monospace;     /* typed */
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    filter: drop-shadow(0 6px 10px rgb(0 0 0 / .28));
+}
+:root[data-style="shelf"] :is(.catalog-card, .library-card)::before,
+:root[data-style="shelf"] :is(.catalog-card, .library-card)::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+}
+/* The typed headings; labels typed too (.label sets a font of its own) */
+:root[data-style="shelf"] :is(.catalog-card h1, .library-card h2) {
+    font-family: inherit;
+    font-weight: 700;
+}
+:root[data-style="shelf"] .catalog-card .label { font-family: inherit; }
+
+/* Printed bits: small, out of the way */
+:root[data-style="shelf"] .page-furniture { display: block; }
+:root[data-style="shelf"] .page-furniture > span {
+    position: absolute;
+    line-height: 1;
+}
+
+/* -- The catalog card -- */
+:root[data-style="shelf"] .catalog-card {
+    --stock: 250 246 234;       /* index card, #faf6ea */
+    --top-rule: 2.25rem;        /* where the red rule crosses */
+    --pad-x: 1rem;              /* the card's p-4; sm:p-6 below */
+    --margin: calc(var(--pad-x) + 64px + .5rem);    /* the red line: between avatar and text (gap-4 / 2) */
+    --hole: 7px;                /* the punched hole's radius */
+    padding-top: calc(var(--top-rule) + 1.25rem);
+    padding-bottom: 2.75rem;    /* room for the hole and the card number */
+}
+@media (min-width: 640px) {
+    :root[data-style="shelf"] .catalog-card { --pad-x: 1.5rem; --margin: calc(var(--pad-x) + 64px + .75rem); }
+}
+:root[data-style="shelf"][data-mode="dark"] .catalog-card { --stock: 236 228 208; }
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) .catalog-card { --stock: 236 228 208; }
+}
+/* The card: rounded corners, the two red rules, the grain, and the hole
+   (a mask, so the page shows through it) */
+:root[data-style="shelf"] .catalog-card::before {
+    inset: 0;
+    z-index: -1;
+    border-radius: 4px;
+    background-color: rgb(var(--stock));
+    background-image:
+        linear-gradient(rgb(var(--print-red) / .75), rgb(var(--print-red) / .75)),
+        linear-gradient(rgb(var(--print-red) / .75), rgb(var(--print-red) / .75)),
+        var(--grain);
+    background-size: 100% 2px, 1.5px calc(100% - var(--top-rule)), auto;
+    background-position: 0 var(--top-rule), var(--margin) var(--top-rule), 0 0;
+    background-repeat: no-repeat, no-repeat, repeat;
+    -webkit-mask: radial-gradient(circle var(--hole) at 50% calc(100% - 1.4rem), transparent calc(var(--hole) - .5px), #000 var(--hole));
+            mask: radial-gradient(circle var(--hole) at 50% calc(100% - 1.4rem), transparent calc(var(--hole) - .5px), #000 var(--hole));
+}
+/* The call number above the rule, top left; the card number at the foot */
+:root[data-style="shelf"] .catalog-card .call-number {
+    left: var(--pad-x);
+    top: .85rem;
+    font-size: .8125rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+}
+:root[data-style="shelf"] .catalog-card .card-number {
+    right: var(--pad-x);
+    bottom: 1.1rem;
+    font-size: .75rem;
+    color: rgb(var(--faint));
+}
+:root[data-style="shelf"] .catalog-card h1 { font-size: 1.5rem; line-height: 1.25; }
+
+/* -- The library card -- */
+:root[data-style="shelf"] .library-card {
+    --stock: 242 229 196;       /* buff card stock, #f2e5c4 */
+    --kraft: 190 152 102;       /* the pocket, #be9866 */
+    --stamp: 86 62 148;         /* date-stamp ink, violet */
+    --row: 2.25rem;             /* one ruled line */
+    --date-col: 7.5rem;         /* the Date column */
+    --pocket: 3rem;             /* how much of the card the pocket covers */
+    padding-top: 2.4rem;
+    padding-bottom: calc(var(--pocket) + .75rem);
+}
+:root[data-style="shelf"][data-mode="dark"] .library-card { --stock: 228 213 178; --kraft: 168 132 86; }
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) .library-card { --stock: 228 213 178; --kraft: 168 132 86; }
+}
+/* The card: buff stock, gently rounded corners, the grain */
+:root[data-style="shelf"] .library-card::before {
+    inset: 0;
+    z-index: -1;
+    border-radius: 4px;
+    background-color: rgb(var(--stock));
+    background-image: var(--grain);
+}
+/* The pocket across the bottom: kraft paper with a thumb notch, its top
+   edge casting a little shadow up onto the card */
+:root[data-style="shelf"] .library-card::after {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--pocket);
+    z-index: 1;
+    border-radius: 0 0 4px 4px;
+    background-color: rgb(var(--kraft));
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .18), transparent 6px), var(--grain);
+    -webkit-mask: radial-gradient(circle 16px at 50% 0, transparent 15px, #000 16px);
+            mask: radial-gradient(circle 16px at 50% 0, transparent 15px, #000 16px);
+    filter: drop-shadow(0 -1px 2px rgb(0 0 0 / .25));
+}
+/* Printed on the card, top centre */
+:root[data-style="shelf"] .library-card .running-head {
+    left: 0;
+    right: 0;
+    top: .9rem;
+    text-align: center;
+    font-size: .625rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgb(var(--print-red));
+}
+/* The title line, typed */
+:root[data-style="shelf"] .library-card h2 {
+    font-size: 1.25rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+/* The ruled lines: the friends' tiles become the card's lines. Printed
+   above them, the column heads; a double red rule after the Date column,
+   blue lines every --row (content-box, so not through the heads). The
+   template adds one .blank-line after the names, so the card always has
+   one spare line. */
+:root[data-style="shelf"] .library-card .friend-lines {
+    display: block;
+    position: relative;
+    padding-top: 1.5rem;
+    background-image:
+        linear-gradient(to right, transparent calc(var(--date-col) - 5px),
+            rgb(var(--print-red) / .7) calc(var(--date-col) - 5px) calc(var(--date-col) - 4px),
+            transparent calc(var(--date-col) - 4px) calc(var(--date-col) - 2px),
+            rgb(var(--print-red) / .7) calc(var(--date-col) - 2px) calc(var(--date-col) - 1px), transparent 0),
+        repeating-linear-gradient(to bottom, transparent 0 calc(var(--row) - 1px),
+            rgb(var(--print-blue) / .45) calc(var(--row) - 1px) var(--row));
+    background-clip: border-box, content-box;
+    background-origin: border-box, content-box;
+    border-top: 2px solid rgb(var(--print-red) / .7);
+}
+:root[data-style="shelf"] .library-card .friend-lines::before,
+:root[data-style="shelf"] .library-card .friend-lines::after {
+    position: absolute;
+    top: .35rem;
+    font-size: .625rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgb(var(--print-red));
+}
+:root[data-style="shelf"] .library-card .friend-lines::before { content: 'Date'; left: 0; }
+:root[data-style="shelf"] .library-card .friend-lines::after { content: "Borrower's name"; left: calc(var(--date-col) + .75rem); }
+/* One line: the stamp in the Date column, the name beside it; no tile,
+   no avatar */
+:root[data-style="shelf"] .library-card .friend-lines > a {
+    display: grid;
+    grid-template-columns: var(--date-col) minmax(0, 1fr);
+    align-items: center;
+    height: var(--row);
+    padding: 0;
+    gap: 0;
+    background: none;
+    border-radius: 0;
+}
+:root[data-style="shelf"] .library-card .friend-lines > a > :is(img, div) { display: none; }
+:root[data-style="shelf"] .library-card .friend-lines > a > p {
+    grid-column: 2;
+    grid-row: 1;
+    padding-left: .75rem;
+    font-weight: 400;
+    font-size: 1.05rem;
+}
+:root[data-style="shelf"] .library-card .friend-lines > a:hover > p { text-decoration: underline; }
+/* The spare line: blank, one line high */
+:root[data-style="shelf"] .library-card .blank-line { display: block; height: var(--row); }
+/* The stamp: violet, a little crooked, the ink uneven */
+:root[data-style="shelf"] .library-card .due-stamp {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: rgb(var(--stamp) / .85);
+    transform: rotate(-2deg);
+    text-shadow: .5px 0 0 rgb(var(--stamp) / .35);
+}
+:root[data-style="shelf"] .library-card .friend-lines > a:nth-child(2n) .due-stamp { transform: rotate(1.5deg) translateX(3px); }
+:root[data-style="shelf"] .library-card .friend-lines > a:nth-child(3n) .due-stamp { transform: rotate(-.5deg) translateX(1px); opacity: .8; }
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .library-card { --date-col: 6.5rem; }
+}
+
 /* ---- Shelf: small bookcases (ROADMAP 14c) ----
    Each page's heading card, and the cards marked .case-card (feed,
    notifications, the item page's details and reviews), are set in a small
