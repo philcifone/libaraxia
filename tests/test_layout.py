@@ -1342,3 +1342,28 @@ def test_record_item_box_is_thinner():
     the grid (Phil, 2026-11-14)."""
     css = pathlib.Path('static/styles.css').read_text()
     assert ':root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }' in css
+
+
+def test_empty_detail_fields_say_not_set(client, db, people):
+    """An empty field on an item page keeps its label and says "Not set" in
+    a marked, muted line: it used to print Python's None ("None pages")."""
+    book = add_book(db, people['alice'])
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    facts = page.split('item-facts', 1)[1].split('</div>\n                </div>', 1)[0]
+    # publisher, year, page count, ISBN and genre are all empty on this book
+    assert facts.count('data-unset') == 5
+    assert 'None' not in facts
+    db.execute("UPDATE books SET page_count = 320, publisher = 'Scribner' WHERE id = ?", (book,))
+    db.commit()
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert page.count('data-unset') == 3 and '320 pages' in page
+
+
+def test_box_shadow_stays_off_the_shelf():
+    """A Shelf cover's shadow falls on the wall to its right and never
+    below its base (Phil, 2026-11-14: a shadow under it made it float):
+    the offset is up, and the blur is no more than offset plus spread."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '--box-shadow: calc(var(--box-depth) + 6px) -4px 8px -4px rgb(0 0 0 / var(--box-shade));' in css
+    assert 'box-contact' not in css and 'box-cast' not in css
