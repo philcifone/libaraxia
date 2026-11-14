@@ -23,7 +23,8 @@
         {# A format with an icon (utils/media.FORMAT_ICONS: VHS, DVD,
            audiobook, LP, CD, cassette): title on the left, the icon on
            the right, since no grid shows a format badge. A plain book (no
-           stored format) gets Lucide's open book (Phil, 2026-11-13).
+           stored format) gets Lucide's open book (Phil, 2026-11-13), in the
+           accent like every page heading's icon.
            Anything else (an EP, a 7"): the title centred. An unshelved
            movie or album has no format (media.shown_format): no copy, no
            icon. #}
@@ -32,7 +33,8 @@
         {% set format_name = shown_format|format_label if shown_format else '' %}
         {% if not format_icon and m.type == 'book' %}{% set format_icon, format_name = 'book-open', 'Book' %}{% endif %}
         {# (set out here: a {% call %} block's own sets don't reach the details below) #}
-        {% call heading_card('mb-8') %}
+        {# heading-lit: the flashlight trial (styles.css, Shelf only) #}
+        {% call heading_card('mb-8 heading-lit') %}
         {# px: the title and icon sit well in from the card's sides #}
         <header class="py-2 px-3 md:px-6 {{ 'flex items-center justify-between gap-6' if format_icon else 'text-center' }}">
             <div class="min-w-0">
@@ -45,7 +47,7 @@
                 <p class="text-xl text-content-secondary italic">{{ m.by }} {{ book['author'] }}</p>
             </div>
             {% if format_icon %}
-            <span class="shrink-0 text-content-secondary" role="img"
+            <span class="shrink-0 text-accent" role="img"
                   aria-label="{{ format_name }}" title="{{ format_name }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
             {% endif %}
         </header>
@@ -67,7 +69,11 @@
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
                     <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}">
                         {% if book.cover_image_url|upload_exists %}
-                            {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
+                            {# A tap shows it bigger (#cover-zoom, below) #}
+                            <button type="button" class="cover-zoom-open" data-click="showModal" data-target="cover-zoom"
+                                    aria-label="Show the cover bigger">
+                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
+                            </button>
                         {% else %}
                             {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
@@ -533,6 +539,19 @@
                 {% endfor %}
             </div>
         </section>
+        {% endif %}
+
+        {# The cover, bigger (Phil, 2026-11-13): over the dimmed page, not
+           filling it. The whole dialog is one close button (a method=dialog
+           form closes it without JS), so a tap anywhere, or Esc, goes back. #}
+        {% if book.cover_image_url|upload_exists %}
+        <dialog id="cover-zoom" class="cover-zoom" aria-label="{{ book['title'] }} cover">
+            <form method="dialog">
+                <button type="submit" aria-label="Close">
+                    <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="{{ book['title'] }} Cover">
+                </button>
+            </form>
+        </dialog>
         {% endif %}
     </div>{# Main Content Container #}
 {% endblock %}

@@ -2993,10 +2993,6 @@ summary.chip::-webkit-details-marker {
   max-width: 48rem;
 }
 
-.max-w-4xl {
-  max-width: 56rem;
-}
-
 .max-w-\[120px\] {
   max-width: 120px;
 }
@@ -4521,6 +4517,66 @@ dialog::backdrop {
   width: min(28rem, calc(100vw - 2rem));
 }
 
+/* The item page's cover, bigger (book_detail.html #cover-zoom): the dialog
+   is a transparent sheet over the whole viewport, all of it one close
+   button, with the cover centred in a box 30rem wide (less on a phone) and
+   85% of the screen tall: bigger than the page's, not filling the screen.
+   The box sets the size, not the file (most covers are ~340px wide, about
+   the page's own 300px), and object-fit fits any shape in it; the shadow
+   is a drop-shadow filter, which follows the picture, not the box's empty
+   margins (a box-shadow or border-radius would draw the box). */
+
+.cover-zoom-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: zoom-in;
+}
+
+.cover-zoom {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.cover-zoom form, .cover-zoom button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  background: none;
+  border: 0;
+  cursor: zoom-out;
+}
+
+.cover-zoom img {
+  width: min(30rem, 100%);
+  height: 85dvh;
+  -o-object-fit: contain;
+     object-fit: contain;
+  filter: drop-shadow(0 12px 30px rgb(0 0 0 / .6));
+}
+
+/* No focus ring on the cover or the enlarged one (Phil, 2026-11-13): Safari
+   draws one when the dialog takes focus on opening and when focus goes
+   back to the cover on closing, so it showed on every tap. */
+
+.cover-zoom button:focus-visible, .cover-zoom-open:focus-visible {
+  outline: none;
+}
+
+html:has(.cover-zoom[open]) {
+  overflow: hidden;
+}
+
 /* ---------- Star rating (templates/rate_review.html) ---------- */
 
 .rating-group {
@@ -5346,6 +5402,80 @@ dialog::backdrop {
   padding-bottom: calc(.75rem + var(--ledge-h));
 }
 
+/* A heading lit by a flashlight (trial on the item page only, Phil
+   2026-11-13: .heading-lit on its heading card; take the class off to
+   revert). A pool of torchlight on the case's back wall behind the
+   heading, and the title, byline and icon casting a soft shadow onto it,
+   down and to the right, as from a torch held a little above and left of
+   the viewer. Text takes text-shadow; the SVG icon a drop-shadow filter,
+   which follows its strokes. The pool is painted on the <header> inside
+   (the card's own background and ::before/::after are the bookcase).
+
+   The knobs, all here:
+     --lit-radius      where the light ends, as a share of the distance
+                       from the centre to the header's nearer edge
+                       (100% = touches it; past 100% gets cut off by the
+                       header's box, so a hard edge shows)
+     --lit-feather     how much of that radius is the fade; the rest is
+                       full brightness (0% = a hard-edged disc, equal to
+                       the radius = fades all the way from the centre)
+     --lit-brightness  the light's opacity at full, 0 (off) to 1
+     --lit-colour      the light's colour, as "R G B"
+     --lit-shadow      the cast shadow's colour and darkness
+     --lit-shadow-x    how far the shadow falls to the right
+     --lit-shadow-y    how far it falls down
+     --lit-shadow-blur how soft its edge is (0 = crisp)
+   Light mode only overrides the brightness and shadow (the wall is pale).
+   Everything is off for now (Phil, 2026-11-13): brightness 0 and a fully
+   transparent shadow, in both modes; the comments beside them have the
+   values tried. To turn either on, set its dark-mode value here and its
+   light-mode value in the two overrides below (they must match). README
+   "Tuning the Shelf heading light" has the same list. */
+
+:root[data-style="shelf"] .heading-lit {
+  --lit-radius: 100%;
+  --lit-feather: 70%;
+  --lit-brightness: 0;
+  /* off for now (Phil, 2026-11-13); the trial used .16 in dark */
+  --lit-colour: 255 236 196;
+  /* warm white, like a torch bulb */
+  --lit-shadow: rgb(0 0 0 / 0);
+  /* off for now; the tuned value was rgb(0 0 0 / .7) */
+  --lit-shadow-x: 5px;
+  --lit-shadow-y: 8px;
+  --lit-shadow-blur: 6px;
+}
+
+:root[data-style="shelf"][data-mode="light"] .heading-lit {
+  --lit-brightness: 0;
+  --lit-shadow: rgb(0 0 0 / 0);
+}
+
+/* light on: .5; shadow on: rgb(0 0 0 / .4) */
+
+@media (prefers-color-scheme: light) {
+  :root[data-style="shelf"]:not([data-mode="dark"]) .heading-lit {
+    --lit-brightness: 0;
+    --lit-shadow: rgb(0 0 0 / 0);
+  }
+
+  /* light on: .5; shadow on: rgb(0 0 0 / .4) */
+}
+
+:root[data-style="shelf"] .heading-lit > header {
+  background-image: radial-gradient(ellipse closest-side,
+        rgb(var(--lit-colour) / var(--lit-brightness)) calc(var(--lit-radius) - var(--lit-feather)),
+        transparent var(--lit-radius));
+}
+
+:root[data-style="shelf"] .heading-lit :is(h1, p) {
+  text-shadow: var(--lit-shadow-x) var(--lit-shadow-y) var(--lit-shadow-blur) var(--lit-shadow);
+}
+
+:root[data-style="shelf"] .heading-lit svg {
+  filter: drop-shadow(var(--lit-shadow-x) var(--lit-shadow-y) var(--lit-shadow-blur) var(--lit-shadow));
+}
+
 /* Activity feed and notification cards, and the item page's details and
    review cards (.case-card, 14c follow-up): each
    card is a small bookcase too; the corner buttons and the like / comment
@@ -5472,6 +5602,52 @@ dialog::backdrop {
   color: rgb(var(--accent-text));
   /* as .tab's active (the lookup tabs had only the line) */
   font-weight: 700;
+}
+
+/* Choice chips (the item page's status and collections; Phil, 2026-11-13:
+   "unselected concave, selected convex and green"). As with the tabs, the
+   chosen one is raised and the rest are recessed: an unchosen chip is a
+   well pressed into the card (the tabs' recess colour, shaded from the
+   top, a lit lower lip); the chosen one stands out of it in the accent,
+   lit like the Shelf .btn. "+ New collection" is an action, not a choice,
+   so it is a plain raised button (like Remove from Library), pressed in
+   while its form is open. */
+
+:root[data-style="shelf"] .chip {
+  background-color: rgb(var(--tab-recess));
+  border-color: rgb(0 0 0 / .3);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / .35), inset 0 -1px 0 rgb(255 255 255 / .08);
+}
+
+:root[data-style="shelf"] .chip:hover {
+  background-color: rgb(var(--tab-recess-hover));
+}
+
+:root[data-style="shelf"] .chip[aria-pressed="true"] {
+  background-color: rgb(var(--accent));
+  background-image: linear-gradient(to bottom, rgb(255 255 255 / .16), rgb(0 0 0 / .05));
+  border-color: rgb(0 0 0 / .22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-sm);
+}
+
+:root[data-style="shelf"] .chip[aria-pressed="true"]:hover {
+  background-color: rgb(var(--accent-hover));
+}
+
+:root[data-style="shelf"] summary.chip {
+  background-color: rgb(var(--surface));
+  background-image: linear-gradient(to bottom, rgb(255 255 255 / .1), rgb(0 0 0 / .08));
+  border-color: rgb(var(--rule-strong));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), var(--sh-sm);
+}
+
+:root[data-style="shelf"] summary.chip:hover {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), var(--sh);
+}
+
+:root[data-style="shelf"] .new-collection[open] > summary.chip {
+  background-image: linear-gradient(to bottom, rgb(0 0 0 / .1), rgb(255 255 255 / .04));
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / .3);
 }
 
 /* Form fields: paper, set slightly into the page */
