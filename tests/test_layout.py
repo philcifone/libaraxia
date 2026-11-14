@@ -981,6 +981,48 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
 
 
+def test_item_page_cover_opens_bigger(client, db, people, static_root):
+    """A tap on the item page's cover shows it bigger in a dialog (16.0,
+    Phil 2026-11-13); a method=dialog form closes it without JS. No
+    picture, no dialog: the placeholder isn't worth enlarging."""
+    import os
+    from conftest import add_book, login
+    os.makedirs(static_root / 'uploads', exist_ok=True)
+    (static_root / 'uploads' / 'c.jpg').write_bytes(b'x')
+    with_cover = add_book(db, people['alice'], cover='uploads/c.jpg')
+    without = add_book(db, people['alice'], title='No Cover')
+    login(client, 'alice')
+    html = client.get(f'/books/book/{with_cover}').get_data(as_text=True)
+    assert 'data-click="showModal" data-target="cover-zoom"' in html
+    dialog = html[html.index('<dialog id="cover-zoom"'):]
+    dialog = dialog[:dialog.index('</dialog>')]
+    assert '<form method="dialog">' in dialog and 'src="/static/uploads/c.jpg"' in dialog
+    html = client.get(f'/books/book/{without}').get_data(as_text=True)
+    assert 'cover-zoom' not in html
+
+
+def test_item_page_format_icon_is_accent(client, db, people):
+    """The item heading's format icon is in the accent, as every page
+    heading's icon is (page_heading in _icons.html)."""
+    from conftest import add_book, login
+    book = add_book(db, people['alice'])
+    login(client, 'alice')
+    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    import re
+    assert re.search(r'<span class="shrink-0 text-accent" role="img"\s+aria-label="Book"', html)
+
+def test_shelf_chips_recessed_until_chosen():
+    """Shelf style (Phil, 2026-11-13): an unchosen chip is a well (inset
+    shadow), the chosen one raised in the accent like the Shelf .btn."""
+    import pathlib
+    css = pathlib.Path('static/styles.css').read_text()
+    well = css[css.index(':root[data-style="shelf"] .chip {'):]
+    assert 'box-shadow: inset 0 2px' in well[:well.index('}')]
+    chosen = css[css.index(':root[data-style="shelf"] .chip[aria-pressed="true"] {'):]
+    chosen = chosen[:chosen.index('}')]
+    assert 'rgb(var(--accent))' in chosen and 'var(--sh-sm)' in chosen
+
+
 def test_buttons_take_the_styles_corners():
     """.btn has no radius of its own: every button gets a rounded-* utility
     (radius tokens: rounded in OG and Shelf, square in Negative Earth and

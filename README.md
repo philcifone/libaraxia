@@ -113,6 +113,31 @@ npm install
 npm run build:css     # or: npm run watch:css
 ```
 
+### Tuning the Shelf heading light
+
+In the Shelf style, the item page's heading (the card with the title) can look lit by a torch: a pool of light on the bookcase's back wall, with the title, byline and format icon casting a soft shadow onto it. It is on trial on that page only, through the `heading-lit` class on its `heading_card(...)` call in `templates/book_detail.html`; remove the class to drop the effect.
+
+Both are off for now: the light's brightness is `0` and the shadow is fully transparent, so the heading looks as it always did. The class stays on, so the controls below work as soon as you give them a value. They are CSS variables in the `.heading-lit` rule in `static/styles.css` (search for `--lit-radius`).
+
+To turn it on:
+
+1. Shadow: set `--lit-shadow` to `rgb(0 0 0 / .7)` in the main rule (dark mode), and to `rgb(0 0 0 / .4)` in the two light-mode overrides just below it (one for a chosen light mode, one for following the system; keep them the same).
+2. Light: set `--lit-brightness` the same way, `.16` in the main rule and `.5` in the two light-mode overrides.
+3. Run `npm run build:css` and reload an item page with the Shelf style selected.
+
+The values above are the ones tried so far; the comments beside each variable repeat them.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `--lit-radius` | `100%` | How far the light reaches, as a share of the way from the centre to the header's nearer edge. Past 100% the header's box cuts it off with a hard edge. |
+| `--lit-feather` | `70%` | How much of that radius is the fade. `0%` is a hard-edged disc; equal to the radius, it fades all the way from the centre. |
+| `--lit-brightness` | `0` (off) | The light's opacity, `0` to `1`. Set separately for dark and light mode. |
+| `--lit-colour` | `255 236 196` | The light's colour as R G B (warm white). |
+| `--lit-shadow` | `rgb(0 0 0 / 0)` (off) | The cast shadow's colour and darkness; the last number is its opacity. Set separately for dark and light mode. |
+| `--lit-shadow-x` | `5px` | How far the shadow falls to the right. |
+| `--lit-shadow-y` | `8px` | How far it falls down. |
+| `--lit-shadow-blur` | `6px` | How soft its edge is (`0` is crisp). |
+
 ## 🗺️ Roadmap
 
 Planned work, in order, is in **[ROADMAP.md](ROADMAP.md)**. In short: a design refresh to match [philcifone.com](https://philcifone.com) and [negativeearth.net](https://negativeearth.net) (Gruvbox light and dark, Courier Prime + Young Serif, square corners; same UI, new skin) first, then production hardening and data-integrity fixes, finishing the Goodreads import, a page-layout refactor and design polish, and VHS/UPC barcode support.

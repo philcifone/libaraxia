@@ -33,11 +33,14 @@ def test_placeholder_type_breaks_between_words():
 def test_display_covers_are_wrapped_for_the_box():
     """Every cover picture on a display page sits in a .cover-box, the
     element the Shelf style draws the 3D faces on (an <img> can't have
-    them). Form previews and admin pages stay flat on purpose."""
+    them). Form previews and admin pages stay flat on purpose, and so does
+    the item page's enlarged cover (#cover-zoom): it is fitted into a
+    fixed box with object-fit, so faces drawn on the box would miss it."""
     for name in ('_shelf_rows.html', 'activity_feed.html', '_wishlist_card.html', 'user_wishlist.html',
                  'reviews_list.html', 'reviews_find.html', 'rate_review.html', 'have.html', 'user.html',
                  'book_detail.html', '_book_grid.html'):
         text = (ROOT / 'templates' / name).read_text()
+        text = re.sub(r'<dialog id="cover-zoom".*?</dialog>', '', text, flags=re.S)
         for img in re.findall(r'(.{0,40})<img src="\{\{ url_for\(\'static\', filename=[a-z_.]*\[?\'?cover_image_url', text):
             assert 'cover-box' in img, name
 
