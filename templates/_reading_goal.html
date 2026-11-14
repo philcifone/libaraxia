@@ -37,7 +37,8 @@
     </div>
     {% if is_own_profile %}
     <details class="goal-edit mt-1">
-        <summary class="inline-flex items-center gap-1 cursor-pointer text-xs text-content-secondary hover:text-accent">{{ pencil }} Change goal</summary>
+        {# The pencil after the words, as after "Bio" (Phil, 2026-11-14) #}
+        <summary class="inline-flex items-center gap-1 cursor-pointer text-xs text-content-secondary hover:text-accent">Change goal {{ pencil }}</summary>
         {{ goal_form(goals, 'Save') }}
     </details>
     {% endif %}
