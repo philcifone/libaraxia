@@ -110,7 +110,7 @@
                                 ('Format', book['format'] or 'Book'),
                                 ('Publisher', book['publisher']),
                                 ('Publication Year', book['publish_year']),
-                                ('Print Pages' if book['format'] == 'Audiobook' else 'Page Count', book['page_count']|string + ' pages'),
+                                ('Print Pages' if book['format'] == 'Audiobook' else 'Page Count', (book['page_count']|string + ' pages') if book['page_count'] else none),
                                 ('ISBN', book['isbn']),
                                 ('Genre', book['genre'])
                             ] %}
@@ -121,7 +121,13 @@
                             {% for item in details if item[0] != 'Format' or item[1] %}
                             <div class="space-y-1 {{ 'col-span-2 lg:col-span-1' if item[0] in ('ISBN', m.code, 'Cat. No.', 'Catalogue Number') }}">
                                 <span class="label text-sm pb-1">{{ item[0] }}</span>
+                                {# An empty field keeps its label, so you can see what's missing,
+                                   and says so in muted words (it used to print Python's "None") #}
+                                {% if item[1] %}
                                 <p class="text-sm md:text-base text-content-primary font-medium break-words">{{ item[1] }}</p>
+                                {% else %}
+                                <p class="text-sm md:text-base text-content-secondary italic" data-unset>Not set</p>
+                                {% endif %}
                             </div>
                             {% endfor %}
                         </div>

@@ -1626,8 +1626,8 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
         --box-side: 136 139 146;
     }
 }
-/* The shadows a box casts (--box-contact, --box-cast) are the ones every
-   Shelf cover uses, set once in "Shelf: every cover is a box" below. */
+/* The shadow a box casts (--box-shadow) is the one every Shelf cover uses,
+   set once in "Shelf: every cover is a box" below. */
 :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] { --box-depth: 4px; }
 @media (max-width: 767px) {
     :root[data-style="shelf"] .shelf-grid.grid { --box-depth: 5px; }
@@ -1658,7 +1658,7 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
     position: relative;
     border: 0;
     border-radius: 0 0 0 var(--cover-r);
-    box-shadow: var(--box-contact);
+    box-shadow: var(--box-shadow);
 }
 /* No cover: a book-shaped binding (square for a record) with the accent
    spine, standing on the shelf like the rest */
@@ -1668,7 +1668,7 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
     aspect-ratio: 2 / 3;
     max-width: 100%;
     overflow: visible;              /* the faces; title and author clamp themselves */
-    box-shadow: inset 6px 0 0 rgb(var(--accent)), var(--box-contact);
+    box-shadow: inset 6px 0 0 rgb(var(--accent)), var(--box-shadow);
 }
 :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .no-cover { aspect-ratio: 1; }
 /* The printing on a coverless box. The box is a size container (its width
@@ -1716,7 +1716,6 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
     width: var(--box-depth);
     height: 100%;
     background: rgb(var(--box-side));
-    box-shadow: var(--box-cast);
     transform: skewY(-45deg);
 }
 :root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::after {    /* top */
@@ -2096,15 +2095,9 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
     --box-depth: 5px;
     --box-top: 226 224 218;
     --box-side: 196 193 186;
-    /* The shadows a box casts, from the lamp (above and a little left).
-       Plain box-shadows rather than a drop-shadow filter: there can be
-       hundreds of covers on a page. Contact: a thin dark line where the
-       base meets the shelf, then (16.0, Phil: "a subtle drop shadow on the
-       shelf underneath the book") a soft one on the top face, falling back
-       and to the right, away from the lamp. Cast: soft, on the wall to the
-       right of the side face. */
-    --box-contact: 0 2px 2px -1px rgb(0 0 0 / .4), 5px 4px 6px -3px rgb(0 0 0 / .3);
-    --box-cast: 4px 0 4px rgb(0 0 0 / .2);
+    /* How dark the shadow a box casts is (the shadow itself is set on
+       the box, below, since it depends on the box's own depth) */
+    --box-shade: .32;
 }
 :root[data-style="shelf"][data-mode="dark"] {
     --box-top: 178 174 166;
@@ -2151,20 +2144,32 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
 /* Tilt (tilt.js) slides the band through --sheen-shift; the switch in
    Appearance only shows in Shelf, the one style with a sheen */
 :root:not([data-style="shelf"]) [data-tilt-picker] { display: none; }
+/* The shadow a box casts (Phil, 2026-11-14): a book standing face out
+   with the lamp in front and to the left throws a soft rectangle on the
+   wall behind it, to the right. None below: the base sits on the shelf,
+   and a shadow under it made the book float. So the shadow is the front's
+   shape pulled in 4px (the spread), moved right past the side face and up
+   4px: its bottom edge fades out above the base, level with the side
+   face's raised back corner. It used to follow the side face's slant up
+   to the top corner, which read as a perspective error in light mode.
+   Set here, not on :root, so --box-depth is the box's own. A plain
+   box-shadow rather than a drop-shadow filter: there can be hundreds of
+   covers on a page. */
 :root[data-style="shelf"] :is(.cover-box, .no-cover) {
+    --box-shadow: calc(var(--box-depth) + 6px) -4px 8px -4px rgb(0 0 0 / var(--box-shade));
     position: relative;
     border-radius: 0 0 0 var(--cover-r);
-    box-shadow: var(--box-contact);
+    box-shadow: var(--box-shadow);
 }
 :root[data-style="shelf"] .no-cover {
     border: 0;
     overflow: visible;              /* the faces; title and author clamp themselves */
     padding-left: calc(6px + .5rem);
-    box-shadow: inset 6px 0 0 rgb(var(--accent)), var(--box-contact);
+    box-shadow: inset 6px 0 0 rgb(var(--accent)), var(--box-shadow);
 }
 :root[data-style="shelf"] .no-cover-sm {
     padding-left: calc(4px + .25rem);
-    box-shadow: inset 4px 0 0 rgb(var(--accent)), var(--box-contact);
+    box-shadow: inset 4px 0 0 rgb(var(--accent)), var(--box-shadow);
 }
 :root[data-style="shelf"] :is(.cover-box, .no-cover)::before,
 :root[data-style="shelf"] :is(.cover-box, .no-cover)::after {
@@ -2179,7 +2184,6 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
     width: var(--box-depth);
     height: 100%;
     background: rgb(var(--box-side));
-    box-shadow: var(--box-cast);
     transform: skewY(-45deg);
 }
 :root[data-style="shelf"] :is(.cover-box, .no-cover)::after {    /* top */
@@ -2501,8 +2505,7 @@ and to the right for its faces */
     --top-shade: .07;
     --under-shade: .14;
     --case-shade: .1;
-    --box-contact: 0 0 #0000;
-    --box-cast: 0 0 #0000;
+    --box-shade: 0;
 }
 :root[data-style="shelf"][data-rack="store"][data-mode="dark"] #book-container.shelf-grid.grid[data-media="video"] {
     --shelf-frame: 222 225 229;

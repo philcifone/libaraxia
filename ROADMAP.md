@@ -17,7 +17,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 14b | Granular Goodreads import, site and personal backups, "Unshelved" | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import) |
 | 14c | Tweaks after 14b: CSRF, undated sessions, Settings for everyone, profile tabs, cyclers, Shelf bookcases and boxed covers, username collisions | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14c-tweaks-after-14b) |
 | 15 | Movies & TV (a Kind and Season on videos, TMDb TV lookup), free-form cover crop | Done 2026-11-12 (15.3 on 2026-11-10), [archive](docs/ROADMAP-ARCHIVE.md#phase-15-movies--tv-cover-crop). Lending moved to 17.1 |
-| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | A final layout pass and a code review, then screenshots of the finished app |
+| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | A final layout pass; photos, condition and value (16.0a); a code review; then screenshots of the finished app |
 | 17 | [Future roadmap](#phase-17-future-roadmap) | After the portfolio; shown on the showcase site as what's next |
 
 **Numbering:** the old Phase 9 is now 14 (2026-11-08), so the open phases run in order after the finished ones. 11 was once the archive fork (dropped, see Not planned); the number is reused. On 2026-11-09 the portfolio phase moved from 15 to 16 so it stays last.
@@ -79,11 +79,20 @@ Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app-
 - [ ] Walk every page at phone and desktop width in each style; list what's off; fix in one pass.
 - [x] Feed: the dismiss X and the like/comment row sit in fixed corners; give them a place in the layout. Done 2026-11-13: the feed card is the Reviews list's card, the like in its own row (style pass steps 5 and the taste pass).
 
+### 16.0a Photos, condition and value 🟠
+New features (Phil, 2026-11-14), before the code review and the screenshots so both cover them. **Spec: [docs/PHOTOS-VALUE-SPEC.md](docs/PHOTOS-VALUE-SPEC.md)** (draft, for Phil's review; three open questions in its section 12). Branch `phase-16a-photos-value`, one commit per step (spec section 10).
+- [ ] Photos: a back photo and a gallery per item, added and deleted (with a confirm) on the edit page, "More photos" under the cover on the item page.
+- [ ] Condition in each type's standard grades (records: record and sleeve, Goldmine as Discogs uses it; books: the booksellers' scale; movies: used-media terms).
+- [ ] Price paid and value, both optional, private to the owner; a Collection value card on Stats.
+- [ ] Fetch value: Discogs price suggestions for records, the eBay Browse API's median asking price for books and movies; per item and as a bulk tool beside Fetch covers.
+- [ ] Phil's setup (spec section 7): Discogs seller settings; an eBay developer account and production keys. The same steps go in the README at 16.1.
+
 ### 16.0b Code review 🟠
 The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.
 - [ ] Run the review, triage, fix.
 
 ### 16.1 README and screenshots 🟠
+- [ ] README: the optional value sources' setup (Discogs seller settings, eBay keys), from docs/PHOTOS-VALUE-SPEC.md section 7.
 - [ ] Retake the README screenshots in every style (Negative Earth, OG, Shelf, Outrun) and both modes, from an **anonymised copy** of the DB (rename other users, clear their emails, bios, avatars and review text), never the live one. Bring the README up to date (sections, Do I Have This?, reviews, styles).
 
 ### 16.2 Showcase site spec 🟠 (medium)
