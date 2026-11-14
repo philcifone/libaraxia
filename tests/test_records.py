@@ -140,7 +140,7 @@ def test_detail_page_shows_record_fields(client, db, people):
     record = add_record(db, people['alice'])
     login(client, 'alice')
     page = client.get(f'/records/{record}').get_data(as_text=True)
-    for text in ('Label', 'Reprise', 'Cat. No.', 'MS 2038', 'Length', 'class="crumb-link">Music<',
+    for text in ('Label', 'Reprise', 'Cat. No.', 'MS 2038', 'Length', 'class="crumb-link" data-grid-crumb="record">Music<',
                  'About this Album', 'whitespace-pre-line', 'Listen Status'):
         assert text in page, text
     assert 'Purchase this book' not in page
@@ -580,3 +580,12 @@ def test_vinyl_sizes_have_no_icon_and_a_centred_title(client, db, people):
     login(client, 'alice')
     page = client.get(f'/records/{rid}').get_data(as_text=True)
     assert '<header class="py-2 px-3 md:px-6 text-center">' in page and 'role="img"' not in page
+
+
+def test_album_placeholder_is_square_on_the_item_page(client, db, people):
+    """No cover: an album's placeholder is square on its page, as on the
+    grid (Phil, 2026-11-14); a book's stays 2:3."""
+    album = add_record(db, people['alice'])
+    login(client, 'alice')
+    page = client.get(f'/records/{album}').get_data(as_text=True)
+    assert 'w-full aspect-square rounded-lg' in page and 'w-full aspect-[2/3] rounded-lg' not in page

@@ -487,3 +487,34 @@ registerActions({ toggleReadMore: el => toggleReadMore(el) });
 document.addEventListener('DOMContentLoaded', () => initReadMore());
 // Web fonts can change line breaks after DOMContentLoaded; measure again.
 window.addEventListener('load', () => initReadMore());
+
+// ---------------------------------------------------------------------------
+// The shelf grid you were last on (16.0, Phil 2026-11-14: a sorted grid
+// lost its sort when you went back to it by the item page's crumb, not the
+// Back button). A library grid (#book-container[data-remember-grid]: yours,
+// the household's, a friend's, Movies and Music) keeps its address, sort,
+// filters and search included, per media type for this tab
+// (sessionStorage); a section crumb (crumbs(..., grid=type), _icons.html)
+// then points there instead of the bare shelf. Saved on pagehide too, in
+// case the address changed after load. Storage can be blocked: the crumb
+// then keeps its plain link.
+
+const lastGridKey = type => `libaraxia:last-grid:${type}`;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.querySelector('#book-container[data-remember-grid]');
+    if (grid) {
+        const save = () => {
+            try { sessionStorage.setItem(lastGridKey(grid.dataset.media), location.pathname + location.search); }
+            catch (e) { /* storage blocked */ }
+        };
+        save();
+        window.addEventListener('pagehide', save);
+    }
+    document.querySelectorAll('a[data-grid-crumb]').forEach(link => {
+        let url = null;
+        try { url = sessionStorage.getItem(lastGridKey(link.dataset.gridCrumb)); } catch (e) { /* storage blocked */ }
+        // Only a path on this site ("/..." but not "//host")
+        if (url && url.startsWith('/') && !url.startsWith('//')) link.href = url;
+    });
+});

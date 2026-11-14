@@ -18,6 +18,8 @@
     {% include '_off_shelf_hint.html' %}
 
     {# Bulk edit: your marks on anything here, item edits on your own (and any, for an admin) #}
+    {# remember_grid: the item page's crumb comes back here, sort and filters kept (common.js) #}
+    {% set remember_grid = true %}
     {% if books %}
     {% set bulk_select = true %}{% set bulk_view = 'book:household' %}
     {% include '_book_grid.html' %}

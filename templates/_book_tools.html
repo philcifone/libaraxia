@@ -68,10 +68,10 @@
             <p class="text-sm text-content-secondary">
                 Can't delete: {{ others_with_data|join(', ') }} {{ 'has' if others_with_data|length == 1 else 'have' }}
                 reviews or reading history on this {{ noun }}, and deleting would erase them.
-                {% if not in_wishlist %}Use <em>Remove from {{ m.section if m else 'Library' }}</em> on the {{ noun }} page instead.{% endif %}
+                {% if not in_wishlist %}Use <em>Remove from shelf</em> on the {{ noun }} page instead.{% endif %}
             </p>
             {% else %}
-            <p class="text-sm text-content-secondary">For mistakes only: erases the {{ noun }} and your status, review and history for it. If it just left the house, use <em>Remove from {{ m.section if m else 'Library' }}</em> on its page instead.</p>
+            <p class="text-sm text-content-secondary">For mistakes only: erases the {{ noun }} and your status, review and history for it. If it just left the house, use <em>Remove from shelf</em> on its page instead.</p>
             <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST"
                   data-confirm="{{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.") }}"
                   data-confirm-ok="Delete">

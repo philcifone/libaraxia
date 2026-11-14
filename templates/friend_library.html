@@ -23,6 +23,8 @@
     {% set whose = friend.username ~ "'s" %}
     {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}
 
+    {# remember_grid: the item page's crumb comes back here, sort and filters kept (common.js) #}
+    {% set remember_grid = true %}
     {% if books %}
     {% include '_book_grid.html' %}
     {% else %}

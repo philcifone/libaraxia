@@ -194,11 +194,15 @@
    Catalog" links): LIBRARY / DUNE / REVIEW. `trail` is a list of
    (label, url) for the steps above; `here` is this page, not a link.
    Long titles are cut with an ellipsis. Pages in the sidebar don't need one. #}
-{% macro crumbs(trail, here, class='mb-6') -%}
+{#- grid: a media type ('book', 'video', 'record'); the first crumb is then
+    that section's shelf, and common.js points it at the shelf grid you were
+    last on in this tab, with its sort, filters and search (Phil,
+    2026-11-14: they were lost going back by the crumb) -#}
+{% macro crumbs(trail, here, class='mb-6', grid=none) -%}
 <nav aria-label="Breadcrumb" class="crumbs {{ class }}">
     <ol class="flex flex-wrap items-center gap-x-2 gap-y-1">
         {% for label, url in trail %}
-        <li><a href="{{ url }}" class="crumb-link">{{ label }}</a></li>
+        <li><a href="{{ url }}" class="crumb-link"{% if grid and loop.first %} data-grid-crumb="{{ grid }}"{% endif %}>{{ label }}</a></li>
         <li aria-hidden="true" class="crumb-sep">/</li>
         {% endfor %}
         <li aria-current="page" class="crumb-here">{{ here }}</li>

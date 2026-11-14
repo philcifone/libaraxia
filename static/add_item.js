@@ -503,6 +503,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let albumsView = null;      // the album list, kept while a pressings list shows
 
     const wide = 'md:col-span-2';
+    // A result's picture: an album's sleeve is square, the full card height
+    // (Phil, 2026-11-14: it was cut to a book's 2:3); a book or a movie is 2:3
+    const thumbSize = root.dataset.type === 'record' ? 'w-24 h-24' : 'w-16 h-24';
 
     function rowHtml(r, i) {
         const pressings = r.album
@@ -512,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `
             <div class="flex gap-4 p-3 bg-primary border border-card rounded-lg" data-row="${i}">
                 <img src="${escapeHtml(r.thumb ? coverSrc(r.thumb) : '/static/no-cover.svg')}" alt=""
-                     data-fallback-src="/static/no-cover.svg" class="w-16 h-24 object-cover rounded shrink-0">
+                     data-fallback-src="/static/no-cover.svg" class="${thumbSize} object-cover rounded shrink-0">
                 <div class="flex-1 min-w-0 flex flex-col">
                     <p class="font-medium text-content-primary line-clamp-2">${escapeHtml(r.title)}</p>
                     <p class="text-sm text-content-secondary truncate">${escapeHtml(r.line)}</p>
@@ -681,6 +684,107 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         reader.readAsDataURL(file);
     });
+
+    // --- Draft: what you've entered survives a reload ------------------------------
+    //
+    // Phil, 2026-11-14: twice on an iPhone the page reloaded while a movie
+    // was half entered and the form came back empty (a stray tap on Reload,
+    // or Safari's pull-to-refresh). A page can't hide the browser's Reload,
+    // so the form keeps a draft in this browser (localStorage, one per add
+    // page, for a day) and fills itself back in on the next visit, with a
+    // note and a way to start over. Saved as you type and when the page goes
+    // away (pagehide, which a reload fires, so lookups are caught too);
+    // cleared when the form is sent. A picked photo can't come back (a file
+    // field can't be refilled), and neither can a crop of it; a cover from a
+    // lookup does, since the form only holds its saved path.
+
+    const DRAFT_KEY = `libaraxia:add-draft:${location.pathname}`;
+    const DRAFT_DAY = 24 * 60 * 60 * 1000;
+    const DRAFT_SKIP = new Set(['csrf_token', 'media_type', 'then', 'crop_source', 'cover_crop', 'confirm_duplicate']);
+    let keepDraft = true;       // off once the form is sent or you start over
+
+    function draftFields() {
+        return [...(form?.elements || [])].filter(el =>
+            el.name && !DRAFT_SKIP.has(el.name) && el.type !== 'file' && el.type !== 'submit' && el.type !== 'button');
+    }
+
+    function saveDraft() {
+        if (!form || !keepDraft) return;
+        const values = {};
+        let anything = false;
+        draftFields().forEach(el => {
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                if (el.checked) values[`${el.name}=${el.value}`] = true;
+            } else {
+                values[el.name] = el.value;
+                // A default select or radio isn't something you entered
+                if (el.value.trim() && el.tagName !== 'SELECT') anything = true;
+            }
+        });
+        try {
+            if (anything) localStorage.setItem(DRAFT_KEY, JSON.stringify({ at: Date.now(), values }));
+            else localStorage.removeItem(DRAFT_KEY);
+        } catch (e) { /* storage blocked: no draft */ }
+    }
+
+    function dropDraft() {
+        keepDraft = false;
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* storage blocked */ }
+    }
+
+    function restoreDraft() {
+        let draft = null;
+        try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { return; }
+        if (!draft || !draft.values || Date.now() - draft.at > DRAFT_DAY) { dropDraft(); keepDraft = true; return; }
+        const values = draft.values;
+        draftFields().forEach(el => {
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                el.checked = !!values[`${el.name}=${el.value}`];
+                if (el.type === 'radio' && el.checked && el.name === 'video_kind') root.dataset.kindTouched = '1';
+            } else if (el.name in values && el.type !== 'hidden') {
+                el.value = values[el.name];
+            }
+        });
+        if (values.existing_cover_url) setCover(values.existing_cover_url, null);
+        // No change events replayed: the format's handler would redo "Not on
+        // my shelf" over the restored tick. The TV-only fields follow the
+        // Kind radios in CSS (:has), so they show without one.
+
+        const note = document.createElement('div');
+        note.className = 'md:col-span-2 p-3 bg-primary border border-accent rounded-lg text-sm text-content-primary flex flex-wrap items-center justify-between gap-2';
+        note.setAttribute('role', 'status');
+        note.dataset.draftNote = '';
+        const text = document.createElement('span');
+        text.textContent = 'Restored what you were entering before the page reloaded.';
+        const restart = document.createElement('button');
+        restart.type = 'button';
+        restart.className = 'px-3 py-1 text-sm border border-rule-strong rounded-lg btn-outline';
+        restart.textContent = 'Start over';
+        restart.addEventListener('click', () => {
+            dropDraft();
+            location.replace(location.pathname + location.search);
+        });
+        note.append(text, restart);
+        form.prepend(note);
+    }
+
+    if (form) {
+        // Only into an empty form: not over a lookup on its way in, or a form
+        // the server sent back filled in (an error, a duplicate)
+        if (!root.dataset.lookupUrl && !root.dataset.autoLookup && !$('title')?.value.trim()) restoreDraft();
+        let pending = null;
+        const soon = () => { clearTimeout(pending); pending = setTimeout(saveDraft, 400); };
+        form.addEventListener('input', soon);
+        form.addEventListener('change', soon);
+        // Dropped as the form really goes: on the document, so it runs after
+        // every other submit handler (common.js's confirm may stop it), and
+        // at once, before the page goes and pagehide would save it again
+        document.addEventListener('submit', event => {
+            if (event.target === form && !event.defaultPrevented) dropDraft();
+        });
+        window.addEventListener('pagehide', saveDraft);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) saveDraft(); });
+    }
 
     // Arrived with a source id (a candidate picked on Do I have this?,
     // ROADMAP 13b: a TMDb film, a Discogs or MusicBrainz release): the

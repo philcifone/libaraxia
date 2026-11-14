@@ -98,7 +98,7 @@ def test_tv_item_pages_say_tv_show(client, db, people):
     login(client, 'alice')
     page = client.get(f'/videos/{vid}').get_data(as_text=True)
     assert 'created by' in page and 'About this Show' in page and 'Edit TV Show' in page
-    assert 'Remove from Movies &amp; TV' in page
+    assert 'Remove from shelf' in page
     edit = client.get(f'/videos/edit/{vid}').get_data(as_text=True)
     assert 'page-title min-w-0">Edit TV Show</span>' in edit and '<span class="when-tv">Creator</span>' in edit
     assert 'name="video_kind" value="tv" checked' in edit and 'value="Season 1"' in edit
