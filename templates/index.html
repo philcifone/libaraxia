@@ -16,6 +16,8 @@
 
     {% include '_off_shelf_hint.html' %}
 
+    {# remember_grid: the item page's crumb comes back here, sort and filters kept (common.js) #}
+    {% set remember_grid = true %}
     {% if books %}
     {% set bulk_select = true %}{% set bulk_view = 'book:mine' %}
     {% include '_book_grid.html' %}

@@ -1807,6 +1807,22 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
 :root[data-style="shelf"] #sidebar {
     border-right: 6px solid rgb(var(--shelf-front));
 }
+/* Light mode: the drawer in cream (the site title's cream) with walnut
+   text, not the white card surface and near-black ink (Phil, 2026-11-14).
+   Walnut is the headings' ink, 8.4:1 on this cream; the links a shade
+   lighter, 6.6:1. The accent (the current page, hover) keeps its own. */
+:root[data-style="shelf"][data-mode="light"] #sidebar {
+    --ink: 92 62 38;            /* #5c3e26 */
+    --ink-2: 110 76 48;         /* #6e4c30 */
+    background-color: rgb(245 232 206);     /* #f5e8ce */
+}
+@media (prefers-color-scheme: light) {
+    :root[data-style="shelf"]:not([data-mode="dark"]) #sidebar {
+        --ink: 92 62 38;
+        --ink-2: 110 76 48;
+        background-color: rgb(245 232 206);
+    }
+}
 
 /* ---- Shelf: small bookcases (ROADMAP 14c) ----
    Each page's heading card, and the cards marked .case-card (feed,
@@ -2363,6 +2379,9 @@ and to the right for its faces */
     --box-depth: 9px;
     padding: var(--box-depth) var(--box-depth) 0 0;
 }
+/* An album is a thin sleeve: as on the grid (4px to a book's 7px), about
+   half a book's depth (Phil, 2026-11-14) */
+:root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }
 :root[data-style="shelf"] .cover-stand:is([data-media="video"], [data-media="record"]) {
     --box-top: 218 219 222;
     --box-side: 184 186 191;
@@ -2808,6 +2827,13 @@ and to the right for its faces */
 }
 /* Nothing behind the modal scrolls either */
 html:has(.crop-dialog[open]) { overflow: hidden; }
+/* No double-tap zoom anywhere in the tool (the stage has touch-action:
+   none; cover_crop.js cancels pinches) */
+.crop-dialog { touch-action: manipulation; }
+/* The add pages: no pull-to-refresh (Safari 16+, Chrome), which wiped a
+   half-entered movie on an iPhone (Phil, 2026-11-14); add_item.js keeps a
+   draft as well, for the Reload button */
+html:has(#add-item) { overscroll-behavior-y: none; }
 
 /* The picture */
 .crop-stage {

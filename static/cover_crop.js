@@ -734,7 +734,27 @@ function initCropTool() {
         dialog.close();
     }
 
+    // --- No zooming while it's open ---------------------------------------------------
+    // Phil, 2026-11-14: on an iPhone the page now and then zoomed in while a
+    // corner was being dragged. The stage's touch-action: none doesn't stop
+    // Safari's pinch zoom, so: Safari's own gesture events and any
+    // two-finger move are cancelled while the dialog is open, double-tap zoom
+    // is off for the whole dialog (styles.css .crop-dialog), and the viewport
+    // is capped at 1x until it closes (which also undoes a zoom already made).
+    const viewport = document.querySelector('meta[name="viewport"]');
+    const viewportContent = viewport?.getAttribute('content') || '';
+    function lockZoom(on) {
+        if (viewport) viewport.setAttribute('content', on ? `${viewportContent}, maximum-scale=1` : viewportContent);
+    }
+    const stopGesture = event => { if (dialog.open) event.preventDefault(); };
+    document.addEventListener('gesturestart', stopGesture, { passive: false });
+    document.addEventListener('gesturechange', stopGesture, { passive: false });
+    document.addEventListener('touchmove', event => {
+        if (dialog.open && event.touches.length > 1) event.preventDefault();
+    }, { passive: false });
+
     function cleanup() {
+        lockZoom(false);
         history.forEach(entry => URL.revokeObjectURL(entry.url));
         history = [];
         showResult(null);
@@ -809,6 +829,7 @@ function initCropTool() {
         quad = boxCorners(rect);
         syncToolbar();
         dialog.showModal();
+        lockZoom(true);
         setBusyText('Preparing image...');
         try {
             source = await resolveSource();

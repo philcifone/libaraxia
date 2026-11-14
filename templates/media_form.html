@@ -10,7 +10,7 @@
 
 {% block content %}
 <div class="page-frame-narrow pt-20 pb-10">
-    {{ crumbs([(m.section, url_for(m.home)), (video['title'], url_for(m.bp ~ '.show_' ~ m.item, id=video['id']))], 'Edit') }}
+    {{ crumbs([(m.section, url_for(m.home)), (video['title'], url_for(m.bp ~ '.show_' ~ m.item, id=video['id']))], 'Edit', grid=m.type) }}
     {{ page_heading(section_icons[m.type], 'Edit ' ~ m.Noun) }}
 
     <div class="bg-secondary-bg rounded-xl p-4 sm:p-8 card">

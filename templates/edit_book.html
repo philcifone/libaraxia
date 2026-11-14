@@ -9,7 +9,7 @@
 
 {% block content %}
 <div class="page-frame-narrow pt-20 pb-10">
-    {{ crumbs([('Library', url_for('base.index')), (book['title'], url_for('books.show_book', id=book['id']))], 'Edit') }}
+    {{ crumbs([('Library', url_for('base.index')), (book['title'], url_for('books.show_book', id=book['id']))], 'Edit', grid='book') }}
     {{ page_heading(section_icons['book'], 'Edit Book') }}
 
     <div class="bg-secondary-bg rounded-xl p-4 sm:p-8 card">

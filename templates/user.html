@@ -29,7 +29,10 @@
             <div class="flex items-start gap-4 sm:gap-6">
                 <!-- Avatar with Upload on Hover -->
                 {% if current_user.id == user['id'] %}
-                <div class="relative flex-shrink-0 flex items-center gap-2 group">
+                {# The pencil under the avatar, not beside it (Phil, 2026-11-14): the
+                   column stays as wide as the avatar, so the text lines up with a
+                   friend's profile #}
+                <div class="relative flex-shrink-0 flex flex-col items-center gap-2 group">
                     <div style="width: 64px; height: 64px;">
                         <label for="avatar-input" class="block w-full h-full cursor-pointer">
                             {% if user['avatar_url']|upload_exists %}
@@ -88,7 +91,8 @@
                         {% if current_user.id == user['id'] %}
                         <!-- Editable Bio for Own Profile -->
                         <div class="space-y-2">
-                            <div class="flex items-center justify-between">
+                            {# The pencil beside the label, not at the far end of the row (Phil, 2026-11-14) #}
+                            <div class="flex items-center gap-3">
                                 <p class="label text-sm pb-1">Bio</p>
                                 <button id="bio-edit-btn" class="text-content-secondary hover:text-accent transition-colors" data-click="editBio" title="Edit bio">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

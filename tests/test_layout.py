@@ -522,8 +522,28 @@ def test_item_page_crumbs_follow_the_section(client, db, people):
     book = add_book(db, people['alice'], title='Dune')
     login(client, 'alice')
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert '<a href="/base/index" class="crumb-link">Library</a>' in page
+    # The section crumb is marked for common.js, which points it at the
+    # grid you were last on (sort and filters kept)
+    assert '<a href="/base/index" class="crumb-link" data-grid-crumb="book">Library</a>' in page
     assert '<li aria-current="page" class="crumb-here">Dune</li>' in page
+
+
+def test_library_grids_are_remembered_for_the_crumb(client, db, people):
+    """The four library grids carry data-remember-grid (common.js saves
+    their address per media type for the tab); a collection's grid doesn't,
+    so the Library crumb never leads there."""
+    add_book(db, people['alice'], title='Dune')
+    add_book(db, people['carol'], title='Emma')     # a friend's grid shows only with books
+    for media in ('video', 'record'):                 # likewise Movies and Music
+        db.execute("INSERT INTO books (title, author, added_by, media_type) VALUES ('X', 'Y', ?, ?)",
+                   (people['alice'], media))
+    db.commit()
+    login(client, 'alice')
+    for url in ('/base/index', '/base/shared-library', '/base/library/carol', '/videos/', '/records/'):
+        page = client.get(url).get_data(as_text=True)
+        assert 'data-remember-grid' in page, url
+    js = pathlib.Path('static/common.js').read_text()
+    assert "a[data-grid-crumb]" in js and 'sessionStorage' in js
 
 
 def test_style_names_and_classic_accents(client, db, people):
@@ -1297,3 +1317,28 @@ def test_notifications_card_has_no_heading_of_its_own(client, db, people):
     card = card[:card.index('</section>')]
     assert 'aria-label="Recent activity"' in page
     assert '<h2' not in card and 'Recent Activity' not in card
+
+
+def test_add_page_keeps_a_draft_and_crop_blocks_zoom():
+    """Phil, 2026-11-14: a reload wiped a half-entered movie, and the crop
+    zoomed in while a corner was dragged. The add form keeps a draft
+    (restored only into an empty form, dropped once it's really sent), the
+    add page has no pull-to-refresh, and the crop tool cancels pinches and
+    caps the viewport while it's open."""
+    js = pathlib.Path('static/add_item.js').read_text()
+    assert 'libaraxia:add-draft:' in js and "addEventListener('pagehide', saveDraft)" in js
+    assert "event.target === form && !event.defaultPrevented) dropDraft()" in js
+    assert "!root.dataset.lookupUrl && !root.dataset.autoLookup && !$('title')?.value.trim()" in js
+    crop = pathlib.Path('static/cover_crop.js').read_text()
+    assert "addEventListener('gesturestart', stopGesture, { passive: false })" in crop
+    assert 'maximum-scale=1' in crop and 'lockZoom(false)' in crop
+    css = pathlib.Path('static/styles.css').read_text()
+    assert 'html:has(#add-item) { overscroll-behavior-y: none; }' in css
+    assert '.crop-dialog { touch-action: manipulation; }' in css
+
+
+def test_record_item_box_is_thinner():
+    """An album's box on the item page is about half a book's depth, as on
+    the grid (Phil, 2026-11-14)."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }' in css

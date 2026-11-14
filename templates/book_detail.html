@@ -16,7 +16,7 @@
         {% elif in_wishlist %}
         {{ crumbs([('Wishlist', url_for('wishlist.view_wishlist'))], book['title']) }}
         {% else %}
-        {{ crumbs([(m.section, url_for(m.home))], book['title']) }}
+        {{ crumbs([(m.section, url_for(m.home))], book['title'], grid=m.type) }}
         {% endif %}
 
         <!-- Item heading: its own heading card above the details (16.0), as on every page -->
@@ -75,7 +75,8 @@
                                 {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
                             </button>
                         {% else %}
-                            {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
+                            {# An album's placeholder is square, as on the grid (Phil, 2026-11-14) #}
+                            {% with title=book['title'], author=book['author'], size='lg', box='w-full ' ~ ('aspect-square' if m.type == 'record' else 'aspect-[2/3]') ~ ' rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                     </div>
                 </div>
@@ -259,7 +260,7 @@
                         {% elif not in_wishlist %}
                         <button type="button" data-click="toggleHidden" data-target="remove-book-panel"
                                 class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary text-sm rounded-lg hover:bg-primary-hover btn btn-outline">
-                            Remove from {{ m.section }}
+                            Remove from shelf
                         </button>
                         {% endif %}
                     </div>
@@ -273,7 +274,7 @@
                         <input type="text" name="removed_note" id="removed_note" maxlength="200" placeholder="e.g. Little Free Library"
                                class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                         <button type="submit" class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
-                            Remove from {{ m.section }}
+                            Remove from shelf
                         </button>
                     </form>
                     {% endif %}

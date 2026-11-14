@@ -13,7 +13,7 @@
         {% if from_reviews %}
         {{ crumbs([('Reviews', url_for('reviews.index', type=m.type)), (book.title, item_url(book))], 'Review', class='mb-8') }}
         {% else %}
-        {{ crumbs([(m.section, url_for(m.home)), (book.title, item_url(book))], 'Review', class='mb-8') }}
+        {{ crumbs([(m.section, url_for(m.home)), (book.title, item_url(book))], 'Review', class='mb-8', grid=m.type) }}
         {% endif %}
 
         <!-- Book Header -->
