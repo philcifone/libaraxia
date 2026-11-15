@@ -119,6 +119,12 @@
 </div>
 {% endif %}
 
+{# This copy's condition, price paid and value (16.0a). Not on the
+   wishlist's add: a wish has no copy yet. #}
+{% if not (notes is defined and notes is not none) %}
+{% include '_copy_fields.html' %}
+{% endif %}
+
 <div class="md:col-span-2 flex flex-col items-center gap-4">
     <label for="image" class="block font-medium text-content-secondary">Cover</label>
     <div id="cover-preview" class="flex justify-center">

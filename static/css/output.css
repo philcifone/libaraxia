@@ -3905,6 +3905,10 @@ summary.chip::-webkit-details-marker {
   padding-right: 2.5rem;
 }
 
+.pr-2 {
+  padding-right: 0.5rem;
+}
+
 .pr-6 {
   padding-right: 1.5rem;
 }
@@ -3923,6 +3927,10 @@ summary.chip::-webkit-details-marker {
 
 .pt-5 {
   padding-top: 1.25rem;
+}
+
+.pt-6 {
+  padding-top: 1.5rem;
 }
 
 .pt-8 {
@@ -8832,6 +8840,10 @@ html[data-gr-bar="on"] body {
 
   .sm\:right-\[38px\] {
     right: 38px;
+  }
+
+  .sm\:col-span-2 {
+    grid-column: span 2 / span 2;
   }
 
   .sm\:mx-auto {

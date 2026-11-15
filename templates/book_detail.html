@@ -138,6 +138,29 @@
                                 {% endif %}
                             </div>
                             {% endfor %}
+                            {# This copy (16.0a), only when set: the condition for anyone
+                               who sees the item ("NM / VG+" for a record: record, then
+                               sleeve, full labels on hover); price paid and value for
+                               the owner and admins only. #}
+                            {% if condition_text %}
+                            <div class="space-y-1" data-condition>
+                                <span class="label text-sm pb-1">Condition</span>
+                                <p class="text-sm md:text-base text-content-primary font-medium" title="{{ condition_title }}">{{ condition_text }}</p>
+                            </div>
+                            {% endif %}
+                            {% if can_manage and book['price_paid_cents'] is not none %}
+                            <div class="space-y-1" data-price-paid>
+                                <span class="label text-sm pb-1">Price paid</span>
+                                <p class="text-sm md:text-base text-content-primary font-medium">{{ book['price_paid_cents']|money }}</p>
+                            </div>
+                            {% endif %}
+                            {% if can_manage and book['value_cents'] is not none %}
+                            <div class="space-y-1" data-value>
+                                <span class="label text-sm pb-1">Value</span>
+                                <p class="text-sm md:text-base text-content-primary font-medium">{{ book['value_cents']|money }}</p>
+                                <p class="text-xs text-content-secondary">{{ value_line }}{% if book['value_source'] in ('discogs', 'ebay') %} (a rough estimate){% endif %}</p>
+                            </div>
+                            {% endif %}
                         </div>
                 </div>
 

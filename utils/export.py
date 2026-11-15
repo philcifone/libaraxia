@@ -9,9 +9,11 @@ household member's.
 """
 import csv
 import io
+import os
 import zipfile
 from datetime import datetime
 
+from utils import image_utils, money
 from utils.media import NO_STATUS_LABEL, kind_of
 
 
@@ -34,6 +36,10 @@ LIBRARY_HEADER = [
     'Type', 'Format', 'Barcode', 'Catalogue Number', 'Runtime (min)',
     # Movies & TV (15.1): movie / tv for a video, blank otherwise; season is TV's
     'Kind', 'Season',
+    # This copy (16.0a): grades are the stored codes (utils/condition.py);
+    # money in VALUE_CURRENCY, for your own items only (a household member's
+    # prices are theirs).
+    'Condition', 'Sleeve Condition', 'Price Paid', 'Value', 'Value Source', 'Value Checked',
 ]
 
 
@@ -59,6 +65,8 @@ def library_rows(conn, user_id):
                b.removed_at, b.removed_note,
                b.media_type, b.format, b.barcode, b.catalog_number, b.runtime_minutes,
                b.video_kind, b.season,
+               b.condition, b.sleeve_condition, b.price_paid_cents, b.value_cents,
+               b.value_source, b.value_note, b.value_checked_at,
                c.status, c.created_at AS status_added,
                (SELECT MIN(date_started) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS started,
                (SELECT MAX(date_completed) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS completed,
@@ -99,7 +107,18 @@ def library_rows(conn, user_id):
         r['rating'], r['comment'], r['tags'], r['shelves'],
         r['media_type'], r['format'] or '', r['barcode'] or '', r['catalog_number'] or '',
         r['runtime_minutes'] or '', kind_of(r) or '', r['season'] or '',
+        r['condition'] or '', r['sleeve_condition'] or '',
+        *(_money_columns(r) if r['added_by'] == user_id else ('', '', '', '')),
     ] for r in rows]
+
+
+def _money_columns(r):
+    """Price paid, value, its source (with the note) and when, for a row."""
+    source = r['value_source'] or ''
+    if r['value_note']:
+        source = f"{source}: {r['value_note']}" if source else r['value_note']
+    return (money.plain(r['price_paid_cents']), money.plain(r['value_cents']), source,
+            (r['value_checked_at'] or '')[:10])
 
 
 def library_csv(conn, user_id):
@@ -157,8 +176,27 @@ def data_zip(conn, user_id):
             conn.execute('SELECT year, goal FROM reading_goals WHERE user_id = ? ORDER BY year',
                          (user_id,)).fetchall()),
     }
+    # Photos of your own items (16.0a): photos.csv lists them, photos/
+    # holds the files as photos/<book id>/<file>. JPEGs are stored, not
+    # deflated again (they don't shrink).
+    photo_rows = conn.execute('''
+        SELECT b.id, b.title, p.kind, p.caption, p.path
+        FROM item_photos p JOIN books b ON b.id = p.book_id
+        WHERE b.added_by = ? ORDER BY b.id, p.kind, p.position, p.id
+    ''', (user_id,)).fetchall()
+    photo_files = []
+    for row in photo_rows:
+        full = os.path.join(image_utils.STATIC_ROOT, row['path'])
+        if image_utils.is_safe_upload_path(row['path']) and os.path.isfile(full):
+            photo_files.append((row, full, f"photos/{row['id']}/{os.path.basename(row['path'])}"))
+    files['photos.csv'] = _csv(['Book ID', 'Title', 'Kind', 'Caption', 'File'],
+                               [[r['id'], r['title'], r['kind'], r['caption'] or '', arc]
+                                for r, _, arc in photo_files])
+
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
         for name, text in files.items():
             z.writestr(name, text)
+        for _, full, arc in photo_files:
+            z.write(full, arc, compress_type=zipfile.ZIP_STORED)
     return buf.getvalue()

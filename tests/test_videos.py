@@ -475,11 +475,12 @@ def test_export_marks_videos(app, db, people):
         from utils.database import get_db
         text = library_csv(get_db(), people['alice'])
     lines = text.splitlines()
-    # Kind and Season appended in 15.1: a video without a kind is a movie
-    assert lines[0].endswith('Type,Format,Barcode,Catalogue Number,Runtime (min),Kind,Season')
+    # Kind and Season appended in 15.1 (a video without a kind is a movie),
+    # then the six "This copy" columns in 16.0a, empty here
+    assert 'Type,Format,Barcode,Catalogue Number,Runtime (min),Kind,Season,Condition,' in lines[0]
     assert any(line.startswith('Yours,2,Jaws') and f'video,VHS,{EAN}' in line
-               and line.rstrip().endswith(',movie,') for line in lines)
-    assert any('Dune' in line and line.rstrip().endswith('book,,,,,,') for line in lines)
+               and line.rstrip().endswith(',movie,' + ',' * 6) for line in lines)
+    assert any('Dune' in line and line.rstrip().endswith('book,,,,,,' + ',' * 6) for line in lines)
 
 
 def test_account_removal_counts_videos(app, db, people):

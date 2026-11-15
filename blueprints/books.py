@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import photos, cover_crop, media_covers
+from utils import photos, condition, copy_fields, cover_crop, media_covers
 from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -71,9 +71,15 @@ def add_book():
                                                request.form.get("isbn", ""),
                                                request.form.get("subtitle", ""))
                     if d["in_library"]]
+        copy, copy_errors = copy_fields.from_form(request.form, media.BOOK)
+        refused = []
         if on_shelf and not request.form.get("confirm_duplicate"):
-            flash("This looks like a book already on your household's shelf. "
-                  "Tick \"Add it anyway\" if it's a second copy.", "error")
+            refused.append("This looks like a book already on your household's shelf. "
+                           "Tick \"Add it anyway\" if it's a second copy.")
+        refused += copy_errors
+        if refused:
+            for message in refused:
+                flash(message, "error")
             values = request.form.to_dict()
             # Keep a looked-up cover only if it's one of ours (an upload is
             # lost on the re-render, as on any refused form)
@@ -120,6 +126,7 @@ def add_book():
             1 if owned else 0,
             media.book_format(request.form.get("format")),   # Book (NULL) or Audiobook
         ))
+        copy_fields.save(conn, cursor.lastrowid, copy)
         conn.commit()
 
         if request.form.get("then") == "review":
@@ -461,6 +468,16 @@ def edit_book(id):
         return redirect(url_for("base.index"))
 
     if request.method == "POST":
+        copy, copy_errors = copy_fields.from_form(request.form, media.BOOK, book)
+        if copy_errors:
+            for message in copy_errors:
+                flash(message, "error")
+            values = {**dict(book), **request.form.to_dict(), 'existing_cover_url': ''}
+            return render_template("edit_book.html", book=book, values=values,
+                                   m=media.media_labels(media.BOOK),
+                                   **_copy_context(book),
+                                   **_book_tools_context(conn, book)), 400
+
         # Get current cover
         current_cover = book['cover_image_url']
 
@@ -523,16 +540,24 @@ def edit_book(id):
             media.book_format(request.form.get("format")),
             id
         ))
+        copy_fields.save(conn, id, copy)
         conn.commit()
 
         flash("Book updated successfully!", "success")
         return redirect(url_for("books.show_book", id=id))
 
-    values = dict(book)
+    values = {**dict(book), **copy_fields.form_defaults(book)}
     values['existing_cover_url'] = ''     # set only by "Find a better cover"
     return render_template("edit_book.html", book=book, values=values,
                            m=media.media_labels(media.BOOK),
+                           **_copy_context(book),
                            **_book_tools_context(conn, book))
+
+
+def _copy_context(book):
+    """The edit page's extras for "This copy" (_copy_fields.html): where
+    the stored value came from."""
+    return {'value_line': copy_fields.source_line(book)}
 
 
 def _transfer_candidates(conn):
@@ -724,10 +749,24 @@ def render_item_page(conn, book):
                  if upload_exists(book['cover_image_url']) else None)
     photo_slides = photos.slides(item_photos, cover_url)
 
+    # Condition (16.0a): "NM / VG+" for a record (record, then sleeve), the
+    # label for a book or movie; the full labels on hover
+    kind = media.media_type_of(book)
+    grades = [(book['condition'], False), (book['sleeve_condition'], True)] if kind == media.RECORD \
+        else [(book['condition'], False)]
+    condition_text = ' / '.join(condition.short(kind, code) or '-' for code, _ in grades) \
+        if any(code for code, _ in grades) else ''
+    condition_title = ' / '.join(
+        (('Sleeve: ' if sleeve else ('Record: ' if kind == media.RECORD else '')) + condition.label(kind, code, sleeve))
+        for code, sleeve in grades if code)
+
     return render_template(
         "book_detail.html",
         book=book,
         item_photos=item_photos,
+        condition_text=condition_text,
+        condition_title=condition_title,
+        value_line=copy_fields.source_line(book),
         photo_slides=photo_slides,
         extra_photos=len(photo_slides) - (1 if cover_url else 0),
         goodreads_notes=goodreads_notes,
