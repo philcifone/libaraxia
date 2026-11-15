@@ -5979,8 +5979,10 @@ html:has(.item3d[open]) {
    (book_detail.js faceLight, worked out once for these two poses). Each
    holder (.heading-book) is as big as its turned book looks, so the flex
    row spaces them as they look; the box turns about its own centre inside.
-   One perspective per group, so a row or a stack shares a vanishing point.
-   Decoration: no pointer events, no motion. */
+   No perspective: drawn flat, as an illustration, so every edge that runs
+   along the shelf stays parallel to it (Phil, 2026-11-15; a vanishing
+   point tilted the spines' tops and bottoms). Decoration: no pointer
+   events, no motion. */
 
 .heading-books {
   display: none;
@@ -5994,7 +5996,6 @@ html:has(.item3d[open]) {
   bottom: calc(var(--ledge-front) + var(--ledge-top) * .45);
   display: flex;
   align-items: flex-end;
-  perspective: 600px;
   pointer-events: none;
   -webkit-user-select: none;
      -moz-user-select: none;
@@ -6065,7 +6066,7 @@ html:has(.item3d[open]) {
 }
 
 .heading-books-stack .item3d-box {
-  transform: rotateX(-10deg) rotateY(-6deg) rotateZ(-90deg) rotateY(90deg);
+  transform: rotateX(-10deg) rotateZ(-90deg) rotateY(90deg);
 }
 
 .heading-books-stack .item3d-front  {
@@ -6073,11 +6074,7 @@ html:has(.item3d[open]) {
 }
 
 .heading-books-stack .item3d-spine  {
-  --shade: .148;
-}
-
-.heading-books-stack .item3d-bottom {
-  --shade: .65;
+  --shade: .166;
 }
 
 @media (max-width: 639px) {
