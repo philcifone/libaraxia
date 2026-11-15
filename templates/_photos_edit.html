@@ -1,37 +1,49 @@
 {# Photos on the edit page (ROADMAP 16.0a, docs/PHOTOS-VALUE-SPEC.md section 3):
-   the back, the spine (books only) and the gallery. Its own card under the
+   the back, the sides its format has (utils/photos.kinds_for) and the gallery. Its own card under the
    item form, since a form can't hold forms. Every action is a plain POST to
    blueprints/photos.py that comes back to #photos; static/photos.js uploads
    a picked file at once (no Upload click) and the gallery one file at a time
    with a progress line. No placeholders where there's no photo: just Add.
    Crop opens the cover's crop tool on that photo (cover_crop.js photo
    mode; its dialog is in the item form above) and saves to photos.crop.
-   Needs: book, photos, photo_kinds, photo_limit, m (or a book page's noun). #}
+   A line says what the item still needs before it turns in 3D
+   (utils/item3d.py; ROADMAP 16.0a).
+   Needs: book, photos, photo_kinds, photo_labels, photo_limit,
+   photos_missing_3d, has_3d_shape, m (or a book page's noun). #}
 {% set noun = m.noun if m else 'book' %}
 {% set gallery = photos['gallery'] %}
 <section id="photos" class="bg-secondary-bg rounded-xl p-4 sm:p-6 mt-8 card" data-photos-book="{{ book['id'] }}">
     <h2 class="text-xl font-display text-content-primary">Photos</h2>
     <p class="text-sm text-content-secondary mt-1">
-        The cover is above. Add the back{% if 'spine' in photo_kinds %}, the spine{% endif %} and
+        The cover is above. Add the back{% if 'spine' in photo_kinds %}, the sides{% endif %} and
         anything else worth a look: liner notes, inserts, wear. Photos lose their location data when saved.
     </p>
+    {% if has_3d_shape %}
+    <p class="text-sm text-content-secondary mt-1" data-3d-status="{{ 'needs' if photos_missing_3d else 'ready' }}">
+        {% if photos_missing_3d %}
+        To turn in 3D (Shelf style) it still needs: {{ photos_missing_3d|join(', ')|lower }}.
+        {% else %}
+        It has every photo it needs to turn in 3D (Shelf style): tap its cover.
+        {% endif %}
+    </p>
+    {% endif %}
     <p class="text-sm mt-2" data-photos-status role="status" aria-live="polite"></p>
 
     <div class="mt-6 grid sm:grid-cols-2 gap-6">
         {% for kind in photo_kinds if kind != 'gallery' %}
         {% set photo = photos[kind] %}
         <div class="space-y-2">
-            <h3 class="label text-sm pb-1">{{ kind|capitalize }}</h3>
+            <h3 class="label text-sm pb-1">{{ photo_labels[kind] }}</h3>
             {% if photo %}
-            <img src="{{ url_for('static', filename=photo['path']) }}" alt="{{ kind|capitalize }} of {{ book['title'] }}"
-                     class="{{ 'h-48 w-auto' if kind == 'spine' else 'h-40 w-auto max-w-full object-contain' }} border border-rule-strong">
+            <img src="{{ url_for('static', filename=photo['path']) }}" alt="{{ photo_labels[kind] }} of {{ book['title'] }}"
+                     class="{{ 'h-48 w-auto' if kind in ('spine', 'side') else 'h-40 w-auto max-w-full object-contain' }} border border-rule-strong">
             {% endif %}
             <div class="flex flex-wrap gap-2">
                 <form action="{{ url_for('photos.add', book_id=book['id'], kind=kind) }}" method="POST"
                       enctype="multipart/form-data" class="photo-upload flex flex-wrap items-center gap-2">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <label class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline cursor-pointer">
-                        {{ ('Replace' if photo else 'Add ' ~ kind) }}
+                        {{ ('Replace' if photo else 'Add ' ~ photo_labels[kind]|lower) }}
                         <input type="file" name="photo" accept="image/*" class="sr-only" data-change="uploadPhotos">
                     </label>
                     <button type="submit" class="text-sm underline text-content-secondary" data-photo-submit>Upload</button>

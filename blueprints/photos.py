@@ -27,7 +27,7 @@ def _item_for_owner(conn, book_id):
     """The item, if the current user may change its photos. 404 when they
     can't see it at all (as the item page), 403 when they can see it but
     aren't its owner or an admin."""
-    book = conn.execute('SELECT id, title, added_by, media_type FROM books WHERE id = ?',
+    book = conn.execute('SELECT id, title, added_by, media_type, format FROM books WHERE id = ?',
                         (book_id,)).fetchone()
     if not book or not can_view_book(conn, current_user, book_id):
         abort(404)
@@ -89,7 +89,7 @@ def add(book_id, kind):
     The form field is `photo` (several for the gallery)."""
     conn = get_db()
     book = _item_for_owner(conn, book_id)
-    if kind not in photos.kinds_for(media.media_type_of(book)):
+    if kind not in photos.kinds_for(media.media_type_of(book), book['format']):
         abort(404)
     files = request.files.getlist('photo')
     if not any(f and f.filename for f in files):
@@ -99,11 +99,11 @@ def add(book_id, kind):
     saved, error = _save_files(conn, book, kind, files)
     if error:
         return _done(book, error, ok=False, status=400, photos=saved)
-    word = photos.LABELS[kind].lower()
-    message = (f'{photos.LABELS[kind]} photo saved.' if kind in photos.SINGLE
+    word = photos.label(kind, book['format'])
+    message = (f'{word} photo saved.' if kind in photos.SINGLE
                else f'{len(saved)} photo{"s" if len(saved) != 1 else ""} added.')
     current_app.logger.info('User %s added %d %s photo(s) to book %s',
-                            current_user.id, len(saved), word, book_id)
+                            current_user.id, len(saved), kind, book_id)
     return _done(book, message, photos=saved)
 
 

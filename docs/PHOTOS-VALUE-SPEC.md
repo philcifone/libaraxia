@@ -272,6 +272,8 @@ Built with the draft's answer to each (2026-11-15), pending Phil's say:
 
 - `condition_grades` has a `sleeve_only` column for Discogs' sleeve extras (Generic, No Cover, Not Graded), so the table says which grades the record itself can't have.
 - Photos can be cropped and straightened (Phil, 2026-11-15): a Crop button beside Replace and Delete opens the cover's crop tool on that photo and saves to `POST /photos/photo/<id>/crop`.
+- The 3D view (Phil, 2026-11-15) grew from a books demo into every type, and with it the photo kinds: `photo_kinds` is a lookup table (migration 040) with `side` and `top` for a VHS sleeve; a spine is for everything but vinyl. An item turns only when all its shape's photos are there (`utils/item3d.py`); details in ROADMAP 16.0a and ARCHITECTURE.
+- The cover's crop saves at once on an Edit page (`POST /covers/crop/save/<id>`), not with the form.
 - Photo routes: `/photos/photo/<id>/delete` and `/caption`, not `/photos/<id>/...`, which would have shared a URL shape with `/photos/<book_id>/<kind>`.
 - The Photos section is its own card under the edit form, not inside it (a form can't hold forms); the "This copy" fields (condition, price, value) are inside the form, on Add too.
 - "More photos" opens on the first photo after the cover, which the page already shows; Previous goes back to it.

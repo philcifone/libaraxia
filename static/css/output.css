@@ -4754,8 +4754,7 @@ html:has(.cover-zoom[open]) {
   white-space: nowrap;
 }
 
-.photo-gallery .photo-nav, .photo-gallery .photo-close button {
-  position: absolute;
+.photo-gallery .photo-close button {
   display: grid;
   place-items: center;
   width: 2.75rem;
@@ -4766,22 +4765,41 @@ html:has(.cover-zoom[open]) {
   border: var(--bw-btn) solid var(--outline-edge);
   border-radius: var(--r-pill);
   box-shadow: var(--sh-btn);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
 }
 
+/* Previous / next: plain translucent "<" and ">" at the screen's edges
+   (Phil, 2026-11-15: simple, over whatever the photo is) */
+
 .photo-gallery .photo-nav {
+  position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 4.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgb(var(--black) / .35);
+  color: rgb(255 255 255 / .9);
+  font: 400 1.75rem/1 var(--font-body);
+  cursor: pointer;
+}
+
+.photo-gallery .photo-nav:hover {
+  background: rgb(var(--black) / .55);
 }
 
 .photo-gallery .photo-prev {
-  left: max(.5rem, calc(50% - 24rem));
+  left: 0;
 }
 
 .photo-gallery .photo-next {
-  right: max(.5rem, calc(50% - 24rem));
+  right: 0;
 }
 
 .photo-gallery .photo-close {
@@ -4793,27 +4811,197 @@ html:has(.cover-zoom[open]) {
   padding: 0;
 }
 
-.photo-gallery .photo-close button {
-  position: static;
-  font-size: 1.5rem;
-}
-
 .photo-gallery .photo-nav:focus-visible, .photo-gallery .photo-close button:focus-visible {
   outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
 }
 
-/* ---------- The 3D book (book_detail.html #book-3d; a demo, Shelf only) ----------
+/* ---------- The 3D item (templates/_item3d.html, ROADMAP 16.0a; Shelf only) ----------
    A box of six faces in CSS 3D: the cover in front, the back behind, the
-   spine on the left (as a book in the hand: spine left, pages right), the
-   page edges on the right, top and bottom. book_detail.js sizes it from
-   the cover's shape and the spine photo or the page count (--w, --h, --d,
-   in px), turns it (--rx, --ry) and lights each face (--shade, 0 to 1:
-   how far it's turned from the light, top left in front). The page edges
-   are paper with fine lines; the drawn spine and back take the cover's own
-   colour (--made-bg, --made-ink), read from its pixels. */
+   spine on the left (as a book in the hand), the side on the right, top and
+   bottom. Its proportions come from the photos (utils/item3d.py): --a is
+   width / height, --dr depth / height; whatever places a box sets --h.
+   In the dialog (#item-3d) book_detail.js turns it (--rx, --ry) and lights
+   each face (--shade, 0 to 1: how far it's turned from the light, top left
+   in front). Every printed face is a photo; a face without one is plain,
+   by shape:
+     book    paper with fine lines (side, top, bottom)
+     sleeve  card in the cover's colour (--edge, read from its pixels)
+     jewel   a CD case: black plastic, the hinge's bar left of the cover,
+             the spine drawn small unless there's a photo
+     case    a DVD or cassette: black plastic
+     tape    a VHS sleeve: the open bottom is the black tape inside */
 
-.book3d {
+.item3d-box {
+  --h: 400px;
+  --w: calc(var(--h) * var(--a, .66));
+  --d: max(3px, calc(var(--h) * var(--dr, .1)));
+  --pages: 238 232 218;
+  /* paper, in the hand's light */
+  --pages-line: 204 196 180;
+  --plastic: 22 22 24;
+  position: relative;
+  width: var(--w);
+  height: var(--h);
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+}
+
+.item3d-face {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  background: rgb(var(--plastic));
+}
+
+/* Each face's light: a dark wash that deepens as it turns away */
+
+.item3d-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgb(var(--black) / calc(var(--shade, 0) * .62));
+}
+
+.item3d-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -o-object-fit: fill;
+     object-fit: fill;
+  pointer-events: none;
+}
+
+.item3d-front, .item3d-back {
+  width: var(--w);
+  height: var(--h);
+  margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2);
+}
+
+.item3d-front {
+  transform: translateZ(calc(var(--d) / 2));
+}
+
+.item3d-back  {
+  transform: rotateY(180deg) translateZ(calc(var(--d) / 2));
+}
+
+.item3d-spine, .item3d-side {
+  width: var(--d);
+  height: var(--h);
+  margin: calc(var(--h) / -2) 0 0 calc(var(--d) / -2);
+}
+
+.item3d-spine {
+  transform: rotateY(-90deg) translateZ(calc(var(--w) / 2));
+}
+
+.item3d-side  {
+  transform: rotateY(90deg) translateZ(calc(var(--w) / 2));
+}
+
+.item3d-top, .item3d-bottom {
+  width: var(--w);
+  height: var(--d);
+  margin: calc(var(--d) / -2) 0 0 calc(var(--w) / -2);
+}
+
+.item3d-top    {
+  transform: rotateX(90deg) translateZ(calc(var(--h) / 2));
+}
+
+.item3d-bottom {
+  transform: rotateX(-90deg) translateZ(calc(var(--h) / 2));
+}
+
+/* A book: the pages, set a hair inside the covers */
+
+.item3d-book .item3d-front {
+  border-radius: 0 var(--cover-r, 1px) var(--cover-r, 1px) 0;
+}
+
+.item3d-book .item3d-back  {
+  border-radius: var(--cover-r, 1px) 0 0 var(--cover-r, 1px);
+}
+
+.item3d-book .item3d-side {
+  transform: rotateY(90deg) translateZ(calc(var(--w) / 2 - 1px));
+  background: repeating-linear-gradient(90deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
+}
+
+.item3d-book :is(.item3d-top, .item3d-bottom) {
+  background: repeating-linear-gradient(0deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
+}
+
+.item3d-book .item3d-top    {
+  transform: rotateX(90deg) translateZ(calc(var(--h) / 2 - 1px));
+}
+
+.item3d-book .item3d-bottom {
+  transform: rotateX(-90deg) translateZ(calc(var(--h) / 2 - 1px));
+}
+
+/* A record sleeve: card edges */
+
+.item3d-sleeve :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom) {
+  background: rgb(var(--edge, 222 214 196));
+}
+
+/* A jewel case: the hinge's bar with its ridges, then the booklet; the
+   back is the inlay, the full width of the case */
+
+.item3d-jewel .item3d-front {
+  display: flex;
+}
+
+.item3d-jewel .item3d-front img {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+}
+
+.item3d-hinge {
+  flex: 0 0 12.7%;
+  background:
+        linear-gradient(90deg, rgb(255 255 255 / .09), transparent 30%, rgb(255 255 255 / .05) 85%, rgb(0 0 0 / .5)),
+        repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 255 255 / .07) 5px 6px),
+        rgb(var(--plastic));
+}
+
+/* Its spine, when there's no photo: the artist and title, small, read
+   from the top down as on the inlay */
+
+.item3d-spine-print {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  width: 100%;
+  height: 100%;
+  padding: 6% 0;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  color: rgb(236 232 222);
+  font-size: calc(var(--d) * .42);
+  line-height: var(--d);
+  font-family: var(--font-body, sans-serif);
+  letter-spacing: .02em;
+}
+
+.item3d-spine-print span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 0;
+}
+
+/* The dialog it turns in */
+
+.item3d {
   width: 100vw;
   height: 100dvh;
   max-width: none;
@@ -4823,18 +5011,15 @@ html:has(.cover-zoom[open]) {
   border: 0;
   background: transparent;
   overflow: hidden;
-  --pages: 238 232 218;
-  /* paper, in the hand's light */
-  --pages-line: 204 196 180;
 }
 
-.book3d[open] {
+.item3d[open] {
   display: grid;
   grid-template-rows: 1fr auto;
   place-items: center;
 }
 
-.book3d-stage {
+.item3d-stage {
   position: relative;
   width: 100%;
   height: 100%;
@@ -4849,153 +5034,19 @@ html:has(.cover-zoom[open]) {
   -webkit-user-select: none;
 }
 
-.book3d-stage.dragging {
+.item3d-stage.dragging {
   cursor: grabbing;
 }
 
-.book3d-book {
-  --w: 260px;
-  --h: 400px;
-  --d: 40px;
-  position: relative;
-  width: var(--w);
-  height: var(--h);
-  transform-style: preserve-3d;
-  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-}
+/* As tall as fits, and no wider than 60% of the screen (an LP on a phone) */
 
-.book3d-face {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  overflow: hidden;
-}
-
-/* Each face's light: a dark wash that deepens as it turns away */
-
-.book3d-face::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: rgb(var(--black) / calc(var(--shade, 0) * .62));
-}
-
-.book3d-face img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  -o-object-fit: fill;
-     object-fit: fill;
-  pointer-events: none;
-}
-
-.book3d-front, .book3d-back {
-  width: var(--w);
-  height: var(--h);
-  margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2);
-}
-
-.book3d-front {
-  transform: translateZ(calc(var(--d) / 2));
-  border-radius: 0 var(--cover-r, 1px) var(--cover-r, 1px) 0;
-}
-
-.book3d-back  {
-  transform: rotateY(180deg) translateZ(calc(var(--d) / 2));
-  border-radius: var(--cover-r, 1px) 0 0 var(--cover-r, 1px);
-}
-
-.book3d-spine, .book3d-fore {
-  width: var(--d);
-  height: var(--h);
-  margin: calc(var(--h) / -2) 0 0 calc(var(--d) / -2);
-}
-
-.book3d-spine {
-  transform: rotateY(-90deg) translateZ(calc(var(--w) / 2));
-}
-
-.book3d-fore {
-  transform: rotateY(90deg) translateZ(calc(var(--w) / 2 - 1px));
-  background: repeating-linear-gradient(90deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
-}
-
-.book3d-top, .book3d-bottom {
-  width: var(--w);
-  height: var(--d);
-  margin: calc(var(--d) / -2) 0 0 calc(var(--w) / -2);
-  background: repeating-linear-gradient(0deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
-}
-
-.book3d-top    {
-  transform: rotateX(90deg) translateZ(calc(var(--h) / 2 - 1px));
-}
-
-.book3d-bottom {
-  transform: rotateX(-90deg) translateZ(calc(var(--h) / 2 - 1px));
-}
-
-/* A drawn spine or back, in the cover's colour */
-
-.book3d-made {
-  width: 100%;
-  height: 100%;
-  background: var(--made-bg, rgb(var(--shelf-front, 158 115 66)));
-  color: var(--made-ink, rgb(var(--shelf-label, 253 246 230)));
-}
-
-.book3d-spine-print {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  writing-mode: vertical-rl;
-  padding: 1.25rem 0;
-  font-family: var(--font-display);
-  line-height: 1.1;
-}
-
-.book3d-spine-title {
-  font-size: clamp(.7rem, calc(var(--d) * .42), 1.35rem);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-height: 70%;
-}
-
-.book3d-spine-author {
-  font-size: clamp(.55rem, calc(var(--d) * .3), .95rem);
-  opacity: .85;
-  white-space: nowrap;
-}
-
-.book3d-print {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: .5rem;
-  padding: 12% 10%;
-  font-size: .85rem;
-}
-
-.book3d-back-title {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-}
-
-.book3d-isbn {
-  margin-top: auto;
-  font-family: var(--font-mono, monospace);
-  font-size: .7rem;
-  opacity: .8;
+.item3d-stage .item3d-box {
+  --h: min(58dvh, 520px, calc(60vw / var(--a, .66)));
 }
 
 /* The shadow it casts on the "table", which doesn't turn with it */
 
-.book3d-floor {
+.item3d-floor {
   position: absolute;
   left: 50%;
   top: calc(50% + min(31dvh, 250px));
@@ -5006,13 +5057,13 @@ html:has(.cover-zoom[open]) {
   pointer-events: none;
 }
 
-.book3d-controls {
+.item3d-controls {
   display: flex;
   gap: .5rem;
   padding: 0 1rem 1.5rem;
 }
 
-.book3d-controls button, .book3d-close button {
+.item3d-controls button, .item3d-close button {
   padding: .4rem .9rem;
   background: rgb(var(--surface));
   color: rgb(var(--ink));
@@ -5023,18 +5074,18 @@ html:has(.cover-zoom[open]) {
   cursor: pointer;
 }
 
-.book3d-controls button:focus-visible, .book3d-close button:focus-visible {
+.item3d-controls button:focus-visible, .item3d-close button:focus-visible {
   outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
 }
 
-.book3d-close {
+.item3d-close {
   position: absolute;
   top: .75rem;
   right: .75rem;
 }
 
-.book3d-close button {
+.item3d-close button {
   width: 2.75rem;
   height: 2.75rem;
   padding: 0;
@@ -5042,13 +5093,13 @@ html:has(.cover-zoom[open]) {
   line-height: 1;
 }
 
-html:has(.book3d[open]) {
+html:has(.item3d[open]) {
   overflow: hidden;
 }
 
-/* Darker than the zoom's: the book is the only thing to look at */
+/* Darker than the zoom's: the item is the only thing to look at */
 
-.book3d::backdrop {
+.item3d::backdrop {
   background: rgb(var(--black) / .8);
 }
 
@@ -5904,6 +5955,79 @@ html:has(.book3d[open]) {
 
 :root[data-style="shelf"] .page-heading {
   padding-bottom: calc(.75rem + var(--ledge-h));
+}
+
+/* Books on the heading (ROADMAP 16.0a): a few of your own books that turn
+   in 3D (templates/_item3d.html), standing still on the Shelves heading's
+   ledge, half on each side of the title. The pose and light are the 3D
+   view's opening ones (book_detail.js: rx -8, ry 28, and the shade each
+   face has there). Decoration: no pointer events, no motion. One a side
+   on a phone, where the title needs the middle. */
+
+.heading-books {
+  display: none;
+}
+
+:root[data-style="shelf"] .heading-books {
+  position: absolute;
+  /* standing on the ledge's top face, a little back from its edge */
+  bottom: calc(var(--ledge-front) + var(--ledge-top) * .45);
+  display: flex;
+  align-items: flex-end;
+  gap: 1.1rem;
+  pointer-events: none;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
+
+:root[data-style="shelf"] .heading-books-left  {
+  left: calc(var(--side-w) + 1.25rem);
+}
+
+:root[data-style="shelf"] .heading-books-right {
+  right: 1.5rem;
+  flex-direction: row-reverse;
+}
+
+.heading-book {
+  display: block;
+  perspective: 700px;
+  filter: drop-shadow(2px 1px 2px rgb(0 0 0 / .35));
+}
+
+.heading-book .item3d-box {
+  --h: 3.25rem;
+  --rx: -8deg;
+  --ry: 28deg;
+}
+
+.heading-book .item3d-front {
+  --shade: .3;
+}
+
+.heading-book .item3d-spine {
+  --shade: .248;
+}
+
+.heading-book .item3d-top   {
+  --shade: .278;
+}
+
+.heading-book :is(.item3d-back, .item3d-side, .item3d-bottom) {
+  --shade: .65;
+}
+
+@media (max-width: 639px) {
+  .heading-book:nth-child(n+2) {
+    display: none;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .heading-book:nth-child(n+3) {
+    display: none;
+  }
 }
 
 /* A heading lit by a flashlight (trial on the item page only, Phil

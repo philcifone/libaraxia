@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
 {% from '_icons.html' import crumbs, icon, heading_card %}
+{% from '_item3d.html' import item3d_box %}
 
 {% block title %}{{ book['title'] }} - Details{% endblock %}
 {# Shared by books and videos: `m` holds the wording for this media type
@@ -71,8 +72,9 @@
                     <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}">
                         {% if book.cover_image_url|upload_exists %}
                             {# A tap shows it bigger (#cover-zoom, below) #}
-                            {# openCover (book_detail.js): the 3D book in the Shelf style
-                               (books only, #book-3d), else the zoom #}
+                            {# openCover (book_detail.js): in the Shelf style the item in 3D
+                               (#item-3d, when it has the photos for it); else the gallery,
+                               cover first, when there are more photos; else the zoom #}
                             <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
                                     aria-label="Show the cover bigger">
                                 {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
@@ -595,56 +597,29 @@
         </dialog>
         {% endif %}
 
-        {# The 3D book (a demo, Shelf style only, Phil 2026-11-15): the cover,
-           spine and back on a box you turn by dragging (book_detail.js). The
-           back and spine are the item's photos when it has them (a spine
-           photo also gives the true thickness); otherwise they're drawn in
-           the cover's own colour, and the thickness comes from the page
-           count. The cover button opens it instead of the zoom in Shelf. #}
-        {% if m.type == 'book' and book.cover_image_url|upload_exists %}
-        {% set back_photo = item_photos['back'] %}
-        {% set spine_photo = item_photos['spine'] %}
-        <dialog id="book-3d" class="book3d" aria-label="{{ book['title'] }}, a book you can turn"
-                data-pages="{{ book['page_count'] or '' }}">
-            <div class="book3d-stage" data-book3d-stage role="img"
+        {# The item in 3D (ROADMAP 16.0a, Shelf style only): a box you turn by
+           dragging (book_detail.js), drawn by _item3d.html. Only when the
+           item has every photo its shape needs (utils/item3d.py): no drawn
+           stand-ins. The cover button opens it instead of the gallery or
+           the zoom in Shelf. #}
+        {% if item3d %}
+        <dialog id="item-3d" class="item3d" aria-label="{{ book['title'] }}, in 3D">
+            <div class="item3d-stage" data-item3d-stage role="img"
                  aria-label="{{ book['title'] }}: drag, or use the arrow keys, to turn it">
-                <div class="book3d-book" data-book3d-book>
-                    <div class="book3d-face book3d-front">
-                        <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="" data-book3d-cover draggable="false">
-                    </div>
-                    <div class="book3d-face book3d-back">
-                        {% if back_photo %}
-                        <img src="{{ url_for('static', filename=back_photo['path']) }}" alt="" draggable="false">
-                        {% else %}
-                        <div class="book3d-print book3d-made" data-book3d-made>
-                            <p class="book3d-back-title">{{ book['title'] }}</p>
-                            <p>{{ book['author'] }}</p>
-                            {% if book['isbn'] %}<p class="book3d-isbn">ISBN {{ book['isbn'] }}</p>{% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="book3d-face book3d-spine">
-                        {% if spine_photo %}
-                        <img src="{{ url_for('static', filename=spine_photo['path']) }}" alt="" data-book3d-spine draggable="false">
-                        {% else %}
-                        <div class="book3d-spine-print book3d-made" data-book3d-made>
-                            <span class="book3d-spine-title">{{ book['title'] }}</span>
-                            <span class="book3d-spine-author">{{ book['author'] }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="book3d-face book3d-fore"></div>
-                    <div class="book3d-face book3d-top"></div>
-                    <div class="book3d-face book3d-bottom"></div>
-                </div>
+                {{ item3d_box(item3d) }}
             </div>
-            <div class="book3d-floor" aria-hidden="true"></div>
-            <div class="book3d-controls">
-                <button type="button" data-click="book3dTurn" data-angle="0">Front</button>
-                <button type="button" data-click="book3dTurn" data-angle="90">Spine</button>
-                <button type="button" data-click="book3dTurn" data-angle="180">Back</button>
+            <div class="item3d-floor" aria-hidden="true"></div>
+            <div class="item3d-controls">
+                <button type="button" data-click="item3dTurn" data-angle="0">Front</button>
+                {% if item3d.shape != 'sleeve' %}
+                <button type="button" data-click="item3dTurn" data-angle="90">{{ 'Left' if item3d.shape == 'tape' else 'Spine' }}</button>
+                {% endif %}
+                <button type="button" data-click="item3dTurn" data-angle="180">Back</button>
+                {% if item3d.shape == 'tape' %}
+                <button type="button" data-click="item3dTurn" data-angle="270">Right</button>
+                {% endif %}
             </div>
-            <form method="dialog" class="book3d-close"><button type="submit" aria-label="Close">&times;</button></form>
+            <form method="dialog" class="item3d-close"><button type="submit" aria-label="Close">&times;</button></form>
         </dialog>
         {% endif %}
 
@@ -669,8 +644,8 @@
                     </figcaption>
                 </figure>
                 {% endfor %}
-                <button type="button" class="photo-nav photo-prev" data-click="galleryStep" data-step="-1" aria-label="Previous photo">&#8249;</button>
-                <button type="button" class="photo-nav photo-next" data-click="galleryStep" data-step="1" aria-label="Next photo">&#8250;</button>
+                <button type="button" class="photo-nav photo-prev" data-click="galleryStep" data-step="-1" aria-label="Previous photo">&lt;</button>
+                <button type="button" class="photo-nav photo-next" data-click="galleryStep" data-step="1" aria-label="Next photo">&gt;</button>
                 <form method="dialog" class="photo-close"><button type="submit" aria-label="Close">&times;</button></form>
             </div>
         </dialog>

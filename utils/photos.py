@@ -1,25 +1,47 @@
-"""Item photos beyond the cover: a back, a spine (books only) and a gallery
-(ROADMAP 16.0a, docs/PHOTOS-VALUE-SPEC.md section 3, migration 036).
+"""Item photos beyond the cover: a back, sides and a gallery (ROADMAP 16.0a,
+docs/PHOTOS-VALUE-SPEC.md section 3; migrations 036 and 040).
 
 Queries only; the files are saved by image_utils.save_photo and removed by
 image_utils.delete_image_file. Routes are in blueprints/photos.py; the item
-page's gallery and the edit page's Photos section read `photos_of`.
+page's gallery and the edit page's Photos section read `photos_of`. What
+the 3D view needs of them is utils/item3d.py.
 """
 from flask import url_for
 
 from utils import image_utils
-from utils.media import BOOK
+from utils.media import BOOK, VIDEO, RECORD
 
-BACK, SPINE, GALLERY = 'back', 'spine', 'gallery'
-KINDS = (BACK, SPINE, GALLERY)
-SINGLE = (BACK, SPINE)          # one per item; adding another replaces it
+# The photo_kinds table (migration 040; a test keeps the two in step), in
+# the gallery's order. SPINE is the left side, as a book in the hand; SIDE
+# is the right (a VHS sleeve is printed on both).
+BACK, SPINE, SIDE, TOP, GALLERY = 'back', 'spine', 'side', 'top', 'gallery'
+KINDS = (BACK, SPINE, SIDE, TOP, GALLERY)
+SINGLE = (BACK, SPINE, SIDE, TOP)   # one per item; adding another replaces it
 MAX_PER_ITEM = 30               # enough for a box set; stops a runaway upload
-LABELS = {BACK: 'Back', SPINE: 'Spine', GALLERY: 'Photo'}
+LABELS = {BACK: 'Back', SPINE: 'Spine', SIDE: 'Right side', TOP: 'Top', GALLERY: 'Photo'}
+
+# A record on vinyl: a card sleeve, with no spine worth a photo
+VINYL = ('LP', 'EP', '7in', '10in', '12in')
 
 
-def kinds_for(media_type):
-    """The kinds an item of this type takes: a spine is books only."""
-    return KINDS if media_type == BOOK else (BACK, GALLERY)
+def kinds_for(media_type, fmt=None):
+    """The kinds an item of this type and format takes, in the edit page's
+    order. A book, a DVD, a CD and a cassette have a spine; a VHS sleeve is
+    printed all round (both sides and the top; the bottom is open); a vinyl
+    sleeve is a front and a back."""
+    if media_type == VIDEO and fmt == 'VHS':
+        return KINDS
+    if media_type == RECORD and (fmt in VINYL or not fmt):
+        return (BACK, GALLERY)
+    return (BACK, SPINE, GALLERY)
+
+
+def label(kind, fmt=None):
+    """What the UI calls a kind: on a VHS the spine is the "Left side",
+    since it has a right one too."""
+    if kind == SPINE and fmt == 'VHS':
+        return 'Left side'
+    return LABELS[kind]
 
 
 def as_dict(row):
@@ -31,7 +53,7 @@ def photos_of(conn, book_id):
     """{'back': row or None, 'spine': row or None, 'gallery': [rows]},
     gallery in upload order. Rows whose file is gone are left out, so a
     missing file never shows as a broken image."""
-    out = {BACK: None, SPINE: None, GALLERY: []}
+    out = {**{kind: None for kind in SINGLE}, GALLERY: []}
     for row in conn.execute('SELECT * FROM item_photos WHERE book_id = ? ORDER BY position, id',
                             (book_id,)):
         if not image_utils.upload_exists(row['path']):
@@ -43,15 +65,15 @@ def photos_of(conn, book_id):
     return out
 
 
-def slides(photos, cover_url=None):
-    """The item page's "More photos" order: cover, back, spine, gallery.
+def slides(photos, cover_url=None, fmt=None):
+    """The item page's gallery order: cover, back, sides, top, gallery.
     Each a dict with url, caption and a label ("Back") for the alt text."""
     out = []
     if cover_url:
         out.append({'url': cover_url, 'caption': '', 'label': 'Cover'})
     for kind in SINGLE:
         if photos[kind]:
-            out.append({**as_dict(photos[kind]), 'label': LABELS[kind]})
+            out.append({**as_dict(photos[kind]), 'label': label(kind, fmt)})
     for row in photos[GALLERY]:
         out.append({**as_dict(row), 'label': LABELS[GALLERY]})
     return out
@@ -62,7 +84,7 @@ def count(conn, book_id):
 
 
 def add(conn, book_id, kind, path, caption=None):
-    """Insert a photo row; for a back or spine, the old one (row and file) is
+    """Insert a photo row; for a single kind (a back, a spine), the old one (row and file) is
     replaced. Returns the new row id. The caller commits."""
     if kind in SINGLE:
         old = conn.execute('SELECT id, path FROM item_photos WHERE book_id = ? AND kind = ?',

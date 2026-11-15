@@ -86,6 +86,14 @@ New features (Phil, 2026-11-14), before the code review and the screenshots so b
 - [x] Price paid and value, both optional, private to the owner; a Collection value card on Stats.
 - [x] Fetch value: Discogs price suggestions for records, the eBay Browse API's median asking price for books and movies; per item and as a bulk tool beside Fetch covers.
 - [x] 3D book demo (Phil, 2026-11-15): in the Shelf style a book's cover opens a box you turn by dragging (also arrow keys, Front / Spine / Back), with its back and spine photos on the faces, or drawn in the cover's colour; thickness from the spine photo, else the page count. Books only, CSS 3D, no library (`book_detail.html` #book-3d, `book_detail.js`). Demo: decide after trying it whether to keep, extend to movies and music, or drop.
+- [x] **3D items, kept and extended** (Phil, 2026-11-15, after trying the demo; migration 040, `utils/item3d.py`, `_item3d.html`):
+  - [x] An item turns in 3D only when every printed face of its shape is a photo: no drawn stand-ins. Until then the cover opens the gallery, cover first, when there are other photos, else the plain enlarged cover. The edit page's Photos card says what's still missing.
+  - [x] Music and movies: an LP is a thin sleeve (cover, back); a CD a jewel case (the hinge's black bar left of the cover, the back the full width, the spine drawn from the title unless there's a photo: the one drawn face); a DVD or cassette a case (cover, back, spine); a VHS a slip sleeve with four more photos (back, left side, right side, top) and a black bottom. Photo kinds are now a lookup table (`photo_kinds`), with `side` and `top` added.
+  - [x] The gallery's Previous / Next are plain translucent `<` `>` buttons.
+  - [x] The crop tool's Save saves the cover there and then on an Edit page (`POST /covers/crop/save/<id>`), so adding photos afterwards can't lose it. On an Add page it still saves with the form (there's no item yet).
+  - [x] Your 3D books stand on the Shelves heading (Shelf style, your own Books page only): up to six, chosen by a number drawn at login, still, in the 3D view's opening pose and light; not links, no effects. One a side on a phone. The heading shelf needed no change for them.
+  - [ ] Later, low priority: a cover-shape override for sets that aren't the standard shape (non-square disc sets), which the 3D box would take its proportions from; until then such a set is right as soon as its own photos are (the box follows the cover photo's shape).
+  - [ ] Later, low priority: more VHS shapes: the Disney clamshell (white plastic, rounded, opens like a book) and coloured tapes (Nickelodeon's orange) for the open bottom.
 - [ ] Phil's setup (spec section 7): Discogs seller settings; an eBay developer account and production keys. The same steps go in the README at 16.1.
 
 ### 16.0b Code review 🟠

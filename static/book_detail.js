@@ -107,14 +107,16 @@ document.addEventListener('touchend', event => {
     }
 });
 
-// --- The 3D book (#book-3d; a demo, Shelf style only) -----------------------
-// The cover opens a box with the cover, spine and back on it, turned by
-// dragging (with a little momentum), the arrow keys or the Front / Spine /
-// Back buttons. Pure CSS 3D: this sets the size (--w, --h, --d), the turn
-// (--rx, --ry) and each face's light (--shade). Outside the Shelf style, or
-// for anything but a book, the cover opens the zoom as before.
+// --- The item in 3D (#item-3d, ROADMAP 16.0a; Shelf style only) -------------
+// The cover opens a box with the item's photos on its faces (_item3d.html),
+// turned by dragging (with a little momentum), the arrow keys or the Front /
+// Spine / Back buttons. Pure CSS 3D: the box's proportions come from the
+// server (--a, --dr) and its size from CSS; this sets the turn (--rx, --ry)
+// and each face's light (--shade). The dialog is only on the page when the
+// item has every photo its shape needs; otherwise the cover opens the
+// gallery (when there are more photos) or the zoom.
 
-// A face's normal after the book's turn, dotted with the light: how lit it
+// A face's normal after the box's turn, dotted with the light: how lit it
 // is (CSS: transform rotateX(rx) rotateY(ry), x right, y down, z to you).
 function faceLight(normal, rxDeg, ryDeg) {
     const rx = rxDeg * Math.PI / 180, ry = ryDeg * Math.PI / 180;
@@ -129,79 +131,50 @@ function faceLight(normal, rxDeg, ryDeg) {
     return (x1 * L[0] + y2 * L[1] + z2 * L[2]) / len;
 }
 
-const BOOK3D_FACES = {
+// spine is the left side, side the right
+const ITEM3D_FACES = {
     front: [0, 0, 1], back: [0, 0, -1], spine: [-1, 0, 0],
-    fore: [1, 0, 0], top: [0, -1, 0], bottom: [0, 1, 0],
+    side: [1, 0, 0], top: [0, -1, 0], bottom: [0, 1, 0],
 };
 
-const book3d = {
+const item3d = {
     rx: -8, ry: 28, vx: 0, vy: 0, target: null, frame: null, ready: false,
     reduced: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    dialog: () => document.getElementById('book-3d'),
-    book: () => document.querySelector('[data-book3d-book]'),
+    dialog: () => document.getElementById('item-3d'),
+    box: () => document.querySelector('#item-3d [data-item3d-box]'),
 
-    // Size from the cover's shape; thickness from a spine photo's shape,
-    // else the page count (about 0.023% of the height a page: Infinite
-    // Jest's 1,079 pages make a quarter of its height), else a typical one.
-    layout() {
-        const cover = document.querySelector('[data-book3d-cover]');
-        const spine = document.querySelector('[data-book3d-spine]');
-        const aspect = cover?.naturalWidth ? cover.naturalWidth / cover.naturalHeight : 2 / 3;
-        let h = Math.min(window.innerHeight * 0.58, 520);
-        let w = h * aspect;
-        const maxW = window.innerWidth * 0.6;
-        if (w > maxW) { w = maxW; h = w / aspect; }
-        let d;
-        if (spine?.naturalWidth) {
-            d = h * spine.naturalWidth / spine.naturalHeight;
-        } else {
-            const pages = Number(this.dialog().dataset.pages) || 320;
-            d = h * Math.min(0.35, Math.max(0.025, pages * 0.00023));
-        }
-        const style = this.book().style;
-        style.setProperty('--w', `${Math.round(w)}px`);
-        style.setProperty('--h', `${Math.round(h)}px`);
-        style.setProperty('--d', `${Math.round(d)}px`);
-    },
-
-    // The drawn spine and back take the cover's colour: its left edge (where
-    // the spine wraps round) and its average, with ink that reads on it.
+    // A record sleeve's four edges are card in the cover's own colour: the
+    // average of the cover's outer rows and columns (--edge; styles.css has
+    // a plain card colour for a cover the canvas can't read).
     colour() {
-        const cover = document.querySelector('[data-book3d-cover]');
-        const made = document.querySelectorAll('[data-book3d-made]');
-        if (!made.length || !cover?.naturalWidth) return;
+        const box = this.box();
+        const cover = box.querySelector('[data-item3d-cover]');
+        if (!box.classList.contains('item3d-sleeve') || !cover?.naturalWidth) return;
         try {
             const c = document.createElement('canvas');
-            c.width = 24; c.height = 36;
+            c.width = c.height = 24;
             const ctx = c.getContext('2d');
             ctx.drawImage(cover, 0, 0, c.width, c.height);
             const px = ctx.getImageData(0, 0, c.width, c.height).data;
-            const avg = (x0, x1) => {
-                let r = 0, g = 0, b = 0, n = 0;
-                for (let y = 0; y < c.height; y++) {
-                    for (let x = x0; x < x1; x++) {
-                        const i = (y * c.width + x) * 4;
-                        r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
-                    }
+            let r = 0, g = 0, b = 0, n = 0;
+            for (let y = 0; y < c.height; y++) {
+                for (let x = 0; x < c.width; x++) {
+                    if (x > 0 && x < c.width - 1 && y > 0 && y < c.height - 1) continue;
+                    const i = (y * c.width + x) * 4;
+                    r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
                 }
-                return [r / n, g / n, b / n];
-            };
-            const paint = (el, [r, g, b]) => {
-                const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-                el.style.setProperty('--made-bg', `rgb(${r | 0} ${g | 0} ${b | 0})`);
-                el.style.setProperty('--made-ink', lum > 0.55 ? 'rgb(30 24 18)' : 'rgb(250 244 230)');
-            };
-            made.forEach(el => paint(el, el.closest('.book3d-spine') ? avg(0, 2) : avg(0, c.width)));
-        } catch { /* a cover we can't read: the drawn faces keep the walnut default */ }
+            }
+            box.style.setProperty('--edge', `${r / n | 0} ${g / n | 0} ${b / n | 0}`);
+        } catch { /* keeps the plain card */ }
     },
 
     render() {
-        const book = this.book();
-        book.style.setProperty('--rx', `${this.rx}deg`);
-        book.style.setProperty('--ry', `${this.ry}deg`);
-        for (const [face, normal] of Object.entries(BOOK3D_FACES)) {
+        const box = this.box();
+        box.style.setProperty('--rx', `${this.rx}deg`);
+        box.style.setProperty('--ry', `${this.ry}deg`);
+        for (const [face, normal] of Object.entries(ITEM3D_FACES)) {
             const lit = Math.max(0, faceLight(normal, this.rx, this.ry));
-            book.querySelector(`.book3d-${face}`).style.setProperty('--shade', (1 - (0.35 + 0.65 * lit)).toFixed(3));
+            box.querySelector(`.item3d-${face}`).style.setProperty('--shade', (1 - (0.35 + 0.65 * lit)).toFixed(3));
         }
     },
 
@@ -238,7 +211,6 @@ const book3d = {
     open() {
         const dialog = this.dialog();
         if (!this.ready) { this.setup(); this.ready = true; }
-        this.layout();
         this.colour();
         this.rx = -8; this.ry = 28;
         this.render();
@@ -251,7 +223,7 @@ const book3d = {
 
     setup() {
         const dialog = this.dialog();
-        const stage = dialog.querySelector('[data-book3d-stage]');
+        const stage = dialog.querySelector('[data-item3d-stage]');
         let last = null, moved = 0;
         stage.addEventListener('pointerdown', event => {
             stage.setPointerCapture(event.pointerId);
@@ -283,7 +255,7 @@ const book3d = {
         };
         stage.addEventListener('pointerup', release);
         stage.addEventListener('pointercancel', release);
-        // A click on the empty sheet (not a drag, not the book) closes it
+        // A click on the empty sheet (not a drag, not the box) closes it
         dialog.addEventListener('click', event => {
             if (event.target === stage && moved < 4) dialog.close();
         });
@@ -297,15 +269,18 @@ const book3d = {
             this.ry += step[1];
             this.render();
         });
-        window.addEventListener('resize', () => { if (dialog.open) this.layout(); });
     },
 };
 
 registerActions({
+    // The cover: in the Shelf style the item in 3D, when it has the photos
+    // for it; else the gallery from the cover, when there are more photos;
+    // else the cover alone, bigger.
     openCover: el => {
         const shelf = document.documentElement.dataset.style === 'shelf';
-        if (shelf && book3d.dialog()) book3d.open();
-        else document.getElementById(el.dataset.target)?.showModal();
+        if (shelf && item3d.dialog()) { item3d.open(); return; }
+        if (gallery.dialog()) { gallery.show(0); gallery.dialog().showModal(); return; }
+        document.getElementById(el.dataset.target)?.showModal();
     },
-    book3dTurn: el => book3d.turnTo(Number(el.dataset.angle)),
+    item3dTurn: el => item3d.turnTo(Number(el.dataset.angle)),
 });

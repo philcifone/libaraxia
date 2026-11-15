@@ -1013,14 +1013,15 @@ def test_item_page_cover_opens_bigger(client, db, people, static_root):
     without = add_book(db, people['alice'], title='No Cover')
     login(client, 'alice')
     html = client.get(f'/books/book/{with_cover}').get_data(as_text=True)
-    # openCover: the zoom, or in the Shelf style the 3D book (book_detail.js)
+    # openCover (book_detail.js): the zoom, unless there's a gallery or (in
+    # the Shelf style) the photos for the 3D view; a cover alone has neither
     assert 'data-click="openCover" data-target="cover-zoom"' in html
-    assert '<dialog id="book-3d"' in html
+    assert '<dialog id="item-3d"' not in html and '<dialog id="photo-gallery"' not in html
     dialog = html[html.index('<dialog id="cover-zoom"'):]
     dialog = dialog[:dialog.index('</dialog>')]
     assert '<form method="dialog">' in dialog and 'src="/static/uploads/c.jpg"' in dialog
     html = client.get(f'/books/book/{without}').get_data(as_text=True)
-    assert 'cover-zoom' not in html and 'book-3d' not in html
+    assert 'cover-zoom' not in html and 'item-3d' not in html
 
 
 def test_item_page_format_icon_is_accent(client, db, people):

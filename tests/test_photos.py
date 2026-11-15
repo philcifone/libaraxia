@@ -1,6 +1,7 @@
 """Item photos (ROADMAP 16.0a, docs/PHOTOS-VALUE-SPEC.md sections 3 and 11)."""
 import io
 import os
+import re
 
 from PIL import Image
 
@@ -90,13 +91,15 @@ def test_replacing_the_back_deletes_the_old_file(client, db, people, static_root
     assert scalar(db, "SELECT COUNT(*) FROM item_photos WHERE kind = 'back'") == 1
 
 
-def test_spine_is_books_only(client, db, people):
-    record = db.execute("INSERT INTO books (title, author, added_by, media_type, format) "
-                        "VALUES ('Blue', 'Joni', ?, 'record', 'LP')", (people['bob'],)).lastrowid
+def test_spine_is_not_for_vinyl(client, db, people):
+    """A vinyl sleeve has no spine worth a photo: only a back and the
+    gallery (utils/photos.kinds_for)."""
+    rec = db.execute("INSERT INTO books (title, author, added_by, media_type, format) "
+                     "VALUES ('Blue', 'Joni', ?, 'record', 'LP')", (people['bob'],)).lastrowid
     db.commit()
     login(client, 'bob')
-    assert upload(client, record, 'spine', jpeg_bytes()).status_code == 404
-    assert upload(client, record, 'back', jpeg_bytes()).status_code == 200
+    assert upload(client, rec, 'spine', jpeg_bytes()).status_code == 404
+    assert upload(client, rec, 'back', jpeg_bytes()).status_code == 200
 
 
 def test_bad_file_is_refused_with_a_message(client, db, people):
@@ -211,28 +214,85 @@ def test_item_page_more_photos_for_a_friend(client, db, people, static_root):
     assert 'openGallery' not in client.get(f'/books/book/{bare}').get_data(as_text=True)
 
 
-def test_3d_book_uses_back_and_spine_photos(client, db, people, static_root):
-    """The Shelf demo's 3D book: a book with a cover gets it, with its back
-    and spine photos on the faces when there are any, drawn ones otherwise;
-    a record doesn't."""
+def real_cover(static_root, name='c.jpg', size=(400, 600)):
     (static_root / 'uploads').mkdir(exist_ok=True)
-    (static_root / 'uploads' / 'c.jpg').write_bytes(b'x')
-    book = add_book(db, people['bob'], cover='uploads/c.jpg')
-    login(client, 'bob')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    box = html[html.index('<dialog id="book-3d"'):]
-    box = box[:box.index('</dialog>')]
-    assert box.count('data-book3d-made') == 2 and 'data-book3d-spine' not in box
-    upload(client, book, 'back', jpeg_bytes())
-    upload(client, book, 'spine', jpeg_bytes((60, 600)))
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    box = html[html.index('<dialog id="book-3d"'):]
-    box = box[:box.index('</dialog>')]
-    assert 'data-book3d-made' not in box and 'data-book3d-spine' in box and '/static/uploads/photos/' in box
-    rec = db.execute("INSERT INTO books (title, author, added_by, media_type, format, cover_image_url) "
-                     "VALUES ('Blue', 'Joni', ?, 'record', 'LP', 'uploads/c.jpg')", (people['bob'],)).lastrowid
+    (static_root / 'uploads' / name).write_bytes(jpeg_bytes(size).getvalue())
+    return f'uploads/{name}'
+
+
+def add_item(db, user, media_type, fmt, cover):
+    row = db.execute("INSERT INTO books (title, author, added_by, media_type, format, cover_image_url) "
+                     "VALUES ('Blue', 'Joni', ?, ?, ?, ?)", (user, media_type, fmt, cover)).lastrowid
     db.commit()
-    assert 'book-3d' not in client.get(f'/records/{rec}').get_data(as_text=True)
+    return row
+
+
+def box_of(html):
+    box = html[html.index('<dialog id="item-3d"'):]
+    return box[:box.index('</dialog>')]
+
+
+def test_3d_only_with_every_photo_its_shape_needs(client, db, people, static_root):
+    """No drawn stand-ins (Phil, 2026-11-15): a book turns in 3D once it has
+    a cover, a back and a spine, and not before; the edit page says what's
+    still missing. The box's proportions come from the photos."""
+    book = add_book(db, people['bob'], cover=real_cover(static_root))
+    login(client, 'bob')
+    assert 'item-3d' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    upload(client, book, 'back', jpeg_bytes((400, 600)))
+    assert 'item-3d' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    edit = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert 'data-3d-status="needs"' in edit and 'still needs: spine.' in edit
+    upload(client, book, 'spine', jpeg_bytes((60, 600)))
+    box = box_of(client.get(f'/books/book/{book}').get_data(as_text=True))
+    assert 'item3d-book' in box and box.count('/static/uploads/photos/') == 2
+    assert '--a: 0.6667; --dr: 0.1;' in box
+    assert 'item3d-spine-print' not in box
+    assert 'data-3d-status="ready"' in client.get(f'/books/edit/{book}').get_data(as_text=True)
+
+
+def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
+    """An LP is a thin sleeve of cover and back; a CD a jewel case, wider
+    than its booklet by the hinge's bar, its spine drawn until there's a
+    photo; a DVD needs its spine; a VHS sleeve its back, both sides and top."""
+    bob = people['bob']
+    login(client, 'bob')
+    square = real_cover(static_root, 's.jpg', (500, 500))
+    lp = add_item(db, bob, 'record', 'LP', square)
+    assert client.post(f'/photos/{lp}/spine', data={'photo': (jpeg_bytes(), 'a.jpg')},
+                       headers={'X-Requested-With': 'XMLHttpRequest'}).status_code == 404
+    upload(client, lp, 'back', jpeg_bytes((500, 500)))
+    box = box_of(client.get(f'/records/{lp}').get_data(as_text=True))
+    assert 'item3d-sleeve' in box and '--a: 1.0; --dr: 0.012;' in box
+    assert 'data-angle="90"' not in box            # no Spine button: nothing to see
+
+    cd = add_item(db, bob, 'record', 'CD', square)
+    upload(client, cd, 'back', jpeg_bytes((568, 500)))
+    box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
+    assert 'item3d-jewel' in box and 'item3d-hinge' in box and '--a: 1.1455;' in box
+    assert box.count('item3d-spine-print') == 2 and '>Blue<' in box
+    upload(client, cd, 'spine', jpeg_bytes((40, 500)))
+    assert 'item3d-spine-print' not in box_of(client.get(f'/records/{cd}').get_data(as_text=True))
+
+    tall = real_cover(static_root, 't.jpg', (400, 720))
+    dvd = add_item(db, bob, 'video', 'DVD', tall)
+    upload(client, dvd, 'back', jpeg_bytes((400, 720)))
+    assert 'item-3d' not in client.get(f'/videos/{dvd}').get_data(as_text=True)
+    assert client.post(f'/photos/{dvd}/top', data={'photo': (jpeg_bytes(), 'a.jpg')},
+                       headers={'X-Requested-With': 'XMLHttpRequest'}).status_code == 404
+    upload(client, dvd, 'spine', jpeg_bytes((40, 720)))
+    assert 'item3d-case' in box_of(client.get(f'/videos/{dvd}').get_data(as_text=True))
+
+    vhs = add_item(db, bob, 'video', 'VHS', tall)
+    for kind, size in (('back', (400, 720)), ('spine', (100, 720)), ('side', (100, 720))):
+        upload(client, vhs, kind, jpeg_bytes(size))
+    edit = client.get(f'/videos/edit/{vhs}').get_data(as_text=True)
+    assert 'still needs: top.' in edit and 'Left side' in edit and 'Right side' in edit
+    assert 'item-3d' not in client.get(f'/videos/{vhs}').get_data(as_text=True)
+    upload(client, vhs, 'top', jpeg_bytes((400, 100)))
+    box = box_of(client.get(f'/videos/{vhs}').get_data(as_text=True))
+    assert 'item3d-tape' in box and box.count('/static/uploads/photos/') == 4
+    assert 'data-angle="270"' in box
 
 
 def test_crop_a_photo(client, db, people, static_root):
@@ -255,3 +315,71 @@ def test_crop_a_photo(client, db, people, static_root):
     client.get('/auth/logout')
     login(client, 'carol')
     assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom}).status_code == 404
+
+
+# --- Books on the Shelves heading (ROADMAP 16.0a) -----------------------------
+
+def heading_books_of(html):
+    return re.findall(r'<span class="heading-book">.*?item3d-front">\s*<img src="([^"]+)"', html, re.S)
+
+
+def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_root):
+    """Shelf style, your own Shelves page: the books of yours that turn in
+    3D stand on the heading, one by one as they get their photos. They're
+    decoration: no links, hidden from screen readers. A book without all
+    its photos, one that left the shelf and other people's aren't there;
+    the same ones stand there for the whole visit."""
+    bob = people['bob']
+    db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (bob,))
+    ready = add_book(db, bob, cover=real_cover(static_root, 'a.jpg'))
+    half = add_book(db, bob, cover=real_cover(static_root, 'b.jpg'))
+    gone = add_book(db, bob, cover=real_cover(static_root, 'c2.jpg'))
+    login(client, 'bob')
+    assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
+
+    for book in (ready, gone):
+        upload(client, book, 'back', jpeg_bytes((400, 600)))
+        upload(client, book, 'spine', jpeg_bytes((60, 600)))
+    upload(client, half, 'back', jpeg_bytes((400, 600)))
+    db.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP WHERE id = ?", (gone,))
+    db.commit()
+    html = client.get('/base/index').get_data(as_text=True)
+    assert heading_books_of(html) == ['/static/uploads/a.jpg']
+    groups = re.findall(r'<div class="heading-books[^>]*>.*?</div>\s*(?=<div class="heading-books|<h1)', html, re.S)
+    assert len(groups) == 2 and all('aria-hidden="true"' in g and '<a ' not in g for g in groups)
+
+    upload(client, half, 'spine', jpeg_bytes((60, 600)))
+    first = heading_books_of(client.get('/base/index').get_data(as_text=True))
+    assert sorted(first) == ['/static/uploads/a.jpg', '/static/uploads/b.jpg']
+    assert heading_books_of(client.get('/base/index').get_data(as_text=True)) == first
+
+    # Only on your own Shelves, and only in the style that has a shelf
+    assert 'data-heading-books' not in client.get('/base/shared-library').get_data(as_text=True)
+    db.execute("UPDATE users SET theme_style = 'house' WHERE id = ?", (bob,))
+    db.commit()
+    assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
+
+
+def test_heading_shelf_is_never_crammed(app, db, people, static_root):
+    """At most HEADING_BOOKS of them, however many could stand there; a
+    new one joins without moving the others (same seed, same order)."""
+    from utils import item3d, photos
+    bob = people['bob']
+    cover = real_cover(static_root, 'k.jpg')
+    for kind in ('back', 'spine'):
+        (static_root / 'uploads' / f'{kind}.jpg').write_bytes(jpeg_bytes((60, 600)).getvalue())
+
+    def one_more():
+        book = add_book(db, bob, cover=cover)
+        for kind in ('back', 'spine'):
+            photos.add(db, book, kind, f'uploads/{kind}.jpg')
+        db.commit()
+
+    with app.test_request_context():
+        for _ in range(3):
+            one_more()
+        three = [m['faces'] for m in item3d.heading_books(db, bob, 7)]
+        assert len(three) == 3
+        for _ in range(item3d.HEADING_BOOKS + 2):
+            one_more()
+        assert len(item3d.heading_books(db, bob, 7)) == item3d.HEADING_BOOKS

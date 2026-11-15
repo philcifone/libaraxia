@@ -162,20 +162,36 @@ CREATE INDEX idx_books_added_by ON books(added_by);
 CREATE INDEX idx_books_media_type ON books(media_type);
 CREATE INDEX idx_books_barcode ON books(barcode);
 
--- Back, spine (books) and gallery photos per item (migration 036). Files under
+-- What a photo is of (migration 040; utils/photos.py keeps in step, a test
+-- checks). single = 1: an item has at most one. 'spine' is the left side,
+-- 'side' the right (a VHS sleeve is printed on both).
+CREATE TABLE photo_kinds (
+    code TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    single INTEGER NOT NULL DEFAULT 1 CHECK (single IN (0, 1)),
+    position INTEGER NOT NULL DEFAULT 0     -- the gallery's order
+);
+INSERT INTO photo_kinds (code, label, single, position) VALUES
+    ('back', 'Back', 1, 1),
+    ('spine', 'Spine', 1, 2),
+    ('side', 'Right side', 1, 3),
+    ('top', 'Top', 1, 4),
+    ('gallery', 'Photo', 0, 5);
+
+-- Photos beyond the cover, per item (migrations 036, 040): which kinds a
+-- format takes is utils/photos.kinds_for. Files under
 -- static/uploads/photos/<book_id>/; find_orphaned_images reads this table.
 CREATE TABLE item_photos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('back', 'spine', 'gallery')),
+    kind TEXT NOT NULL REFERENCES photo_kinds(code),
     path TEXT NOT NULL,              -- 'uploads/photos/...', relative to static/
     caption TEXT,                    -- optional, e.g. "Inner sleeve"
     position INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
-CREATE UNIQUE INDEX idx_item_photos_one_back ON item_photos(book_id) WHERE kind = 'back';
-CREATE UNIQUE INDEX idx_item_photos_one_spine ON item_photos(book_id) WHERE kind = 'spine';
+CREATE UNIQUE INDEX idx_item_photos_one_each ON item_photos(book_id, kind) WHERE kind <> 'gallery';
 
 -- Per-user status: reading, watching or listening (statuses table).
 CREATE TABLE collections (
@@ -546,4 +562,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('036_item_photos.sql'),
     ('037_condition_grades.sql'),
     ('038_item_value.sql'),
-    ('039_value_jobs.sql');
+    ('039_value_jobs.sql'),
+    ('040_photo_kinds.sql');

@@ -163,8 +163,21 @@
 <div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ class }}">{{ caller() }}</div>
 {%- endmacro %}
 
-{% macro page_heading(icon_name, name, subtitle=none, class='mb-6', toggle=none, sr_prefix=none) -%}
+{# books: 3D models (utils/item3d.heading_books) standing still on the
+   heading's shelf, half on each side of the title. Decoration only: no
+   links, hidden from screen readers, and only the Shelf style has a shelf
+   to stand them on (styles.css "Books on the heading"). #}
+{% macro page_heading(icon_name, name, subtitle=none, class='mb-6', toggle=none, sr_prefix=none, books=none) -%}
 {% call heading_card(('relative ' if toggle else '') ~ class) %}
+    {% if books %}
+    {% from '_item3d.html' import item3d_box %}
+    {% set half = (books|length + 1) // 2 %}
+    {% for side, group in (('left', books[:half]), ('right', books[half:])) %}
+    <div class="heading-books heading-books-{{ side }}" aria-hidden="true" data-heading-books>
+        {% for model in group %}<span class="heading-book">{{ item3d_box(model) }}</span>{% endfor %}
+    </div>
+    {% endfor %}
+    {% endif %}
     {# min-h-10: as tall as the Shelves heading, whose toggle icon is 40px
        to the others' 32px, so every heading card is one height (Phil, 2026-11-15) #}
     <h1 class="flex items-center justify-center gap-3 min-h-10 text-2xl font-display text-content-primary text-center">
