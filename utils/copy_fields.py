@@ -129,6 +129,16 @@ def form_defaults(row):
     }
 
 
+def edit_context(row):
+    """The edit page's extras for "This copy": where the stored value came
+    from, and the Fetch value button's URL when a source could answer (a
+    record with Discogs set up; a book or movie with a code and eBay)."""
+    from flask import url_for
+    from utils import valuation
+    return {'value_line': source_line(row),
+            'value_fetch': url_for('values.fetch', book_id=row['id']) if valuation.source_for(row) else None}
+
+
 def source_line(row):
     """Where a stored value came from and when, for under the Value field
     and the item page: 'Discogs suggestion for NM, 2026-11-14',

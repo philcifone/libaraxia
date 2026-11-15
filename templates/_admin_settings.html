@@ -372,6 +372,18 @@
             </a>
         </div>
 
+        <!-- Value sources (16.0a, utils/valuation.py): ask Discogs and eBay once -->
+        <div class="mt-4 flex items-center justify-between gap-4 p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
+            <div>
+                <h3 class="text-content-primary font-medium mb-1">Value sources</h3>
+                <p class="text-sm text-content-secondary">Check that Discogs (records) and eBay (books, movies) answer with the keys in .env. Setup: docs/PHOTOS-VALUE-SPEC.md, section 7.</p>
+            </div>
+            <form method="POST" action="{{ url_for('values.test') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn whitespace-nowrap">Test value sources</button>
+            </form>
+        </div>
+
         <!-- Unowned Books -->
         <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
             <div>

@@ -177,3 +177,51 @@ def test_source_for(answers, monkeypatch):
     assert valuation.source_for(book(isbn='')) is None
     monkeypatch.delenv('EBAY_CLIENT_ID')
     assert valuation.source_for(book()) is None
+
+
+# --- routes -------------------------------------------------------------------
+
+from conftest import add_book, add_user, login   # noqa: E402
+
+
+def test_fetch_route_uses_the_form_grade_and_owner_only(client, db, people, answers):
+    answers['/marketplace/price_suggestions/42'] = (200, SUGGESTIONS)
+    rec = db.execute("INSERT INTO books (title, author, added_by, media_type, format, discogs_release_id) "
+                     "VALUES ('Blue', 'Joni', ?, 'record', 'LP', 42)", (people['bob'],)).lastrowid
+    db.commit()
+    login(client, 'bob')
+    r = client.post(f'/values/fetch/{rec}', data={'condition': 'M'})
+    result = r.get_json()['result']
+    assert result['cents'] == 4000 and result['value'] == '40.00' and result['source'] == 'discogs'
+    # Nothing stored until the form is saved
+    assert db.execute('SELECT value_cents FROM books WHERE id = ?', (rec,)).fetchone()[0] is None
+    assert client.post(f'/values/fetch/{rec}', data={'condition': 'fine'}).status_code == 400
+    client.get('/auth/logout')
+    login(client, 'carol')      # can't see bob's record at all
+    assert client.post(f'/values/fetch/{rec}').status_code == 404
+
+
+def test_edit_page_shows_fetch_only_when_a_source_can_answer(client, db, people, monkeypatch):
+    with_isbn = db.execute("INSERT INTO books (title, author, added_by, isbn) VALUES ('IJ', 'DFW', ?, '0316920045')",
+                           (people['bob'],)).lastrowid
+    without = add_book(db, people['bob'])
+    db.commit()
+    login(client, 'bob')
+    monkeypatch.delenv('EBAY_CLIENT_ID', raising=False)
+    assert 'data-click="fetchValue"' not in client.get(f'/books/edit/{with_isbn}').get_data(as_text=True)
+    monkeypatch.setenv('EBAY_CLIENT_ID', 'x')
+    monkeypatch.setenv('EBAY_CLIENT_SECRET', 'y')
+    assert 'data-click="fetchValue"' in client.get(f'/books/edit/{with_isbn}').get_data(as_text=True)
+    assert 'data-click="fetchValue"' not in client.get(f'/books/edit/{without}').get_data(as_text=True)
+
+
+def test_test_sources_is_admin_only(client, db, people, monkeypatch):
+    monkeypatch.delenv('DISCOGS_TOKEN', raising=False)
+    monkeypatch.delenv('EBAY_CLIENT_ID', raising=False)
+    login(client, 'bob')
+    assert client.post('/values/test').status_code in (302, 403)
+    assert 'Not set up' not in client.get('/user/settings').get_data(as_text=True)
+    client.get('/auth/logout')
+    login(client, 'alice')
+    r = client.post('/values/test', follow_redirects=True)
+    assert 'Discogs: not working. Not set up' in r.get_data(as_text=True)

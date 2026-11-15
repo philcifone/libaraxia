@@ -555,9 +555,8 @@ def edit_book(id):
 
 
 def _copy_context(book):
-    """The edit page's extras for "This copy" (_copy_fields.html): where
-    the stored value came from."""
-    return {'value_line': copy_fields.source_line(book)}
+    """The edit page's extras for "This copy" (_copy_fields.html)."""
+    return copy_fields.edit_context(book)
 
 
 def _transfer_candidates(conn):

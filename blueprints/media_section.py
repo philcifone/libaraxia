@@ -456,7 +456,7 @@ def make_blueprint(section: Section) -> Blueprint:
             return render_template('media_form.html', video=row, values=values,
                                    m=section.item_m(values), formats=section.formats,
                                    unshelved=not row['owned'],
-                                   value_line=copy_fields.source_line(row),
+                                   **copy_fields.edit_context(row),
                                    **_book_tools_context(conn, row)), status
 
         if request.method == 'GET':
