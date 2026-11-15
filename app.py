@@ -279,6 +279,9 @@ def create_app():
     app.add_template_global(condition_grades.sleeve_grades, 'sleeve_grade_list')
     app.add_template_global(money.currency, 'value_currency')
     app.add_template_filter(money.show, 'money')
+    from utils import valuation
+    app.add_template_global(lambda: valuation.discogs_enabled() or valuation.ebay_enabled(),
+                            'value_sources_ready')
     app.add_template_global(media.item_labels, 'labels_for')
 
     # List view's status and rating columns (_book_grid.html, ROADMAP 7.2b):

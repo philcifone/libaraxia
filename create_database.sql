@@ -453,6 +453,10 @@ CREATE TABLE cover_jobs (
     dismissed INTEGER NOT NULL DEFAULT 0,      -- hidden from the progress panel
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     finished_at TIMESTAMP,
+    -- Fetch values (migration 039): a job's kind, and a value job's choices
+    kind TEXT NOT NULL DEFAULT 'cover' CHECK (kind IN ('cover', 'value')),
+    media_types TEXT,                          -- 'book,record'; NULL = every section
+    skip_days INTEGER,                         -- skip values checked in the last N days
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_cover_jobs_user ON cover_jobs(user_id, dismissed);
@@ -541,4 +545,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('035_palette.sql'),
     ('036_item_photos.sql'),
     ('037_condition_grades.sql'),
-    ('038_item_value.sql');
+    ('038_item_value.sql'),
+    ('039_value_jobs.sql');

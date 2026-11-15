@@ -31,6 +31,31 @@
     </form>
 </div>
 
+{# Fetch values (16.0a): a background job like Fetch covers, sharing its
+   progress panel. Only when a value source is set up (docs/PHOTOS-VALUE-SPEC.md
+   section 7). Values you typed are never overwritten. #}
+{% if value_sources_ready() %}
+<section id="fetch-values" class="bg-secondary rounded-xl p-6 card">
+    <h2 class="text-2xl font-display text-content-primary mb-1">Fetch values</h2>
+    <p class="text-sm text-content-secondary mb-4">Looks up what your items are worth, in the background: Discogs' suggested price for a record at its grade, and the median eBay asking price for a book or movie with an ISBN or barcode. Asking prices are a rough estimate, not what things sold for. Values you typed yourself are never changed.</p>
+    <form method="POST" action="{{ url_for('values.start') }}" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset class="flex flex-wrap gap-x-6 gap-y-2">
+            <legend class="sr-only">Sections</legend>
+            {% for type, name in [('book', 'Books'), ('video', 'Movies & TV'), ('record', 'Music')] %}
+            <label class="flex items-center gap-2 text-content-primary"><input type="checkbox" name="media_type" value="{{ type }}" checked class="form-checkbox text-accent"> {{ name }}</label>
+            {% endfor %}
+        </fieldset>
+        <input type="hidden" name="skip_recent" value="0">
+        <label class="flex items-center gap-2 text-content-primary"><input type="checkbox" name="skip_recent" value="1" checked class="form-checkbox text-accent"> Skip items valued in the last 30 days</label>
+        {% if current_user.is_admin %}
+        <label class="flex items-center gap-2 text-content-primary"><input type="checkbox" name="scope" value="all" class="form-checkbox text-accent"> Everyone's items, not just mine (admin)</label>
+        {% endif %}
+        <button type="submit" class="px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">Fetch Values</button>
+    </form>
+</section>
+{% endif %}
+
 {# Recent bulk edits (ROADMAP 14): the last 10 within 30 days, each with Undo #}
 {% if bulk_history %}
 <section id="bulk-edits" class="bg-secondary rounded-xl p-6 card">

@@ -64,16 +64,24 @@
         part('pct').textContent = `${pct}%`;
 
         const action = part('action');
+        // A value job (16.0a, migration 039) shares the panel: its own words
+        const what = job.kind === 'value' ? 'values' : 'covers';
         let label;
         if (job.status === 'running') {
-            part('title').textContent = `Fetching covers (${scope})`;
-            part('text').textContent = `${job.checked} of ${job.total} checked, ${job.found} found. You can keep browsing.`;
-            label = 'Stop fetching covers';
+            part('title').textContent = `Fetching ${what} (${scope})`;
+            part('text').textContent = `${job.checked} of ${job.total} checked, ${job.found} ${job.kind === 'value' ? 'valued' : 'found'}. You can keep browsing.`;
+            label = `Stop fetching ${what}`;
         } else {
             const missed = job.checked - job.found;
-            part('title').textContent = job.status === 'cancelled' ? 'Cover fetch stopped' : 'Covers fetched';
-            part('text').textContent = `${job.found} of ${job.checked} found.` +
-                (missed ? ` ${missed} had none online, or no exact match: add those from their edit pages.` : '');
+            if (job.kind === 'value') {
+                part('title').textContent = job.status === 'cancelled' ? 'Value fetch stopped' : 'Values fetched';
+                part('text').textContent = `${job.found} of ${job.checked} valued.` +
+                    (missed ? ` ${missed} had no price, too few listings, or no match: the Fetch value button on an edit page says why.` : '');
+            } else {
+                part('title').textContent = job.status === 'cancelled' ? 'Cover fetch stopped' : 'Covers fetched';
+                part('text').textContent = `${job.found} of ${job.checked} found.` +
+                    (missed ? ` ${missed} had none online, or no exact match: add those from their edit pages.` : '');
+            }
             label = 'Dismiss';
         }
         action.title = label;
@@ -96,7 +104,9 @@
     part('action').addEventListener('click', async () => {
         if (!job) return;
         const verb = job.status === 'running' ? 'stop' : 'dismiss';
-        if (verb === 'stop' && !await confirmDialog('Stop fetching covers? Covers found so far are kept.')) return;
+        const kept = job.kind === 'value' ? 'Stop fetching values? Values found so far are kept.'
+                                          : 'Stop fetching covers? Covers found so far are kept.';
+        if (verb === 'stop' && !await confirmDialog(kept)) return;
         post(`/covers/${encodeURIComponent(job.id)}/${verb}`).then(data => {
             clearTimeout(timer);
             job = verb === 'stop' ? data.job : null;

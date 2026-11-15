@@ -10,7 +10,7 @@ from flask import Blueprint, abort, current_app, flash, jsonify, redirect, reque
 from flask_login import current_user, login_required
 
 from models import admin_required, can_view_book
-from utils import condition, copy_fields, valuation
+from utils import condition, copy_fields, cover_jobs, media, valuation
 from utils.database import get_db
 from utils.rate_limiting import limiter
 
@@ -51,3 +51,37 @@ def test():
     for name, ok, message in valuation.test_sources():
         flash(f'{name}: {"works" if ok else "not working"}. {message}', 'success' if ok else 'error')
     return redirect(url_for('user.settings', _anchor='maintenance'))
+
+
+@values_blueprint.route('/start', methods=['POST'])
+@login_required
+@limiter.limit('30 per hour')
+def start():
+    """Start the bulk Fetch values job (Settings, Library): your own shelf,
+    or everyone's for an admin (scope=all). Sections from the form's
+    media_type boxes (none ticked: all); "skip values from the last 30
+    days" on unless unticked. Values you typed are never overwritten."""
+    scope = request.form.get('scope', 'own')
+    if scope not in ('own', 'all'):
+        abort(400)
+    if scope == 'all' and not current_user.is_admin:
+        abort(403)
+    types = [t for t in request.form.getlist('media_type') if t in media.MEDIA_TYPES] or None
+    # The form sends a hidden 0 and, when ticked, a 1; no field at all is on
+    ticks = request.form.getlist('skip_recent')
+    skip_days = 30 if (not ticks or '1' in ticks) else None
+
+    conn = get_db()
+    job, created = cover_jobs.start_job(conn, current_user.id, scope, kind='value',
+                                        media_types=types, skip_days=skip_days)
+    if job:
+        cover_jobs.kick()
+        message = (f"Fetching values for {job['total']} item(s) in the background, about one every "
+                   "two seconds. You can leave this page." if created else "A value fetch is already running.")
+    else:
+        message = ("Nothing to value: every item that a value source can look up was valued recently, "
+                   "has a value you typed, or has no ISBN or barcode.")
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'job': cover_jobs.as_dict(job), 'message': message})
+    flash(message, 'success' if job else 'info')
+    return redirect(url_for('user.settings', _anchor='library'))
