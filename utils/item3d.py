@@ -15,8 +15,11 @@ Shapes, by media type and format:
     jewel   a CD's jewel case: the hinge's black bar left of the cover, the
             back the full width of the case, spines drawn unless there's a photo
     case    a DVD or a cassette: cover, back and spine, on black plastic
-    tape    a VHS slip sleeve: cover, back, both long sides and the top;
-            the open bottom is black, the tape inside
+    tape    a VHS slip sleeve: cover, back and at least one long side
+            (Phil, 2026-11-15); one side's photo does for both, a missing
+            top is card in the cover's colour, and the open bottom is
+            black, the tape inside. A double box is simply a wider spine
+            photo: the thickness comes from it.
 
 `model()` answers with everything the template needs (templates/_item3d.html):
 the faces' URLs and the proportions, read from the photos themselves, so
@@ -35,13 +38,14 @@ from utils.media import BOOK, VIDEO, RECORD, media_type_of
 
 BOOK_SHAPE, SLEEVE, JEWEL, CASE, TAPE = 'book', 'sleeve', 'jewel', 'case', 'tape'
 
-# Photos (besides the cover) a shape must have before it turns
+# Photos (besides the cover) a shape must have before it turns. A tuple
+# inside is "any one of these".
 NEEDS = {
     BOOK_SHAPE: (photos.BACK, photos.SPINE),
     SLEEVE: (photos.BACK,),
     JEWEL: (photos.BACK,),
     CASE: (photos.BACK, photos.SPINE),
-    TAPE: (photos.BACK, photos.SPINE, photos.SIDE, photos.TOP),
+    TAPE: (photos.BACK, (photos.SPINE, photos.SIDE)),
 }
 
 # Thickness as a share of the height, where no spine photo gives it: a
@@ -91,7 +95,11 @@ def missing(item, item_photos):
     if not shape:
         return []
     out = [] if image_utils.upload_exists(item['cover_image_url']) else ['Cover']
-    return out + [photos.label(kind, fmt) for kind in NEEDS[shape] if not item_photos[kind]]
+    for need in NEEDS[shape]:
+        choices = need if isinstance(need, tuple) else (need,)
+        if not any(item_photos[kind] for kind in choices):
+            out.append(' or '.join(photos.label(kind, fmt) for kind in choices))
+    return out
 
 
 def model(item, item_photos):
@@ -112,10 +120,16 @@ def model(item, item_photos):
     for kind in photos.SINGLE:
         if item_photos[kind] and kind in photos.kinds_for(media_type_of(item), fmt):
             faces[kind] = url_for('static', filename=item_photos[kind]['path'])
+    if shape == TAPE:
+        # One long side's photo does for the other (most sleeves print
+        # both alike); the thickness comes from whichever there is
+        faces.setdefault('spine', faces.get('side'))
+        faces.setdefault('side', faces['spine'])
     depth = FIXED_DEPTH.get(shape)
     if depth is None:
         # The spine photo's own shape: its width is the thickness
-        depth = _aspect(item_photos[photos.SPINE]['path']) or 0.08
+        edge = item_photos[photos.SPINE] or item_photos[photos.SIDE]
+        depth = _aspect(edge['path']) or 0.08
     if shape == JEWEL:
         aspect = aspect / (1 - JEWEL_BAR)       # the case is wider than its booklet
     return {
@@ -127,13 +141,13 @@ def model(item, item_photos):
 
 # --- Books standing on the Shelves heading (ROADMAP 16.0a) -------------------
 
-HEADING_BOOKS = 6       # at most; a shelf with room on it, not a full one
+HEADING_BOOKS = 8       # at most: five standing and a stack of three, with room to spare
 
 
 def heading_books(conn, user_id, seed):
     """Up to HEADING_BOOKS models of the user's own books that turn in 3D,
-    to stand on the Shelves heading's ledge (Shelf style, their own
-    Shelves page only; drawn still by templates/_icons.html page_heading).
+    for the Shelves heading's ledge (Shelf style, their own Shelves page
+    only; drawn still, spines out, by templates/_icons.html page_heading).
 
     `seed` is drawn at login (session['heading_seed']), so the choice
     stays put for a visit and changes with the next. Each book's place in

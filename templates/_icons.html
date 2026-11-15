@@ -163,18 +163,23 @@
 <div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ class }}">{{ caller() }}</div>
 {%- endmacro %}
 
-{# books: 3D models (utils/item3d.heading_books) standing still on the
-   heading's shelf, half on each side of the title. Decoration only: no
-   links, hidden from screen readers, and only the Shelf style has a shelf
-   to stand them on (styles.css "Books on the heading"). #}
+{# books: 3D models (utils/item3d.heading_books) on the heading's shelf,
+   spines out as books sit on a shelf: standing upright left of the title
+   and, once there are four or more, the last three in a stack on the
+   right (Phil, 2026-11-15: "mostly spine"). Decoration only: no links,
+   hidden from screen readers, and only the Shelf style has a shelf to put
+   them on (styles.css "Books on the heading"; the stack is listed bottom
+   book first, so each book paints over the one under it). Each holder carries its
+   book's proportions too, so it takes the room the turned book takes. #}
 {% macro page_heading(icon_name, name, subtitle=none, class='mb-6', toggle=none, sr_prefix=none, books=none) -%}
 {% call heading_card(('relative ' if toggle else '') ~ class) %}
     {% if books %}
     {% from '_item3d.html' import item3d_box %}
-    {% set half = (books|length + 1) // 2 %}
-    {% for side, group in (('left', books[:half]), ('right', books[half:])) %}
+    {% set stacked = books[-3:] if books|length >= 4 else [] %}
+    {% set upright = books[:books|length - stacked|length] %}
+    {% for side, group in (('upright', upright), ('stack', stacked)) if group %}
     <div class="heading-books heading-books-{{ side }}" aria-hidden="true" data-heading-books>
-        {% for model in group %}<span class="heading-book">{{ item3d_box(model) }}</span>{% endfor %}
+        {% for model in group %}<span class="heading-book" style="--a: {{ model.aspect }}; --dr: {{ model.depth }};">{{ item3d_box(model) }}</span>{% endfor %}
     </div>
     {% endfor %}
     {% endif %}

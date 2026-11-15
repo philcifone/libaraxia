@@ -1420,7 +1420,8 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
      jewel   a CD case: black plastic, the hinge's bar left of the cover,
              the spine drawn small unless there's a photo
      case    a DVD or cassette: black plastic
-     tape    a VHS sleeve: the open bottom is the black tape inside */
+     tape    a VHS sleeve: a top without a photo is card in the cover's
+             colour (--edge); the open bottom is the black tape inside */
 .item3d-box {
     --h: 400px;
     --w: calc(var(--h) * var(--a, .66));
@@ -1477,6 +1478,9 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
 
 /* A record sleeve: card edges */
 .item3d-sleeve :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom) { background: rgb(var(--edge, 222 214 196)); }
+
+/* A VHS sleeve without a top photo: card in the cover's colour */
+.item3d-tape .item3d-top:not(:has(img)) { background: rgb(var(--edge, 222 214 196)); }
 
 /* A jewel case: the hinge's bar with its ridges, then the booklet; the
    back is the inlay, the full width of the case */
@@ -2150,33 +2154,58 @@ html:has(.item3d[open]) { overflow: hidden; }
     box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
-/* Books on the heading (ROADMAP 16.0a): a few of your own books that turn
-   in 3D (templates/_item3d.html), standing still on the Shelves heading's
-   ledge, half on each side of the title. The pose and light are the 3D
-   view's opening ones (book_detail.js: rx -8, ry 28, and the shade each
-   face has there). Decoration: no pointer events, no motion. One a side
-   on a phone, where the title needs the middle. */
+/* Books on the heading (ROADMAP 16.0a): some of your own books that turn
+   in 3D (templates/_item3d.html), on the Shelves heading's ledge with their
+   spines out (Phil, 2026-11-15): standing upright left of the title, a
+   little turned so a sliver of cover shows, and a stack of three lying on
+   the right. Still, with the light each face would have in the 3D view
+   (book_detail.js faceLight, worked out once for these two poses). Each
+   holder (.heading-book) is as big as its turned book looks, so the flex
+   row spaces them as they look; the box turns about its own centre inside.
+   One perspective per group, so a row or a stack shares a vanishing point.
+   Decoration: no pointer events, no motion. */
 .heading-books { display: none; }
 :root[data-style="shelf"] .heading-books {
+    --bh: 3.5rem;                                   /* every book's height */
     position: absolute;
-    /* standing on the ledge's top face, a little back from its edge */
+    /* on the ledge's top face, a little back from its edge */
     bottom: calc(var(--ledge-front) + var(--ledge-top) * .45);
-    display: flex; align-items: flex-end; gap: 1.1rem;
+    display: flex; align-items: flex-end;
+    perspective: 600px;
     pointer-events: none; user-select: none;
+    filter: drop-shadow(1px 1px 1.5px rgb(0 0 0 / .35));
 }
-:root[data-style="shelf"] .heading-books-left  { left: calc(var(--side-w) + 1.25rem); }
-:root[data-style="shelf"] .heading-books-right { right: 1.5rem; flex-direction: row-reverse; }
-.heading-book { display: block; perspective: 700px; filter: drop-shadow(2px 1px 2px rgb(0 0 0 / .35)); }
-.heading-book .item3d-box { --h: 3.25rem; --rx: -8deg; --ry: 28deg; }
-.heading-book .item3d-front { --shade: .3; }
-.heading-book .item3d-spine { --shade: .248; }
-.heading-book .item3d-top   { --shade: .278; }
-.heading-book :is(.item3d-back, .item3d-side, .item3d-bottom) { --shade: .65; }
+.heading-book {
+    --bw: calc(var(--bh) * var(--a));
+    --bd: max(3px, calc(var(--bh) * var(--dr)));
+    position: relative; display: block; transform-style: preserve-3d;
+}
+.heading-book .item3d-box { --h: var(--bh); position: absolute; left: 50%; top: 50%; margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2); }
+
+/* Upright, left of the title: spine out, turned 6 degrees (rx -6, ry 84) */
+:root[data-style="shelf"] .heading-books-upright { left: calc(var(--side-w) + 1rem); gap: 1px; }
+.heading-books-upright .heading-book { width: calc(var(--bd) + var(--bw) * .11); height: var(--bh); }
+.heading-books-upright .item3d-box { --rx: -6deg; --ry: 84deg; }
+.heading-books-upright .item3d-spine { --shade: .123; }
+.heading-books-upright .item3d-front { --shade: .65; }
+.heading-books-upright .item3d-top   { --shade: .295; }
+
+/* A stack on the right: lying with the front cover up and the spine out,
+   reading left to right, seen a little from above. Bottom book first in
+   the markup (column-reverse), as each one only covers the one before:
+   each book's holder is its own 3D scene, painted in document order. */
+:root[data-style="shelf"] .heading-books-stack { right: 1.75rem; flex-direction: column-reverse; align-items: center; }
+.heading-books-stack .heading-book { width: var(--bh); height: var(--bd); margin-top: 1px; }
+.heading-books-stack .item3d-box { transform: rotateX(-10deg) rotateY(-6deg) rotateZ(-90deg) rotateY(90deg); }
+.heading-books-stack .item3d-front  { --shade: .261; }
+.heading-books-stack .item3d-spine  { --shade: .148; }
+.heading-books-stack .item3d-bottom { --shade: .65; }
+
 @media (max-width: 639px) {
-    .heading-book:nth-child(n+2) { display: none; }
-}
-@media (min-width: 640px) and (max-width: 899px) {
-    .heading-book:nth-child(n+3) { display: none; }
+    :root[data-style="shelf"] .heading-books { --bh: 3rem; }
+    :root[data-style="shelf"] .heading-books-upright { left: calc(var(--side-w) + .5rem); }
+    :root[data-style="shelf"] .heading-books-stack { right: .9rem; }
+    .heading-books-upright .heading-book:nth-child(n+4) { display: none; }
 }
 /* A heading lit by a flashlight (trial on the item page only, Phil
    2026-11-13: .heading-lit on its heading card; take the class off to

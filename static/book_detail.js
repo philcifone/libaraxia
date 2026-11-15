@@ -143,13 +143,14 @@ const item3d = {
     dialog: () => document.getElementById('item-3d'),
     box: () => document.querySelector('#item-3d [data-item3d-box]'),
 
-    // A record sleeve's four edges are card in the cover's own colour: the
+    // A record sleeve's four edges, and a VHS sleeve's top when it has no
+    // photo, are card in the cover's own colour: the
     // average of the cover's outer rows and columns (--edge; styles.css has
     // a plain card colour for a cover the canvas can't read).
     colour() {
         const box = this.box();
         const cover = box.querySelector('[data-item3d-cover]');
-        if (!box.classList.contains('item3d-sleeve') || !cover?.naturalWidth) return;
+        if (!box.matches('.item3d-sleeve, .item3d-tape') || !cover?.naturalWidth) return;
         try {
             const c = document.createElement('canvas');
             c.width = c.height = 24;

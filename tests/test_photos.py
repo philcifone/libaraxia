@@ -254,7 +254,7 @@ def test_3d_only_with_every_photo_its_shape_needs(client, db, people, static_roo
 def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     """An LP is a thin sleeve of cover and back; a CD a jewel case, wider
     than its booklet by the hinge's bar, its spine drawn until there's a
-    photo; a DVD needs its spine; a VHS sleeve its back, both sides and top."""
+    photo; a DVD needs its spine; a VHS sleeve its back and a side."""
     bob = people['bob']
     login(client, 'bob')
     square = real_cover(static_root, 's.jpg', (500, 500))
@@ -283,15 +283,22 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     upload(client, dvd, 'spine', jpeg_bytes((40, 720)))
     assert 'item3d-case' in box_of(client.get(f'/videos/{dvd}').get_data(as_text=True))
 
+    # A VHS: back and at least one long side (Phil, 2026-11-15); one side
+    # does for both, and a double box is just a wider side photo
     vhs = add_item(db, bob, 'video', 'VHS', tall)
-    for kind, size in (('back', (400, 720)), ('spine', (100, 720)), ('side', (100, 720))):
-        upload(client, vhs, kind, jpeg_bytes(size))
+    upload(client, vhs, 'back', jpeg_bytes((400, 720)))
     edit = client.get(f'/videos/edit/{vhs}').get_data(as_text=True)
-    assert 'still needs: top.' in edit and 'Left side' in edit and 'Right side' in edit
+    assert 'still needs: left side or right side.' in edit and 'Left side' in edit and 'Right side' in edit
     assert 'item-3d' not in client.get(f'/videos/{vhs}').get_data(as_text=True)
+    upload(client, vhs, 'side', jpeg_bytes((200, 720)))
+    box = box_of(client.get(f'/videos/{vhs}').get_data(as_text=True))
+    assert 'item3d-tape' in box and '--dr: 0.2778;' in box
+    side = re.search(r'item3d-side">\s*<img src="([^"]+)"', box).group(1)
+    assert re.search(r'item3d-spine">\s*<img src="([^"]+)"', box).group(1) == side
+    assert 'item3d-top">\n        \n    </div>' in box or re.search(r'item3d-top">\s*</div>', box)
     upload(client, vhs, 'top', jpeg_bytes((400, 100)))
     box = box_of(client.get(f'/videos/{vhs}').get_data(as_text=True))
-    assert 'item3d-tape' in box and box.count('/static/uploads/photos/') == 4
+    assert box.count('/static/uploads/photos/') == 4
     assert 'data-angle="270"' in box
 
 
@@ -320,7 +327,7 @@ def test_crop_a_photo(client, db, people, static_root):
 # --- Books on the Shelves heading (ROADMAP 16.0a) -----------------------------
 
 def heading_books_of(html):
-    return re.findall(r'<span class="heading-book">.*?item3d-front">\s*<img src="([^"]+)"', html, re.S)
+    return re.findall(r'<span class="heading-book"[^>]*>.*?item3d-front">\s*<img src="([^"]+)"', html, re.S)
 
 
 def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_root):
@@ -345,8 +352,10 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     db.commit()
     html = client.get('/base/index').get_data(as_text=True)
     assert heading_books_of(html) == ['/static/uploads/a.jpg']
-    groups = re.findall(r'<div class="heading-books[^>]*>.*?</div>\s*(?=<div class="heading-books|<h1)', html, re.S)
-    assert len(groups) == 2 and all('aria-hidden="true"' in g and '<a ' not in g for g in groups)
+    start = html.index('<div class="heading-books')
+    group = html[start:html.index('<h1', start)]
+    assert 'heading-books-upright" aria-hidden="true"' in group and '<a ' not in group
+    assert 'heading-books-stack' not in group      # a stack only from four books
 
     upload(client, half, 'spine', jpeg_bytes((60, 600)))
     first = heading_books_of(client.get('/base/index').get_data(as_text=True))
@@ -360,9 +369,10 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
 
 
-def test_heading_shelf_is_never_crammed(app, db, people, static_root):
-    """At most HEADING_BOOKS of them, however many could stand there; a
-    new one joins without moving the others (same seed, same order)."""
+def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
+    """At most HEADING_BOOKS of them, however many could stand there;
+    spines out, upright on the left and, from four books, the last three
+    in a stack on the right (Phil, 2026-11-15)."""
     from utils import item3d, photos
     bob = people['bob']
     cover = real_cover(static_root, 'k.jpg')
@@ -383,3 +393,11 @@ def test_heading_shelf_is_never_crammed(app, db, people, static_root):
         for _ in range(item3d.HEADING_BOOKS + 2):
             one_more()
         assert len(item3d.heading_books(db, bob, 7)) == item3d.HEADING_BOOKS
+    db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (bob,))
+    db.commit()
+    login(client, 'bob')
+    html = client.get('/base/index').get_data(as_text=True)
+    upright = html[html.index('heading-books-upright'):html.index('heading-books-stack')]
+    stack = html[html.index('heading-books-stack'):html.index('<h1', html.index('heading-books-stack'))]
+    assert upright.count('class="heading-book"') == item3d.HEADING_BOOKS - 3
+    assert stack.count('class="heading-book"') == 3
