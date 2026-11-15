@@ -1449,3 +1449,26 @@ def test_avatars_are_square_in_negative_earth_and_outrun():
         for line in path.read_text().splitlines():
             if 'rounded-full' in line:
                 assert 'avatar' not in line and 'username' not in line, f'{path}: {line.strip()}'
+
+
+def test_wishlist_covers_show_the_format(client, db, people):
+    """A wishlist cover carries its format (Phil, 2026-11-15): VHS or DVD,
+    LP or CD at a glance, an icon or a vinyl size's short name; a plain
+    book has none. On your list and on a friend's."""
+    items = {}
+    for title, mtype, fmt in [('Tape', 'video', 'VHS'), ('Disc', 'video', 'DVD'), ('Vinyl', 'record', 'LP'),
+                              ('Single', 'record', '7in'), ('Novel', 'book', None), ('Heard', 'book', 'Audiobook')]:
+        book = add_book(db, people['alice'], title)
+        db.execute('UPDATE books SET media_type = ?, format = ? WHERE id = ?', (mtype, fmt, book))
+        db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (people['alice'], book))
+        items[title] = book
+    db.commit()
+    login(client, 'alice')
+    page = client.get('/wishlist/view').get_data(as_text=True)
+    for fmt in ('VHS', 'DVD', 'LP', '7in', 'Audiobook'):
+        assert f'data-format-badge="{fmt}"' in page, fmt
+    assert page.count('data-format-badge=') == 5               # not the plain book
+    assert 'aria-label="Cartridge"' in page                    # the UI's name for VHS
+    assert '>7&#34;<' in page                                  # a size with no icon: its short name (escaped)
+    login(client, 'carol')                                     # alice's friend
+    assert 'data-format-badge="VHS"' in client.get('/wishlist/user/alice').get_data(as_text=True)

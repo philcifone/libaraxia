@@ -1,4 +1,5 @@
 {% from '_covers.html' import cover_img %}
+{% from '_icons.html' import icon %}
 {# One item on a wishlist page: yours (wishlist.html) or a friend's
    (user_wishlist.html). Needs `book` (a wishlist row: books columns plus
    notes). wishlist.js filters on data-search.
@@ -20,6 +21,15 @@
    whatever its height; the link and the (+) are siblings in it, since a
    button can't be inside a link. #}
 {% set bm = labels_for(book) %}
+{# The format worth showing: movies and music, plus audiobooks (a plain
+   book needs none). Its icon, or for a vinyl size with none (EP, 7"...)
+   the short name. #}
+{% set wf = book.format %}
+{% set format_mark = {'code': wf, 'name': wf|format_label, 'icon': wf|format_icon}
+                     if wf and (book.media_type != 'book' or wf|format_icon) else none %}
+{% macro format_mark_inner(f) -%}
+{%- if f.icon %}{{ icon(f.icon, 'w-5 h-5') }}{% else %}<span class="format-badge-text">{{ f.code|replace('in', '"') }}</span>{% endif -%}
+{%- endmacro %}
 {% set url = item_url(book) ~ ('?wishlist_owner=' ~ owner|urlencode if owner else '') %}
 <div class="wishlist-item book-item group relative flex flex-col bg-secondary-bg rounded-lg overflow-hidden card-link"
      data-search="{{ (book.title ~ ' ' ~ (book.author or ''))|lower }}">
@@ -31,6 +41,13 @@
                 {% else %}
                 {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
                 {% endif %}
+                {# The format (Phil, 2026-11-15: a wish is for a format, so a VHS
+                   and a DVD, or an LP and a CD, shouldn't need a click to tell
+                   apart). Shelf shows it here, a circle on the cover's corner;
+                   the card styles beside the title (format_mark below). The
+                   one by the title is the one announced, so this is hidden
+                   from screen readers. #}
+                {% if format_mark %}<span class="format-badge" aria-hidden="true" title="{{ format_mark.name }}">{{ format_mark_inner(format_mark) }}</span>{% endif %}
             </a>
             {% if own %}
             <form action="{{ url_for('wishlist.move_to_library', book_id=book.id) }}" method="POST" class="wishlist-quick-add"
@@ -46,10 +63,14 @@
     </div>
     {# The title links too, for a mouse; the cover's link is the one in the tab order #}
     <a href="{{ url }}" tabindex="-1" class="book-info block flex-1 p-4 pb-2">
-        <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-content-primary">{{ book.title }}</h3>
-        {% if book.author %}
+        <div class="flex items-start justify-between gap-2 mb-2">
+            <h3 class="min-w-0 text-lg font-semibold line-clamp-2 text-content-primary">{{ book.title }}</h3>
+            {% if format_mark %}
+            <span class="format-mark" data-format-badge="{{ format_mark.code }}" role="img"
+                  aria-label="{{ format_mark.name }}" title="{{ format_mark.name }}">{{ format_mark_inner(format_mark) }}</span>
+            {% endif %}
+        </div>
         {% if book.author %}<p class="text-content-secondary text-sm italic mb-2">{{ bm.by }} {{ book.author }}</p>{% endif %}
-        {% endif %}
         {% if book.notes %}
         <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">"{{ book.notes }}"</p>
         {% endif %}

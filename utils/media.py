@@ -116,7 +116,8 @@ def format_label(fmt):
 # its format: a cassette for VHS, a disc for DVD, a book with headphones for
 # an audiobook, a turntable for LP, a CD, a cassette tape. Vinyl sizes (EP,
 # 7", ...) have none; their format is in the details list. Grids show no
-# format badge (Phil, 2026-11-11).
+# format badge (Phil, 2026-11-11), except the wishlist, where a wish is for
+# a format (.format-badge, _wishlist_card.html; Phil, 2026-11-15).
 FORMAT_ICONS = {
     'VHS': 'vhs', 'DVD': 'dvd', AUDIOBOOK: 'audiobook',
     'LP': 'turntable', 'CD': 'disc-2', 'Cassette': 'cassette-tape',
