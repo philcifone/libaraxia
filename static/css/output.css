@@ -6011,6 +6011,8 @@ html:has(.item3d[open]) {
 
 :root[data-style="shelf"] .heading-books-right {
   right: 0;
+  /* the wall hides the last book's sliver of cover (below) */
+  clip-path: inset(-1rem 0 -1rem -1rem);
 }
 
 .heading-book {
@@ -6019,8 +6021,19 @@ html:has(.item3d[open]) {
   position: relative;
   display: block;
   transform-style: preserve-3d;
-  width: calc(var(--bd) + var(--bw) * .1);
+  /* Narrower than the turned book looks (its spine plus about a tenth
+       of its cover): pressed together, each book's spine hides most of the
+       cover sliver of the one before, as on a full shelf. Later books
+       paint over earlier ones (each holder is its own 3D scene). */
+  width: calc(var(--bd) + var(--bw) * .035);
   height: var(--bh);
+}
+
+/* The last book on the right stands against the wall: it reaches past
+   the group's edge, which clips its cover so the spine meets the wall */
+
+.heading-books-right .heading-book:last-child {
+  margin-right: calc(var(--bw) * -.07);
 }
 
 .heading-book .item3d-box {
