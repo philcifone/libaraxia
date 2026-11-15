@@ -1463,18 +1463,22 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
 .item3d-top    { transform: rotateX(90deg) translateZ(calc(var(--h) / 2)); }
 .item3d-bottom { transform: rotateX(-90deg) translateZ(calc(var(--h) / 2)); }
 
-/* A book: the pages, set a hair inside the covers */
+/* A book: the pages, set a hair inside the covers. The hair is a share
+   of the book's height (--inset), not a fixed pixel: 1px was nothing on
+   the 3D view's 520px book but read as covers too big for the pages on
+   the heading's 48px ones (Phil, 2026-11-15). */
+.item3d-book { --inset: calc(var(--h) * .002); }
 .item3d-book .item3d-front { border-radius: 0 var(--cover-r, 1px) var(--cover-r, 1px) 0; }
 .item3d-book .item3d-back  { border-radius: var(--cover-r, 1px) 0 0 var(--cover-r, 1px); }
 .item3d-book .item3d-side {
-    transform: rotateY(90deg) translateZ(calc(var(--w) / 2 - 1px));
+    transform: rotateY(90deg) translateZ(calc(var(--w) / 2 - var(--inset)));
     background: repeating-linear-gradient(90deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
 }
 .item3d-book :is(.item3d-top, .item3d-bottom) {
     background: repeating-linear-gradient(0deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
 }
-.item3d-book .item3d-top    { transform: rotateX(90deg) translateZ(calc(var(--h) / 2 - 1px)); }
-.item3d-book .item3d-bottom { transform: rotateX(-90deg) translateZ(calc(var(--h) / 2 - 1px)); }
+.item3d-book .item3d-top    { transform: rotateX(90deg) translateZ(calc(var(--h) / 2 - var(--inset))); }
+.item3d-book .item3d-bottom { transform: rotateX(-90deg) translateZ(calc(var(--h) / 2 - var(--inset))); }
 
 /* A record sleeve: card edges */
 .item3d-sleeve :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom) { background: rgb(var(--edge, 222 214 196)); }
