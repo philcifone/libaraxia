@@ -2168,7 +2168,8 @@ html:has(.item3d[open]) { overflow: hidden; }
    row spaces them as they look; the box turns about its own centre inside.
    No perspective: drawn flat, as an illustration, so every edge that runs
    along the shelf stays parallel to it (Phil, 2026-11-15; a vanishing
-   point tilted the spines' tops and bottoms). Decoration: no pointer
+   point tilted the spines' tops and bottoms). No shadow under them
+   either: it made them look afloat. Decoration: no pointer
    events, no motion. */
 .heading-books { display: none; }
 :root[data-style="shelf"] .heading-books {
@@ -2178,7 +2179,6 @@ html:has(.item3d[open]) { overflow: hidden; }
     bottom: calc(var(--ledge-front) + var(--ledge-top) * .45);
     display: flex; align-items: flex-end;
     pointer-events: none; user-select: none;
-    filter: drop-shadow(1px 1px 1.5px rgb(0 0 0 / .35));
 }
 .heading-book {
     --bw: calc(var(--bh) * var(--a));
