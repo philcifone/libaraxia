@@ -209,3 +209,27 @@ def test_item_page_more_photos_for_a_friend(client, db, people, static_root):
     assert html.count('data-slide') == 2
     assert '&lt;b&gt;Scuff&lt;/b&gt; on side B' in html and '<b>Scuff' not in html
     assert 'openGallery' not in client.get(f'/books/book/{bare}').get_data(as_text=True)
+
+
+def test_3d_book_uses_back_and_spine_photos(client, db, people, static_root):
+    """The Shelf demo's 3D book: a book with a cover gets it, with its back
+    and spine photos on the faces when there are any, drawn ones otherwise;
+    a record doesn't."""
+    (static_root / 'uploads').mkdir(exist_ok=True)
+    (static_root / 'uploads' / 'c.jpg').write_bytes(b'x')
+    book = add_book(db, people['bob'], cover='uploads/c.jpg')
+    login(client, 'bob')
+    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    box = html[html.index('<dialog id="book-3d"'):]
+    box = box[:box.index('</dialog>')]
+    assert box.count('data-book3d-made') == 2 and 'data-book3d-spine' not in box
+    upload(client, book, 'back', jpeg_bytes())
+    upload(client, book, 'spine', jpeg_bytes((60, 600)))
+    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    box = html[html.index('<dialog id="book-3d"'):]
+    box = box[:box.index('</dialog>')]
+    assert 'data-book3d-made' not in box and 'data-book3d-spine' in box and '/static/uploads/photos/' in box
+    rec = db.execute("INSERT INTO books (title, author, added_by, media_type, format, cover_image_url) "
+                     "VALUES ('Blue', 'Joni', ?, 'record', 'LP', 'uploads/c.jpg')", (people['bob'],)).lastrowid
+    db.commit()
+    assert 'book-3d' not in client.get(f'/records/{rec}').get_data(as_text=True)

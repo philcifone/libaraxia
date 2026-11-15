@@ -71,7 +71,9 @@
                     <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}">
                         {% if book.cover_image_url|upload_exists %}
                             {# A tap shows it bigger (#cover-zoom, below) #}
-                            <button type="button" class="cover-zoom-open" data-click="showModal" data-target="cover-zoom"
+                            {# openCover (book_detail.js): the 3D book in the Shelf style
+                               (books only, #book-3d), else the zoom #}
+                            <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
                                     aria-label="Show the cover bigger">
                                 {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
                             </button>
@@ -590,6 +592,59 @@
                     <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="{{ book['title'] }} Cover">
                 </button>
             </form>
+        </dialog>
+        {% endif %}
+
+        {# The 3D book (a demo, Shelf style only, Phil 2026-11-15): the cover,
+           spine and back on a box you turn by dragging (book_detail.js). The
+           back and spine are the item's photos when it has them (a spine
+           photo also gives the true thickness); otherwise they're drawn in
+           the cover's own colour, and the thickness comes from the page
+           count. The cover button opens it instead of the zoom in Shelf. #}
+        {% if m.type == 'book' and book.cover_image_url|upload_exists %}
+        {% set back_photo = item_photos['back'] %}
+        {% set spine_photo = item_photos['spine'] %}
+        <dialog id="book-3d" class="book3d" aria-label="{{ book['title'] }}, a book you can turn"
+                data-pages="{{ book['page_count'] or '' }}">
+            <div class="book3d-stage" data-book3d-stage role="img"
+                 aria-label="{{ book['title'] }}: drag, or use the arrow keys, to turn it">
+                <div class="book3d-book" data-book3d-book>
+                    <div class="book3d-face book3d-front">
+                        <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="" data-book3d-cover draggable="false">
+                    </div>
+                    <div class="book3d-face book3d-back">
+                        {% if back_photo %}
+                        <img src="{{ url_for('static', filename=back_photo['path']) }}" alt="" draggable="false">
+                        {% else %}
+                        <div class="book3d-print book3d-made" data-book3d-made>
+                            <p class="book3d-back-title">{{ book['title'] }}</p>
+                            <p>{{ book['author'] }}</p>
+                            {% if book['isbn'] %}<p class="book3d-isbn">ISBN {{ book['isbn'] }}</p>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="book3d-face book3d-spine">
+                        {% if spine_photo %}
+                        <img src="{{ url_for('static', filename=spine_photo['path']) }}" alt="" data-book3d-spine draggable="false">
+                        {% else %}
+                        <div class="book3d-spine-print book3d-made" data-book3d-made>
+                            <span class="book3d-spine-title">{{ book['title'] }}</span>
+                            <span class="book3d-spine-author">{{ book['author'] }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="book3d-face book3d-fore"></div>
+                    <div class="book3d-face book3d-top"></div>
+                    <div class="book3d-face book3d-bottom"></div>
+                </div>
+            </div>
+            <div class="book3d-floor" aria-hidden="true"></div>
+            <div class="book3d-controls">
+                <button type="button" data-click="book3dTurn" data-angle="0">Front</button>
+                <button type="button" data-click="book3dTurn" data-angle="90">Spine</button>
+                <button type="button" data-click="book3dTurn" data-angle="180">Back</button>
+            </div>
+            <form method="dialog" class="book3d-close"><button type="submit" aria-label="Close">&times;</button></form>
         </dialog>
         {% endif %}
 

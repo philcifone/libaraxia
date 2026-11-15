@@ -85,6 +85,7 @@ New features (Phil, 2026-11-14), before the code review and the screenshots so b
 - [x] Condition in each type's standard grades (records: record and sleeve, Goldmine as Discogs uses it; books: the booksellers' scale; movies: used-media terms).
 - [x] Price paid and value, both optional, private to the owner; a Collection value card on Stats.
 - [x] Fetch value: Discogs price suggestions for records, the eBay Browse API's median asking price for books and movies; per item and as a bulk tool beside Fetch covers.
+- [x] 3D book demo (Phil, 2026-11-15): in the Shelf style a book's cover opens a box you turn by dragging (also arrow keys, Front / Spine / Back), with its back and spine photos on the faces, or drawn in the cover's colour; thickness from the spine photo, else the page count. Books only, CSS 3D, no library (`book_detail.html` #book-3d, `book_detail.js`). Demo: decide after trying it whether to keep, extend to movies and music, or drop.
 - [ ] Phil's setup (spec section 7): Discogs seller settings; an eBay developer account and production keys. The same steps go in the README at 16.1.
 
 ### 16.0b Code review 🟠
