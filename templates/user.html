@@ -309,6 +309,7 @@
             <div role="tabpanel" id="stats" aria-labelledby="tab-stats" class="space-y-6">
         <!-- Statistics (12.1): Overview | Insights, then Books | Movies | Music -->
         {% include '_profile_stats.html' %}
+        {% if collection_value %}{% include '_collection_value.html' %}{% endif %}
         {% if not type_stats %}
         <section class="bg-secondary rounded-xl p-6 card text-center">
             <p class="text-content-secondary italic">No stats yet.</p>

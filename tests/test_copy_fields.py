@@ -209,3 +209,32 @@ def test_data_zip_carries_your_photos(app, db, people, static_root):
     assert f'photos/{book}/a.jpg' in z.namelist()
     assert not any(n.endswith('b.jpg') for n in z.namelist())
     assert 'Mine,back,Back' in z.read('photos.csv').decode()
+
+
+# --- Stats: Collection value --------------------------------------------------
+
+def test_collection_value_card_is_the_owners_only(client, db, people):
+    a = add_book(db, people['alice'], title='One')
+    b = add_book(db, people['alice'], title='Two')
+    gone = add_book(db, people['alice'], title='Gone')
+    add_book(db, people['alice'], title='Unvalued')
+    db.execute("UPDATE books SET value_cents = 2000, value_source = 'ebay', value_checked_at = '2026-10-01', "
+               "price_paid_cents = 500 WHERE id = ?", (a,))
+    db.execute("UPDATE books SET value_cents = 1050, value_source = 'manual' WHERE id = ?", (b,))
+    db.execute("UPDATE books SET value_cents = 99999, removed_at = '2026-01-01' WHERE id = ?", (gone,))
+    db.commit()
+    login(client, 'alice')
+    html = client.get('/user/alice').get_data(as_text=True)
+    assert 'id="collection-value"' in html
+    assert '$30.50' in html and '2 of 3 valued' in html and '$5.00' in html
+    assert 'Oldest fetched value: 2026-10-01' in html
+    assert '$999.99' not in html and '$1,030.49' not in html      # the removed one isn't counted
+    client.get('/auth/logout')
+    login(client, 'carol')      # alice's friend
+    assert 'id="collection-value"' not in client.get('/user/alice').get_data(as_text=True)
+
+
+def test_no_card_without_values(client, db, people):
+    add_book(db, people['bob'])
+    login(client, 'bob')
+    assert 'id="collection-value"' not in client.get('/user/bob').get_data(as_text=True)

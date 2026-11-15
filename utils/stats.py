@@ -325,3 +325,32 @@ def all_stats(conn, user_id, per_type, today=None):
         {**p, 'y': str(today.year)}).fetchone()[0]
     s['years'] = year_by_year(conn, user_id, today)
     return s
+
+
+def collection_value(conn, user_id):
+    """The owner's Collection value card (ROADMAP 16.0a, Stats): per section
+    and overall, the total value, how many items have one ("812 of 1,240
+    valued"), what was paid for the items with a price, and the date of the
+    oldest fetched value. On the shelf only (owned, not removed, not a
+    wishlist entry: the library_* views plus book_utils.on_shelf). None when
+    nothing has a value or a price. Never shown to anyone but the owner."""
+    rows = []
+    for kind in media.MEDIA_TYPES:
+        view = media.VIEWS[kind]
+        r = conn.execute(f'''
+            SELECT COUNT(*) AS shelved,
+                   COUNT(value_cents) AS valued,
+                   COALESCE(SUM(value_cents), 0) AS value_cents,
+                   COUNT(price_paid_cents) AS priced,
+                   COALESCE(SUM(price_paid_cents), 0) AS paid_cents,
+                   MIN(CASE WHEN value_source IN ('discogs', 'ebay') THEN value_checked_at END) AS oldest
+            FROM {view} b
+            WHERE b.added_by = ? AND b.owned = 1 AND b.removed_at IS NULL
+        ''', (user_id,)).fetchone()
+        if r['shelved']:
+            rows.append({'kind': kind, **dict(r)})
+    if not any(r['valued'] or r['priced'] for r in rows):
+        return None
+    total = {k: sum(r[k] for r in rows) for k in ('shelved', 'valued', 'value_cents', 'priced', 'paid_cents')}
+    oldest = min((r['oldest'] for r in rows if r['oldest']), default=None)
+    return {'sections': rows, 'total': total, 'oldest': (oldest or '')[:10]}

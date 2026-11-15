@@ -8,7 +8,7 @@ from utils.email_utils import send_verification_email
 from utils.book_utils import missing_cover_sql
 from utils.book_matching import books_in_common
 from utils import bulk, media, reviews, shelves, personal_backups
-from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
+from utils.stats import type_stats as stats_for_type, reading_goals, all_stats, collection_value as value_card
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
 from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, username_error, THEME_STYLES, THEME_MODES, ACCENTS, FONTS, PALETTES
@@ -65,6 +65,8 @@ def profile(username):
     # The All tab (12.2) and its Year by year, which also holds past years'
     # reading goals; with books only it shows on the Books tab instead
     everything = all_stats(conn, user['id'], {m['type']: s for m, s in type_stats}) if type_stats else None
+    # Collection value (16.0a): the owner's own Stats only, never a friend's
+    collection_value = value_card(conn, user["id"]) if is_own_profile else None
     # This year's reading goal and past years (12.3), under the bio
     goals = reading_goals(conn, user['id']) if are_friends else None
 
@@ -147,6 +149,7 @@ def profile(username):
         stats=stats,
         type_stats=type_stats,
         all_stats=everything,
+        collection_value=collection_value,
         goals=goals,
         current_year=current_year,
         friendship_status=friendship_status,
