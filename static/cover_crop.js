@@ -254,6 +254,10 @@ function initCropTool() {
     let invalidTimer = 0;
     let lastTap = null;
     let downPoint = null;
+    // Photo mode (16.0a): cropping one of the item's photos rather than the
+    // cover. {source, saveUrl, button}; Save posts the crop straight to the
+    // photo's route instead of filling the form's hidden inputs.
+    let photoTarget = null;
 
     // Applied to the form (survives closing the dialog)
     let savedUrl = null;            // blob URL shown in #cover-preview
@@ -713,9 +717,25 @@ function initCropTool() {
         announce('Undone');
     }
 
+    async function savePhoto(geom) {
+        const response = await fetch(photoTarget.saveUrl, {
+            method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ geometry: geom }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            setBusyText(data.error || "Couldn't crop that photo.");
+            setTimeout(() => setBusyText(''), 3000);
+            return;
+        }
+        dialog.close();
+        location.hash = 'photos';
+        location.reload();
+    }
+
     async function save() {
         if (!await doCrop()) return;                        // crop first if the handles moved on
         const top = history[history.length - 1];
+        if (photoTarget) return savePhoto(top.geom);
         sourceInput.value = source;
         cropInput.value = JSON.stringify(top.geom);
 
@@ -762,7 +782,8 @@ function initCropTool() {
         image = null;
         source = null;
         setBusyText('');
-        openButton.focus();
+        (photoTarget?.button || openButton)?.focus();
+        photoTarget = null;
     }
 
     $('crop-do').addEventListener('click', doCrop);
@@ -781,6 +802,7 @@ function initCropTool() {
     }
 
     function hasSource() {
+        if (photoTarget) return true;
         return !!(pickedFile() || $('existing_cover_url')?.value || openButton.dataset.currentCover);
     }
 
@@ -802,6 +824,7 @@ function initCropTool() {
     }
 
     async function resolveSource() {
+        if (photoTarget) return photoTarget.source;
         const file = pickedFile();
         if (file) return stageFile(file);
         return $('existing_cover_url')?.value || openButton.dataset.currentCover || null;
@@ -816,7 +839,10 @@ function initCropTool() {
         });
     }
 
-    async function openTool() {
+    async function openTool(target) {
+        // From the cover's button (an Event) or a photo's Crop (a target)
+        photoTarget = target && target.source ? target : null;
+        $('crop-title').textContent = photoTarget ? 'Crop photo' : 'Crop cover';
         if (!hasSource()) return;
         history = [];
         showResult(null);
@@ -839,7 +865,7 @@ function initCropTool() {
             setBusyText('');
             layout();
             // Reopen with a crop already saved for this source: non-destructive
-            if (cropInput.value && sourceInput.value === source) {
+            if (!photoTarget && cropInput.value && sourceInput.value === source) {
                 try { setGeometry(JSON.parse(cropInput.value)); await doCrop(); } catch (err) { console.error(err); }
             }
             handles[0].focus({ preventScroll: true });
@@ -881,6 +907,8 @@ function initCropTool() {
     });
 
     registerActions({
+        // A photo's Crop button (_photos_edit.html): crop that photo
+        cropPhoto: el => openTool({ source: el.dataset.source, saveUrl: el.dataset.url, button: el }),
         removeCrop: () => {
             clearCrop(true);
             announce('Crop removed');

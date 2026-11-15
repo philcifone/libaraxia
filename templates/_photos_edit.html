@@ -4,6 +4,8 @@
    blueprints/photos.py that comes back to #photos; static/photos.js uploads
    a picked file at once (no Upload click) and the gallery one file at a time
    with a progress line. No placeholders where there's no photo: just Add.
+   Crop opens the cover's crop tool on that photo (cover_crop.js photo
+   mode; its dialog is in the item form above) and saves to photos.crop.
    Needs: book, photos, photo_kinds, photo_limit, m (or a book page's noun). #}
 {% set noun = m.noun if m else 'book' %}
 {% set gallery = photos['gallery'] %}
@@ -35,6 +37,9 @@
                     <button type="submit" class="text-sm underline text-content-secondary" data-photo-submit>Upload</button>
                 </form>
                 {% if photo %}
+                <button type="button" data-click="cropPhoto" data-source="{{ photo['path'] }}"
+                        data-url="{{ url_for('photos.crop', photo_id=photo['id']) }}"
+                        class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Crop</button>
                 <form action="{{ url_for('photos.delete', photo_id=photo['id']) }}" method="POST"
                       data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Delete">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -61,11 +66,16 @@
                            placeholder="Caption" class="min-w-0 flex-1 bg-primary border border-rule-strong rounded-lg px-2 py-1 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
                     <button type="submit" class="px-2 py-1 text-sm rounded-lg btn btn-outline text-content-primary">Save</button>
                 </form>
+<div class="flex items-center gap-4">
+                <button type="button" data-click="cropPhoto" data-source="{{ photo['path'] }}"
+                        data-url="{{ url_for('photos.crop', photo_id=photo['id']) }}"
+                        class="text-sm underline text-content-secondary hover:text-content-primary">Crop</button>
                 <form action="{{ url_for('photos.delete', photo_id=photo['id']) }}" method="POST"
                       data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Delete">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Delete</button>
                 </form>
+                </div>
             </li>
             {% endfor %}
         </ul>

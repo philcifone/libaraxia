@@ -91,8 +91,13 @@ def save_photo(file, book_id):
         img.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise PhotoError("That file isn't an image this site can read (use a JPEG, PNG or WebP).")
+    return save_photo_image(ImageOps.exif_transpose(img), book_id)
 
-    img = ImageOps.exif_transpose(img)
+
+def save_photo_image(img, book_id):
+    """save_photo's second half, for an image already open and upright (a
+    cropped photo, blueprints/photos.crop): flatten, resize, re-encode with
+    no metadata, save under the item's folder. Returns the stored path."""
     if img.mode in ('RGBA', 'LA', 'P'):
         rgba = img.convert('RGBA')
         img = Image.new('RGB', rgba.size, (255, 255, 255))

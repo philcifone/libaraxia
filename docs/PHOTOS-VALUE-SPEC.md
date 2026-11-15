@@ -271,6 +271,7 @@ Built with the draft's answer to each (2026-11-15), pending Phil's say:
 ## 13. Built differently from the draft
 
 - `condition_grades` has a `sleeve_only` column for Discogs' sleeve extras (Generic, No Cover, Not Graded), so the table says which grades the record itself can't have.
+- Photos can be cropped and straightened (Phil, 2026-11-15): a Crop button beside Replace and Delete opens the cover's crop tool on that photo and saves to `POST /photos/photo/<id>/crop`.
 - Photo routes: `/photos/photo/<id>/delete` and `/caption`, not `/photos/<id>/...`, which would have shared a URL shape with `/photos/<book_id>/<kind>`.
 - The Photos section is its own card under the edit form, not inside it (a form can't hold forms); the "This copy" fields (condition, price, value) are inside the form, on Add too.
 - "More photos" opens on the first photo after the cover, which the page already shows; Previous goes back to it.

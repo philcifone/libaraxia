@@ -233,3 +233,25 @@ def test_3d_book_uses_back_and_spine_photos(client, db, people, static_root):
                      "VALUES ('Blue', 'Joni', ?, 'record', 'LP', 'uploads/c.jpg')", (people['bob'],)).lastrowid
     db.commit()
     assert 'book-3d' not in client.get(f'/records/{rec}').get_data(as_text=True)
+
+
+def test_crop_a_photo(client, db, people, static_root):
+    """A photo's Crop (the cover's crop tool, photo mode) replaces its file
+    with the cropped one; owner only; a bad geometry is refused."""
+    book = add_book(db, people['bob'])
+    login(client, 'bob')
+    upload(client, book, 'back', jpeg_bytes((800, 600)))
+    photo, old = db.execute('SELECT id, path FROM item_photos').fetchone()
+    html = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert f'data-url="/photos/photo/{photo}/crop"' in html and 'data-click="cropPhoto"' in html
+    geom = {'v': 1, 'rotate': 0, 'mode': 'rect', 'box': [0.25, 0.0, 0.5, 1.0]}
+    r = client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom})
+    assert r.status_code == 200 and r.get_json()['success']
+    new = scalar(db, 'SELECT path FROM item_photos WHERE id = ?', photo)
+    assert new != old and not (static_root / old).exists()
+    with Image.open(static_root / new) as img:
+        assert img.size == (400, 600)
+    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': {'v': 9}}).status_code == 400
+    client.get('/auth/logout')
+    login(client, 'carol')
+    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom}).status_code == 404

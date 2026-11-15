@@ -12,7 +12,8 @@ from flask_login import current_user, login_required
 from models import can_view_book
 from utils import media, photos
 from utils.database import get_db
-from utils.image_utils import PhotoError, save_photo, delete_image_file, STATIC_ROOT
+from utils import cover_crop, image_utils
+from utils.image_utils import PhotoError, save_photo, delete_image_file, is_safe_upload_path
 from utils.rate_limiting import limiter
 
 photos_blueprint = Blueprint('photos', __name__)
@@ -72,7 +73,7 @@ def _save_files(conn, book, kind, files):
             conn.commit()
         except Exception:
             conn.rollback()
-            delete_image_file(path, STATIC_ROOT)
+            delete_image_file(path, image_utils.STATIC_ROOT)
             current_app.logger.exception('Saving photo for book %s', book['id'])
             return saved, "Couldn't save that photo."
         saved.append(photos.as_dict(conn.execute('SELECT * FROM item_photos WHERE id = ?',
@@ -126,3 +127,36 @@ def caption(photo_id):
                  (text, photo_id, book['id']))
     conn.commit()
     return _done(book, 'Caption saved.' if text else 'Caption cleared.', caption=text or '')
+
+
+@photos_blueprint.route('/photo/<int:photo_id>/crop', methods=['POST'])
+@login_required
+@limiter.limit('120 per hour')
+def crop(photo_id):
+    """Crop or straighten a photo with the cover's crop tool (cover_crop.js
+    in photo mode): JSON {"geometry": ...} as the tool makes it. The photo
+    is rendered from its own file and saved as a new one (no metadata, as
+    every photo); the old file goes. Owner or admin."""
+    import os
+    from PIL import Image, ImageOps
+    conn = get_db()
+    row, book = _photo_for_owner(conn, photo_id)
+    data = request.get_json(silent=True) or {}
+    if not is_safe_upload_path(row['path']):
+        abort(404)
+    try:
+        geom = cover_crop.parse_geometry(data.get('geometry'))
+        with Image.open(os.path.join(image_utils.STATIC_ROOT, row['path'])) as img:
+            img.load()
+            upright = cover_crop._to_rgb(ImageOps.exif_transpose(img))
+        new_path = image_utils.save_photo_image(cover_crop.render(upright, geom), book['id'])
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception:
+        current_app.logger.exception('Cropping photo %s failed', photo_id)
+        return jsonify({'success': False, 'error': "Couldn't crop that photo."}), 500
+    conn.execute('UPDATE item_photos SET path = ? WHERE id = ? AND book_id = ?', (new_path, photo_id, book['id']))
+    conn.commit()
+    delete_image_file(row['path'], image_utils.STATIC_ROOT)
+    return jsonify({'success': True, 'message': 'Photo cropped.',
+                    'url': url_for('static', filename=new_path)})
