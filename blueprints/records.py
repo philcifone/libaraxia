@@ -244,6 +244,10 @@ def _barcode_lookup(raw):
             try:
                 rows = discogs_lookup.barcode_search(ean)
                 result = discogs_lookup.lookup(rows[0]['id']) if rows else None
+                if result and len(rows) > 1:
+                    # Pressings share the barcode: the form is close enough,
+                    # but a price needs the right one, so no release is kept
+                    result['details'].pop('discogs_release', None)
                 if result:
                     return jsonify({'success': True, 'barcode': ean, **result})
             except discogs_lookup.Busy:

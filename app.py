@@ -333,6 +333,10 @@ def create_app():
     
     # Configure Logging
     logging.basicConfig(level=logging.DEBUG if app.config.get('DEBUG') else logging.INFO)
+    # Never log third-party request URLs, even at DEBUG: urllib3 prints each
+    # one, and some APIs (TMDb's v3 key) take a key in the query string
+    # (ROADMAP loose end, 2026-11-12; 16.0a's value sources)
+    logging.getLogger('urllib3').setLevel(logging.INFO)
     
     return app
 

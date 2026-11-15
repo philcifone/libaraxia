@@ -357,6 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: d.title, subtitle: d.subtitle, author: d.author, publisher: d.publisher,
                     catalog_number: d.catalog_number, year: d.year, runtime_minutes: d.runtime_minutes,
                     format: d.format, genre: d.genre, description: d.description,
+                    // The Discogs release picked (16.0a): what Fetch value asks about
+                    discogs_release: d.discogs_release,
                 },
                 cover: data.cover || null,
                 sources: data.sources || [],
