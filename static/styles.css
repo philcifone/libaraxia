@@ -1363,6 +1363,41 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 .cover-zoom button:focus-visible, .cover-zoom-open:focus-visible { outline: none; }
 html:has(.cover-zoom[open]) { overflow: hidden; }
 
+/* More photos (book_detail.html #photo-gallery, ROADMAP 16.0a): the cover
+   zoom's sheet with one slide at a time. The photo is the close button, as
+   on the zoom; previous / next sit at the sides and Close in a corner, on
+   the page's surface colour so they read over any photo. */
+.photo-gallery-frame { position: relative; width: 100%; height: 100%; }
+.photo-gallery .photo-slide {
+    display: grid; grid-template-rows: minmax(0, 1fr) auto;
+    width: 100%; height: 100%; margin: 0; padding-bottom: 1rem;
+}
+.photo-gallery .photo-slide[hidden] { display: none; }
+.photo-gallery .photo-slide img { height: 78dvh; width: min(40rem, 100%); }
+.photo-gallery figcaption {
+    justify-self: center; display: flex; gap: 1rem; align-items: baseline;
+    max-width: min(40rem, calc(100% - 2rem)); padding: .35rem .75rem;
+    background: rgb(var(--surface)); color: rgb(var(--ink));
+    border: var(--bw-card) solid var(--card-edge); border-radius: var(--r-md);
+    font-size: .875rem;
+}
+.photo-gallery .photo-count { color: rgb(var(--muted)); white-space: nowrap; }
+.photo-gallery .photo-nav, .photo-gallery .photo-close button {
+    position: absolute; display: grid; place-items: center;
+    width: 2.75rem; height: 2.75rem; padding: 0;
+    background: rgb(var(--surface)); color: rgb(var(--ink));
+    border: var(--bw-btn) solid var(--outline-edge); border-radius: var(--r-pill);
+    box-shadow: var(--sh-btn); font-size: 1.75rem; line-height: 1; cursor: pointer;
+}
+.photo-gallery .photo-nav { top: 50%; transform: translateY(-50%); }
+.photo-gallery .photo-prev { left: max(.5rem, calc(50% - 24rem)); }
+.photo-gallery .photo-next { right: max(.5rem, calc(50% - 24rem)); }
+.photo-gallery .photo-close { position: absolute; top: .75rem; right: .75rem; width: auto; height: auto; padding: 0; }
+.photo-gallery .photo-close button { position: static; font-size: 1.5rem; }
+.photo-gallery .photo-nav:focus-visible, .photo-gallery .photo-close button:focus-visible {
+    outline: 2px solid rgb(var(--accent)); outline-offset: 2px;
+}
+
 /* ---------- Star rating (templates/rate_review.html) ---------- */
 .rating-group { isolation: isolate; }
 .rating-star { position: relative; z-index: 1; }

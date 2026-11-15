@@ -56,3 +56,53 @@ registerActions({
         });
     },
 });
+
+// More photos (#photo-gallery, ROADMAP 16.0a): one slide at a time.
+// Previous / next wrap around; the arrow keys and a sideways swipe do the
+// same. Opens on the first photo after the cover (data-start), since the
+// cover is already on the page; Previous goes back to it.
+const gallery = {
+    dialog: () => document.getElementById('photo-gallery'),
+    slides: () => Array.from(document.querySelectorAll('#photo-gallery [data-slide]')),
+    index: 0,
+    show(i) {
+        const slides = this.slides();
+        if (!slides.length) return;
+        this.index = (i + slides.length) % slides.length;
+        slides.forEach((s, n) => { s.hidden = n !== this.index; });
+    },
+};
+
+registerActions({
+    openGallery: el => {
+        gallery.show(Number(el.dataset.start || 0));
+        gallery.dialog()?.showModal();
+    },
+    galleryStep: el => gallery.show(gallery.index + Number(el.dataset.step)),
+});
+
+document.addEventListener('keydown', event => {
+    if (!gallery.dialog()?.open) return;
+    if (event.key === 'ArrowLeft') gallery.show(gallery.index - 1);
+    if (event.key === 'ArrowRight') gallery.show(gallery.index + 1);
+});
+
+// A swipe: mostly sideways, at least 40px. A tap still closes (the photo
+// is the dialog's close button), so only a real swipe changes slides.
+let swipeStart = null;
+document.addEventListener('touchstart', event => {
+    if (!gallery.dialog()?.open) return;
+    const t = event.touches[0];
+    swipeStart = { x: t.clientX, y: t.clientY };
+}, { passive: true });
+document.addEventListener('touchend', event => {
+    if (!swipeStart || !gallery.dialog()?.open) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - swipeStart.x;
+    const dy = t.clientY - swipeStart.y;
+    swipeStart = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        event.preventDefault();          // no close-click after a swipe
+        gallery.show(gallery.index + (dx < 0 ? 1 : -1));
+    }
+});

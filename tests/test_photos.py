@@ -190,3 +190,22 @@ def test_orphan_cleanup_keeps_photos(app, db, people, monkeypatch, tmp_path):
     with app.app_context():
         found = find_orphaned_images(db)
     assert [f['path'] for f in found['orphaned_files']] == ['uploads/photos/1/stray.jpg']
+
+
+def test_item_page_more_photos_for_a_friend(client, db, people, static_root):
+    """carol (alice's friend) sees alice's photos and their caption, escaped;
+    an item with none has no More photos link."""
+    book = add_book(db, people['alice'])
+    bare = add_book(db, people['alice'], title='Bare')
+    login(client, 'alice')
+    upload(client, book, 'back', jpeg_bytes())
+    upload(client, book, 'gallery', jpeg_bytes())
+    photo = scalar(db, "SELECT id FROM item_photos WHERE kind = 'gallery'")
+    client.post(f'/photos/photo/{photo}/caption', data={'caption': '<b>Scuff</b> on side B'})
+    client.get('/auth/logout')
+    login(client, 'carol')
+    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'data-click="openGallery"' in html and 'More photos (2)' in html
+    assert html.count('data-slide') == 2
+    assert '&lt;b&gt;Scuff&lt;/b&gt; on side B' in html and '<b>Scuff' not in html
+    assert 'openGallery' not in client.get(f'/books/book/{bare}').get_data(as_text=True)

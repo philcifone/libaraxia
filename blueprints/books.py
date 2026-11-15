@@ -22,7 +22,7 @@ from utils.book_utils import (
     MAX_IMAGE_SIZE
 )
 from utils import photos, cover_crop, media_covers
-from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder
+from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
@@ -717,9 +717,19 @@ def render_item_page(conn, book):
         from utils.goodreads_plan import provenance
         goodreads_notes = provenance(conn, current_user.id, id)
 
+    # More photos (ROADMAP 16.0a): anyone who can see the item sees them,
+    # like the cover. The gallery opens on the cover, then back, spine, rest.
+    item_photos = photos.photos_of(conn, id)
+    cover_url = (url_for('static', filename=book['cover_image_url'])
+                 if upload_exists(book['cover_image_url']) else None)
+    photo_slides = photos.slides(item_photos, cover_url)
+
     return render_template(
         "book_detail.html",
         book=book,
+        item_photos=item_photos,
+        photo_slides=photo_slides,
+        extra_photos=len(photo_slides) - (1 if cover_url else 0),
         goodreads_notes=goodreads_notes,
         read_data=read_data,
         latest_session=latest_session,

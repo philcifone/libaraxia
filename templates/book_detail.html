@@ -80,6 +80,13 @@
                             {% with title=book['title'], author=book['author'], size='lg', box='w-full ' ~ ('aspect-square' if m.type == 'record' else 'aspect-[2/3]') ~ ' rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                     </div>
+                    {# More photos (16.0a): only when there's a back, spine or gallery #}
+                    {% if extra_photos %}
+                    <button type="button" class="mt-3 text-sm underline text-content-secondary hover:text-content-primary"
+                            data-click="openGallery" data-start="{{ 1 if photo_slides[0].label == 'Cover' else 0 }}">
+                        More photos ({{ extra_photos }})
+                    </button>
+                    {% endif %}
                 </div>
 
                 <!-- The facts, beside the cover -->
@@ -560,6 +567,34 @@
                     <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="{{ book['title'] }} Cover">
                 </button>
             </form>
+        </dialog>
+        {% endif %}
+
+        {# More photos (16.0a): the cover, back, spine and gallery one at a
+           time, the zoomed cover's size. Previous / next, the arrow keys or a
+           swipe move; a tap on the photo, Esc or Close goes back. Every slide
+           is in the markup; book_detail.js shows one. Captions are text, never
+           HTML. #}
+        {% if extra_photos %}
+        <dialog id="photo-gallery" class="cover-zoom photo-gallery" aria-label="Photos of {{ book['title'] }}">
+            <div class="photo-gallery-frame">
+                {% for slide in photo_slides %}
+                <figure class="photo-slide" data-slide {% if not loop.first %}hidden{% endif %}>
+                    <form method="dialog">
+                        <button type="submit" aria-label="Close">
+                            <img src="{{ slide.url }}" alt="{{ slide.caption or (slide.label ~ ' of ' ~ book['title']) }}" loading="lazy">
+                        </button>
+                    </form>
+                    <figcaption>
+                        {% if slide.caption %}<span>{{ slide.caption }}</span>{% elif slide.label != 'Photo' %}<span>{{ slide.label }}</span>{% endif %}
+                        <span class="photo-count">{{ loop.index }} of {{ photo_slides|length }}</span>
+                    </figcaption>
+                </figure>
+                {% endfor %}
+                <button type="button" class="photo-nav photo-prev" data-click="galleryStep" data-step="-1" aria-label="Previous photo">&#8249;</button>
+                <button type="button" class="photo-nav photo-next" data-click="galleryStep" data-step="1" aria-label="Next photo">&#8250;</button>
+                <form method="dialog" class="photo-close"><button type="submit" aria-label="Close">&times;</button></form>
+            </div>
         </dialog>
         {% endif %}
     </div>{# Main Content Container #}
