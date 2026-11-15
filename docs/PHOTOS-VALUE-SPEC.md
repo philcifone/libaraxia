@@ -1,6 +1,6 @@
 # Photos, condition and value spec (ROADMAP 16.0a)
 
-Status: **draft for Phil's review** (2026-11-14). Build after it's agreed, one commit per step (section 10), on its own branch.
+Status: **built** on branch `phase-16a-photos-value` (2026-11-15), steps 1 to 11, waiting for Phil's test on the dev server. The open questions (section 12) were built with the draft's answers; each is a small change if Phil decides otherwise.
 
 ## 0. Context
 
@@ -262,6 +262,18 @@ Each step: `npm run build:css` when classes change, `pytest`, and a look on the 
 
 ## 12. Open questions for Phil
 
-1. Movies' grades: used-media terms (New, Like New, Very Good, Good, Acceptable), or Goldmine like records?
-2. Values to household members: private to the owner (the draft), or shared within the household?
-3. The phase's place: as 16.0a, before the code review and screenshots (the draft), or after the portfolio in Phase 17?
+Built with the draft's answer to each (2026-11-15), pending Phil's say:
+
+1. Movies' grades: **used-media terms** (New, Like New, Very Good, Good, Acceptable). Switching to Goldmine is rows in `condition_grades` (a migration) and `utils/condition.py`.
+2. Values to household members: **private to the owner** (and admins). Sharing within a household would change the item page's `can_manage` test for the money and `stats.collection_value`'s owner filter.
+3. The phase's place: **16.0a**, before the code review and screenshots.
+
+## 13. Built differently from the draft
+
+- `condition_grades` has a `sleeve_only` column for Discogs' sleeve extras (Generic, No Cover, Not Graded), so the table says which grades the record itself can't have.
+- Photo routes: `/photos/photo/<id>/delete` and `/caption`, not `/photos/<id>/...`, which would have shared a URL shape with `/photos/<book_id>/<kind>`.
+- The Photos section is its own card under the edit form, not inside it (a form can't hold forms); the "This copy" fields (condition, price, value) are inside the form, on Add too.
+- "More photos" opens on the first photo after the cover, which the page already shows; Previous goes back to it.
+- No merge of items exists anywhere in the code yet (`book_matching` matches but never merges), so there was nothing to move photos for.
+- Personal library backups don't hold photos (site backups and the personal export do); a restored item that had been deleted comes back without its photos.
+- The "Saved. Add photos?" flash after adding an item was left out: the edit page's Photos card is one click from the item page.
