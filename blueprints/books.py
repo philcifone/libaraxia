@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import cover_crop, media_covers
+from utils import photos, cover_crop, media_covers
 from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -561,6 +561,10 @@ def _book_tools_context(conn, book):
         # Who else has reviews/history on it: a hard delete is refused while anyone does
         'others_with_data': other_users_with_book_data(conn, book['id'], book['added_by']),
         'in_wishlist': in_wishlist,
+        # The Photos section (_photos_edit.html, ROADMAP 16.0a)
+        'photos': photos.photos_of(conn, book['id']),
+        'photo_kinds': photos.kinds_for(media.media_type_of(book)),
+        'photo_limit': photos.MAX_PER_ITEM,
     }
 
 @books_blueprint.route("/book/<int:id>")

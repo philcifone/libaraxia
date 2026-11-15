@@ -2917,6 +2917,10 @@ summary.chip::-webkit-details-marker {
   height: 1rem;
 }
 
+.h-40 {
+  height: 10rem;
+}
+
 .h-48 {
   height: 12rem;
 }
@@ -3119,6 +3123,10 @@ summary.chip::-webkit-details-marker {
 
 .max-w-\[8rem\] {
   max-width: 8rem;
+}
+
+.max-w-full {
+  max-width: 100%;
 }
 
 .max-w-lg {
@@ -4111,6 +4119,11 @@ summary.chip::-webkit-details-marker {
 .text-red-500 {
   --tw-text-opacity: 1;
   color: rgb(var(--red) / var(--tw-text-opacity, 1));
+}
+
+.text-red-600 {
+  --tw-text-opacity: 1;
+  color: rgb(var(--red-strong) / var(--tw-text-opacity, 1));
 }
 
 .text-white {
@@ -8593,6 +8606,11 @@ html[data-gr-bar="on"] body {
 .hover\:text-blue-300:hover {
   --tw-text-opacity: 1;
   color: rgb(var(--blue) / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-content-primary:hover {
+  --tw-text-opacity: 1;
+  color: rgb(var(--ink) / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-red-300:hover {

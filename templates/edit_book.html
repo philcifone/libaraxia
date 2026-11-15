@@ -28,6 +28,7 @@
         </form>
     </div>
 
+    {% include '_photos_edit.html' %}
     {% include '_book_tools.html' %}
 </div>
 {% endblock %}
@@ -36,4 +37,5 @@
 <script src="{{ url_for('static', filename='cover_crop.js') }}"></script>
 <script src="{{ url_for('static', filename='cover_finder.js') }}"></script>
 <script src="{{ url_for('static', filename='edit_book.js') }}"></script>
+<script src="{{ url_for('static', filename='photos.js') }}"></script>
 {% endblock %}
