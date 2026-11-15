@@ -44,7 +44,8 @@
                         <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
                     {% endif %}
                 </h1>
-                <p class="text-xl text-content-secondary italic">{{ m.by }} {{ book['author'] }}</p>
+                {# No "by" line without a creator (Phil, 2026-11-15) #}
+                {% if book['author'] %}<p class="text-xl text-content-secondary italic" data-byline>{{ m.by }} {{ book['author'] }}</p>{% endif %}
             </div>
             {% if format_icon %}
             <span class="shrink-0 text-accent" role="img"
@@ -67,7 +68,7 @@
                 <div class="self-center md:self-start md:row-span-2">
                     {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
-                    <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}">
+                    <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}">
                         {% if book.cover_image_url|upload_exists %}
                             {# A tap shows it bigger (#cover-zoom, below) #}
                             <button type="button" class="cover-zoom-open" data-click="showModal" data-target="cover-zoom"
@@ -285,7 +286,8 @@
                     </form>
                     {% endif %}
 
-                    <p class="mt-4 text-xs text-content-secondary">Mark it unshelved, transfer it or delete it permanently under <a href="{{ item_url(book, 'edit') }}#book-tools">Edit {{ m.Noun }} → {{ m.Noun }} tools</a>.</p>
+                    {# No pointer to Edit -> tools here (Phil, 2026-11-15: where they
+                       live is obvious, the line was clutter) #}
                     {% endif %}
                 </div>
             </div>
@@ -518,9 +520,9 @@
                         {% if review.avatar_url|upload_exists %}
                         <img src="{{ url_for('static', filename=review.avatar_url) }}"
                              alt=""
-                             class="w-10 h-10 shrink-0 rounded-full object-cover border-2 border-accent">
+                             class="w-10 h-10 shrink-0 avatar object-cover border-2 border-accent">
                         {% else %}
-                        <div class="w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold border-2 border-accent" aria-hidden="true">
+                        <div class="w-10 h-10 shrink-0 avatar bg-accent flex items-center justify-center text-on-accent font-bold border-2 border-accent" aria-hidden="true">
                             {{ review.username[0]|upper }}
                         </div>
                         {% endif %}

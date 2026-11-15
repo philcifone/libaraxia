@@ -11,7 +11,7 @@ from utils import bulk, media, reviews, shelves, personal_backups
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
-from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, username_error, THEME_STYLES, THEME_MODES, ACCENTS, FONTS
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, username_error, THEME_STYLES, THEME_MODES, ACCENTS, FONTS, PALETTES
 from werkzeug.utils import secure_filename
 import bcrypt
 import os
@@ -327,28 +327,30 @@ def update_bio():
 # the styles and fonts would have hit 60: it only writes the user's own row
 @limiter.limit("300 per hour")
 def update_theme():
-    """Save the Appearance settings (style, light/dark mode, accent colour, font)."""
+    """Save the Appearance settings (style, light/dark mode, accent colour, font, palette)."""
     data = request.get_json(silent=True) or {}
     style = data.get('style', current_user.theme_style)
     mode = data.get('mode', current_user.theme_mode)
     accent = data.get('accent', current_user.accent)
     font = data.get('font', current_user.font)
+    palette = data.get('palette', current_user.palette)
     if (style not in THEME_STYLES or mode not in THEME_MODES or accent not in ACCENTS
-            or font not in FONTS):
+            or font not in FONTS or palette not in PALETTES):
         return jsonify({'success': False, 'message': 'Unknown theme setting'}), 400
 
     conn = get_db()
     try:
-        conn.execute('UPDATE users SET theme_style = ?, color_mode = ?, accent = ?, font = ? WHERE id = ?',
-                     (style, mode, accent, font, current_user.id))
+        conn.execute('UPDATE users SET theme_style = ?, color_mode = ?, accent = ?, font = ?, palette = ? '
+                     'WHERE id = ?', (style, mode, accent, font, palette, current_user.id))
         conn.commit()
     except Exception:
         current_app.logger.exception('Error saving theme settings')
         return jsonify({'success': False, 'message': 'Could not save appearance settings'}), 500
 
     current_user.theme_style, current_user.theme_mode, current_user.accent = style, mode, accent
-    current_user.font = font
-    return jsonify({'success': True, 'style': style, 'mode': mode, 'accent': accent, 'font': font})
+    current_user.font, current_user.palette = font, palette
+    return jsonify({'success': True, 'style': style, 'mode': mode, 'accent': accent, 'font': font,
+                    'palette': palette})
 
 @user_blueprint.route('/update_password', methods=['POST'])
 @login_required

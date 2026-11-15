@@ -98,7 +98,7 @@
 <details class="appearance-card bg-secondary rounded-xl card">
     <summary class="flex items-center justify-between gap-4 p-4 sm:p-6 cursor-pointer">
         <h2 class="text-2xl font-display text-content-primary">Appearance</h2>
-        <span class="hidden sm:inline mr-auto text-sm text-content-secondary">Style, mode, font, accent</span>
+        <span class="hidden sm:inline mr-auto text-sm text-content-secondary">Style, mode, palette, font, accent</span>
     </summary>
     <div class="px-4 sm:px-6 pb-6 space-y-3" id="appearance-settings" data-theme-picker>
             <div class="flex flex-wrap gap-x-8 gap-y-3">
@@ -121,6 +121,20 @@
                     {% if kind == 'mode' %}{% include '_follow_system.html' %}{% endif %}
                 </div>
                 {% endfor %}
+                {# Palette (16.0): OG only, its own greys or Shelf's walnut; hidden in the other styles (styles.css) #}
+                <div class="flex items-center gap-3" data-palette-picker>
+                    <span class="text-sm text-content-secondary w-12">Palette</span>
+                    <div class="flex" role="group" aria-label="Palette">
+                        {% for key, name in theme_palettes.items() %}
+                        <button type="button"
+                                class="theme-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
+                                data-kind="palette" data-value="{{ key }}"
+                                aria-pressed="{{ 'true' if key == theme_palette else 'false' }}">
+                            {{ name }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
                 <p data-outrun-note class="text-sm text-content-secondary">Outrun is always dark and has its own fonts, so Mode and Font are hidden.</p>
                 {# Font: each option in its own face (.font-opt in styles.css); Theme = the style's own #}
                 <div class="flex items-center gap-3" data-font-picker>

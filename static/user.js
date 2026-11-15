@@ -306,7 +306,7 @@ async function uploadAvatar(event) {
                 newImg.id = 'avatar-image';
                 newImg.src = data.avatar_url;
                 newImg.alt = event.target.dataset.username;
-                newImg.className = 'w-full h-full rounded-full object-cover';
+                newImg.className = 'w-full h-full avatar object-cover';
                 newImg.style.width = '64px';
                 newImg.style.height = '64px';
                 avatarPlaceholder.replaceWith(newImg);

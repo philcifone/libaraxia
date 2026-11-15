@@ -19,7 +19,7 @@
         <!-- Book Header -->
         <div class="text-center mb-12">
             <h1 class="font-display text-3xl md:text-4xl mb-2">{{ book.title }}</h1>
-            <p class="text-content-secondary italic text-lg">{{ m.by }} {{ book.author }}</p>
+            {% if book.author %}<p class="text-content-secondary italic text-lg">{{ m.by }} {{ book.author }}</p>{% endif %}
         </div>
 
         <!-- Content Grid -->

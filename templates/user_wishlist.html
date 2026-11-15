@@ -12,7 +12,7 @@
 {% block content %}
     <div class="page-frame pt-20 pb-32">
         {{ crumbs([(target_username, url_for('user.profile', username=target_username))], 'Wishlist') }}
-        {{ page_heading('bookmark', target_username ~ "'s Wishlist", "What " ~ target_username ~ " would like to own", class='mb-8') }}
+        {{ page_heading('bookmark', target_username ~ "'s Wishlist", class='mb-8') }}
 
         {% for key, m, items in sections %}
         <section class="wishlist-section mb-12" aria-labelledby="wishlist-{{ key }}">

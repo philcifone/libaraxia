@@ -165,7 +165,9 @@
 
 {% macro page_heading(icon_name, name, subtitle=none, class='mb-6', toggle=none, sr_prefix=none) -%}
 {% call heading_card(('relative ' if toggle else '') ~ class) %}
-    <h1 class="flex items-center justify-center gap-3 text-2xl font-display text-content-primary text-center">
+    {# min-h-10: as tall as the Shelves heading, whose toggle icon is 40px
+       to the others' 32px, so every heading card is one height (Phil, 2026-11-15) #}
+    <h1 class="flex items-center justify-center gap-3 min-h-10 text-2xl font-display text-content-primary text-center">
         {% if toggle %}
         <a href="{{ toggle.url }}" title="{{ toggle.label }}" aria-label="{{ toggle.label }}"
            class="heading-toggle text-accent shrink-0 {{ 'is-on' if toggle.on }}">{{ icon(toggle.icon, 'w-10 h-10') }}</a>

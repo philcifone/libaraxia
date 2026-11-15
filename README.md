@@ -102,7 +102,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 'app:create_app()'    # production
 
 Open `http://localhost:5000`. With no users yet, you're sent to registration, and **the first account becomes the admin**.
 
-**Barcode scanning on a phone** needs HTTPS. For local testing, run `./generate-cert.sh`, then `python3 app.py --cert certs/cert.pem --key certs/key.pem`. See [docs/HTTPS-SETUP.md](docs/HTTPS-SETUP.md).
+**Barcode scanning on a phone** needs HTTPS. For local testing, run `./generate-cert.sh` (trusted certificates if [mkcert](https://github.com/FiloSottile/mkcert) is installed), then `python3 app.py --cert certs/cert.pem --key certs/key.pem`. See [docs/HTTPS-SETUP.md](docs/HTTPS-SETUP.md).
 
 ### Rebuilding the CSS
 

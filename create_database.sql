@@ -27,7 +27,8 @@ CREATE TABLE users (
     theme_style TEXT NOT NULL DEFAULT 'house',
     color_mode TEXT NOT NULL DEFAULT 'system',
     accent TEXT NOT NULL DEFAULT 'green',   -- models.ACCENTS (migration 026)
-    font TEXT NOT NULL DEFAULT 'theme'      -- models.FONTS (migration 028)
+    font TEXT NOT NULL DEFAULT 'theme',     -- models.FONTS (migration 028)
+    palette TEXT NOT NULL DEFAULT 'theme'   -- models.PALETTES (migration 035)
 );
 -- Unique ignoring case too: "Phil" and "phil" would look the same (migration 033)
 CREATE UNIQUE INDEX idx_users_username_nocase ON users(username COLLATE NOCASE);
@@ -474,4 +475,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('031_bulk_edits.sql'),
     ('032_goodreads_import.sql'),
     ('033_username_nocase.sql'),
-    ('034_video_kind.sql');
+    ('034_video_kind.sql'),
+    ('035_palette.sql');

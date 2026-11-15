@@ -58,7 +58,7 @@ darkQuery.addEventListener('change', syncModeButtons);
 // Apply an appearance setting instantly (data-style / data-mode / ... on
 // <html>), then save it; revert if the save fails. Every picker on the page
 // is kept in step.
-async function setAppearance(kind, value) {     // kind: 'style', 'mode', 'accent' or 'font'
+async function setAppearance(kind, value) {     // kind: 'style', 'mode', 'accent', 'font' or 'palette'
     const root = document.documentElement;
     const previous = root.dataset[kind];
     const press = value => kind === 'mode' ? syncModeButtons()

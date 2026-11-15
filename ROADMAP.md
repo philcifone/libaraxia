@@ -80,8 +80,8 @@ Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app-
 - [x] Feed: the dismiss X and the like/comment row sit in fixed corners; give them a place in the layout. Done 2026-11-13: the feed card is the Reviews list's card, the like in its own row (style pass steps 5 and the taste pass).
 
 ### 16.0a Photos, condition and value 🟠
-New features (Phil, 2026-11-14), before the code review and the screenshots so both cover them. **Spec: [docs/PHOTOS-VALUE-SPEC.md](docs/PHOTOS-VALUE-SPEC.md)** (draft, for Phil's review; three open questions in its section 12). Branch `phase-16a-photos-value`, one commit per step (spec section 10).
-- [ ] Photos: a back photo and a gallery per item, added and deleted (with a confirm) on the edit page, "More photos" under the cover on the item page.
+New features (Phil, 2026-11-14), before the code review and the screenshots so both cover them. **Spec: [docs/PHOTOS-VALUE-SPEC.md](docs/PHOTOS-VALUE-SPEC.md)** (draft, for Phil's review; three open questions in its section 12). Branch `phase-16a-photos-value`, one commit per step (spec section 10). Its migrations are 036 to 039: 035 went to OG's palette in the 16.0 style pass (2026-11-15), and the spec was renumbered to match.
+- [ ] Photos: a back photo and a gallery per item, plus a spine photo for books (kept for a later 3D book: cover, spine and back on a box), added and deleted (with a confirm) on the edit page, "More photos" under the cover on the item page.
 - [ ] Condition in each type's standard grades (records: record and sleeve, Goldmine as Discogs uses it; books: the booksellers' scale; movies: used-media terms).
 - [ ] Price paid and value, both optional, private to the owner; a Collection value card on Stats.
 - [ ] Fetch value: Discogs price suggestions for records, the eBay Browse API's median asking price for books and movies; per item and as a bulk tool beside Fetch covers.

@@ -80,11 +80,18 @@ DEFAULT_ACCENT = 'green'
 FONTS = {'theme': 'Theme', 'baskerville': 'Baskerville', 'garamond': 'Garamond',
          'literata': 'Literata', 'jost': 'Jost'}
 DEFAULT_FONT = 'theme'
+# Colour palette (users.palette, data-palette; styles.css "OG walnut").
+# 'theme' keeps the style's own colours; 'walnut' gives OG the Shelf
+# style's parchment and walnut. Only OG offers it (the picker hides in the
+# other styles, and the CSS only matches data-style="classic").
+PALETTES = {'theme': 'Grey', 'walnut': 'Walnut'}
+DEFAULT_PALETTE = 'theme'
 
 
 class User(UserMixin):
     def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None, email_verified=True, bio=None,
-                 theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE, accent=DEFAULT_ACCENT, font=DEFAULT_FONT):
+                 theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE, accent=DEFAULT_ACCENT, font=DEFAULT_FONT,
+                 palette=DEFAULT_PALETTE):
         self.id = id
         self.username = username
         self.email = email
@@ -97,6 +104,7 @@ class User(UserMixin):
         self.theme_mode = theme_mode if theme_mode in THEME_MODES else DEFAULT_THEME_MODE
         self.accent = accent if accent in ACCENTS else DEFAULT_ACCENT
         self.font = font if font in FONTS else DEFAULT_FONT
+        self.palette = palette if palette in PALETTES else DEFAULT_PALETTE
 
     def get_id(self):
         return str(self.id)

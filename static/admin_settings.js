@@ -252,7 +252,7 @@ async function removeUserAvatar() {
                 if (tableAvatarContainer) {
                     // Replace image with placeholder
                     tableAvatarContainer.innerHTML = `
-                        <div class="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-on-accent text-sm font-bold">
+                        <div class="h-8 w-8 avatar bg-accent flex items-center justify-center text-on-accent text-sm font-bold">
                             ${escapeHtml(username[0].toUpperCase())}
                         </div>
                     `;

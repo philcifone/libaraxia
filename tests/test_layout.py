@@ -1367,3 +1367,85 @@ def test_box_shadow_stays_off_the_shelf():
     css = pathlib.Path('static/styles.css').read_text()
     assert '--box-shadow: calc(var(--box-depth) + 6px) -4px 8px -4px rgb(0 0 0 / var(--box-shade));' in css
     assert 'box-contact' not in css and 'box-cast' not in css
+
+
+def test_og_walnut_palette(client, db, people):
+    """OG can take Shelf's parchment and walnut (Phil, 2026-11-15): a saved
+    users.palette on <html data-palette>, a picker shown in OG only, and
+    CSS that matches OG alone."""
+    login(client, 'alice')
+    assert 'data-palette="theme"' in client.get('/base/index').get_data(as_text=True)
+    assert client.post('/user/update_theme', json={'palette': 'mahogany'}).status_code == 400
+    assert client.post('/user/update_theme', json={'style': 'classic', 'palette': 'walnut'}).status_code == 200
+    assert scalar(db, 'SELECT palette FROM users WHERE id = ?', people['alice']) == 'walnut'
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-palette="walnut"' in page and 'data-kind="palette"' in page
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root[data-style="classic"][data-palette="walnut"] {' in css
+    assert ':root[data-style="classic"][data-palette="walnut"][data-mode="dark"] {' in css
+    assert ':root:not([data-style="classic"]) [data-palette-picker] { display: none; }' in css
+
+
+def test_no_byline_without_a_creator(client, db, people):
+    """No bare "by" under the title when an item has no author, director or
+    artist (Phil, 2026-11-15)."""
+    book = add_book(db, people['alice'], 'Anonymous Work', '')
+    login(client, 'alice')
+    assert 'data-byline' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    db.execute("UPDATE books SET author = 'Someone' WHERE id = ?", (book,))
+    db.commit()
+    assert 'data-byline' in client.get(f'/books/book/{book}').get_data(as_text=True)
+
+
+def test_item_page_has_no_pointer_to_the_tools(client, db, people):
+    """The "Mark it unshelved, transfer it or delete it ... under Edit"
+    line is gone from the item page (Phil, 2026-11-15)."""
+    book = add_book(db, people['alice'])
+    login(client, 'alice')
+    assert '#book-tools' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+
+
+def test_dvd_box_is_thinner_than_vhs(client, db, people):
+    """The item page's Shelf box knows the format, and a DVD case is thinner
+    than a VHS clamshell (Phil, 2026-11-15)."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root[data-style="shelf"] .cover-stand[data-media="video"][data-format="DVD"] { --box-depth: 5px; }' in css
+    tpl = pathlib.Path('templates/book_detail.html').read_text()
+    assert 'data-format="{{ book[\'format\'] or \'\' }}"' in tpl
+    # and on the grid, server-drawn and script-drawn cards alike
+    assert '.shelf-grid.grid[data-media="video"] .book-item[data-format="DVD"] { --box-depth: 4px; }' in css
+    assert 'class="book-item group" data-format="{{ book|item_format or \'\' }}"' in pathlib.Path('templates/_book_grid.html').read_text()
+    assert 'class="book-item group" data-format="${escapeHtml(book.format || \'\')}"' in pathlib.Path('static/script.js').read_text()
+
+
+def test_headings_have_no_subtitles_and_one_height(client, db, people):
+    """The feed, Do I Have This? and the wishlists lost their taglines, and
+    every page heading is as tall as the Shelves one (Phil, 2026-11-15)."""
+    login(client, 'alice')
+    for url in ('/feed/activity', '/have/', '/wishlist/view', '/wishlist/user/carol'):
+        page = client.get(url, follow_redirects=True).get_data(as_text=True)
+        assert 'page-title' in page, url
+        heading = page.split('page-title', 1)[1].split('</h1>', 1)[1][:200]
+        assert '<p class="mt-1 text-sm' not in heading, url
+    macro = pathlib.Path('templates/_icons.html').read_text()
+    assert 'gap-3 min-h-10 text-2xl font-display' in macro
+
+
+def test_tabs_are_raised_and_recessed_in_every_style():
+    """The active tab is raised and the rest recessed in every style, not
+    just Shelf (Phil, 2026-11-15: the others had missed it)."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '\n:is(.tab, .search-method-btn) {\n    background-color: var(--tab-recess);' in css
+    assert ':root[data-style="shelf"] :is(.tab, .search-method-btn)' not in css
+    assert '[data-style="classic"] .tab-active' not in css
+
+
+def test_avatars_are_square_in_negative_earth_and_outrun():
+    """Every avatar is .avatar: round, square in Negative Earth and Outrun
+    (Phil, 2026-11-15). No avatar keeps a bare rounded-full, which would stay round."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root:is([data-style="house"], [data-style="outrun"]) .avatar { border-radius: 0; }' in css
+    for path in list(pathlib.Path('templates').rglob('*.html')) + list(pathlib.Path('static').glob('*.js')):
+        for line in path.read_text().splitlines():
+            if 'rounded-full' in line:
+                assert 'avatar' not in line and 'username' not in line, f'{path}: {line.strip()}'
