@@ -1,8 +1,12 @@
 """
-Image management utilities for file cleanup and orphan detection
+Image management utilities: item photos, file cleanup and orphan detection
 """
 import os
+import shutil
+import uuid
+
 from flask import current_app
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 
 def is_safe_upload_path(image_path):
@@ -56,12 +60,81 @@ def cover_missing(image_path):
     return 0 if os.path.isfile(os.path.join(STATIC_ROOT, image_path)) else 1
 
 
-def delete_image_file(image_path):
+# Item photos (ROADMAP 16.0a): big enough to read liner notes or see a scuff
+# (covers stop at 500x1000), small enough for a phone to load.
+PHOTO_MAX_SIDE = 2000
+
+
+class PhotoError(ValueError):
+    """An upload that isn't a usable image; the message is safe to show."""
+
+
+def photo_folder(book_id):
+    """The stored prefix of an item's photos: 'uploads/photos/<id>'."""
+    return f'uploads/photos/{int(book_id)}'
+
+
+def save_photo(file, book_id):
+    """Save an uploaded photo of an item; returns its stored path
+    ('uploads/photos/<book_id>/<random>.jpg').
+
+    Turned upright (phones store sideways pixels plus an EXIF rotation),
+    resized to PHOTO_MAX_SIDE on the long side keeping its aspect (a spine is
+    a tall strip and isn't cropped), and saved as a fresh JPEG with **no
+    metadata at all**: EXIF carries GPS, and a photo taken at home would
+    publish where home is. Copying the pixels into a new image, rather than
+    trusting save() to leave EXIF, XMP and comments out, makes that certain.
+
+    Raises PhotoError for anything Pillow can't read as an image."""
+    try:
+        img = Image.open(file)
+        img.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        raise PhotoError("That file isn't an image this site can read (use a JPEG, PNG or WebP).")
+
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ('RGBA', 'LA', 'P'):
+        rgba = img.convert('RGBA')
+        img = Image.new('RGB', rgba.size, (255, 255, 255))
+        img.paste(rgba, mask=rgba.split()[-1])
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+    img.thumbnail((PHOTO_MAX_SIDE, PHOTO_MAX_SIDE), Image.LANCZOS)
+
+    clean = Image.new('RGB', img.size)
+    clean.paste(img)
+
+    rel = f'{photo_folder(book_id)}/{uuid.uuid4().hex}.jpg'
+    full = os.path.join(STATIC_ROOT, rel)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    clean.save(full, 'JPEG', quality=85, optimize=True)
+    return rel
+
+
+def delete_photo_folder(book_id):
+    """Remove an item's photo folder after the item is deleted (its rows went
+    with it, ON DELETE CASCADE). Only ever static/uploads/photos/<int id>."""
+    root = os.path.realpath(os.path.join(STATIC_ROOT, 'uploads', 'photos'))
+    folder = os.path.realpath(os.path.join(STATIC_ROOT, photo_folder(book_id)))
+    if os.path.dirname(folder) != root or not os.path.isdir(folder):
+        return False
+    try:
+        shutil.rmtree(folder)
+        return True
+    except OSError as e:
+        current_app.logger.error(f"Failed to delete photo folder {folder}: {e}")
+        return False
+
+
+def delete_image_file(image_path, static_root=None):
     """
     Safely delete an image file given its relative path from static directory
 
     Args:
         image_path: Relative path from static directory (e.g., 'uploads/cover_123.jpg')
+        static_root: where 'uploads/...' resolves; the app's static/ by
+            default. Item photos pass STATIC_ROOT, where save_photo put them
+            (the same folder outside tests).
 
     Returns:
         bool: True if file was deleted, False if it didn't exist or deletion failed
@@ -73,9 +146,10 @@ def delete_image_file(image_path):
         current_app.logger.warning(f"Refusing to delete image outside uploads: {image_path!r}")
         return False
 
-    # Build full path: app_root/static/image_path, and make sure it really is inside uploads/
-    uploads_root = os.path.realpath(os.path.join(current_app.root_path, 'static', 'uploads'))
-    full_path = os.path.realpath(os.path.join(current_app.root_path, 'static', image_path))
+    # Build full path: static/image_path, and make sure it really is inside uploads/
+    static_root = static_root or os.path.join(current_app.root_path, 'static')
+    uploads_root = os.path.realpath(os.path.join(static_root, 'uploads'))
+    full_path = os.path.realpath(os.path.join(static_root, image_path))
     if not full_path.startswith(uploads_root + os.sep):
         current_app.logger.warning(f"Refusing to delete image outside uploads: {image_path!r}")
         return False
@@ -121,6 +195,11 @@ def find_orphaned_images(db_connection):
         "SELECT avatar_url FROM users WHERE avatar_url IS NOT NULL"
     ).fetchall()
     db_images.update(row['avatar_url'] for row in users)
+
+    # Item photos (16.0a): back, spine and gallery. Without these the first
+    # cleanup after photos shipped would delete every one of them.
+    photos = db_connection.execute("SELECT path FROM item_photos").fetchall()
+    db_images.update(row['path'] for row in photos)
 
     current_app.logger.info(f"Found {len(db_images)} images referenced in database")
 

@@ -30,6 +30,7 @@ from blueprints.videos import videos_blueprint
 from blueprints.records import records_blueprint
 from blueprints.reviews import reviews_blueprint
 from blueprints.bulk import bulk_blueprint
+from blueprints.photos import photos_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
@@ -218,6 +219,7 @@ def create_app():
     app.register_blueprint(records_blueprint, url_prefix='/records')
     app.register_blueprint(reviews_blueprint, url_prefix='/reviews')
     app.register_blueprint(bulk_blueprint, url_prefix='/bulk')
+    app.register_blueprint(photos_blueprint, url_prefix='/photos')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media

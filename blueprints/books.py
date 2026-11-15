@@ -22,7 +22,7 @@ from utils.book_utils import (
     MAX_IMAGE_SIZE
 )
 from utils import cover_crop, media_covers
-from utils.image_utils import delete_image_file, is_safe_upload_path
+from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
@@ -828,8 +828,10 @@ def delete_book(id):
     conn.commit()
 
     # Only after the row is gone, so a failed delete never loses the cover.
+    # Its photo rows went with it (CASCADE); their folder goes too.
     if book['cover_image_url']:
         delete_image_file(book['cover_image_url'])
+    delete_photo_folder(id)
     kind = media.media_type_of(book)
     if kind != media.BOOK:
         flash(f"{media.item_labels(book)['Noun']} deleted.", "success")
