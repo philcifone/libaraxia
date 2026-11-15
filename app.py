@@ -31,7 +31,7 @@ from blueprints.records import records_blueprint
 from blueprints.reviews import reviews_blueprint
 from blueprints.bulk import bulk_blueprint
 from config import DevelopmentConfig, ProductionConfig
-from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT
+from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
 
 def create_app():
@@ -168,6 +168,7 @@ def create_app():
                 theme_mode=user_dict.get('color_mode'),
                 accent=user_dict.get('accent'),
                 font=user_dict.get('font'),
+                palette=user_dict.get('palette'),
             )
         return None
 
@@ -303,6 +304,8 @@ def create_app():
             'theme_accents': ACCENTS,
             'theme_font': user.font if signed_in else DEFAULT_FONT,
             'theme_fonts': FONTS,
+            'theme_palette': user.palette if signed_in else DEFAULT_PALETTE,
+            'theme_palettes': PALETTES,
             'theme_modes': THEME_MODES,
             # The Mode buttons (12.4): 'system' is the default, reached by "Follow system"
             'mode_choices': {k: v for k, v in THEME_MODES.items() if k != 'system'},

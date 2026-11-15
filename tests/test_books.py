@@ -292,7 +292,8 @@ def test_book_tools_live_on_the_edit_page(client, db, people):
     assert f'/books/delete/{book}' not in page and f'/books/transfer/{book}' not in page
     assert f'/books/ownership/{book}' not in page               # owned: the switch is in the tools
     assert f'/books/remove/{book}' in page                      # the everyday action stays
-    assert f'/books/edit/{book}#book-tools' in page
+    # No line pointing at the tools under Edit (Phil, 2026-11-15)
+    assert '#book-tools' not in page
 
 
 def test_book_tools_refuse_delete_while_others_have_data(client, db, people):

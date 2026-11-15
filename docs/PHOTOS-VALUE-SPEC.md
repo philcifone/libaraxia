@@ -20,19 +20,19 @@ The app should be feature-complete before the code review (16.0b) and the screen
 
 ## 1. What changes, in one paragraph
 
-Every item can have a **back** photo and a **gallery** of more photos, added and deleted on its edit page and shown on its page through a "More photos" link under the cover. Every item gets a **condition** in its type's standard grades (a record gets two: the record and its sleeve), a **price paid** and a **value**. The value can be typed in, or **fetched**: Discogs' suggested price for a record in its condition, or the median asking price on eBay for a book or a movie with an ISBN or barcode. A bulk **Fetch values** tool does a whole shelf in the background, like Fetch covers, and Stats shows the **collection's value**.
+Every item can have a **back** photo and a **gallery** of more photos (a book a **spine** photo too), added and deleted on its edit page and shown on its page through a "More photos" link under the cover. Every item gets a **condition** in its type's standard grades (a record gets two: the record and its sleeve), a **price paid** and a **value**. The value can be typed in, or **fetched**: Discogs' suggested price for a record in its condition, or the median asking price on eBay for a book or a movie with an ISBN or barcode. A bulk **Fetch values** tool does a whole shelf in the background, like Fetch covers, and Stats shows the **collection's value**.
 
-## 2. Data model (migrations 035 to 037)
+## 2. Data model (migrations 036 to 038)
 
 All on the owner's copy, the `books` row (each user's copy is its own row), except the photos, which get a table.
 
-**035_item_photos.sql**
+**036_item_photos.sql**
 
 ```sql
 CREATE TABLE item_photos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('back', 'gallery')),
+    kind TEXT NOT NULL CHECK (kind IN ('back', 'spine', 'gallery')),
     path TEXT NOT NULL,              -- 'uploads/photos/...', relative to static/
     caption TEXT,                    -- optional, e.g. "Inner sleeve", "Scuff on side B"
     position INTEGER NOT NULL DEFAULT 0,
@@ -40,11 +40,14 @@ CREATE TABLE item_photos (
 );
 CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
 CREATE UNIQUE INDEX idx_item_photos_one_back ON item_photos(book_id) WHERE kind = 'back';
+CREATE UNIQUE INDEX idx_item_photos_one_spine ON item_photos(book_id) WHERE kind = 'spine';
 ```
+
+**Spine** (Phil, 2026-11-15): books only, one per item, beside the back. Stored now for a later 3D book (cover, spine and back wrapped on a box, the Shelf style's next step); until then it is just another photo in the item page's gallery. A spine is a tall, narrow strip, so `save_photo` keeps its aspect (no crop), and the edit page's thumbnail shows it at full height.
 
 The cover stays where it is (`books.cover_image_url`, crop and all); a photo row is never the cover.
 
-**036_condition_grades.sql**: a lookup table, like `statuses` (CLAUDE.md: lookup tables, not CHECKs), and the condition columns.
+**037_condition_grades.sql**: a lookup table, like `statuses` (CLAUDE.md: lookup tables, not CHECKs), and the condition columns.
 
 ```sql
 CREATE TABLE condition_grades (
@@ -61,7 +64,7 @@ ALTER TABLE books ADD COLUMN sleeve_condition TEXT;   -- records only: the sleev
 
 The two columns can't be FKs into a two-column key from `ALTER TABLE ADD COLUMN` with `media_type` alongside, so `utils/condition.py` validates the code against the item's type on save (as `media.py` does for formats), and a test checks the table and `utils/condition.py` agree.
 
-**037_item_value.sql**
+**038_item_value.sql**
 
 ```sql
 ALTER TABLE books ADD COLUMN price_paid_cents INTEGER;      -- optional
@@ -92,6 +95,7 @@ Money is whole cents in an integer (no float rounding). One currency for the sit
 | Route | Does |
 |---|---|
 | `POST /photos/<book_id>/back` | add or replace the back (replacing deletes the old file) |
+| `POST /photos/<book_id>/spine` | books only: add or replace the spine, as the back |
 | `POST /photos/<book_id>/gallery` | add one or more to the gallery (multiple files in one form) |
 | `POST /photos/<photo_id>/delete` | delete one, after the page's confirm |
 | `POST /photos/<photo_id>/caption` | set or clear a caption |
@@ -103,12 +107,13 @@ JSON answers in the house shape (`{"success": ..., "error": ...}`), and each wor
 
 - **Cover**: as today (upload, find a better cover, crop).
 - **Back**: its thumbnail, or an **Add back** button; with one, **Replace** and **Delete**.
+- **Spine** (books only): the same as the back.
 - **Gallery**: thumbnails in a row that wraps, each with a delete button and its caption; **Add photos** opens the file picker (several at once; on a phone, the camera or the library). Uploads go one by one with a progress line, so a phone on a slow connection isn't one long wait.
 - Every delete asks first (`data-confirm`, the styled dialog): "Delete this photo? It can't be undone." No placeholders where there's no photo, as Phil asked: just the Add buttons.
 
-The Add page doesn't get this: photos come after the item exists (the form already has a cover; the back and gallery wait for the edit page). "Saved. Add photos?" in the flash after adding an item links straight there.
+The Add page doesn't get this: photos come after the item exists (the form already has a cover; the back, spine and gallery wait for the edit page). "Saved. Add photos?" in the flash after adding an item links straight there.
 
-**Item page.** Under the cover, only when the item has a back or gallery photos: **More photos (n)**. It opens the cover-zoom dialog (16.0) as a small gallery: the cover first, then the back, then the gallery, one at a time, the same size as the zoomed cover, with:
+**Item page.** Under the cover, only when the item has a back, a spine or gallery photos: **More photos (n)**. It opens the cover-zoom dialog (16.0) as a small gallery: the cover first, then the back, then the spine, then the gallery, one at a time, the same size as the zoomed cover, with:
 
 - previous / next buttons either side, and the arrow keys; a swipe on a phone;
 - a caption line under the photo when it has one, and "3 of 9";
@@ -171,7 +176,7 @@ As a fallback when there's no suggestion, `GET /marketplace/stats/{release_id}` 
 
 **Per item.** **Fetch value** on the edit page: fetches now, fills the Value field and its note, and saves only when you save the form (so you can look at it first).
 
-**In bulk.** A **Fetch values** tool beside **Fetch covers** in Settings, for your own shelf (admins: any user's, as with covers). It runs in the background with the same floating progress panel. Rather than a second job system, `cover_jobs` grows a `kind` column (`'cover'` or `'value'`, migration 038) and the worker branches on it; the panel says which. Options: which sections, and **skip items valued in the last 30 days** (on by default), **never overwrite values you typed** (always). One request every couple of seconds to stay inside both services' limits (eBay's default is 5,000 calls a day; a 1,000-item shelf is a fraction of that).
+**In bulk.** A **Fetch values** tool beside **Fetch covers** in Settings, for your own shelf (admins: any user's, as with covers). It runs in the background with the same floating progress panel. Rather than a second job system, `cover_jobs` grows a `kind` column (`'cover'` or `'value'`, migration 039) and the worker branches on it; the panel says which. Options: which sections, and **skip items valued in the last 30 days** (on by default), **never overwrite values you typed** (always). One request every couple of seconds to stay inside both services' limits (eBay's default is 5,000 calls a day; a 1,000-item shelf is a fraction of that).
 
 **Currency.** Discogs answers in the seller-settings currency, eBay in the marketplace's. Anything not in `VALUE_CURRENCY` is refused with a message ("Discogs answered in EUR; set your Discogs seller currency to USD"), not silently converted.
 
@@ -231,7 +236,7 @@ The default Browse API limit (5,000 calls a day) is plenty; nothing needs applyi
 ## 10. Execution steps (one commit each)
 
 0. Branch `phase-16a-photos-value`. This spec, ROADMAP 16.0a pointing at it.
-1. Migrations 035 to 037, `create_database.sql` folded in, `utils/condition.py` and its agreement test. No UI.
+1. Migrations 036 to 038, `create_database.sql` folded in, `utils/condition.py` and its agreement test. No UI.
 2. Photos: `save_photo`, `blueprints/photos.py`, orphan cleanup and delete/merge handling, tests (including the cleanup one).
 3. Edit page Photos section (JS uploads, confirms, captions).
 4. Item page "More photos" gallery in the zoom dialog.
@@ -239,7 +244,7 @@ The default Browse API limit (5,000 calls a day) is plenty; nothing needs applyi
 6. Price paid and value: fields on Add and Edit, privacy on the item page, exports.
 7. `utils/valuation.py`: Discogs (release id saved on add, matched for existing records) and eBay (token, median), with tests on recorded answers (the network is blocked in tests).
 8. Per-item Fetch value; Test value sources in Maintenance.
-9. Bulk Fetch values (`cover_jobs.kind`, migration 038, the panel).
+9. Bulk Fetch values (`cover_jobs.kind`, migration 039, the panel).
 10. Stats: Collection value card.
 11. `.env.example`, `docs/ARCHITECTURE.md` (the new blueprint, utils, tables, env vars), README notes for 16.1.
 

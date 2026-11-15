@@ -48,7 +48,7 @@
     <a href="{{ url }}" tabindex="-1" class="book-info block flex-1 p-4 pb-2">
         <h3 class="text-lg font-semibold line-clamp-2 mb-2 text-content-primary">{{ book.title }}</h3>
         {% if book.author %}
-        <p class="text-content-secondary text-sm italic mb-2">{{ bm.by }} {{ book.author }}</p>
+        {% if book.author %}<p class="text-content-secondary text-sm italic mb-2">{{ bm.by }} {{ book.author }}</p>{% endif %}
         {% endif %}
         {% if book.notes %}
         <p class="text-xs text-content-secondary italic line-clamp-2 mb-2">"{{ book.notes }}"</p>

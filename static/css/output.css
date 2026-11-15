@@ -1332,6 +1332,110 @@ html:root[data-style="outrun"] {
   --faint: 160 143 122;
 }
 
+/* ---- OG walnut (16.0, Phil 2026-11-15): Profile -> Appearance -> Palette
+       (users.palette, data-palette) gives OG the Shelf palette above instead
+       of its greys, OG's shape and fonts unchanged. Like Shelf, it takes
+       House's accent shades (light in light, bright in dark, with dark text
+       on the bright ones) and House's status colours: OG's own white-on-light
+       accent rule is for its greys. One attribute more specific than the
+       Classic blocks so it always wins. ---- */
+
+:root[data-style="classic"][data-palette="walnut"] {
+  --paper: 244 236 221;
+  --surface: 252 248 240;
+  --fill: 233 221 198;
+  --rule: 214 197 166;
+  --rule-strong: 150 120 86;
+  --accent: var(--acc-l, 121 116 14);
+  --accent-hover: var(--acc-l-hover, 95 91 11);
+  --accent-text: var(--accent);
+  --accent-text-hover: var(--accent-hover);
+  --chart-bar: var(--accent);
+  --on-accent: 252 248 240;
+  --ink: 43 33 24;
+  --ink-2: 72 56 41;
+  --muted: 98 80 62;
+  --faint: 118 100 80;
+  --red: 157 0 6;
+  --red-strong: 204 36 29;
+  --yellow: 181 118 20;
+  --green: 121 116 14;
+  --blue: 7 102 120;
+  --blue-strong: 7 102 120;
+  --orange: 175 58 3;
+  --purple: 143 63 113;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-style="classic"][data-palette="walnut"]:not([data-mode="light"]) {
+    --paper: 31 24 19;
+    --surface: 45 35 28;
+    --fill: 64 50 39;
+    --rule: 82 64 50;
+    --rule-strong: 140 112 84;
+    --accent: var(--acc-d, 152 151 26);
+    --accent-hover: var(--acc-d-hover, 184 187 38);
+    --on-accent: 31 24 19;
+    --ink: 242 231 212;
+    --ink-2: 222 207 186;
+    --muted: 184 166 144;
+    --faint: 160 143 122;
+    --red: 251 73 52;
+    --red-strong: 251 73 52;
+    --yellow: 250 189 47;
+    --green: 184 187 38;
+    --blue: 131 165 152;
+    --blue-strong: 131 165 152;
+    --orange: 254 128 25;
+    --purple: 211 134 155;
+  }
+}
+
+:root[data-style="classic"][data-palette="walnut"][data-mode="dark"] {
+  --paper: 31 24 19;
+  --surface: 45 35 28;
+  --fill: 64 50 39;
+  --rule: 82 64 50;
+  --rule-strong: 140 112 84;
+  --accent: var(--acc-d, 152 151 26);
+  --accent-hover: var(--acc-d-hover, 184 187 38);
+  --on-accent: 31 24 19;
+  --ink: 242 231 212;
+  --ink-2: 222 207 186;
+  --muted: 184 166 144;
+  --faint: 160 143 122;
+  --red: 251 73 52;
+  --red-strong: 251 73 52;
+  --yellow: 250 189 47;
+  --green: 184 187 38;
+  --blue: 131 165 152;
+  --blue-strong: 131 165 152;
+  --orange: 254 128 25;
+  --purple: 211 134 155;
+}
+
+/* Its swatches show House's shades too (OG's show the light ones only) */
+
+:root[data-style="classic"][data-palette="walnut"] [data-swatch="green"] {
+  --acc-l: 121 116 14;
+}
+
+:root[data-style="classic"][data-palette="walnut"][data-mode="dark"] .accent-swatch {
+  background: rgb(var(--acc-d, 152 151 26));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-style="classic"][data-palette="walnut"]:not([data-mode="light"]) .accent-swatch {
+    background: rgb(var(--acc-d, 152 151 26));
+  }
+}
+
+/* The Palette picker is OG's only */
+
+:root:not([data-style="classic"]) [data-palette-picker] {
+  display: none;
+}
+
 html {
   background-color: rgb(var(--paper));
   /* An #anchor lands below the fixed top bar (h-16), not under it */
@@ -1705,6 +1809,18 @@ textarea {
         .\!btn:hover:not(:disabled), .\!btn:active:not(:disabled) {
     transform: none !important;
   }
+}
+
+/* ---- Avatars (every profile picture and initial, in templates and
+       JS-built HTML): round, but square in Negative Earth and Outrun, which
+       square everything (Phil, 2026-11-15) ---- */
+
+.avatar {
+  border-radius: 9999px;
+}
+
+:root:is([data-style="house"], [data-style="outrun"]) .avatar {
+  border-radius: 0;
 }
 
 /* ---- Small details from philcifone.com / negativeearth.net (House only) ---- */
@@ -2178,27 +2294,11 @@ img.book-cover-img:not([data-loaded]) {
   font-weight: 700;
 }
 
-/* Classic keeps the original details: filled active tab, plain labels */
+/* Classic keeps the original details: no rules between tabs, plain labels
+       (its active tab is the raised one, as everywhere: Tabs, near the end) */
 
 [data-style="classic"] .tab + .tab {
   border-left: 0;
-}
-
-[data-style="classic"] .tab-active,
-    [data-style="classic"] .tab-button.active,
-    [data-style="classic"] [data-tabs] .tab[aria-selected="true"] {
-  color: rgb(var(--ink));
-  border-bottom: 3px solid rgb(var(--accent));
-  background-color: rgb(var(--accent) / .1);
-  font-weight: 500;
-}
-
-
-    [data-style="classic"] .tab-button.\!active {
-  color: rgb(var(--ink)) !important;
-  border-bottom: 3px solid rgb(var(--accent)) !important;
-  background-color: rgb(var(--accent) / .1) !important;
-  font-weight: 500 !important;
 }
 
 [data-style="classic"] .nav-link.nav-active {
@@ -2875,6 +2975,10 @@ summary.chip::-webkit-details-marker {
 
 .max-h-\[70vh\] {
   max-height: 70vh;
+}
+
+.min-h-10 {
+  min-height: 2.5rem;
 }
 
 .min-h-\[1\.25rem\] {
@@ -5071,12 +5175,20 @@ html:has(.cover-zoom[open]) {
   --box-depth: 4px;
 }
 
+/* A DVD case is under half a VHS clamshell's depth: as thin as an album
+   (Phil, 2026-11-15; the item page's .cover-stand does the same) */
+
+:root[data-style="shelf"] .shelf-grid.grid[data-media="video"] .book-item[data-format="DVD"] {
+  --box-depth: 4px;
+}
+
 @media (max-width: 767px) {
   :root[data-style="shelf"] .shelf-grid.grid {
     --box-depth: 5px;
   }
 
-  :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] {
+  :root[data-style="shelf"] .shelf-grid.grid[data-media="record"],
+    :root[data-style="shelf"] .shelf-grid.grid[data-media="video"] .book-item[data-format="DVD"] {
     --box-depth: 3px;
   }
 }
@@ -5578,45 +5690,60 @@ html:has(.cover-zoom[open]) {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-lg);
 }
 
-/* Tabs (16.0, Phil: with an accent line under the active tab, the open
-   tab beside it read as the one joined to the page, like a file folder).
-   Here the active tab is the raised one: paper, accent text, no line; the
-   others are recessed, a shade darker and pressed in from below, so the
-   eye lands on the one in front. Every tab bar in Shelf: profile, settings,
-   wishlist, collections, the Books | Movies | Music switch, stats.
-   The Add page's lookup tabs (.search-method-btn, add_item.js sets
-   data-active) are tabs too.
-   Recessed means darker than the raised paper in both modes: --fill in
-   light, but in dark --fill is the lighter one, so there it's --paper. */
+/* Tabs, every style (16.0. Phil: with an accent line under the active tab,
+   the open tab beside it read as the one joined to the page, like a file
+   folder; first done for Shelf, then every style, 2026-11-15). The active
+   tab is the raised one: the card's surface, accent text, no line; the
+   others are recessed, a shade darker, so the eye lands on the one in
+   front. Every tab bar: profile, stats, settings, wishlist, collections,
+   the Books | Movies | Music switch, and the Add page's lookup tabs
+   (.search-method-btn, add_item.js sets data-active).
+   Recessed means darker than the surface in both modes: --fill in light,
+   but in dark --fill is the lighter one, so there it's --paper (OG's dark
+   greys have nothing darker, so it mixes its own). The soft styles (OG,
+   Shelf) press the recessed tabs in from below; the flat ones don't.
+   Unlayered, after the utilities, so it beats .search-method-btn's
+   hover:bg-primary and data-[active=true]:border-accent. */
 
-:root[data-style="shelf"] {
-  --tab-recess: var(--fill);
-  --tab-recess-hover: var(--paper);
+:root {
+  --tab-recess: rgb(var(--fill));
+  --tab-sink: none;
 }
 
-:root[data-style="shelf"][data-mode="dark"] {
-  --tab-recess: var(--paper);
-  --tab-recess-hover: 38 30 24;
+:root[data-mode="dark"],
+html:root[data-style="outrun"] {
+  --tab-recess: rgb(var(--paper));
+}
+
+:root[data-style="classic"]:not([data-palette="walnut"])[data-mode="dark"] {
+  --tab-recess: color-mix(in srgb, rgb(var(--surface)), black 30%);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-style="shelf"]:not([data-mode="light"]) {
-    --tab-recess: var(--paper);
-    --tab-recess-hover: 38 30 24;
+  :root:not([data-mode="light"]) {
+    --tab-recess: rgb(var(--paper));
+  }
+
+  :root[data-style="classic"]:not([data-palette="walnut"]):not([data-mode="light"]) {
+    --tab-recess: color-mix(in srgb, rgb(var(--surface)), black 30%);
   }
 }
 
-:root[data-style="shelf"] :is(.tab, .search-method-btn) {
-  background-color: rgb(var(--tab-recess));
-  box-shadow: inset 0 -6px 8px -6px rgb(0 0 0 / .18);
+:root:is([data-style="classic"], [data-style="shelf"]) {
+  --tab-sink: inset 0 -6px 8px -6px rgb(0 0 0 / .18);
 }
 
-:root[data-style="shelf"] :is(.tab, .search-method-btn):hover {
-  background-color: rgb(var(--tab-recess-hover));
+:is(.tab, .search-method-btn) {
+  background-color: var(--tab-recess);
+  box-shadow: var(--tab-sink);
 }
 
-:root[data-style="shelf"] :is(.tab-active, .tab-button.active, [data-tabs] .tab[aria-selected="true"],
-                              .search-method-btn[data-active="true"]) {
+:is(.tab, .search-method-btn):hover {
+  background-color: color-mix(in srgb, var(--tab-recess), rgb(var(--surface)) 50%);
+}
+
+:is(.tab-active, .tab-button.active, [data-tabs] .tab[aria-selected="true"],
+    .search-method-btn[data-active="true"]) {
   background-color: rgb(var(--surface));
   border-bottom-color: transparent;
   box-shadow: none;
@@ -5635,13 +5762,13 @@ html:has(.cover-zoom[open]) {
    while its form is open. */
 
 :root[data-style="shelf"] .chip {
-  background-color: rgb(var(--tab-recess));
+  background-color: var(--tab-recess);
   border-color: rgb(0 0 0 / .3);
   box-shadow: inset 0 2px 4px rgb(0 0 0 / .35), inset 0 -1px 0 rgb(255 255 255 / .08);
 }
 
 :root[data-style="shelf"] .chip:hover {
-  background-color: rgb(var(--tab-recess-hover));
+  background-color: color-mix(in srgb, var(--tab-recess), rgb(var(--surface)) 50%);
 }
 
 :root[data-style="shelf"] .chip[aria-pressed="true"] {
@@ -6085,6 +6212,13 @@ and to the right for its faces */
    half a book's depth (Phil, 2026-11-14) */
 
 :root[data-style="shelf"] .cover-stand[data-media="record"] {
+  --box-depth: 5px;
+}
+
+/* A DVD case is under half a VHS clamshell's depth (14mm to 35mm): the
+   same thin box as an album (Phil, 2026-11-15) */
+
+:root[data-style="shelf"] .cover-stand[data-media="video"][data-format="DVD"] {
   --box-depth: 5px;
 }
 

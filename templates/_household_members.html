@@ -25,9 +25,9 @@
            title="{{ 'Take out' if on else 'Add' }} {{ member.username }}'s"
            {% if on %}aria-current="true"{% endif %}>
             {% if member.avatar_url|upload_exists %}
-            <img src="{{ url_for('static', filename=member.avatar_url) }}" alt="" class="w-6 h-6 rounded-full object-cover">
+            <img src="{{ url_for('static', filename=member.avatar_url) }}" alt="" class="w-6 h-6 avatar object-cover">
             {% else %}
-            <span class="w-6 h-6 rounded-full bg-accent text-on-accent text-xs font-bold flex items-center justify-center" aria-hidden="true">{{ member.username[0].upper() }}</span>
+            <span class="w-6 h-6 avatar bg-accent text-on-accent text-xs font-bold flex items-center justify-center" aria-hidden="true">{{ member.username[0].upper() }}</span>
             {% endif %}
             {{ member.username }}
         </a>

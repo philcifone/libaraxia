@@ -82,8 +82,8 @@
                     <!-- Avatar with Upload -->
                     <div class="flex-shrink-0 flex items-center gap-2 group">
                         <div class="relative">
-                            <img id="edit-avatar-img" class="hidden h-16 w-16 rounded-full object-cover">
-                            <div class="h-16 w-16 rounded-full bg-accent flex items-center justify-center text-on-accent text-2xl font-bold" id="edit-avatar-placeholder">
+                            <img id="edit-avatar-img" class="hidden h-16 w-16 avatar object-cover">
+                            <div class="h-16 w-16 avatar bg-accent flex items-center justify-center text-on-accent text-2xl font-bold" id="edit-avatar-placeholder">
                                 U
                             </div>
                             <input type="file" id="admin-avatar-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="hidden" data-change="uploadUserAvatar">
@@ -201,9 +201,9 @@
                             <div class="flex items-center">
                                 {% if user.avatar_url|upload_exists %}
                                     <img src="{{ url_for('static', filename=user.avatar_url) }}" alt="{{ user.username }}"
-                                         class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover mr-3 sm:mr-4">
+                                         class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 avatar object-cover mr-3 sm:mr-4">
                                 {% else %}
-                                    <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold text-sm sm:text-base mr-3 sm:mr-4">
+                                    <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 avatar bg-accent flex items-center justify-center text-on-accent font-bold text-sm sm:text-base mr-3 sm:mr-4">
                                         {{ user.username[0].upper() }}
                                     </div>
                                 {% endif %}
@@ -287,9 +287,9 @@
                                 {% if member.avatar_url|upload_exists %}
                                     <img src="{{ url_for('static', filename=member.avatar_url) }}"
                                          alt="{{ member.username }}"
-                                         class="h-10 w-10 rounded-full object-cover">
+                                         class="h-10 w-10 avatar object-cover">
                                 {% else %}
-                                    <div class="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-on-accent font-bold">
+                                    <div class="h-10 w-10 avatar bg-accent flex items-center justify-center text-on-accent font-bold">
                                         {{ member.username[0].upper() }}
                                     </div>
                                 {% endif %}

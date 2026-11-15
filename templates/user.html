@@ -38,10 +38,10 @@
                             {% if user['avatar_url']|upload_exists %}
                                 <img id="avatar-image" src="{{ url_for('static', filename=user['avatar_url']) }}"
                                      alt="{{ user['username'] }}"
-                                     class="w-full h-full rounded-full object-cover"
+                                     class="w-full h-full avatar object-cover"
                                      style="width: 64px; height: 64px;">
                             {% else %}
-                                <div id="avatar-placeholder" class="w-full h-full rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-on-accent"
+                                <div id="avatar-placeholder" class="w-full h-full avatar bg-accent flex items-center justify-center text-3xl font-bold text-on-accent"
                                      style="width: 64px; height: 64px;">
                                     {{ user['username'][0].upper() }}
                                 </div>
@@ -62,10 +62,10 @@
                     {% if user['avatar_url']|upload_exists %}
                         <img src="{{ url_for('static', filename=user['avatar_url']) }}"
                              alt="{{ user['username'] }}"
-                             class="rounded-full object-cover"
+                             class="avatar object-cover"
                              style="width: 64px; height: 64px; min-width: 64px; min-height: 64px;">
                     {% else %}
-                        <div class="rounded-full bg-accent flex items-center justify-center text-3xl font-bold text-on-accent"
+                        <div class="avatar bg-accent flex items-center justify-center text-3xl font-bold text-on-accent"
                              style="width: 64px; height: 64px;">
                             {{ user['username'][0].upper() }}
                         </div>
@@ -282,9 +282,9 @@
                     {% if friend.avatar_url|upload_exists %}
                         <img src="{{ url_for('static', filename=friend.avatar_url) }}"
                              alt="{{ friend.username }}"
-                             class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                             class="w-10 h-10 avatar object-cover flex-shrink-0">
                     {% else %}
-                        <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-on-accent flex-shrink-0">
+                        <div class="w-10 h-10 avatar bg-accent flex items-center justify-center text-base font-bold text-on-accent flex-shrink-0">
                             {{ friend.username[0].upper() }}
                         </div>
                     {% endif %}

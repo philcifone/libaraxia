@@ -31,8 +31,8 @@ if (searchInput && searchResults) {
                             const username = escapeHtml(user.username);
                             const userPath = escapeHtml(encodeURIComponent(user.username));
                             const avatarHtml = user.avatar_url
-                                ? `<img src="/static/${escapeHtml(user.avatar_url)}" alt="${username}" class="w-10 h-10 rounded-full object-cover">`
-                                : `<div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-base font-bold text-on-accent">${escapeHtml(user.username[0].toUpperCase())}</div>`;
+                                ? `<img src="/static/${escapeHtml(user.avatar_url)}" alt="${username}" class="w-10 h-10 avatar object-cover">`
+                                : `<div class="w-10 h-10 avatar bg-accent flex items-center justify-center text-base font-bold text-on-accent">${escapeHtml(user.username[0].toUpperCase())}</div>`;
 
                             let actionHtml = '';
                             if (user.friendship_status === 'friends') {

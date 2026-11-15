@@ -13,7 +13,8 @@
         <div id="book-container" data-media="{{ m.type if m else 'book' }}" data-view="grid"{% if remember_grid|default(false) %} data-remember-grid{% endif %}{% if bulk_select|default(false) %} data-bulkable{% if bulk_view is defined %} data-bulk-view="{{ bulk_view }}"{% endif %}{% endif %} class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             {% set mark = marks.get(book.id, {}) %}
-            <div class="book-item group">
+            {# data-format: Shelf draws a DVD's box thinner than a VHS one #}
+            <div class="book-item group" data-format="{{ book|item_format or '' }}">
                 <a href="{{ item_url(book) }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
