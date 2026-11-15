@@ -6317,6 +6317,59 @@ and to the right for its faces */
   display: none;
 }
 
+/* The format on a wishlist card (_wishlist_card.html; Phil, 2026-11-15).
+   Card styles: .format-mark, the icon in the accent on a circle of the
+   page colour, right of the title and level with its first line. Shelf,
+   whose cards are covers only: .format-badge, a circle floating on the
+   cover's bottom-right corner, opposite the (+) on the top left. Each
+   style shows one of the two. Fixed width and height, so a wide icon
+   (the VHS cassette) stays a circle, or a square in the square styles. */
+
+.format-mark,
+.format-badge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--r-pill);
+  /* a circle in OG and Shelf, square in Negative Earth and Outrun */
+  font-size: .7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.format-mark {
+  background: rgb(var(--paper));
+  color: rgb(var(--accent-text));
+  margin-top: -.125rem;
+  /* centred on the title's first line (text-lg, 1.75rem) */
+}
+
+.format-badge {
+  display: none;
+}
+
+:root[data-style="shelf"] .shelf-grid.grid .format-badge {
+  display: grid;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  transform: translate(35%, 35%);
+  z-index: 1;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  border: 2px solid rgb(var(--surface));
+  box-shadow: 0 1px 3px rgb(0 0 0 / .35);
+}
+
+@media (max-width: 767px) {
+  :root[data-style="shelf"] .shelf-grid.grid .format-badge {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
 :root[data-style="shelf"] .shelf-grid.grid .wishlist-quick-add {
   display: block;
   position: absolute;
