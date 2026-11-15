@@ -354,8 +354,8 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     assert heading_books_of(html) == ['/static/uploads/a.jpg']
     start = html.index('<div class="heading-books')
     group = html[start:html.index('<h1', start)]
-    assert 'heading-books-upright" aria-hidden="true"' in group and '<a ' not in group
-    assert 'heading-books-stack' not in group      # a stack only from four books
+    assert 'heading-books-left" aria-hidden="true"' in group and '<a ' not in group
+    assert 'heading-books-right' not in group      # one book: one side
 
     upload(client, half, 'spine', jpeg_bytes((60, 600)))
     first = heading_books_of(client.get('/base/index').get_data(as_text=True))
@@ -371,8 +371,8 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
 
 def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
     """At most HEADING_BOOKS of them, however many could stand there;
-    spines out, upright on the left and, from four books, the last three
-    in a stack on the right (Phil, 2026-11-15)."""
+    spines out, upright, split evenly either side of the title, five a
+    side at most (Phil, 2026-11-15)."""
     from utils import item3d, photos
     bob = people['bob']
     cover = real_cover(static_root, 'k.jpg')
@@ -397,7 +397,6 @@ def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
     db.commit()
     login(client, 'bob')
     html = client.get('/base/index').get_data(as_text=True)
-    upright = html[html.index('heading-books-upright'):html.index('heading-books-stack')]
-    stack = html[html.index('heading-books-stack'):html.index('<h1', html.index('heading-books-stack'))]
-    assert upright.count('class="heading-book"') == item3d.HEADING_BOOKS - 3
-    assert stack.count('class="heading-book"') == 3
+    left = html[html.index('heading-books-left'):html.index('heading-books-right')]
+    right = html[html.index('heading-books-right'):html.index('<h1', html.index('heading-books-right'))]
+    assert left.count('class="heading-book"') == right.count('class="heading-book"') == 5

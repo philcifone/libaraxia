@@ -5972,25 +5972,24 @@ html:has(.item3d[open]) {
 }
 
 /* Books on the heading (ROADMAP 16.0a): some of your own books that turn
-   in 3D (templates/_item3d.html), on the Shelves heading's ledge with their
-   spines out (Phil, 2026-11-15): standing upright left of the title, a
-   little turned so a sliver of cover shows, and a stack of three lying on
-   the right. Still, with the light each face would have in the 3D view
-   (book_detail.js faceLight, worked out once for these two poses). Each
-   holder (.heading-book) is as big as its turned book looks, so the flex
-   row spaces them as they look; the box turns about its own centre inside.
-   No perspective: drawn flat, as an illustration, so every edge that runs
-   along the shelf stays parallel to it (Phil, 2026-11-15; a vanishing
-   point tilted the spines' tops and bottoms). No shadow under them
-   either: it made them look afloat. Decoration: no pointer
-   events, no motion. */
+   in 3D (templates/_item3d.html) on the Shelves heading's ledge, standing
+   upright with their spines out, side by side, half each side of the
+   title (Phil, 2026-11-15). Turned 6 degrees (rx -6, ry 84) so a sliver
+   of cover and the tops of the pages show, with the light each face would
+   have in the 3D view (book_detail.js faceLight, worked out once for this
+   pose). Each holder (.heading-book) is as wide as its turned book looks,
+   so the row packs them as they look; the box turns about its own centre
+   inside. No perspective: drawn flat, as an illustration, so every edge
+   that runs along the shelf stays parallel to it (a vanishing point tilted
+   the spines' tops and bottoms). No shadow under them either: it made
+   them look afloat. Decoration: no pointer events, no motion. */
 
 .heading-books {
   display: none;
 }
 
 :root[data-style="shelf"] .heading-books {
-  --bh: 3.5rem;
+  --bh: 4rem;
   /* every book's height */
   position: absolute;
   /* on the ledge's top face, a little back from its edge */
@@ -6003,95 +6002,52 @@ html:has(.item3d[open]) {
           user-select: none;
 }
 
+/* Flush against the case's sides: the left panel's inside strip, and the
+   frame on the right (Phil, 2026-11-15: "justified to either side, no gap") */
+
+:root[data-style="shelf"] .heading-books-left  {
+  left: var(--side-w);
+}
+
+:root[data-style="shelf"] .heading-books-right {
+  right: 0;
+}
+
 .heading-book {
   --bw: calc(var(--bh) * var(--a));
   --bd: max(3px, calc(var(--bh) * var(--dr)));
   position: relative;
   display: block;
   transform-style: preserve-3d;
+  width: calc(var(--bd) + var(--bw) * .1);
+  height: var(--bh);
 }
 
 .heading-book .item3d-box {
   --h: var(--bh);
+  --rx: -6deg;
+  --ry: 84deg;
   position: absolute;
   left: 50%;
   top: 50%;
   margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2);
 }
 
-/* Upright, left of the title: spine out, turned 6 degrees (rx -6, ry 84) */
-
-:root[data-style="shelf"] .heading-books-upright {
-  left: calc(var(--side-w) + 1rem);
-  gap: 1px;
-}
-
-.heading-books-upright .heading-book {
-  width: calc(var(--bd) + var(--bw) * .11);
-  height: var(--bh);
-}
-
-.heading-books-upright .item3d-box {
-  --rx: -6deg;
-  --ry: 84deg;
-}
-
-.heading-books-upright .item3d-spine {
+.heading-book .item3d-spine {
   --shade: .123;
 }
 
-.heading-books-upright .item3d-front {
+.heading-book .item3d-front {
   --shade: .65;
 }
 
-.heading-books-upright .item3d-top   {
+.heading-book .item3d-top   {
   --shade: .295;
-}
-
-/* A stack on the right: lying with the front cover up and the spine out,
-   reading left to right, seen a little from above. Bottom book first in
-   the markup (column-reverse), as each one only covers the one before:
-   each book's holder is its own 3D scene, painted in document order. */
-
-:root[data-style="shelf"] .heading-books-stack {
-  right: 1.75rem;
-  flex-direction: column-reverse;
-  align-items: center;
-}
-
-.heading-books-stack .heading-book {
-  width: var(--bh);
-  height: var(--bd);
-  margin-top: 1px;
-}
-
-.heading-books-stack .item3d-box {
-  transform: rotateX(-10deg) rotateZ(-90deg) rotateY(90deg);
-}
-
-.heading-books-stack .item3d-front  {
-  --shade: .261;
-}
-
-.heading-books-stack .item3d-spine  {
-  --shade: .166;
 }
 
 @media (max-width: 639px) {
   :root[data-style="shelf"] .heading-books {
-    --bh: 3rem;
-  }
-
-  :root[data-style="shelf"] .heading-books-upright {
-    left: calc(var(--side-w) + .5rem);
-  }
-
-  :root[data-style="shelf"] .heading-books-stack {
-    right: .9rem;
-  }
-
-  .heading-books-upright .heading-book:nth-child(n+4) {
-    display: none;
+    --bh: 3.6rem;
   }
 }
 

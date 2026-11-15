@@ -141,13 +141,14 @@ def model(item, item_photos):
 
 # --- Books standing on the Shelves heading (ROADMAP 16.0a) -------------------
 
-HEADING_BOOKS = 8       # at most: five standing and a stack of three, with room to spare
+HEADING_BOOKS = 10      # at most: five each side of the title, which a phone has room for
 
 
 def heading_books(conn, user_id, seed):
     """Up to HEADING_BOOKS models of the user's own books that turn in 3D,
     for the Shelves heading's ledge (Shelf style, their own Shelves page
-    only; drawn still, spines out, by templates/_icons.html page_heading).
+    only; drawn still, upright with spines out, by templates/_icons.html
+    page_heading).
 
     `seed` is drawn at login (session['heading_seed']), so the choice
     stays put for a visit and changes with the next. Each book's place in
