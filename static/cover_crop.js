@@ -676,7 +676,7 @@ function initCropTool() {
             const response = await fetch('/covers/crop/preview', {
                 method: 'POST',
                 headers: getCSRFHeaders(),
-                body: JSON.stringify({ source, geometry: geom }),
+                body: JSON.stringify({ source, geometry: geom, fetched: $('existing_cover_url')?.value || '' }),
             });
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
@@ -732,10 +732,39 @@ function initCropTool() {
         location.reload();
     }
 
+    // An Edit page: the cropped cover is saved now, not with the form, so
+    // nothing done next (adding photos reloads the page) can lose it. The
+    // form's own cover inputs are cleared: the saved cover is the cover, and
+    // Save Changes mustn't put the uncropped pick back over it.
+    async function saveCover(geom) {
+        const response = await fetch(openButton.dataset.saveUrl, {
+            method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ source, geometry: geom, fetched: $('existing_cover_url')?.value || '' }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            setBusyText(data.error || "Couldn't save the crop.");
+            setTimeout(() => setBusyText(''), 3000);
+            return;
+        }
+        clearCrop(false);
+        if ($('image')) $('image').value = '';
+        if ($('existing_cover_url')) $('existing_cover_url').value = '';
+        openButton.dataset.currentCover = data.path;
+        const img = document.createElement('img');
+        img.src = data.url;
+        img.alt = 'Cover';
+        img.className = 'max-w-[12rem] rounded-lg';
+        preview.replaceChildren(img);
+        $('crop-saved')?.classList.remove('hidden');
+        announce('Cropped cover saved.');
+        dialog.close();
+    }
+
     async function save() {
         if (!await doCrop()) return;                        // crop first if the handles moved on
         const top = history[history.length - 1];
         if (photoTarget) return savePhoto(top.geom);
+        if (openButton.dataset.saveUrl) return saveCover(top.geom);
         sourceInput.value = source;
         cropInput.value = JSON.stringify(top.geom);
 
@@ -882,6 +911,7 @@ function initCropTool() {
     // --- The form's side ------------------------------------------------------------------------
 
     function clearCrop(restore) {
+        $('crop-saved')?.classList.add('hidden');
         sourceInput.value = '';
         cropInput.value = '';
         note.classList.add('hidden');

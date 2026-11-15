@@ -495,3 +495,46 @@ def test_wishlist_add_with_crop(client, app, db, people, made):
     assert r.status_code == 302
     new = track(app, made, scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Jaws'"))
     assert new and exists(app, new) and not exists(app, source)
+
+
+# --- Save at once on an Edit page (covers.crop_save; Phil, 2026-11-15) ---------
+
+def test_crop_save_replaces_the_cover_at_once(client, app, db, people, made):
+    """The crop tool's Save on an Edit page saves the cover there and then,
+    from the item's own cover or a staged pick; the old files go."""
+    old = put_cover(app, size=(200, 300))
+    book = add_book(db, people['bob'], cover=old)
+    login(client, 'bob')
+    assert f'data-save-url="/covers/crop/save/{book}"' in client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert 'data-save-url' not in client.get('/books/add').get_data(as_text=True)
+    r = client.post(f'/covers/crop/save/{book}', json={'source': old, 'geometry': json.loads(CROP)})
+    first = track(app, made, scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book))
+    assert r.get_json() == {'success': True, 'message': 'Cropped cover saved.', 'path': first,
+                            'url': f'/static/{first}'}
+    assert first != old and exists(app, first) and not exists(app, old)
+    source = stage(client, made)
+    client.post(f'/covers/crop/save/{book}', json={'source': source, 'geometry': json.loads(CROP)})
+    second = track(app, made, scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book))
+    assert exists(app, second) and not exists(app, first) and not exists(app, source)
+
+
+def test_crop_save_is_the_owners_and_only_of_its_own_sources(client, app, db, people, made):
+    mine = track(app, made, put_cover(app))
+    theirs = track(app, made, put_cover(app))
+    book = add_book(db, people['bob'], cover=mine)
+    add_book(db, people['carol'], title='Other', cover=theirs)
+    login(client, 'bob')
+    r = client.post(f'/covers/crop/save/{book}', json={'source': theirs, 'geometry': json.loads(CROP)})
+    assert r.status_code == 400 and exists(app, theirs)
+    assert client.post(f'/covers/crop/save/{book}', json={'source': mine, 'geometry': {'v': 9}}).status_code == 400
+    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) == mine
+    client.get('/auth/logout')
+    login(client, 'carol')                   # no circle with bob: can't see it
+    r = client.post(f'/covers/crop/save/{book}', json={'source': mine, 'geometry': json.loads(CROP)})
+    assert r.status_code == 404
+    client.get('/auth/logout')
+    login(client, 'alice')                   # bob's household, and admin
+    db.execute('UPDATE users SET is_admin = 0 WHERE id = ?', (people['alice'],))
+    db.commit()
+    r = client.post(f'/covers/crop/save/{book}', json={'source': mine, 'geometry': json.loads(CROP)})
+    assert r.status_code == 403 and exists(app, mine)
