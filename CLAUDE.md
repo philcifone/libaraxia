@@ -19,11 +19,12 @@ pip install -r requirements.txt -r requirements-dev.txt; npm install; cp .env.ex
 python3 manage.py migrate                 # new DB from create_database.sql; existing: backup + pending migrations
 python3 manage.py status
 python3 manage.py --db /tmp/x.db migrate  # any other file
-python3 app.py                            # dev server (HTTPS for the camera: --cert certs/cert.pem --key certs/key.pem)
-DATABASE_PATH=/tmp/test.db python3 app.py # manual checks on a copy of the DB
+systemctl --user restart libaraxia-dev   # THE dev server: https://192.168.1.239:5000, dev/dev.db, migrates on start
 npm run build:css                         # after adding Tailwind classes; input is static/styles.css, output.css is committed
 pytest                                    # about a second; CI runs it on every push/PR to main (Python 3.12)
 ```
+
+**One dev server** (docs/HTTPS-SETUP.md): use it, never start another or copy the DB again. It serves the main checkout (no worktrees for UI work), trusted HTTPS via mkcert. Claude's screenshots log in as `claude` / `claude-dev`, never as Phil, so his appearance settings stay his. After adding a migration, restart the service.
 
 ## Data model gotchas
 

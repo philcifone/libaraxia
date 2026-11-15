@@ -1,147 +1,119 @@
-# HTTPS Setup for Camera/Barcode Scanner
+# The dev server and HTTPS
 
-The barcode scanner requires HTTPS (or localhost) to access the device camera. Here are your options:
+The barcode scanner needs the camera, and browsers only give the camera to a
+secure origin (HTTPS, or `localhost`). So the dev server runs on HTTPS, with
+a certificate every browser on the LAN trusts.
 
-## Option 1: ngrok (Easiest for Quick Testing)
+## One dev server
 
-**Best for:** Testing on your phone without certificate warnings
+There is one, and only one (Phil, 2026-11-15: a server per branch or
+worktree, each on its own database copy and password, was impossible to keep
+track of):
 
-```bash
-# Install ngrok from https://ngrok.com/download
-# Then run:
-ngrok http 5000
-```
-
-Access the HTTPS URL from your phone (e.g., `https://abc123.ngrok-free.app`)
-
-**Pros:** No certificate warnings, works immediately
-**Cons:** Requires internet, URL changes each restart (unless paid plan)
-
----
-
-## Option 2: Self-Signed Certificate (Local Network)
-
-**Best for:** Local development on your network
-
-### Step 1: Generate Certificate
+| | |
+|---|---|
+| URL | `https://192.168.1.239:5000` (or `https://localhost:5000`) |
+| Database | `dev/dev.db` (gitignored), made 2026-11-15 from the old preview server's database, whose covers are the ones in `static/uploads` (`library.db` is an older copy whose covers were lost on 2026-11-11) |
+| Code | the main checkout, whatever branch is checked out; Flask's reloader follows edits and branch switches |
+| Service | `~/.config/systemd/user/libaraxia-dev.service` |
 
 ```bash
-./generate-cert.sh
+systemctl --user restart libaraxia-dev     # after a new migration, a new cert or .env change
+systemctl --user status libaraxia-dev
+journalctl --user -u libaraxia-dev -f      # the log
 ```
 
-This creates:
-- `certs/cert.pem` (certificate)
-- `certs/key.pem` (private key)
+It is enabled, and lingering is on for the user (`loginctl enable-linger
+phil`), so it starts at boot and keeps running after logout.
 
-### Step 2: Run with HTTPS
+It runs `manage.py --db dev/dev.db migrate --yes` before every start, so a
+restart brings the database up to the checked-out code. Note that going back
+to an older branch does not undo a migration: the database stays ahead.
+
+Logins: your own accounts, plus `claude` /
+`claude-dev` (an admin, friends with Phil), which Claude uses for its
+screenshots so they never change your appearance settings.
+
+To set it up again (a new machine, or the file lost), save this as
+`~/.config/systemd/user/libaraxia-dev.service`, then
+`systemctl --user daemon-reload && systemctl --user enable --now libaraxia-dev`:
+
+```ini
+# Libaraxia's one dev server: HTTPS on 0.0.0.0:5000, database dev/dev.db,
+# the main checkout's code (Flask's reloader follows edits and branch
+# switches). Migrates before each start. See docs/HTTPS-SETUP.md.
+#   systemctl --user restart libaraxia-dev
+#   journalctl --user -u libaraxia-dev -f
+[Unit]
+Description=Libaraxia dev server (https://192.168.1.239:5000, dev/dev.db)
+
+[Service]
+WorkingDirectory=/home/phil/coding/libaraxia
+Environment=DATABASE_PATH=/home/phil/coding/libaraxia/dev/dev.db
+Environment=PORT=5000
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/home/phil/coding/libaraxia/venv/bin/python manage.py --db dev/dev.db migrate --yes
+ExecStart=/home/phil/coding/libaraxia/venv/bin/python app.py --cert certs/cert.pem --key certs/key.pem
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+```
+
+A worktree has its own files, which this server doesn't see. UI work happens
+in the main checkout; anything that needs its own server says its port and
+database, and is shut down after.
+
+## The certificate (mkcert)
+
+`./generate-cert.sh` writes `certs/cert.pem` and `certs/key.pem` for
+`localhost` and this machine's LAN addresses. With
+[mkcert](https://github.com/FiloSottile/mkcert) installed, they are signed by
+mkcert's local CA, which `mkcert -install` added to the system, Firefox and
+Chrome trust stores: no warnings. Without mkcert it falls back to a
+self-signed certificate, which every browser warns about.
 
 ```bash
-python3 app.py --cert certs/cert.pem --key certs/key.pem
+sudo pacman -S mkcert      # once
+mkcert -install            # once per machine (not as root); restart the browsers
+./generate-cert.sh         # again whenever the LAN address changes
+systemctl --user restart libaraxia-dev
 ```
 
-### Step 3: Access from Phone
+The certificate lasts about two years; the CA ten.
 
-1. Find your computer's IP: `ip addr` or `ifconfig`
-2. Access `https://192.168.x.x:5000` from phone
-3. **Accept certificate warning** (this is safe - it's your own certificate)
-   - Chrome: Click "Advanced" → "Proceed to 192.168.x.x (unsafe)"
-   - Safari: Click "Show Details" → "visit this website"
+Why not plain openssl any more: `openssl req -x509` marks its certificate as
+a CA (`CA:TRUE`) by default, and Firefox refuses a CA certificate as a
+site's own, with no way to click past it
+(`MOZILLA_PKIX_ERROR_CA_CERT_USED_AS_END_ENTITY`). Safari accepted it, which
+is why only Safari worked. The fallback in `generate-cert.sh` now sets
+`CA:FALSE`.
 
-**Pros:** Works on local network, no external service needed
-**Cons:** Browser warning (must click through), certificate expires in 365 days
+### The iPhone
 
----
+The phone has to trust mkcert's CA once:
 
-## Option 3: Docker with HTTPS
+1. Get `rootCA.pem` onto the phone. It is in `$(mkcert -CAROOT)`. Copy that
+   file only; **never `rootCA-key.pem`**, which would let anyone who has it
+   make certificates your devices trust.
+2. Open it, then Settings → Profile Downloaded → Install.
+3. Settings → General → About → Certificate Trust Settings → turn on full
+   trust for "mkcert phil@gaia".
 
-### Step 1: Generate certificate (same as above)
+## Other ways
 
-```bash
-./generate-cert.sh
-```
-
-### Step 2: Update docker-compose.yml
-
-Add the certs volume:
-
-```yaml
-volumes:
-  - ./static/uploads:/app/static/uploads
-  - ./instance:/app/instance
-  - ./certs:/app/certs  # Add this line
-```
-
-### Step 3: Update Dockerfile CMD
-
-Replace the last line with:
-
-```dockerfile
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", \
-     "--certfile=/app/certs/cert.pem", "--keyfile=/app/certs/key.pem", \
-     "app:create_app()"]
-```
-
-### Step 4: Rebuild and run
-
-```bash
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
-```
-
----
-
-## Option 4: Production Setup (Real Certificate)
-
-**Best for:** Actual production deployment
-
-Use a reverse proxy (nginx/traefik) with Let's Encrypt:
-
-1. Get a domain name
-2. Point it to your server
-3. Use Certbot to get free SSL certificate
-4. Configure nginx to proxy to your Flask app
-
-(This is more complex but gives you a real, trusted certificate)
-
----
-
-## Quick Comparison
-
-| Method | Setup Time | Certificate Warning | Works Offline | Best For |
-|--------|------------|-------------------|---------------|----------|
-| ngrok | 2 min | ❌ No | ❌ No | Quick testing |
-| Self-signed | 5 min | ⚠️ Yes (once) | ✅ Yes | Local development |
-| Docker + self-signed | 10 min | ⚠️ Yes (once) | ✅ Yes | Local production |
-| Real certificate | 30+ min | ❌ No | ✅ Yes | Real production |
-
----
+- **ngrok** (`ngrok http 5000`) gives a public HTTPS URL with a real
+  certificate, when the phone isn't on the LAN. Needs the internet; the URL
+  changes on every run.
+- **Production** runs behind a reverse proxy with a real certificate; see
+  `deploy/README.md`.
 
 ## Troubleshooting
 
-**"Your connection is not private" warning**
-- This is normal with self-signed certificates
-- Click "Advanced" → "Proceed anyway"
-- You only need to do this once per device
-
-**Still getting getUserMedia error**
-- Make sure you're using `https://` not `http://`
-- Check that the certificate files exist in `certs/`
-- Try clearing browser cache and reloading
-
-**Can't access from phone**
-- Make sure phone is on same WiFi network
-- Check firewall isn't blocking port 5000
-- Try accessing from computer first to verify it works
-
----
-
-## Recommended Approach
-
-For your use case, I recommend:
-
-1. **Development:** Use ngrok for initial testing
-2. **Local server:** Use self-signed certificate
-3. **Production:** Set up nginx + Let's Encrypt
-
-The self-signed approach is included and ready to go - just run `./generate-cert.sh` and restart with the SSL flags!
+- **Still a warning in Firefox**: restart it after `mkcert -install`; check
+  `certs/cert.pem` is mkcert's (`openssl x509 -in certs/cert.pem -noout -issuer`).
+- **No camera**: the address must be `https://`, and on the phone, the CA trusted
+  (above).
+- **Phone can't connect**: same Wi-Fi; port 5000 open in the firewall; the
+  LAN address in the certificate (`./generate-cert.sh` again if it changed).

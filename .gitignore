@@ -74,3 +74,6 @@ docs/skeuomorphic-inspo.jpg
 
 # Site backups (utils/backups.py), beside the database by default
 backups/
+
+# The one dev server's database (libaraxia-dev, docs/HTTPS-SETUP.md)
+dev/
