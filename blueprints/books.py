@@ -588,7 +588,7 @@ def _book_tools_context(conn, book):
         # The Photos section (_photos_edit.html, ROADMAP 16.0a)
         'photos': photos.photos_of(conn, book['id']),
         'photo_kinds': photos.kinds_for(media.media_type_of(book), book['format']),
-        'photo_labels': {kind: photos.label(kind, book['format']) for kind in photos.KINDS},
+        'photo_labels': {kind: photos.label(kind, book['format'], media.media_type_of(book)) for kind in photos.KINDS},
         # What it still needs before it turns in 3D (utils/item3d.py)
         'photos_missing_3d': item3d.missing(book, photos.photos_of(conn, book['id'])),
         'has_3d_shape': item3d.shape_for(media.media_type_of(book), book['format']) is not None,
@@ -750,7 +750,7 @@ def render_item_page(conn, book):
     item_photos = photos.photos_of(conn, id)
     cover_url = (url_for('static', filename=book['cover_image_url'])
                  if upload_exists(book['cover_image_url']) else None)
-    photo_slides = photos.slides(item_photos, cover_url, book['format'])
+    photo_slides = photos.slides(item_photos, cover_url, book['format'], media.media_type_of(book))
 
     # Condition (16.0a): "NM / VG+" for a record (record, then sleeve), the
     # label for a book or movie; the full labels on hover

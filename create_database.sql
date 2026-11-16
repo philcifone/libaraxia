@@ -162,9 +162,9 @@ CREATE INDEX idx_books_added_by ON books(added_by);
 CREATE INDEX idx_books_media_type ON books(media_type);
 CREATE INDEX idx_books_barcode ON books(barcode);
 
--- What a photo is of (migration 040; utils/photos.py keeps in step, a test
--- checks). single = 1: an item has at most one. 'spine' is the left side,
--- 'side' the right (a VHS sleeve is printed on both).
+-- What a photo is of (migrations 040, 041; utils/photos.py keeps in step, a
+-- test checks). single = 1: an item has at most one. 'spine' is the left
+-- side, 'side' the right (a VHS sleeve is printed on both).
 CREATE TABLE photo_kinds (
     code TEXT PRIMARY KEY,
     label TEXT NOT NULL,
@@ -176,7 +176,8 @@ INSERT INTO photo_kinds (code, label, single, position) VALUES
     ('spine', 'Spine', 1, 2),
     ('side', 'Right side', 1, 3),
     ('top', 'Top', 1, 4),
-    ('gallery', 'Photo', 0, 5);
+    ('bottom', 'Bottom', 1, 5),
+    ('gallery', 'Photo', 0, 6);
 
 -- Photos beyond the cover, per item (migrations 036, 040): which kinds a
 -- format takes is utils/photos.kinds_for. Files under
@@ -192,6 +193,49 @@ CREATE TABLE item_photos (
 );
 CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
 CREATE UNIQUE INDEX idx_item_photos_one_each ON item_photos(book_id, kind) WHERE kind <> 'gallery';
+
+-- Placeholder faces (migration 041, ROADMAP 16.0c, docs/FACES-SPEC.md): the
+-- admin's images for a face without a photo, by body ('book', 'vinyl',
+-- 'cd', 'cassette', 'dvd', 'vhs_sleeve', 'vhs_clamshell'; utils/faces.py),
+-- named sets of them, and each item's choices. Files under
+-- static/uploads/faces/; find_orphaned_images reads face_placeholders.
+CREATE TABLE face_placeholders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    body TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,              -- 'uploads/faces/...', relative to static/
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_face_placeholders_body ON face_placeholders(body, kind);
+
+-- A named group of placeholders for one body, one per face at most; one
+-- set per body may be its default (used where an item chose nothing)
+CREATE TABLE face_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    body TEXT NOT NULL,
+    name TEXT NOT NULL,
+    is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_face_sets_one_default ON face_sets(body) WHERE is_default = 1;
+
+CREATE TABLE face_set_members (
+    set_id INTEGER NOT NULL REFERENCES face_sets(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
+    placeholder_id INTEGER NOT NULL REFERENCES face_placeholders(id) ON DELETE CASCADE,
+    PRIMARY KEY (set_id, kind)
+);
+
+-- An owner's choice of placeholder for one face of one item. A photo of
+-- that face wins over it; deleting the placeholder drops the choice.
+CREATE TABLE item_faces (
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
+    placeholder_id INTEGER NOT NULL REFERENCES face_placeholders(id) ON DELETE CASCADE,
+    PRIMARY KEY (book_id, kind)
+);
+CREATE INDEX idx_item_faces_placeholder ON item_faces(placeholder_id);
 
 -- Per-user status: reading, watching or listening (statuses table).
 CREATE TABLE collections (
@@ -563,4 +607,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('037_condition_grades.sql'),
     ('038_item_value.sql'),
     ('039_value_jobs.sql'),
-    ('040_photo_kinds.sql');
+    ('040_photo_kinds.sql'),
+    ('041_faces.sql');

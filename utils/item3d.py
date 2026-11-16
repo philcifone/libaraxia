@@ -7,11 +7,15 @@ then its cover opens the gallery or the plain zoom. The one exception is a
 CD's spine, a few millimetres of small type, which is drawn from the title
 when there's no photo.
 
+Every face takes a photo, whatever the shape (16.0c, docs/FACES-SPEC.md):
+the ones listed in NEEDS are printed and required; the rest, a book's
+pages, a tape's open bottom, a sleeve's edges, are drawn plain without one.
+
 Shapes, by media type and format:
 
     book    a book: cover, back and spine; the other three sides are paper
     sleeve  vinyl (LP, EP, 7in, 10in, 12in): cover and back on a card
-            sleeve a few millimetres thick
+            sleeve a few millimetres thick, or as thick as its spine photo
     jewel   a CD, in a jewel case or a card sleeve: the cover photo is the
             whole front, the hinge's bar and all (Phil, 2026-11-15: nothing
             drawn), the back the same size; the thickness from a spine
@@ -98,14 +102,14 @@ def missing(item, item_photos):
     for need in NEEDS[shape]:
         choices = need if isinstance(need, tuple) else (need,)
         if not any(item_photos[kind] for kind in choices):
-            out.append(' or '.join(photos.label(kind, fmt) for kind in choices))
+            out.append(' or '.join(photos.label(kind, fmt, media_type_of(item)) for kind in choices))
     return out
 
 
 def model(item, item_photos):
     """What templates/_item3d.html draws, or None when the item isn't ready.
 
-    {'shape', 'faces': {'front', 'back', 'spine', 'side', 'top'} (URLs; a
+    {'shape', 'faces': {'front', 'back', 'spine', 'side', 'top', 'bottom'} (URLs; a
     face without one is plain), 'aspect' (the box's width over its height),
     'depth' (thickness over height), 'title', 'author'}.
     """
@@ -126,9 +130,10 @@ def model(item, item_photos):
         faces.setdefault('spine', faces.get('side'))
         faces.setdefault('side', faces['spine'])
     # The spine photo's own shape gives the thickness (its width over its
-    # height); a sleeve, and a CD without a spine photo, have a fixed one
+    # height; a gatefold's spine since 16.0c); a sleeve or a CD without
+    # one has a fixed one
     edge = item_photos[photos.SPINE] or item_photos[photos.SIDE]
-    depth = FIXED_DEPTH.get(shape) if shape == SLEEVE or not edge else None
+    depth = FIXED_DEPTH.get(shape) if not edge else None
     if depth is None:
         depth = _aspect(edge['path']) or 0.08
     return {

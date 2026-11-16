@@ -1,5 +1,5 @@
-"""Item photos beyond the cover: a back, sides and a gallery (ROADMAP 16.0a,
-docs/PHOTOS-VALUE-SPEC.md section 3; migrations 036 and 040).
+"""Item photos beyond the cover: a back, every side and a gallery (ROADMAP 16.0a, 16.0c;
+docs/PHOTOS-VALUE-SPEC.md section 3, docs/FACES-SPEC.md; migrations 036, 040, 041).
 
 Queries only; the files are saved by image_utils.save_photo and removed by
 image_utils.delete_image_file. Routes are in blueprints/photos.py; the item
@@ -9,36 +9,35 @@ the 3D view needs of them is utils/item3d.py.
 from flask import url_for
 
 from utils import image_utils
-from utils.media import BOOK, VIDEO, RECORD
+from utils.media import BOOK
 
-# The photo_kinds table (migration 040; a test keeps the two in step), in
-# the gallery's order. SPINE is the left side, as a book in the hand; SIDE
-# is the right (a VHS sleeve is printed on both).
-BACK, SPINE, SIDE, TOP, GALLERY = 'back', 'spine', 'side', 'top', 'gallery'
-KINDS = (BACK, SPINE, SIDE, TOP, GALLERY)
-SINGLE = (BACK, SPINE, SIDE, TOP)   # one per item; adding another replaces it
+# The photo_kinds table (migrations 040, 041; a test keeps the two in
+# step), in the gallery's order. SPINE is the left side, as a book in the
+# hand; SIDE is the right; TOP and BOTTOM the ends (16.0c: every type takes
+# every face, docs/FACES-SPEC.md section 2).
+BACK, SPINE, SIDE, TOP, BOTTOM, GALLERY = 'back', 'spine', 'side', 'top', 'bottom', 'gallery'
+KINDS = (BACK, SPINE, SIDE, TOP, BOTTOM, GALLERY)
+SINGLE = (BACK, SPINE, SIDE, TOP, BOTTOM)   # one per item; adding another replaces it
+EDGES = (SPINE, SIDE, TOP, BOTTOM)          # the faces a placeholder can stand in for (16.0c)
 MAX_PER_ITEM = 30               # enough for a box set; stops a runaway upload
-LABELS = {BACK: 'Back', SPINE: 'Spine', SIDE: 'Right side', TOP: 'Top', GALLERY: 'Photo'}
-
-# A record on vinyl: a card sleeve, with no spine worth a photo
-VINYL = ('LP', 'EP', '7in', '10in', '12in')
+LABELS = {BACK: 'Back', SPINE: 'Spine', SIDE: 'Right side', TOP: 'Top', BOTTOM: 'Bottom', GALLERY: 'Photo'}
+# A book's right side and ends are its pages
+BOOK_LABELS = {SIDE: 'Fore-edge', TOP: 'Top edge', BOTTOM: 'Bottom edge'}
 
 
 def kinds_for(media_type, fmt=None):
-    """The kinds an item of this type and format takes, in the edit page's
-    order. A book, a DVD, a CD and a cassette have a spine; a VHS sleeve is
-    printed all round (both sides and the top; the bottom is open); a vinyl
-    sleeve is a front and a back."""
-    if media_type == VIDEO and fmt == 'VHS':
-        return KINDS
-    if media_type == RECORD and (fmt in VINYL or not fmt):
-        return (BACK, GALLERY)
-    return (BACK, SPINE, GALLERY)
+    """The kinds an item takes, in the edit page's order: every face and the
+    gallery, whatever its type (Phil, 2026-11-15: "something interesting in
+    the paper" of a book, a gatefold's printed spine, a tape's bottom)."""
+    return KINDS
 
 
-def label(kind, fmt=None):
-    """What the UI calls a kind: on a VHS the spine is the "Left side",
-    since it has a right one too."""
+def label(kind, fmt=None, media_type=None):
+    """What the UI calls a kind: a book's right side and ends are its
+    pages ("Fore-edge"); on a VHS the spine is the "Left side", since it
+    has a right one too."""
+    if media_type == BOOK and fmt != 'Audiobook' and kind in BOOK_LABELS:
+        return BOOK_LABELS[kind]
     if kind == SPINE and fmt == 'VHS':
         return 'Left side'
     return LABELS[kind]
@@ -65,7 +64,7 @@ def photos_of(conn, book_id):
     return out
 
 
-def slides(photos, cover_url=None, fmt=None):
+def slides(photos, cover_url=None, fmt=None, media_type=None):
     """The item page's gallery order: cover, back, sides, top, gallery.
     Each a dict with url, caption and a label ("Back") for the alt text."""
     out = []
@@ -73,7 +72,7 @@ def slides(photos, cover_url=None, fmt=None):
         out.append({'url': cover_url, 'caption': '', 'label': 'Cover'})
     for kind in SINGLE:
         if photos[kind]:
-            out.append({**as_dict(photos[kind]), 'label': label(kind, fmt)})
+            out.append({**as_dict(photos[kind]), 'label': label(kind, fmt, media_type)})
     for row in photos[GALLERY]:
         out.append({**as_dict(row), 'label': LABELS[GALLERY]})
     return out
@@ -111,13 +110,13 @@ def delete(conn, photo_id, book_id):
 
 
 def box_faces(conn, rows):
-    """The Shelf style's flat cover box with a VHS sleeve's top and right
-    side photos on its faces (Phil, 2026-11-15): {book_id: style}, where
-    style sets --face-top / --face-side to the photos' URLs, for the VHS
-    items among `rows` that have either. One query per page of items; the
-    item page and the Movies grid use it (styles.css "VHS faces")."""
-    ids = [r['id'] for r in rows
-           if r['media_type'] == VIDEO and r['format'] == 'VHS']
+    """The Shelf style's flat cover box with an item's top and right side
+    photos on its faces (Phil, 2026-11-15; a VHS first, every type since
+    16.0c): {book_id: style}, where style sets --face-top / --face-side to
+    the photos' URLs, for the items among `rows` that have either. One
+    query per page of items; the item page, the library grids and their
+    infinite scroll (book_utils.card_json) use it (styles.css "Box faces")."""
+    ids = [r['id'] for r in rows]
     if not ids:
         return {}
     marks = ','.join('?' * len(ids))

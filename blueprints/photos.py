@@ -99,7 +99,7 @@ def add(book_id, kind):
     saved, error = _save_files(conn, book, kind, files)
     if error:
         return _done(book, error, ok=False, status=400, photos=saved)
-    word = photos.label(kind, book['format'])
+    word = photos.label(kind, book['format'], media.media_type_of(book))
     message = (f'{word} photo saved.' if kind in photos.SINGLE
                else f'{len(saved)} photo{"s" if len(saved) != 1 else ""} added.')
     current_app.logger.info('User %s added %d %s photo(s) to book %s',

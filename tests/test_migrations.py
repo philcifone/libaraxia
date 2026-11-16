@@ -93,6 +93,10 @@ def wind_back_to_023(conn):
         DROP TABLE item_photos;        -- 036 to 038 too (photos reference
         DROP TABLE photo_kinds;        -- (040 rebuilds item_photos: with 036)
         DROP TABLE condition_grades;   -- books; 037 and 038 add books columns)
+        DROP TABLE item_faces;         -- 041 adds a photo kind, so it goes
+        DROP TABLE face_set_members;   -- back with 040
+        DROP TABLE face_sets;
+        DROP TABLE face_placeholders;
         {BOOKS_023}
         CREATE VIEW library_books AS SELECT b.* FROM books b
         WHERE b.media_type = 'book' AND b.added_by IS NOT NULL
@@ -109,7 +113,8 @@ def wind_back_to_023(conn):
         DELETE FROM schema_migrations WHERE name IN ('024_add_records.sql', '025_owned.sql',
                                                      '031_bulk_edits.sql', '034_video_kind.sql',
                                                      '036_item_photos.sql', '037_condition_grades.sql',
-                                                     '038_item_value.sql', '040_photo_kinds.sql');
+                                                     '038_item_value.sql', '040_photo_kinds.sql',
+                                                     '041_faces.sql');
     """)
 
 
@@ -486,6 +491,10 @@ def test_goodreads_tables_follow_their_parents(db, people):
 # Undo 036 to 038 on a fresh database (photos, condition, value), so a test
 # can wind back further without the books columns ending up out of order.
 UNDO_036_TO_038 = """
+    DROP TABLE item_faces;
+    DROP TABLE face_set_members;
+    DROP TABLE face_sets;
+    DROP TABLE face_placeholders;
     DROP TABLE item_photos;
     DROP TABLE photo_kinds;
     DROP TABLE condition_grades;
@@ -499,7 +508,7 @@ UNDO_036_TO_038 = """
     ALTER TABLE books DROP COLUMN condition;
     DELETE FROM schema_migrations
      WHERE name IN ('036_item_photos.sql', '037_condition_grades.sql', '038_item_value.sql',
-                    '040_photo_kinds.sql');   -- 040 rebuilds item_photos, so it goes with 036
+                    '040_photo_kinds.sql', '041_faces.sql');   -- 040 rebuilds item_photos, so it goes with 036; 041 adds to it
 """
 
 
@@ -608,7 +617,8 @@ def test_040_keeps_photos_already_there(template_db, tmp_path):
         CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
         CREATE UNIQUE INDEX idx_item_photos_one_back ON item_photos(book_id) WHERE kind = 'back';
         CREATE UNIQUE INDEX idx_item_photos_one_spine ON item_photos(book_id) WHERE kind = 'spine';
-        DELETE FROM schema_migrations WHERE name = '040_photo_kinds.sql';
+        DELETE FROM schema_migrations WHERE name IN ('040_photo_kinds.sql', '041_faces.sql');
+        DROP TABLE item_faces; DROP TABLE face_set_members; DROP TABLE face_sets; DROP TABLE face_placeholders;
         INSERT INTO books (id, title, author) VALUES (7, 'A book', 'A');
         INSERT INTO item_photos (id, book_id, kind, path, caption) VALUES (5, 7, 'back', 'uploads/photos/7/a.jpg', 'Rear');
     """)

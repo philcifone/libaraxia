@@ -2749,21 +2749,23 @@ and to the right for its faces */
     --box-depth: 9px;
     padding: var(--box-depth) var(--box-depth) 0 0;
 }
-/* VHS faces (Phil, 2026-11-15): a VHS sleeve's top and right side photos,
-   when it has them (--face-top, --face-side: utils/photos.box_faces, set
-   on the item page's .cover-stand and on each Movies grid card), on the
-   flat cover box's faces, skewed with them; the photos run the way the 3D
-   view puts them (the top photo's top edge at the back, the side photo's
-   left edge at the front). Each keeps the face's light: the top a little
-   shaded, the side more. A face without a photo stays plain, and the
-   video-store rack's rental cases keep their own look. */
-:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::after,
-:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid[data-media="video"] .book-item[data-format="VHS"] .cover-box::after {
+/* Box faces (Phil, 2026-11-15; a VHS first, every type since 16.0c): an
+   item's top and right side photos, when it has them (--face-top,
+   --face-side: utils/photos.box_faces, set inline on the item page's
+   .cover-stand and on each library grid card), on the flat cover box's
+   faces, skewed with them; the photos run the way the 3D view puts them
+   (the top photo's top edge at the back, the side photo's left edge at the
+   front). Each keeps the face's light: the top a little shaded, the side
+   more. Only a face with a photo changes ([style*="--face-top"]), so a
+   face without one stays plain, and the video-store rack's rental
+   cases keep their own look. */
+:root[data-style="shelf"] .cover-stand[style*="--face-top"] .cover-box::after,
+:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid .book-item[style*="--face-top"] .cover-box::after {
     background: linear-gradient(rgb(0 0 0 / .08), rgb(0 0 0 / .08)),
                 var(--face-top, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-top));
 }
-:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::before,
-:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid[data-media="video"] .book-item[data-format="VHS"] .cover-box::before {
+:root[data-style="shelf"] .cover-stand[style*="--face-side"] .cover-box::before,
+:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid .book-item[style*="--face-side"] .cover-box::before {
     background: linear-gradient(rgb(0 0 0 / .22), rgb(0 0 0 / .22)),
                 var(--face-side, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-side));
 }

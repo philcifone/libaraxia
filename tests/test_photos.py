@@ -91,15 +91,23 @@ def test_replacing_the_back_deletes_the_old_file(client, db, people, static_root
     assert scalar(db, "SELECT COUNT(*) FROM item_photos WHERE kind = 'back'") == 1
 
 
-def test_spine_is_not_for_vinyl(client, db, people):
-    """A vinyl sleeve has no spine worth a photo: only a back and the
-    gallery (utils/photos.kinds_for)."""
+def test_every_type_takes_every_face(client, db, people):
+    """Every type takes every face (16.0c, docs/FACES-SPEC.md section 2):
+    a vinyl sleeve a spine (a gatefold's is printed), a book a bottom edge;
+    the edit page names a book's page faces as pages."""
     rec = db.execute("INSERT INTO books (title, author, added_by, media_type, format) "
                      "VALUES ('Blue', 'Joni', ?, 'record', 'LP')", (people['bob'],)).lastrowid
+    book = add_book(db, people['bob'])
     db.commit()
     login(client, 'bob')
-    assert upload(client, rec, 'spine', jpeg_bytes()).status_code == 404
-    assert upload(client, rec, 'back', jpeg_bytes()).status_code == 200
+    for kind in ('back', 'spine', 'side', 'top', 'bottom'):
+        assert upload(client, rec, kind, jpeg_bytes()).status_code == 200
+    assert upload(client, book, 'bottom', jpeg_bytes()).status_code == 200
+    assert upload(client, book, 'front', jpeg_bytes()).status_code == 404
+    edit = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert 'Fore-edge' in edit and 'Top edge' in edit and 'Bottom edge' in edit
+    record_edit = client.get(f'/records/edit/{rec}').get_data(as_text=True)
+    assert 'Right side' in record_edit and 'Fore-edge' not in record_edit
 
 
 def test_bad_file_is_refused_with_a_message(client, db, people):
@@ -259,12 +267,14 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     login(client, 'bob')
     square = real_cover(static_root, 's.jpg', (500, 500))
     lp = add_item(db, bob, 'record', 'LP', square)
-    assert client.post(f'/photos/{lp}/spine', data={'photo': (jpeg_bytes(), 'a.jpg')},
-                       headers={'X-Requested-With': 'XMLHttpRequest'}).status_code == 404
     upload(client, lp, 'back', jpeg_bytes((500, 500)))
     box = box_of(client.get(f'/records/{lp}').get_data(as_text=True))
     assert 'item3d-sleeve' in box and '--a: 1.0; --dr: 0.012;' in box
     assert 'data-angle="90"' not in box            # no Spine button: nothing to see
+    # A gatefold: its spine photo sets the thickness and earns a Spine button
+    upload(client, lp, 'spine', jpeg_bytes((20, 500)))
+    box = box_of(client.get(f'/records/{lp}').get_data(as_text=True))
+    assert '--dr: 0.04;' in box and 'data-angle="90"' in box
 
     cd = add_item(db, bob, 'record', 'CD', square)
     upload(client, cd, 'back', jpeg_bytes((500, 500)))
@@ -283,8 +293,6 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     dvd = add_item(db, bob, 'video', 'DVD', tall)
     upload(client, dvd, 'back', jpeg_bytes((400, 720)))
     assert 'item-3d' not in client.get(f'/videos/{dvd}').get_data(as_text=True)
-    assert client.post(f'/photos/{dvd}/top', data={'photo': (jpeg_bytes(), 'a.jpg')},
-                       headers={'X-Requested-With': 'XMLHttpRequest'}).status_code == 404
     upload(client, dvd, 'spine', jpeg_bytes((40, 720)))
     assert 'item3d-case' in box_of(client.get(f'/videos/{dvd}').get_data(as_text=True))
 
@@ -304,9 +312,13 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     upload(client, vhs, 'top', jpeg_bytes((400, 100)))
     box = box_of(client.get(f'/videos/{vhs}').get_data(as_text=True))
     assert box.count('/static/uploads/photos/') == 4
+    # and a bottom (16.0c): the open end's photo replaces the black
+    upload(client, vhs, 'bottom', jpeg_bytes((400, 100)))
+    box = box_of(client.get(f'/videos/{vhs}').get_data(as_text=True))
+    assert re.search(r'item3d-bottom">\s*<img src="/static/uploads/photos/', box)
 
     # The item page's flat cover box wears the top and right side photos on
-    # its faces, a VHS only (Phil, 2026-11-15)
+    # its faces (Phil, 2026-11-15; every type since 16.0c, below)
     page = client.get(f'/videos/{vhs}').get_data(as_text=True)
     stand = page[page.index('class="cover-stand'):]
     stand = stand[:stand.index('>')]
@@ -319,6 +331,16 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     assert '--face-top: url(' in card and '--face-side: url(' in card
     assert 'style=' not in re.search(r'<div class="book-item group" data-format="DVD"[^>]*>', grid).group(0)
     assert 'data-angle="270"' in box
+    # Every type since 16.0c: the DVD's top photo goes on its box too, the
+    # side stays plain; and on the next page's cards (infinite scroll)
+    upload(client, dvd, 'top', jpeg_bytes((400, 40)))
+    card = re.search(r'<div class="book-item group" data-format="DVD"[^>]*>',
+                     client.get('/videos/').get_data(as_text=True)).group(0)
+    assert '--face-top: url(' in card and '--face-side' not in card
+    from utils.book_utils import card_json
+    with client.application.test_request_context():
+        rows = db.execute('SELECT * FROM books WHERE id = ?', (dvd,)).fetchall()
+        assert '--face-top: url(' in card_json(db, bob, rows)[0]['faces']
 
 
 def test_crop_a_photo(client, db, people, static_root):

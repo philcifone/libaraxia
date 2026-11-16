@@ -31,6 +31,8 @@
     <div class="item3d-face item3d-top">
         {% if model.faces.top %}<img src="{{ model.faces.top }}" alt="" draggable="false">{% endif %}
     </div>
-    <div class="item3d-face item3d-bottom"></div>
+    <div class="item3d-face item3d-bottom">
+        {% if model.faces.bottom %}<img src="{{ model.faces.bottom }}" alt="" draggable="false">{% endif %}
+    </div>
 </div>
 {%- endmacro %}

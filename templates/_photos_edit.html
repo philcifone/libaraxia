@@ -1,5 +1,5 @@
 {# Photos on the edit page (ROADMAP 16.0a, docs/PHOTOS-VALUE-SPEC.md section 3):
-   the back, the sides its format has (utils/photos.kinds_for) and the gallery. Its own card under the
+   the back, every side (utils/photos.kinds_for: all of them, 16.0c) and the gallery. Its own card under the
    item form, since a form can't hold forms. Every action is a plain POST to
    blueprints/photos.py that comes back to #photos; static/photos.js uploads
    a picked file at once (no Upload click) and the gallery one file at a time
@@ -15,8 +15,8 @@
 <section id="photos" class="bg-secondary-bg rounded-xl p-4 sm:p-6 mt-8 card" data-photos-book="{{ book['id'] }}">
     <h2 class="text-xl font-display text-content-primary">Photos</h2>
     <p class="text-sm text-content-secondary mt-1">
-        The cover is above. Add the back{% if 'spine' in photo_kinds %}, the sides{% endif %} and
-        anything else worth a look: liner notes, inserts, wear. Photos lose their location data when saved.
+        The cover is above. Add the back, the sides and ends, and anything else worth a look:
+        liner notes, inserts, wear. Photos lose their location data when saved.
     </p>
     {% if has_3d_shape %}
     <p class="text-sm text-content-secondary mt-1" data-3d-status="{{ 'needs' if photos_missing_3d else 'ready' }}">
@@ -36,7 +36,7 @@
             <h3 class="label text-sm pb-1">{{ photo_labels[kind] }}</h3>
             {% if photo %}
             <img src="{{ url_for('static', filename=photo['path']) }}" alt="{{ photo_labels[kind] }} of {{ book['title'] }}"
-                     class="{{ 'h-48 w-auto' if kind in ('spine', 'side') else 'h-40 w-auto max-w-full object-contain' }} border border-rule-strong">
+                     class="{{ 'h-48 w-auto' if kind in ('spine', 'side') else ('h-16 w-auto max-w-full object-contain' if kind in ('top', 'bottom') else 'h-40 w-auto max-w-full object-contain') }} border border-rule-strong">
             {% endif %}
             <div class="flex flex-wrap gap-2">
                 <form action="{{ url_for('photos.add', book_id=book['id'], kind=kind) }}" method="POST"

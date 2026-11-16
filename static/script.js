@@ -414,7 +414,7 @@ class InfiniteScroll {
             : '';
 
         return `
-            <div class="book-item group" data-format="${escapeHtml(book.format || '')}">
+            <div class="book-item group" data-format="${escapeHtml(book.format || '')}"${book.faces ? ` style="${escapeHtml(book.faces)}"` : ''}>
                 <a href="/books/book/${encodeURIComponent(book.id)}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
