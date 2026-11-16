@@ -1,7 +1,7 @@
 # Roadmap archive
 
 Completed phases of [ROADMAP.md](../ROADMAP.md), moved here on 2026-11-08
-(11 to 13b on 2026-11-09, 14a on 2026-11-11, 14b and 15 on 2026-11-12) so the live roadmap stays short. Kept verbatim, with their original numbers: code
+(11 to 13b on 2026-11-09, 14a on 2026-11-11, 14b and 15 on 2026-11-12, 16.0a on 2026-11-15) so the live roadmap stays short. Kept verbatim, with their original numbers: code
 comments and commit messages cite them ("ROADMAP 7.2b", "8B.3", "10.1"), so
 grep here for those. Items that were still open when the phase was archived
 are marked as moved; they live in ROADMAP.md now.
@@ -1024,6 +1024,28 @@ For fetched covers with borders, scans of a whole sleeve and phone photos taken 
   - [ ] Avatars.
 
 ---
+
+## Phase 16.0a: Photos, condition and value
+
+Archived 2026-11-15 when merged to main; the items still open went back to ROADMAP.md 16.0a.
+
+### 16.0a Photos, condition and value 🟢 (done 2026-11-15)
+New features (Phil, 2026-11-14), before the code review and the screenshots so both cover them. **Spec: [docs/PHOTOS-VALUE-SPEC.md](docs/PHOTOS-VALUE-SPEC.md)** (built 2026-11-15 with the draft's answers to its three open questions, section 12; Phil to test). Branch `phase-16a-photos-value`, one commit per step (spec section 10). Its migrations are 036 to 039: 035 went to OG's palette in the 16.0 style pass (2026-11-15), and the spec was renumbered to match.
+- [x] Photos: a back photo and a gallery per item, plus a spine photo for books (kept for a later 3D book: cover, spine and back on a box), added and deleted (with a confirm) on the edit page, "More photos" under the cover on the item page.
+- [x] Condition in each type's standard grades (records: record and sleeve, Goldmine as Discogs uses it; books: the booksellers' scale; movies: used-media terms).
+- [x] Price paid and value, both optional, private to the owner; a Collection value card on Stats.
+- [x] Fetch value: Discogs price suggestions for records, the eBay Browse API's median asking price for books and movies; per item and as a bulk tool beside Fetch covers.
+- [x] 3D book demo (Phil, 2026-11-15): in the Shelf style a book's cover opens a box you turn by dragging (also arrow keys, Front / Spine / Back), with its back and spine photos on the faces, or drawn in the cover's colour; thickness from the spine photo, else the page count. Books only, CSS 3D, no library (`book_detail.html` #book-3d, `book_detail.js`). Demo: decide after trying it whether to keep, extend to movies and music, or drop.
+- [x] **3D items, kept and extended** (Phil, 2026-11-15, after trying the demo; migration 040, `utils/item3d.py`, `_item3d.html`):
+  - [x] An item turns in 3D only when every printed face of its shape is a photo: no drawn stand-ins. Until then the cover opens the gallery, cover first, when there are other photos, else the plain enlarged cover. The edit page's Photos card says what's still missing.
+  - [x] Music and movies: an LP is a thin sleeve (cover, back); a CD the shape of its cover photo, taken of the whole case front, bar and all (Phil, 2026-11-15: a drawn hinge bar was dropped), the back the same size, the thickness from a spine photo (a card sleeve is thin) or a jewel case's, the spine drawn from the title unless there's a photo: the one drawn face; a DVD or cassette a case (cover, back, spine); a VHS a slip sleeve: back and at least one long side (one side's photo does for both; a double box is just a wider side photo, which sets the thickness), the top a photo or card in the cover's colour, and a black bottom. Photo kinds are now a lookup table (`photo_kinds`), with `side` and `top` added.
+  - [x] The gallery's Previous / Next are plain translucent `<` `>` buttons.
+  - [x] The crop tool's Save saves the cover there and then on an Edit page (`POST /covers/crop/save/<id>`), so adding photos afterwards can't lose it. On an Add page it still saves with the form (there's no item yet).
+  - [x] Your 3D books sit on the Shelves heading (Shelf style, your own Books page only), upright with their spines out, split evenly either side of the title, up to five a side (Phil, 2026-11-15: "mostly spine"; tried cover-forward, then a stack on the right). Drawn flat (spines parallel to the shelf), no shadow. Chosen by a number drawn at login; still, lit as the 3D view would light them; not links, no effects.
+  - [x] A VHS's top and right side photos, when it has them, on the flat cover box's top and side faces, on the item page and the Movies grid (not the video-store rack's rental cases); other types keep plain faces.
+  - [ ] Later, low priority: a cover-shape override for sets that aren't the standard shape (non-square disc sets), which the 3D box would take its proportions from; until then such a set is right as soon as its own photos are (the box follows the cover photo's shape).
+  - [ ] Later, low priority: more VHS shapes: the Disney clamshell (white plastic, rounded, opens like a book) and coloured tapes (Nickelodeon's orange) for the open bottom.
+- [ ] Phil's setup (spec section 7): Discogs seller settings; an eBay developer account and production keys. The same steps go in the README at 16.1.
 
 ## Done
 
