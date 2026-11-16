@@ -308,6 +308,11 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     assert '--face-top: url(' in stand and '--face-side: url(' in stand
     dvd_page = client.get(f'/videos/{dvd}').get_data(as_text=True)
     assert '--face-' not in dvd_page
+    # and so does its card on the Movies grid; the DVD's doesn't
+    grid = client.get('/videos/').get_data(as_text=True)
+    card = re.search(r'<div class="book-item group" data-format="VHS"[^>]*>', grid).group(0)
+    assert '--face-top: url(' in card and '--face-side: url(' in card
+    assert 'style=' not in re.search(r'<div class="book-item group" data-format="DVD"[^>]*>', grid).group(0)
     assert 'data-angle="270"' in box
 
 

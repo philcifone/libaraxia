@@ -108,3 +108,23 @@ def delete(conn, photo_id, book_id):
     conn.execute('DELETE FROM item_photos WHERE id = ? AND book_id = ?', (photo_id, book_id))
     image_utils.delete_image_file(row['path'], image_utils.STATIC_ROOT)
     return True
+
+
+def box_faces(conn, rows):
+    """The Shelf style's flat cover box with a VHS sleeve's top and right
+    side photos on its faces (Phil, 2026-11-15): {book_id: style}, where
+    style sets --face-top / --face-side to the photos' URLs, for the VHS
+    items among `rows` that have either. One query per page of items; the
+    item page and the Movies grid use it (styles.css "VHS faces")."""
+    ids = [r['id'] for r in rows
+           if r['media_type'] == VIDEO and r['format'] == 'VHS']
+    if not ids:
+        return {}
+    marks = ','.join('?' * len(ids))
+    out = {}
+    for row in conn.execute(f"SELECT book_id, kind, path FROM item_photos "
+                            f"WHERE kind IN ('{TOP}', '{SIDE}') AND book_id IN ({marks})", ids):
+        if image_utils.upload_exists(row['path']):
+            url = url_for('static', filename=row['path'])
+            out[row['book_id']] = out.get(row['book_id'], '') + f'--face-{row["kind"]}: url("{url}"); '
+    return out

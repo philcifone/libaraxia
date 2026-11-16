@@ -294,6 +294,13 @@ def create_app():
         return marks_for(get_db(), user_id or _current_user.id, [row['id'] for row in rows])
     app.add_template_global(viewer_marks, 'viewer_marks')
 
+    # A VHS sleeve's top and side photos on the Shelf style's flat cover box
+    # (utils/photos.box_faces): {book_id: style}, for a page of items in one query
+    def box_faces(rows):
+        from utils.photos import box_faces as faces_for
+        return faces_for(get_db(), rows) if rows else {}
+    app.add_template_global(box_faces, 'box_faces')
+
     # The sidebar's count next to Notifications: a function, so it's only
     # queried on pages that draw the sidebar
     def notification_count():
