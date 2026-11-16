@@ -6842,6 +6842,25 @@ and to the right for its faces */
   background: color-mix(in srgb, rgb(var(--edge, var(--box-top))) 82%, black);
 }
 
+/* book pages: a book's flat box shows its pages, the fine lines of the 3D
+   view's paper (.item3d-book) and the books on the heading, in the box's
+   own top and side colours so the dark mode shade still holds: lines
+   along the fore-edge (the side) and across the top (Phil, 2026-11-16).
+   An audiobook isn't paper and keeps the plain box; a top or side photo
+   or placeholder wins ("Box faces" above), so those faces are left out. */
+
+:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([data-format="Audiobook"]):not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {
+  background: repeating-linear-gradient(90deg,
+        rgb(var(--box-side)) 0 2px,
+        color-mix(in srgb, rgb(var(--box-side)) 84%, black) 2px 3px);
+}
+
+:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([data-format="Audiobook"]):not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {
+  background: repeating-linear-gradient(0deg,
+        rgb(var(--box-top)) 0 2px,
+        color-mix(in srgb, rgb(var(--box-top)) 88%, black) 2px 3px);
+}
+
 /* A DVD case is under half a VHS clamshell's depth (14mm to 35mm): the
    same thin box as an album (Phil, 2026-11-15) */
 
