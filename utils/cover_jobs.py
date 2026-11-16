@@ -19,6 +19,13 @@ The row is the source of truth, not the thread:
 Scopes: 'own' = items the user added (library and wishlist), 'all' = every
 item (admins only, from the admin covers page). Books, movies and albums
 alike; book_utils.missing_cover_sql says which items qualify.
+
+Kinds (migration 039): 'cover' fetches missing covers; 'value' fetches
+values (ROADMAP 16.0a, utils/valuation.py) for items on the shelf that a
+source can answer for, in the sections chosen, skipping values checked in
+the last `skip_days` days and never touching a value typed by hand. Values
+go slower (VALUE_PAUSE_SECONDS) to stay well inside Discogs' and eBay's
+limits, and a busy source is waited out rather than skipped.
 """
 import logging
 import os
@@ -38,6 +45,13 @@ logger = logging.getLogger(__name__)
 STALE_SECONDS = 180
 # Pause between books, to be polite to Open Library and Google Books
 PAUSE_SECONDS = 0.5
+# Values: one request every couple of seconds (eBay's default is 5,000 calls
+# a day, Discogs 60 a minute); a busy answer waits BUSY_WAIT, at most
+# BUSY_TRIES times for one item before it's skipped
+VALUE_PAUSE_SECONDS = 2.0
+BUSY_WAIT = 30
+BUSY_TRIES = 4
+KINDS = ('cover', 'value')
 
 _STALE_SQL = f"(heartbeat_at IS NULL OR heartbeat_at < datetime('now', '-{STALE_SECONDS} seconds'))"
 
@@ -51,11 +65,48 @@ def _worker_id():
 
 def _scope(job_or_scope, user_id=None):
     """(FROM/WHERE sql, params) for the books a job covers."""
+    if not isinstance(job_or_scope, str) and job_or_scope['kind'] == 'value':
+        types = (job_or_scope['media_types'] or '').split(',') if job_or_scope['media_types'] else None
+        return value_scope_sql(job_or_scope['scope'], job_or_scope['user_id'], types,
+                               job_or_scope['skip_days'])
     scope = job_or_scope if isinstance(job_or_scope, str) else job_or_scope['scope']
     if user_id is None and not isinstance(job_or_scope, str):
         user_id = job_or_scope['user_id']
     own = scope == 'own'
     return book_utils.missing_cover_sql(owner=own), ((user_id,) if own else ())
+
+
+def value_scope_sql(scope, user_id, types=None, skip_days=None):
+    """(FROM/WHERE sql, params) for the items a value job covers: on a shelf
+    (owned, not removed, not a wishlist entry), of the chosen types, that a
+    configured source can answer for (a record with Discogs; a book's ISBN
+    or a movie's barcode with eBay), whose value wasn't typed by hand, and
+    not checked within skip_days."""
+    from utils import valuation
+    lookable = []
+    if valuation.discogs_enabled():
+        lookable.append("media_type = 'record'")
+    if valuation.ebay_enabled():
+        lookable.append("(media_type = 'book' AND isbn IS NOT NULL AND isbn != '')")
+        lookable.append("(media_type = 'video' AND barcode IS NOT NULL AND barcode != '')")
+    if types:
+        lookable = [sql for sql in lookable if any(f"'{t}'" in sql for t in types)]
+    sql = f"""
+    FROM books
+    WHERE {book_utils.on_shelf('books')}
+      AND added_by IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = books.id AND w.user_id = books.added_by)
+      AND ({' OR '.join(lookable) or '0'})
+      AND (value_source IS NULL OR value_source != 'manual')
+"""
+    params = []
+    if skip_days:
+        sql += "  AND (value_checked_at IS NULL OR value_checked_at < datetime('now', ?))\n"
+        params.append(f'-{int(skip_days)} days')
+    if scope == 'own':
+        sql += "  AND added_by = ?\n"
+        params.append(user_id)
+    return sql, tuple(params)
 
 
 def missing_count(conn, user_id, scope):
@@ -67,27 +118,34 @@ def as_dict(job):
     """What the browser gets (no worker ids)."""
     if job is None:
         return None
-    keys = ('id', 'scope', 'status', 'total', 'checked', 'found')
+    keys = ('id', 'scope', 'status', 'total', 'checked', 'found', 'kind')
     return {k: job[k] for k in keys}
 
 
 # ------------------------------------------------------------ used by routes
 
-def start_job(conn, user_id, scope):
-    """Start a job, or return the one already running for this user and
-    scope. Returns (job, created); job is None when nothing needs a cover.
-    Commits. The caller then calls kick()."""
-    running = conn.execute("SELECT * FROM cover_jobs WHERE user_id = ? AND scope = ? AND status = 'running'",
-                           (user_id, scope)).fetchone()
+def start_job(conn, user_id, scope, kind='cover', media_types=None, skip_days=None):
+    """Start a job, or return the one of this kind already running for this
+    user and scope. Returns (job, created); job is None when nothing needs
+    doing. Commits. The caller then calls kick(). A value job takes the
+    sections (media_types, a list or None for all) and skip_days."""
+    running = conn.execute("SELECT * FROM cover_jobs WHERE user_id = ? AND scope = ? AND kind = ? "
+                           "AND status = 'running'", (user_id, scope, kind)).fetchone()
     if running:
         return running, False
-    total = missing_count(conn, user_id, scope)
+    types = ','.join(media_types) if media_types else None
+    if kind == 'value':
+        sql, params = value_scope_sql(scope, user_id, media_types, skip_days)
+        total = conn.execute('SELECT COUNT(*) ' + sql, params).fetchone()[0]
+    else:
+        total = missing_count(conn, user_id, scope)
     if not total:
         return None, False
     # One panel at a time: older finished jobs are put away
     conn.execute("UPDATE cover_jobs SET dismissed = 1 WHERE user_id = ? AND status != 'running'", (user_id,))
-    job_id = conn.execute('INSERT INTO cover_jobs (user_id, scope, total) VALUES (?, ?, ?)',
-                          (user_id, scope, total)).lastrowid
+    job_id = conn.execute('INSERT INTO cover_jobs (user_id, scope, total, kind, media_types, skip_days) '
+                          'VALUES (?, ?, ?, ?, ?, ?)',
+                          (user_id, scope, total, kind, types, skip_days if kind == 'value' else None)).lastrowid
     conn.commit()
     return conn.execute('SELECT * FROM cover_jobs WHERE id = ?', (job_id,)).fetchone(), True
 
@@ -181,7 +239,12 @@ def _run_job(conn, job_id, worker, pause):
             logger.info(f'Cover job {job_id} done: {job["found"]} of {job["checked"]} found')
             return
 
-        found = media_covers.fetch_cover(conn, book)  # network; commits the cover
+        if job['kind'] == 'value':
+            found = _fetch_value(conn, book['id'], job_id, worker)
+            if found is None:           # the source stayed busy: try this item again
+                continue
+        else:
+            found = media_covers.fetch_cover(conn, book)  # network; commits the cover
         conn.execute('''
             UPDATE cover_jobs
             SET checked = checked + 1, found = found + ?, last_book_id = ?,
@@ -190,4 +253,40 @@ def _run_job(conn, job_id, worker, pause):
         ''', (int(found), book['id'], job_id, worker))
         conn.commit()
         if pause:
-            time.sleep(pause)
+            time.sleep(VALUE_PAUSE_SECONDS if job['kind'] == 'value' and pause == PAUSE_SECONDS else pause)
+
+
+_busy = {}      # (job id, book id) -> busy answers so far, for this process
+
+
+def _fetch_value(conn, book_id, job_id, worker):
+    """Fetch and store one item's value. True if one was stored, False if
+    not; None when the source was busy and the item should be tried again
+    after a wait (up to BUSY_TRIES times, then it counts as not found)."""
+    from utils import valuation
+    row = conn.execute('SELECT * FROM books WHERE id = ?', (book_id,)).fetchone()
+    result = valuation.fetch(row)
+    if result.busy:
+        key = (job_id, book_id)
+        _busy[key] = _busy.get(key, 0) + 1
+        if _busy[key] < BUSY_TRIES:
+            conn.execute('UPDATE cover_jobs SET heartbeat_at = CURRENT_TIMESTAMP WHERE id = ? AND worker = ?',
+                         (job_id, worker))
+            conn.commit()
+            time.sleep(BUSY_WAIT)
+            return None
+        _busy.pop(key, None)
+    if result.release_id and not row['discogs_release_id']:
+        conn.execute('UPDATE books SET discogs_release_id = ? WHERE id = ?', (result.release_id, book_id))
+    if result.cents is None:
+        conn.commit()
+        return False
+    # Never over a value typed by hand (it could have been typed since the
+    # job started), so the condition is in the UPDATE itself
+    stored = conn.execute('''
+        UPDATE books SET value_cents = ?, value_source = ?, value_note = ?,
+               value_checked_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND (value_source IS NULL OR value_source != 'manual')
+    ''', (result.cents, result.source, result.note, book_id)).rowcount
+    conn.commit()
+    return bool(stored)

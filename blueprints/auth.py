@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+import random
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
 from flask_login import login_user, logout_user
 import bcrypt
 import sqlite3
@@ -124,6 +126,8 @@ def login():
                     email_verified=email_verified
                 )
                 login_user(user_obj, remember=remember)
+                # Which of their 3D books stand on the Shelves heading this visit (base.index)
+                session['heading_seed'] = random.randrange(2 ** 31)
                 flash(f"Welcome, {user_obj.username}!", 'success')
 
                 # Check for unread notifications and display them

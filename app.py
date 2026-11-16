@@ -30,6 +30,8 @@ from blueprints.videos import videos_blueprint
 from blueprints.records import records_blueprint
 from blueprints.reviews import reviews_blueprint
 from blueprints.bulk import bulk_blueprint
+from blueprints.photos import photos_blueprint
+from blueprints.values import values_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
@@ -218,6 +220,8 @@ def create_app():
     app.register_blueprint(records_blueprint, url_prefix='/records')
     app.register_blueprint(reviews_blueprint, url_prefix='/reviews')
     app.register_blueprint(bulk_blueprint, url_prefix='/bulk')
+    app.register_blueprint(photos_blueprint, url_prefix='/photos')
+    app.register_blueprint(values_blueprint, url_prefix='/values')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media
@@ -267,6 +271,17 @@ def create_app():
     app.add_template_global(media.SECTION_NAMES, 'SECTION_NAMES')
     app.add_template_global(media.SECTION_WORDS, 'SECTION_WORDS')
     app.add_template_filter(media.season_short, 'season_short')
+
+    # Photos, condition and value (ROADMAP 16.0a): the "This copy" fields'
+    # grades and currency (_copy_fields.html), money for reading
+    from utils import condition as condition_grades, money
+    app.add_template_global(condition_grades.grades_for, 'grades_for')
+    app.add_template_global(condition_grades.sleeve_grades, 'sleeve_grade_list')
+    app.add_template_global(money.currency, 'value_currency')
+    app.add_template_filter(money.show, 'money')
+    from utils import valuation
+    app.add_template_global(lambda: valuation.discogs_enabled() or valuation.ebay_enabled(),
+                            'value_sources_ready')
     app.add_template_global(media.item_labels, 'labels_for')
 
     # List view's status and rating columns (_book_grid.html, ROADMAP 7.2b):
@@ -278,6 +293,13 @@ def create_app():
             return {}
         return marks_for(get_db(), user_id or _current_user.id, [row['id'] for row in rows])
     app.add_template_global(viewer_marks, 'viewer_marks')
+
+    # A VHS sleeve's top and side photos on the Shelf style's flat cover box
+    # (utils/photos.box_faces): {book_id: style}, for a page of items in one query
+    def box_faces(rows):
+        from utils.photos import box_faces as faces_for
+        return faces_for(get_db(), rows) if rows else {}
+    app.add_template_global(box_faces, 'box_faces')
 
     # The sidebar's count next to Notifications: a function, so it's only
     # queried on pages that draw the sidebar
@@ -323,6 +345,10 @@ def create_app():
     
     # Configure Logging
     logging.basicConfig(level=logging.DEBUG if app.config.get('DEBUG') else logging.INFO)
+    # Never log third-party request URLs, even at DEBUG: urllib3 prints each
+    # one, and some APIs (TMDb's v3 key) take a key in the query string
+    # (ROADMAP loose end, 2026-11-12; 16.0a's value sources)
+    logging.getLogger('urllib3').setLevel(logging.INFO)
     
     return app
 

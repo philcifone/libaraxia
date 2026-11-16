@@ -1,6 +1,7 @@
 """create_database.sql and the manage.py migration runner."""
 import os
 import re
+import shutil
 import sqlite3
 
 import pytest
@@ -89,6 +90,9 @@ def wind_back_to_023(conn):
         DROP TABLE statuses;
         DROP TABLE media_types;
         DROP TABLE video_kinds;        -- 034 runs again too (books.video_kind)
+        DROP TABLE item_photos;        -- 036 to 038 too (photos reference
+        DROP TABLE photo_kinds;        -- (040 rebuilds item_photos: with 036)
+        DROP TABLE condition_grades;   -- books; 037 and 038 add books columns)
         {BOOKS_023}
         CREATE VIEW library_books AS SELECT b.* FROM books b
         WHERE b.media_type = 'book' AND b.added_by IS NOT NULL
@@ -100,9 +104,12 @@ def wind_back_to_023(conn):
         -- above has neither, so both run again. Later migrations on other
         -- tables (026: users) stay applied. 031 adds collections.quiet and
         -- references books, so it goes back too, and so does 034
-        -- (books.video_kind, books.season).
+        -- (books.video_kind, books.season), and 036 to 038 (photos,
+        -- condition, value).
         DELETE FROM schema_migrations WHERE name IN ('024_add_records.sql', '025_owned.sql',
-                                                     '031_bulk_edits.sql', '034_video_kind.sql');
+                                                     '031_bulk_edits.sql', '034_video_kind.sql',
+                                                     '036_item_photos.sql', '037_condition_grades.sql',
+                                                     '038_item_value.sql', '040_photo_kinds.sql');
     """)
 
 
@@ -341,6 +348,34 @@ def test_lookup_tables_match_utils_media(db):
     assert {r[0] for r in db.execute('SELECT name FROM video_kinds')} == set(media.VIDEO_KINDS)
 
 
+def test_condition_grades_match_utils_condition(db):
+    """utils/condition.py and the condition_grades table (037) agree: the same
+    codes, labels and order per type, and the same sleeve-only extras."""
+    from utils import condition
+    rows = db.execute(
+        'SELECT media_type, code, label, sleeve_only FROM condition_grades ORDER BY media_type, rank'
+    ).fetchall()
+    for mt, grades in condition.GRADES.items():
+        in_db = [(r['code'], r['label']) for r in rows if r['media_type'] == mt and not r['sleeve_only']]
+        assert in_db == list(grades), mt
+    extras = [(r['code'], r['label']) for r in rows if r['sleeve_only']]
+    assert extras == list(condition.SLEEVE_EXTRAS)
+    assert {r['media_type'] for r in rows if r['sleeve_only']} == {'record'}
+
+
+def test_condition_clean_refuses_other_types():
+    from utils import condition
+    assert condition.clean('record', 'NM') == 'NM'
+    assert condition.clean('record', 'No Cover', sleeve=True) == 'No Cover'
+    assert condition.clean('book', '') is None
+    with pytest.raises(ValueError):
+        condition.clean('book', 'NM')          # a record grade on a book
+    with pytest.raises(ValueError):
+        condition.clean('record', 'No Cover')  # a sleeve extra on the record
+    with pytest.raises(ValueError):
+        condition.clean('book', 'fine', sleeve=True)
+
+
 def test_031_on_a_database_at_029(template_db, tmp_path):
     """031 (bulk edit, ROADMAP 14a) on a database that has everything up to
     029: existing status rows survive and are not quiet, the journal tables
@@ -448,6 +483,26 @@ def test_goodreads_tables_follow_their_parents(db, people):
     assert db.execute('PRAGMA foreign_key_check').fetchall() == []
 
 
+# Undo 036 to 038 on a fresh database (photos, condition, value), so a test
+# can wind back further without the books columns ending up out of order.
+UNDO_036_TO_038 = """
+    DROP TABLE item_photos;
+    DROP TABLE photo_kinds;
+    DROP TABLE condition_grades;
+    ALTER TABLE books DROP COLUMN discogs_release_id;
+    ALTER TABLE books DROP COLUMN value_checked_at;
+    ALTER TABLE books DROP COLUMN value_note;
+    ALTER TABLE books DROP COLUMN value_source;
+    ALTER TABLE books DROP COLUMN value_cents;
+    ALTER TABLE books DROP COLUMN price_paid_cents;
+    ALTER TABLE books DROP COLUMN sleeve_condition;
+    ALTER TABLE books DROP COLUMN condition;
+    DELETE FROM schema_migrations
+     WHERE name IN ('036_item_photos.sql', '037_condition_grades.sql', '038_item_value.sql',
+                    '040_photo_kinds.sql');   -- 040 rebuilds item_photos, so it goes with 036
+"""
+
+
 def test_034_on_a_database_at_033(template_db, tmp_path):
     """034 (Movies & TV, ROADMAP 15.1) on a database with videos already in
     it: no backfill, so every existing video reads as a movie (NULL), the
@@ -456,6 +511,7 @@ def test_034_on_a_database_at_033(template_db, tmp_path):
     from utils import media
     path = tmp_path / 'at-033.db'
     conn = fresh_db(path)
+    conn.executescript(UNDO_036_TO_038)
     conn.executescript("""
         ALTER TABLE books DROP COLUMN season;
         ALTER TABLE books DROP COLUMN video_kind;
@@ -487,3 +543,88 @@ def test_unknown_video_kind_is_refused(db):
         db.execute("INSERT INTO books (title, author, media_type, video_kind) VALUES ('x', 'y', 'video', 'anime')")
     db.execute("INSERT INTO books (title, author, media_type, video_kind, season) "
                "VALUES ('x', 'y', 'video', 'tv', 'Season 2')")
+
+
+def test_036_to_038_on_a_database_at_035(template_db, tmp_path):
+    """Photos, condition and value (ROADMAP 16.0a) on a database with items in
+    it: nothing is graded or valued, the views carry the new columns, and the
+    schema ends up the same as a fresh one."""
+    path = tmp_path / 'at-035.db'
+    conn = fresh_db(path)
+    conn.executescript(UNDO_036_TO_038)
+    conn.executescript("""
+        INSERT INTO users (id, username, email, password) VALUES (1, 'phil', 'p@example.test', 'x');
+        INSERT INTO books (id, title, author, added_by, media_type, format)
+            VALUES (1, 'Blue', 'Joni Mitchell', 1, 'record', 'LP');
+    """)
+    conn.close()
+
+    result = run_manage('--db', str(path), 'migrate', '-y')
+    for name in ('036_item_photos.sql', '037_condition_grades.sql', '038_item_value.sql'):
+        assert name in result.stdout
+
+    conn = connect(path)
+    assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    row = conn.execute('SELECT * FROM library_records').fetchone()
+    assert (row['id'], row['condition'], row['value_cents']) == (1, None, None)
+    conn.close()
+    assert schema(path) == schema(template_db)
+
+
+def test_item_photos_one_back_and_cascade(db):
+    """One of each single kind per item (040: one index for all of them); a
+    kind must be in photo_kinds; a photo row goes with its item."""
+    db.execute('PRAGMA foreign_keys = ON')
+    book = db.execute("INSERT INTO books (title, author) VALUES ('x', 'y')").lastrowid
+    db.execute("INSERT INTO item_photos (book_id, kind, path) VALUES (?, 'back', 'uploads/photos/1/a.jpg')", (book,))
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute("INSERT INTO item_photos (book_id, kind, path) VALUES (?, 'back', 'uploads/photos/1/b.jpg')", (book,))
+    db.execute("INSERT INTO item_photos (book_id, kind, path) VALUES (?, 'top', 'uploads/photos/1/t.jpg')", (book,))
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute("INSERT INTO item_photos (book_id, kind, path) VALUES (?, 'top', 'uploads/photos/1/u.jpg')", (book,))
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute("INSERT INTO item_photos (book_id, kind, path) VALUES (?, 'front', 'uploads/photos/1/f.jpg')", (book,))
+    db.execute("INSERT INTO item_photos (book_id, kind, path) VALUES (?, 'gallery', 'uploads/photos/1/c.jpg')", (book,))
+    db.execute("INSERT INTO item_photos (book_id, kind, path) VALUES (?, 'gallery', 'uploads/photos/1/d.jpg')", (book,))
+    db.execute('DELETE FROM books WHERE id = ?', (book,))
+    assert db.execute('SELECT COUNT(*) FROM item_photos').fetchone()[0] == 0
+
+
+def test_040_keeps_photos_already_there(template_db, tmp_path):
+    """040 rebuilds item_photos (a CHECK became a foreign key): the rows
+    survive it, ids and all."""
+    path = tmp_path / 'at-039.db'
+    shutil.copy(template_db, path)
+    conn = connect(path)
+    conn.executescript("""
+        DROP TABLE item_photos;
+        DROP TABLE photo_kinds;
+        CREATE TABLE item_photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (kind IN ('back', 'spine', 'gallery')),
+            path TEXT NOT NULL, caption TEXT, position INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+        CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
+        CREATE UNIQUE INDEX idx_item_photos_one_back ON item_photos(book_id) WHERE kind = 'back';
+        CREATE UNIQUE INDEX idx_item_photos_one_spine ON item_photos(book_id) WHERE kind = 'spine';
+        DELETE FROM schema_migrations WHERE name = '040_photo_kinds.sql';
+        INSERT INTO books (id, title, author) VALUES (7, 'A book', 'A');
+        INSERT INTO item_photos (id, book_id, kind, path, caption) VALUES (5, 7, 'back', 'uploads/photos/7/a.jpg', 'Rear');
+    """)
+    conn.close()
+    result = run_manage('--db', str(path), 'migrate', '-y')
+    assert '040_photo_kinds.sql' in result.stdout
+    conn = connect(path)
+    assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    assert tuple(conn.execute('SELECT id, book_id, kind, caption FROM item_photos').fetchone()) == (5, 7, 'back', 'Rear')
+    conn.close()
+    assert schema(path) == schema(template_db)
+
+
+def test_photo_kinds_match_utils_photos(db):
+    from utils import photos
+    rows = db.execute('SELECT code, label, single FROM photo_kinds ORDER BY position').fetchall()
+    assert [r[0] for r in rows] == list(photos.KINDS)
+    assert {r[0]: r[1] for r in rows} == photos.LABELS
+    assert tuple(r[0] for r in rows if r[2]) == photos.SINGLE

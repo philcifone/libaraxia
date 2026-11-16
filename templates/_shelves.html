@@ -32,7 +32,9 @@
 
 {# A friend's shelves have no scope tabs: you came from the Friends page,
    so the crumbs lead back there #}
-{% macro shelf_header(section, scope, username=None) -%}
+{# heading_books: utils/item3d models to stand on the heading's shelf
+   (your own Shelves page, Shelf style) #}
+{% macro shelf_header(section, scope, username=None, heading_books=none) -%}
 {% if scope == 'friend' %}
 <div class="page-frame pt-20">
     {{ crumbs([('Friends', url_for('friends.index'))], username, class='mb-4') }}
@@ -53,7 +55,7 @@
      'label': 'Showing the household: show only mine' if household else 'Show the household'} %}
 <div class="page-frame {{ 'pt-2' if scope == 'friend' else 'pt-20' }} pb-4">
     {{ page_heading('library', names[scope], class='', toggle=toggle,
-                    sr_prefix='Household' if household else none) }}
+                    sr_prefix='Household' if household else none, books=heading_books) }}
 </div>
 {# Called with {% call shelf_header(...) %}: what the call wraps goes right
    under the heading (the household's "Shared Library with ..." box) #}

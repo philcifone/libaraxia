@@ -73,6 +73,41 @@ CREATE TABLE video_kinds (
 );
 INSERT INTO video_kinds (name) VALUES ('movie'), ('tv');
 
+-- Condition grades per type, best first (migration 037, utils/condition.py,
+-- which a test keeps in step). Records use Discogs' Goldmine labels.
+CREATE TABLE condition_grades (
+    media_type TEXT NOT NULL REFERENCES media_types(name),
+    code TEXT NOT NULL,              -- stored on the item: 'NM', 'fine', ...
+    label TEXT NOT NULL,             -- shown: 'Near Mint (NM or M-)'
+    rank INTEGER NOT NULL,           -- best first
+    sleeve_only INTEGER NOT NULL DEFAULT 0 CHECK (sleeve_only IN (0, 1)),
+    PRIMARY KEY (media_type, code)
+);
+INSERT INTO condition_grades (media_type, code, label, rank, sleeve_only) VALUES
+    ('record', 'M', 'Mint (M)', 1, 0),
+    ('record', 'NM', 'Near Mint (NM or M-)', 2, 0),
+    ('record', 'VG+', 'Very Good Plus (VG+)', 3, 0),
+    ('record', 'VG', 'Very Good (VG)', 4, 0),
+    ('record', 'G+', 'Good Plus (G+)', 5, 0),
+    ('record', 'G', 'Good (G)', 6, 0),
+    ('record', 'F', 'Fair (F)', 7, 0),
+    ('record', 'P', 'Poor (P)', 8, 0),
+    ('record', 'Generic', 'Generic', 9, 1),
+    ('record', 'No Cover', 'No Cover', 10, 1),
+    ('record', 'Not Graded', 'Not Graded', 11, 1),
+    ('book', 'as_new', 'As New', 1, 0),
+    ('book', 'fine', 'Fine', 2, 0),
+    ('book', 'near_fine', 'Near Fine', 3, 0),
+    ('book', 'very_good', 'Very Good', 4, 0),
+    ('book', 'good', 'Good', 5, 0),
+    ('book', 'fair', 'Fair', 6, 0),
+    ('book', 'poor', 'Poor', 7, 0),
+    ('video', 'new', 'New (sealed)', 1, 0),
+    ('video', 'like_new', 'Like New', 2, 0),
+    ('video', 'very_good', 'Very Good', 3, 0),
+    ('video', 'good', 'Good', 4, 0),
+    ('video', 'acceptable', 'Acceptable', 5, 0);
+
 -- ---------------------------------------------------------------- books
 
 -- Shared catalogue. added_by is the owner (NULL = unowned; deleting a user
@@ -109,11 +144,54 @@ CREATE TABLE books (
     -- ALTERs put them, so fresh and migrated DBs have the same column order.
     video_kind TEXT REFERENCES video_kinds(name),
     season TEXT,
+    -- Condition (migration 037): a condition_grades code for the item's type,
+    -- checked in utils/condition.py; sleeve_condition is records only.
+    condition TEXT,
+    sleeve_condition TEXT,
+    -- Price paid and value in whole cents, VALUE_CURRENCY (migration 038).
+    -- Private to the owner. value_source: 'manual', 'discogs' or 'ebay'.
+    price_paid_cents INTEGER,
+    value_cents INTEGER,
+    value_source TEXT,
+    value_note TEXT,
+    value_checked_at TIMESTAMP,
+    discogs_release_id INTEGER,
     FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_books_added_by ON books(added_by);
 CREATE INDEX idx_books_media_type ON books(media_type);
 CREATE INDEX idx_books_barcode ON books(barcode);
+
+-- What a photo is of (migration 040; utils/photos.py keeps in step, a test
+-- checks). single = 1: an item has at most one. 'spine' is the left side,
+-- 'side' the right (a VHS sleeve is printed on both).
+CREATE TABLE photo_kinds (
+    code TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    single INTEGER NOT NULL DEFAULT 1 CHECK (single IN (0, 1)),
+    position INTEGER NOT NULL DEFAULT 0     -- the gallery's order
+);
+INSERT INTO photo_kinds (code, label, single, position) VALUES
+    ('back', 'Back', 1, 1),
+    ('spine', 'Spine', 1, 2),
+    ('side', 'Right side', 1, 3),
+    ('top', 'Top', 1, 4),
+    ('gallery', 'Photo', 0, 5);
+
+-- Photos beyond the cover, per item (migrations 036, 040): which kinds a
+-- format takes is utils/photos.kinds_for. Files under
+-- static/uploads/photos/<book_id>/; find_orphaned_images reads this table.
+CREATE TABLE item_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL REFERENCES photo_kinds(code),
+    path TEXT NOT NULL,              -- 'uploads/photos/...', relative to static/
+    caption TEXT,                    -- optional, e.g. "Inner sleeve"
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
+CREATE UNIQUE INDEX idx_item_photos_one_each ON item_photos(book_id, kind) WHERE kind <> 'gallery';
 
 -- Per-user status: reading, watching or listening (statuses table).
 CREATE TABLE collections (
@@ -391,6 +469,10 @@ CREATE TABLE cover_jobs (
     dismissed INTEGER NOT NULL DEFAULT 0,      -- hidden from the progress panel
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     finished_at TIMESTAMP,
+    -- Fetch values (migration 039): a job's kind, and a value job's choices
+    kind TEXT NOT NULL DEFAULT 'cover' CHECK (kind IN ('cover', 'value')),
+    media_types TEXT,                          -- 'book,record'; NULL = every section
+    skip_days INTEGER,                         -- skip values checked in the last N days
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_cover_jobs_user ON cover_jobs(user_id, dismissed);
@@ -476,4 +558,9 @@ INSERT INTO schema_migrations (name) VALUES
     ('032_goodreads_import.sql'),
     ('033_username_nocase.sql'),
     ('034_video_kind.sql'),
-    ('035_palette.sql');
+    ('035_palette.sql'),
+    ('036_item_photos.sql'),
+    ('037_condition_grades.sql'),
+    ('038_item_value.sql'),
+    ('039_value_jobs.sql'),
+    ('040_photo_kinds.sql');

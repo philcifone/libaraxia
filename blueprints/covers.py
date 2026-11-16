@@ -9,7 +9,9 @@ from io import BytesIO
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, request, send_file, url_for
 from flask_login import current_user, login_required
 
+from models import can_view_book
 from utils import cover_crop, cover_jobs
+from utils.image_utils import delete_image_file, is_safe_upload_path
 from utils.database import get_db
 from utils.rate_limiting import limiter
 
@@ -132,3 +134,43 @@ def crop_preview():
     response = send_file(BytesIO(jpeg), mimetype='image/jpeg')
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+@covers_blueprint.route('/crop/save/<int:book_id>', methods=['POST'])
+@login_required
+@limiter.limit("120 per hour")
+def crop_save(book_id):
+    """Save a crop as the item's cover at once (the crop tool's Save on an
+    Edit page; Phil, 2026-11-15), rather than with the form: JSON
+    {"source": ..., "geometry": ..., "fetched": ...}. The source is the
+    item's own cover, a staged upload or the cover a lookup saved (`fetched`,
+    the form's existing_cover_url), exactly as for the edit form's crop
+    (cover_crop.apply_form_crop). Owner or admin; 404 for someone who can't
+    see the item. The old cover's file goes once the row points at the new."""
+    import json
+    conn = get_db()
+    book = conn.execute('SELECT id, added_by, cover_image_url FROM books WHERE id = ?', (book_id,)).fetchone()
+    if not book or not can_view_book(conn, current_user, book_id):
+        abort(404)
+    if not (current_user.is_admin or book['added_by'] == current_user.id):
+        abort(403)
+    data = request.get_json(silent=True) or {}
+    source, fetched = data.get('source'), data.get('fetched')
+    old = book['cover_image_url']
+    try:
+        new_path = cover_crop.apply_form_crop(
+            {'cover_crop': json.dumps(data.get('geometry')), 'crop_source': source or ''},
+            [old, fetched if isinstance(fetched, str) and is_safe_upload_path(fetched) else None])
+    except ValueError as err:
+        return _crop_error(str(err))
+    except Exception:
+        current_app.logger.exception('Saving a cover crop for book %s failed', book_id)
+        return _crop_error("Couldn't save the crop.", 500)
+    if not new_path:
+        return _crop_error('Nothing to crop.')
+    conn.execute('UPDATE books SET cover_image_url = ? WHERE id = ?', (new_path, book_id))
+    conn.commit()
+    if old and old != new_path:
+        delete_image_file(old)
+    return jsonify({'success': True, 'message': 'Cropped cover saved.', 'path': new_path,
+                    'url': url_for('static', filename=new_path)})

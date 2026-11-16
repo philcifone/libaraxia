@@ -10,11 +10,13 @@
            choice; list view is CSS on the same markup (styles.css, "List view").
            Its extra columns are .book-meta below, hidden in grid view. #}
         {% set marks = viewer_marks(books, marks_user|default(none)) %}
+        {# A VHS's top and side photos on the Shelf style's box faces (photos.box_faces) #}
+        {% set faces = box_faces(books) %}
         <div id="book-container" data-media="{{ m.type if m else 'book' }}" data-view="grid"{% if remember_grid|default(false) %} data-remember-grid{% endif %}{% if bulk_select|default(false) %} data-bulkable{% if bulk_view is defined %} data-bulk-view="{{ bulk_view }}"{% endif %}{% endif %} class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             {% set mark = marks.get(book.id, {}) %}
             {# data-format: Shelf draws a DVD's box thinner than a VHS one #}
-            <div class="book-item group" data-format="{{ book|item_format or '' }}">
+            <div class="book-item group" data-format="{{ book|item_format or '' }}"{% if faces.get(book.id) %} style="{{ faces[book.id] }}"{% endif %}>
                 <a href="{{ item_url(book) }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">

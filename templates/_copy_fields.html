@@ -1,0 +1,69 @@
+{# "This copy" on the add and edit forms (ROADMAP 16.0a, utils/copy_fields.py):
+   condition in the type's standard grades (a record: the record and its
+   sleeve), price paid and value in the site's currency, and for a record
+   its Discogs release (what Fetch value asks Discogs about). Condition is
+   shown to anyone who can see the item; the money only to its owner.
+   Needs: m, values (raw text keys price_paid / value / discogs_release:
+   the posted form, or copy_fields.form_defaults of the stored row); the
+   grades and currency come from globals (app.py); optional
+   value_line (where the stored value came from), value_fetch (the
+   Fetch value button's URL, edit pages). #}
+{% set is_record = m.type == 'record' %}
+{% set condition_grades = grades_for(m.type) %}
+{% set sleeve_grades = sleeve_grade_list() %}
+{% set currency = value_currency() %}
+{% set input_cls = 'w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none' %}
+<fieldset class="md:col-span-2 space-y-4 border-t border-rule pt-6" id="copy-fields">
+    <legend class="text-lg font-display text-content-primary pr-2">This copy</legend>
+    <div class="grid sm:grid-cols-2 gap-4">
+        <div class="space-y-2">
+            <label for="condition" class="block text-sm font-medium text-content-secondary">{{ 'Record condition' if is_record else 'Condition' }}</label>
+            <select id="condition" name="condition" class="{{ input_cls }}">
+                <option value="">Not graded</option>
+                {% for code, label in condition_grades %}
+                <option value="{{ code }}" {% if values.condition == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if is_record %}
+        <div class="space-y-2">
+            <label for="sleeve_condition" class="block text-sm font-medium text-content-secondary">Sleeve condition</label>
+            <select id="sleeve_condition" name="sleeve_condition" class="{{ input_cls }}">
+                <option value="">Not graded</option>
+                {% for code, label in sleeve_grades %}
+                <option value="{{ code }}" {% if values.sleeve_condition == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="space-y-2">
+            <label for="price_paid" class="block text-sm font-medium text-content-secondary">Price paid <span class="text-xs italic">({{ currency }}, optional)</span></label>
+            <input id="price_paid" name="price_paid" value="{{ values.price_paid or '' }}" inputmode="decimal" autocomplete="off"
+                   placeholder="12.50" maxlength="20" class="{{ input_cls }}">
+        </div>
+        <div class="space-y-2">
+            <label for="value" class="block text-sm font-medium text-content-secondary">Value <span class="text-xs italic">({{ currency }}, optional)</span></label>
+            <div class="flex gap-2">
+                <input id="value" name="value" value="{{ values.value or '' }}" inputmode="decimal" autocomplete="off"
+                       placeholder="20.00" maxlength="20" class="{{ input_cls }}">
+                {% if value_fetch %}
+                <button type="button" data-click="fetchValue" data-url="{{ value_fetch }}"
+                        class="shrink-0 px-3 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Fetch value</button>
+                {% endif %}
+            </div>
+            {# A fetch fills these (static/value_fetch.js); saved only with the form #}
+            <input type="hidden" name="value_source" id="value_source" value="">
+            <input type="hidden" name="value_note" id="value_note" value="">
+            <input type="hidden" name="value_fetched_cents" id="value_fetched_cents" value="">
+            <p id="value-line" class="text-xs text-content-secondary empty:hidden" aria-live="polite">{{ value_line or '' }}</p>
+        </div>
+        {% if is_record %}
+        <div class="space-y-2 sm:col-span-2">
+            <label for="discogs_release" class="block text-sm font-medium text-content-secondary">Discogs release <span class="text-xs italic">(its number or link: what Fetch value asks Discogs about)</span></label>
+            <input id="discogs_release" name="discogs_release" value="{{ values.discogs_release or '' }}" autocomplete="off"
+                   placeholder="https://www.discogs.com/release/..." maxlength="300" class="{{ input_cls }}">
+        </div>
+        {% endif %}
+    </div>
+    <p class="text-xs text-content-secondary">Only you (and the site's admins) see the price and value. The condition shows on the {{ m.noun }}'s page.</p>
+</fieldset>

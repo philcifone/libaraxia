@@ -1,7 +1,9 @@
-from flask import render_template, redirect, url_for, request, Blueprint, jsonify, abort, flash
+import random
+
+from flask import render_template, redirect, url_for, request, Blueprint, jsonify, abort, flash, session
 from flask_login import login_required, current_user
 from utils.database import get_db
-from utils import grid_query, households, media, sorting
+from utils import grid_query, households, item3d, media, sorting
 from datetime import datetime
 from models import get_library_members, is_friends_with
 from utils.book_utils import get_filter_options, card_json, show_choice, off_shelf_matches, wishlist_matches
@@ -76,8 +78,14 @@ def library_page(template, owner_ids, data_user, **extra):
 @base_blueprint.route("/index")
 @login_required
 def index():
-    """Your Library: the books you own"""
-    return library_page("index.html", [current_user.id], current_user.id)
+    """Your Library: the books you own. In the Shelf style a few of your
+    books that turn in 3D stand on the heading's shelf (ROADMAP 16.0a):
+    chosen by a number drawn at login, or here for a remembered sign-in."""
+    standing = []
+    if current_user.theme_style == 'shelf' and request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        seed = session.setdefault('heading_seed', random.randrange(2 ** 31))
+        standing = item3d.heading_books(get_db(), current_user.id, seed)
+    return library_page("index.html", [current_user.id], current_user.id, heading_books=standing)
 
 
 @base_blueprint.route("/shared-library")

@@ -35,7 +35,8 @@ def test_display_covers_are_wrapped_for_the_box():
     element the Shelf style draws the 3D faces on (an <img> can't have
     them). Form previews and admin pages stay flat on purpose, and so does
     the item page's enlarged cover (#cover-zoom): it is fitted into a
-    fixed box with object-fit, so faces drawn on the box would miss it."""
+    fixed box with object-fit, so faces drawn on the box would miss it.
+    The 3D item (#item-3d) draws its own faces."""
     for name in ('_shelf_rows.html', 'activity_feed.html', '_wishlist_card.html', 'user_wishlist.html',
                  'reviews_list.html', 'reviews_find.html', 'rate_review.html', 'have.html', 'user.html',
                  'book_detail.html', '_book_grid.html'):

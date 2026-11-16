@@ -21,8 +21,8 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import cover_crop, media_covers
-from utils.image_utils import delete_image_file, is_safe_upload_path
+from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers
+from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
@@ -71,9 +71,15 @@ def add_book():
                                                request.form.get("isbn", ""),
                                                request.form.get("subtitle", ""))
                     if d["in_library"]]
+        copy, copy_errors = copy_fields.from_form(request.form, media.BOOK)
+        refused = []
         if on_shelf and not request.form.get("confirm_duplicate"):
-            flash("This looks like a book already on your household's shelf. "
-                  "Tick \"Add it anyway\" if it's a second copy.", "error")
+            refused.append("This looks like a book already on your household's shelf. "
+                           "Tick \"Add it anyway\" if it's a second copy.")
+        refused += copy_errors
+        if refused:
+            for message in refused:
+                flash(message, "error")
             values = request.form.to_dict()
             # Keep a looked-up cover only if it's one of ours (an upload is
             # lost on the re-render, as on any refused form)
@@ -120,6 +126,7 @@ def add_book():
             1 if owned else 0,
             media.book_format(request.form.get("format")),   # Book (NULL) or Audiobook
         ))
+        copy_fields.save(conn, cursor.lastrowid, copy)
         conn.commit()
 
         if request.form.get("then") == "review":
@@ -461,6 +468,16 @@ def edit_book(id):
         return redirect(url_for("base.index"))
 
     if request.method == "POST":
+        copy, copy_errors = copy_fields.from_form(request.form, media.BOOK, book)
+        if copy_errors:
+            for message in copy_errors:
+                flash(message, "error")
+            values = {**dict(book), **request.form.to_dict(), 'existing_cover_url': ''}
+            return render_template("edit_book.html", book=book, values=values,
+                                   m=media.media_labels(media.BOOK),
+                                   **_copy_context(book),
+                                   **_book_tools_context(conn, book)), 400
+
         # Get current cover
         current_cover = book['cover_image_url']
 
@@ -523,16 +540,23 @@ def edit_book(id):
             media.book_format(request.form.get("format")),
             id
         ))
+        copy_fields.save(conn, id, copy)
         conn.commit()
 
         flash("Book updated successfully!", "success")
         return redirect(url_for("books.show_book", id=id))
 
-    values = dict(book)
+    values = {**dict(book), **copy_fields.form_defaults(book)}
     values['existing_cover_url'] = ''     # set only by "Find a better cover"
     return render_template("edit_book.html", book=book, values=values,
                            m=media.media_labels(media.BOOK),
+                           **_copy_context(book),
                            **_book_tools_context(conn, book))
+
+
+def _copy_context(book):
+    """The edit page's extras for "This copy" (_copy_fields.html)."""
+    return copy_fields.edit_context(book)
 
 
 def _transfer_candidates(conn):
@@ -561,6 +585,14 @@ def _book_tools_context(conn, book):
         # Who else has reviews/history on it: a hard delete is refused while anyone does
         'others_with_data': other_users_with_book_data(conn, book['id'], book['added_by']),
         'in_wishlist': in_wishlist,
+        # The Photos section (_photos_edit.html, ROADMAP 16.0a)
+        'photos': photos.photos_of(conn, book['id']),
+        'photo_kinds': photos.kinds_for(media.media_type_of(book), book['format']),
+        'photo_labels': {kind: photos.label(kind, book['format']) for kind in photos.KINDS},
+        # What it still needs before it turns in 3D (utils/item3d.py)
+        'photos_missing_3d': item3d.missing(book, photos.photos_of(conn, book['id'])),
+        'has_3d_shape': item3d.shape_for(media.media_type_of(book), book['format']) is not None,
+        'photo_limit': photos.MAX_PER_ITEM,
     }
 
 @books_blueprint.route("/book/<int:id>")
@@ -713,9 +745,34 @@ def render_item_page(conn, book):
         from utils.goodreads_plan import provenance
         goodreads_notes = provenance(conn, current_user.id, id)
 
+    # More photos (ROADMAP 16.0a): anyone who can see the item sees them,
+    # like the cover. The gallery opens on the cover, then back, spine, rest.
+    item_photos = photos.photos_of(conn, id)
+    cover_url = (url_for('static', filename=book['cover_image_url'])
+                 if upload_exists(book['cover_image_url']) else None)
+    photo_slides = photos.slides(item_photos, cover_url, book['format'])
+
+    # Condition (16.0a): "NM / VG+" for a record (record, then sleeve), the
+    # label for a book or movie; the full labels on hover
+    kind = media.media_type_of(book)
+    grades = [(book['condition'], False), (book['sleeve_condition'], True)] if kind == media.RECORD \
+        else [(book['condition'], False)]
+    condition_text = ' / '.join(condition.short(kind, code) or '-' for code, _ in grades) \
+        if any(code for code, _ in grades) else ''
+    condition_title = ' / '.join(
+        (('Sleeve: ' if sleeve else ('Record: ' if kind == media.RECORD else '')) + condition.label(kind, code, sleeve))
+        for code, sleeve in grades if code)
+
     return render_template(
         "book_detail.html",
         book=book,
+        item_photos=item_photos,
+        item3d=item3d.model(book, item_photos),
+        condition_text=condition_text,
+        condition_title=condition_title,
+        value_line=copy_fields.source_line(book),
+        photo_slides=photo_slides,
+        extra_photos=len(photo_slides) - (1 if cover_url else 0),
         goodreads_notes=goodreads_notes,
         read_data=read_data,
         latest_session=latest_session,
@@ -828,8 +885,10 @@ def delete_book(id):
     conn.commit()
 
     # Only after the row is gone, so a failed delete never loses the cover.
+    # Its photo rows went with it (CASCADE); their folder goes too.
     if book['cover_image_url']:
         delete_image_file(book['cover_image_url'])
+    delete_photo_folder(id)
     kind = media.media_type_of(book)
     if kind != media.BOOK:
         flash(f"{media.item_labels(book)['Noun']} deleted.", "success")

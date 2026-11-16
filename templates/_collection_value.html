@@ -1,0 +1,32 @@
+{# Collection value (ROADMAP 16.0a, stats.collection_value): the owner's own
+   Stats only. What the shelf is worth by section and overall, how much of it
+   has a value, what was paid, and how old the oldest fetched value is.
+   Fetched values are asking prices or suggestions: a rough estimate. #}
+{% set cv = collection_value %}
+{% set names = {'book': 'Books', 'video': 'Movies & TV', 'record': 'Music'} %}
+<section id="collection-value" class="bg-secondary rounded-xl p-4 sm:p-6 card" aria-labelledby="collection-value-heading">
+    <h2 id="collection-value-heading" class="text-2xl font-display text-content-primary">Collection value</h2>
+    <p class="text-sm text-content-secondary mt-1 mb-5">Only you see this. Items on your shelf; fetched values are a rough estimate.</p>
+    <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div class="bg-primary rounded-lg p-3 sm:p-4">
+            <dt class="label text-sm pb-1">Total value</dt>
+            <dd class="mt-1 text-2xl font-display text-content-primary">{{ cv.total.value_cents|money or '–' }}</dd>
+            <dd class="mt-1 text-xs text-content-secondary">{{ '{:,}'.format(cv.total.valued) }} of {{ '{:,}'.format(cv.total.shelved) }} valued</dd>
+        </div>
+        <div class="bg-primary rounded-lg p-3 sm:p-4">
+            <dt class="label text-sm pb-1">You paid</dt>
+            <dd class="mt-1 text-2xl font-display text-content-primary">{{ cv.total.paid_cents|money if cv.total.priced else '–' }}</dd>
+            <dd class="mt-1 text-xs text-content-secondary">for {{ '{:,}'.format(cv.total.priced) }} item{{ '' if cv.total.priced == 1 else 's' }} with a price</dd>
+        </div>
+        {% for row in cv.sections %}
+        <div class="bg-primary rounded-lg p-3 sm:p-4">
+            <dt class="label text-sm pb-1">{{ names[row.kind] }}</dt>
+            <dd class="mt-1 text-xl font-display text-content-primary">{{ row.value_cents|money if row.valued else '–' }}</dd>
+            <dd class="mt-1 text-xs text-content-secondary">{{ '{:,}'.format(row.valued) }} of {{ '{:,}'.format(row.shelved) }} valued</dd>
+        </div>
+        {% endfor %}
+    </dl>
+    {% if cv.oldest %}
+    <p class="mt-4 text-xs text-content-secondary">Oldest fetched value: {{ cv.oldest }}. Fetch values again from Settings, Library.</p>
+    {% endif %}
+</section>

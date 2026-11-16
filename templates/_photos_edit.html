@@ -1,0 +1,110 @@
+{# Photos on the edit page (ROADMAP 16.0a, docs/PHOTOS-VALUE-SPEC.md section 3):
+   the back, the sides its format has (utils/photos.kinds_for) and the gallery. Its own card under the
+   item form, since a form can't hold forms. Every action is a plain POST to
+   blueprints/photos.py that comes back to #photos; static/photos.js uploads
+   a picked file at once (no Upload click) and the gallery one file at a time
+   with a progress line. No placeholders where there's no photo: just Add.
+   Crop opens the cover's crop tool on that photo (cover_crop.js photo
+   mode; its dialog is in the item form above) and saves to photos.crop.
+   A line says what the item still needs before it turns in 3D
+   (utils/item3d.py; ROADMAP 16.0a).
+   Needs: book, photos, photo_kinds, photo_labels, photo_limit,
+   photos_missing_3d, has_3d_shape, m (or a book page's noun). #}
+{% set noun = m.noun if m else 'book' %}
+{% set gallery = photos['gallery'] %}
+<section id="photos" class="bg-secondary-bg rounded-xl p-4 sm:p-6 mt-8 card" data-photos-book="{{ book['id'] }}">
+    <h2 class="text-xl font-display text-content-primary">Photos</h2>
+    <p class="text-sm text-content-secondary mt-1">
+        The cover is above. Add the back{% if 'spine' in photo_kinds %}, the sides{% endif %} and
+        anything else worth a look: liner notes, inserts, wear. Photos lose their location data when saved.
+    </p>
+    {% if has_3d_shape %}
+    <p class="text-sm text-content-secondary mt-1" data-3d-status="{{ 'needs' if photos_missing_3d else 'ready' }}">
+        {% if photos_missing_3d %}
+        To turn in 3D (Shelf style) it still needs: {{ photos_missing_3d|join(', ')|lower }}.
+        {% else %}
+        It has every photo it needs to turn in 3D (Shelf style): tap its cover.
+        {% endif %}
+    </p>
+    {% endif %}
+    <p class="text-sm mt-2" data-photos-status role="status" aria-live="polite"></p>
+
+    <div class="mt-6 grid sm:grid-cols-2 gap-6">
+        {% for kind in photo_kinds if kind != 'gallery' %}
+        {% set photo = photos[kind] %}
+        <div class="space-y-2">
+            <h3 class="label text-sm pb-1">{{ photo_labels[kind] }}</h3>
+            {% if photo %}
+            <img src="{{ url_for('static', filename=photo['path']) }}" alt="{{ photo_labels[kind] }} of {{ book['title'] }}"
+                     class="{{ 'h-48 w-auto' if kind in ('spine', 'side') else 'h-40 w-auto max-w-full object-contain' }} border border-rule-strong">
+            {% endif %}
+            <div class="flex flex-wrap gap-2">
+                <form action="{{ url_for('photos.add', book_id=book['id'], kind=kind) }}" method="POST"
+                      enctype="multipart/form-data" class="photo-upload flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline cursor-pointer">
+                        {{ ('Replace' if photo else 'Add ' ~ photo_labels[kind]|lower) }}
+                        <input type="file" name="photo" accept="image/*" class="sr-only" data-change="uploadPhotos">
+                    </label>
+                    <button type="submit" class="text-sm underline text-content-secondary" data-photo-submit>Upload</button>
+                </form>
+                {% if photo %}
+                <button type="button" data-click="cropPhoto" data-source="{{ photo['path'] }}"
+                        data-url="{{ url_for('photos.crop', photo_id=photo['id']) }}"
+                        class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Crop</button>
+                <form action="{{ url_for('photos.delete', photo_id=photo['id']) }}" method="POST"
+                      data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Delete">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="px-4 py-2 text-sm rounded-lg btn btn-outline text-content-primary">Delete</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mt-8 space-y-3">
+        <h3 class="label text-sm pb-1">More photos{% if gallery %} ({{ gallery|length }}){% endif %}</h3>
+        {% if gallery %}
+        <ul class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {% for photo in gallery %}
+            <li class="space-y-2">
+                <img src="{{ url_for('static', filename=photo['path']) }}" alt="{{ photo['caption'] or 'Photo ' ~ loop.index ~ ' of ' ~ book['title'] }}"
+                         class="w-full h-32 object-cover border border-rule-strong" loading="lazy">
+                <form action="{{ url_for('photos.caption', photo_id=photo['id']) }}" method="POST" class="flex gap-1">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="caption-{{ photo['id'] }}" class="sr-only">Caption</label>
+                    <input id="caption-{{ photo['id'] }}" name="caption" value="{{ photo['caption'] or '' }}" maxlength="200"
+                           placeholder="Caption" class="min-w-0 flex-1 bg-primary border border-rule-strong rounded-lg px-2 py-1 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    <button type="submit" class="px-2 py-1 text-sm rounded-lg btn btn-outline text-content-primary">Save</button>
+                </form>
+<div class="flex items-center gap-4">
+                <button type="button" data-click="cropPhoto" data-source="{{ photo['path'] }}"
+                        data-url="{{ url_for('photos.crop', photo_id=photo['id']) }}"
+                        class="text-sm underline text-content-secondary hover:text-content-primary">Crop</button>
+                <form action="{{ url_for('photos.delete', photo_id=photo['id']) }}" method="POST"
+                      data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Delete">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Delete</button>
+                </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% if gallery|length < photo_limit %}
+        <form action="{{ url_for('photos.add', book_id=book['id'], kind='gallery') }}" method="POST"
+              enctype="multipart/form-data" class="photo-upload flex flex-wrap items-center gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline cursor-pointer">
+                Add photos
+                <input type="file" name="photo" accept="image/*" multiple class="sr-only" data-change="uploadPhotos">
+            </label>
+            <button type="submit" class="text-sm underline text-content-secondary" data-photo-submit>Upload</button>
+            <span class="text-xs text-content-secondary">Up to {{ photo_limit }} per {{ noun }}.</span>
+        </form>
+        {% else %}
+        <p class="text-sm text-content-secondary">This {{ noun }} has the most photos it can ({{ photo_limit }}). Delete one to add another.</p>
+        {% endif %}
+    </div>
+</section>

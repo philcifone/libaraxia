@@ -1,0 +1,36 @@
+{# The 3D box of an item (ROADMAP 16.0a): six faces in CSS 3D, drawn from a
+   utils/item3d.model(). Used by the item page's dialog (book_detail.html
+   #item-3d, turned by book_detail.js) and, standing still, by the books on
+   the Shelves heading (_shelves.html). Every printed face is a photo; a
+   face with no photo is plain (paper, card or plastic, by shape: styles.css
+   "The 3D item"). The one drawn face is a CD's spine. The proportions ride
+   on the box as --a (width / height) and --dr (depth / height); the CSS
+   that places it sets the height.
+
+   Faces: front, back, spine (the left side), side (the right), top, bottom. #}
+{% macro item3d_box(model, class='') -%}
+<div class="item3d-box item3d-{{ model.shape }} {{ class }}" data-item3d-box
+     style="--a: {{ model.aspect }}; --dr: {{ model.depth }};">
+    <div class="item3d-face item3d-front">
+        <img src="{{ model.faces.front }}" alt="" data-item3d-cover draggable="false">
+    </div>
+    <div class="item3d-face item3d-back">
+        <img src="{{ model.faces.back }}" alt="" draggable="false">
+    </div>
+    {# A CD's inlay has the same spine at both ends, the right one upside
+       down (styles.css turns it) #}
+    {% for face, url in (('spine', model.faces.spine), ('side', model.faces.side or (model.faces.spine if model.shape == 'jewel'))) %}
+    <div class="item3d-face item3d-{{ face }}">
+        {% if url %}
+        <img src="{{ url }}" alt="" draggable="false">
+        {% elif model.shape == 'jewel' %}
+        <span class="item3d-spine-print"><span>{{ model.author }}</span><span>{{ model.title }}</span></span>
+        {% endif %}
+    </div>
+    {% endfor %}
+    <div class="item3d-face item3d-top">
+        {% if model.faces.top %}<img src="{{ model.faces.top }}" alt="" draggable="false">{% endif %}
+    </div>
+    <div class="item3d-face item3d-bottom"></div>
+</div>
+{%- endmacro %}

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
 {% from '_icons.html' import crumbs, icon, heading_card %}
+{% from '_item3d.html' import item3d_box %}
 
 {% block title %}{{ book['title'] }} - Details{% endblock %}
 {# Shared by books and videos: `m` holds the wording for this media type
@@ -68,10 +69,18 @@
                 <div class="self-center md:self-start md:row-span-2">
                     {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
-                    <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}">
+                    {# A VHS sleeve's top and right side photos, when it has them, go on
+                       the box's top and side faces (Phil, 2026-11-15; photos.box_faces,
+                       styles.css "VHS faces"); the cover stays flat and facing you #}
+                    {% set face_style = box_faces([book]).get(book['id']) %}
+                    <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}"
+                         {% if face_style %}style="{{ face_style }}"{% endif %}>
                         {% if book.cover_image_url|upload_exists %}
                             {# A tap shows it bigger (#cover-zoom, below) #}
-                            <button type="button" class="cover-zoom-open" data-click="showModal" data-target="cover-zoom"
+                            {# openCover (book_detail.js): in the Shelf style the item in 3D
+                               (#item-3d, when it has the photos for it); else the gallery,
+                               cover first, when there are more photos; else the zoom #}
+                            <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
                                     aria-label="Show the cover bigger">
                                 {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
                             </button>
@@ -80,6 +89,13 @@
                             {% with title=book['title'], author=book['author'], size='lg', box='w-full ' ~ ('aspect-square' if m.type == 'record' else 'aspect-[2/3]') ~ ' rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                     </div>
+                    {# More photos (16.0a): only when there's a back, spine or gallery #}
+                    {% if extra_photos %}
+                    <button type="button" class="mt-3 text-sm underline text-content-secondary hover:text-content-primary"
+                            data-click="openGallery" data-start="{{ 1 if photo_slides[0].label == 'Cover' else 0 }}">
+                        More photos ({{ extra_photos }})
+                    </button>
+                    {% endif %}
                 </div>
 
                 <!-- The facts, beside the cover -->
@@ -131,6 +147,29 @@
                                 {% endif %}
                             </div>
                             {% endfor %}
+                            {# This copy (16.0a), only when set: the condition for anyone
+                               who sees the item ("NM / VG+" for a record: record, then
+                               sleeve, full labels on hover); price paid and value for
+                               the owner and admins only. #}
+                            {% if condition_text %}
+                            <div class="space-y-1" data-condition>
+                                <span class="label text-sm pb-1">Condition</span>
+                                <p class="text-sm md:text-base text-content-primary font-medium" title="{{ condition_title }}">{{ condition_text }}</p>
+                            </div>
+                            {% endif %}
+                            {% if can_manage and book['price_paid_cents'] is not none %}
+                            <div class="space-y-1" data-price-paid>
+                                <span class="label text-sm pb-1">Price paid</span>
+                                <p class="text-sm md:text-base text-content-primary font-medium">{{ book['price_paid_cents']|money }}</p>
+                            </div>
+                            {% endif %}
+                            {% if can_manage and book['value_cents'] is not none %}
+                            <div class="space-y-1" data-value>
+                                <span class="label text-sm pb-1">Value</span>
+                                <p class="text-sm md:text-base text-content-primary font-medium">{{ book['value_cents']|money }}</p>
+                                <p class="text-xs text-content-secondary">{{ value_line }}{% if book['value_source'] in ('discogs', 'ebay') %} (a rough estimate){% endif %}</p>
+                            </div>
+                            {% endif %}
                         </div>
                 </div>
 
@@ -560,6 +599,60 @@
                     <img src="{{ url_for('static', filename=book['cover_image_url']) }}" alt="{{ book['title'] }} Cover">
                 </button>
             </form>
+        </dialog>
+        {% endif %}
+
+        {# The item in 3D (ROADMAP 16.0a, Shelf style only): a box you turn by
+           dragging (book_detail.js), drawn by _item3d.html. Only when the
+           item has every photo its shape needs (utils/item3d.py): no drawn
+           stand-ins. The cover button opens it instead of the gallery or
+           the zoom in Shelf. #}
+        {% if item3d %}
+        <dialog id="item-3d" class="item3d" aria-label="{{ book['title'] }}, in 3D">
+            <div class="item3d-stage" data-item3d-stage role="img"
+                 aria-label="{{ book['title'] }}: drag, or use the arrow keys, to turn it">
+                {{ item3d_box(item3d) }}
+            </div>
+            <div class="item3d-floor" aria-hidden="true"></div>
+            <div class="item3d-controls">
+                <button type="button" data-click="item3dTurn" data-angle="0">Front</button>
+                {% if item3d.shape != 'sleeve' %}
+                <button type="button" data-click="item3dTurn" data-angle="90">{{ 'Left' if item3d.shape == 'tape' else 'Spine' }}</button>
+                {% endif %}
+                <button type="button" data-click="item3dTurn" data-angle="180">Back</button>
+                {% if item3d.shape == 'tape' %}
+                <button type="button" data-click="item3dTurn" data-angle="270">Right</button>
+                {% endif %}
+            </div>
+            <form method="dialog" class="item3d-close"><button type="submit" aria-label="Close">&times;</button></form>
+        </dialog>
+        {% endif %}
+
+        {# More photos (16.0a): the cover, back, spine and gallery one at a
+           time, the zoomed cover's size. Previous / next, the arrow keys or a
+           swipe move; a tap on the photo, Esc or Close goes back. Every slide
+           is in the markup; book_detail.js shows one. Captions are text, never
+           HTML. #}
+        {% if extra_photos %}
+        <dialog id="photo-gallery" class="cover-zoom photo-gallery" aria-label="Photos of {{ book['title'] }}">
+            <div class="photo-gallery-frame">
+                {% for slide in photo_slides %}
+                <figure class="photo-slide" data-slide {% if not loop.first %}hidden{% endif %}>
+                    <form method="dialog">
+                        <button type="submit" aria-label="Close">
+                            <img src="{{ slide.url }}" alt="{{ slide.caption or (slide.label ~ ' of ' ~ book['title']) }}" loading="lazy">
+                        </button>
+                    </form>
+                    <figcaption>
+                        {% if slide.caption %}<span>{{ slide.caption }}</span>{% elif slide.label != 'Photo' %}<span>{{ slide.label }}</span>{% endif %}
+                        <span class="photo-count">{{ loop.index }} of {{ photo_slides|length }}</span>
+                    </figcaption>
+                </figure>
+                {% endfor %}
+                <button type="button" class="photo-nav photo-prev" data-click="galleryStep" data-step="-1" aria-label="Previous photo">&lt;</button>
+                <button type="button" class="photo-nav photo-next" data-click="galleryStep" data-step="1" aria-label="Next photo">&gt;</button>
+                <form method="dialog" class="photo-close"><button type="submit" aria-label="Close">&times;</button></form>
+            </div>
         </dialog>
         {% endif %}
     </div>{# Main Content Container #}

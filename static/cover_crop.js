@@ -254,6 +254,10 @@ function initCropTool() {
     let invalidTimer = 0;
     let lastTap = null;
     let downPoint = null;
+    // Photo mode (16.0a): cropping one of the item's photos rather than the
+    // cover. {source, saveUrl, button}; Save posts the crop straight to the
+    // photo's route instead of filling the form's hidden inputs.
+    let photoTarget = null;
 
     // Applied to the form (survives closing the dialog)
     let savedUrl = null;            // blob URL shown in #cover-preview
@@ -672,7 +676,7 @@ function initCropTool() {
             const response = await fetch('/covers/crop/preview', {
                 method: 'POST',
                 headers: getCSRFHeaders(),
-                body: JSON.stringify({ source, geometry: geom }),
+                body: JSON.stringify({ source, geometry: geom, fetched: $('existing_cover_url')?.value || '' }),
             });
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
@@ -713,9 +717,54 @@ function initCropTool() {
         announce('Undone');
     }
 
+    async function savePhoto(geom) {
+        const response = await fetch(photoTarget.saveUrl, {
+            method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ geometry: geom }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            setBusyText(data.error || "Couldn't crop that photo.");
+            setTimeout(() => setBusyText(''), 3000);
+            return;
+        }
+        dialog.close();
+        location.hash = 'photos';
+        location.reload();
+    }
+
+    // An Edit page: the cropped cover is saved now, not with the form, so
+    // nothing done next (adding photos reloads the page) can lose it. The
+    // form's own cover inputs are cleared: the saved cover is the cover, and
+    // Save Changes mustn't put the uncropped pick back over it.
+    async function saveCover(geom) {
+        const response = await fetch(openButton.dataset.saveUrl, {
+            method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ source, geometry: geom, fetched: $('existing_cover_url')?.value || '' }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            setBusyText(data.error || "Couldn't save the crop.");
+            setTimeout(() => setBusyText(''), 3000);
+            return;
+        }
+        clearCrop(false);
+        if ($('image')) $('image').value = '';
+        if ($('existing_cover_url')) $('existing_cover_url').value = '';
+        openButton.dataset.currentCover = data.path;
+        const img = document.createElement('img');
+        img.src = data.url;
+        img.alt = 'Cover';
+        img.className = 'max-w-[12rem] rounded-lg';
+        preview.replaceChildren(img);
+        $('crop-saved')?.classList.remove('hidden');
+        announce('Cropped cover saved.');
+        dialog.close();
+    }
+
     async function save() {
         if (!await doCrop()) return;                        // crop first if the handles moved on
         const top = history[history.length - 1];
+        if (photoTarget) return savePhoto(top.geom);
+        if (openButton.dataset.saveUrl) return saveCover(top.geom);
         sourceInput.value = source;
         cropInput.value = JSON.stringify(top.geom);
 
@@ -762,7 +811,8 @@ function initCropTool() {
         image = null;
         source = null;
         setBusyText('');
-        openButton.focus();
+        (photoTarget?.button || openButton)?.focus();
+        photoTarget = null;
     }
 
     $('crop-do').addEventListener('click', doCrop);
@@ -781,6 +831,7 @@ function initCropTool() {
     }
 
     function hasSource() {
+        if (photoTarget) return true;
         return !!(pickedFile() || $('existing_cover_url')?.value || openButton.dataset.currentCover);
     }
 
@@ -802,6 +853,7 @@ function initCropTool() {
     }
 
     async function resolveSource() {
+        if (photoTarget) return photoTarget.source;
         const file = pickedFile();
         if (file) return stageFile(file);
         return $('existing_cover_url')?.value || openButton.dataset.currentCover || null;
@@ -816,7 +868,10 @@ function initCropTool() {
         });
     }
 
-    async function openTool() {
+    async function openTool(target) {
+        // From the cover's button (an Event) or a photo's Crop (a target)
+        photoTarget = target && target.source ? target : null;
+        $('crop-title').textContent = photoTarget ? 'Crop photo' : 'Crop cover';
         if (!hasSource()) return;
         history = [];
         showResult(null);
@@ -839,7 +894,7 @@ function initCropTool() {
             setBusyText('');
             layout();
             // Reopen with a crop already saved for this source: non-destructive
-            if (cropInput.value && sourceInput.value === source) {
+            if (!photoTarget && cropInput.value && sourceInput.value === source) {
                 try { setGeometry(JSON.parse(cropInput.value)); await doCrop(); } catch (err) { console.error(err); }
             }
             handles[0].focus({ preventScroll: true });
@@ -856,6 +911,7 @@ function initCropTool() {
     // --- The form's side ------------------------------------------------------------------------
 
     function clearCrop(restore) {
+        $('crop-saved')?.classList.add('hidden');
         sourceInput.value = '';
         cropInput.value = '';
         note.classList.add('hidden');
@@ -881,6 +937,8 @@ function initCropTool() {
     });
 
     registerActions({
+        // A photo's Crop button (_photos_edit.html): crop that photo
+        cropPhoto: el => openTool({ source: el.dataset.source, saveUrl: el.dataset.url, button: el }),
         removeCrop: () => {
             clearCrop(true);
             announce('Crop removed');

@@ -1363,6 +1363,179 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
 .cover-zoom button:focus-visible, .cover-zoom-open:focus-visible { outline: none; }
 html:has(.cover-zoom[open]) { overflow: hidden; }
 
+/* More photos (book_detail.html #photo-gallery, ROADMAP 16.0a): the cover
+   zoom's sheet with one slide at a time. The photo is the close button, as
+   on the zoom; previous / next sit at the sides and Close in a corner, on
+   the page's surface colour so they read over any photo. */
+.photo-gallery-frame { position: relative; width: 100%; height: 100%; }
+.photo-gallery .photo-slide {
+    display: grid; grid-template-rows: minmax(0, 1fr) auto;
+    width: 100%; height: 100%; margin: 0; padding-bottom: 1rem;
+}
+.photo-gallery .photo-slide[hidden] { display: none; }
+.photo-gallery .photo-slide img { height: 78dvh; width: min(40rem, 100%); }
+.photo-gallery figcaption {
+    justify-self: center; display: flex; gap: 1rem; align-items: baseline;
+    max-width: min(40rem, calc(100% - 2rem)); padding: .35rem .75rem;
+    background: rgb(var(--surface)); color: rgb(var(--ink));
+    border: var(--bw-card) solid var(--card-edge); border-radius: var(--r-md);
+    font-size: .875rem;
+}
+.photo-gallery .photo-count { color: rgb(var(--muted)); white-space: nowrap; }
+.photo-gallery .photo-close button {
+    display: grid; place-items: center;
+    width: 2.75rem; height: 2.75rem; padding: 0;
+    background: rgb(var(--surface)); color: rgb(var(--ink));
+    border: var(--bw-btn) solid var(--outline-edge); border-radius: var(--r-pill);
+    box-shadow: var(--sh-btn); font-size: 1.5rem; line-height: 1; cursor: pointer;
+}
+/* Previous / next: plain translucent "<" and ">" at the screen's edges
+   (Phil, 2026-11-15: simple, over whatever the photo is) */
+.photo-gallery .photo-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    display: grid; place-items: center;
+    width: 2.75rem; height: 4.5rem; padding: 0; border: 0; border-radius: 0;
+    background: rgb(var(--black) / .35); color: rgb(255 255 255 / .9);
+    font: 400 1.75rem/1 var(--font-body); cursor: pointer;
+}
+.photo-gallery .photo-nav:hover { background: rgb(var(--black) / .55); }
+.photo-gallery .photo-prev { left: 0; }
+.photo-gallery .photo-next { right: 0; }
+.photo-gallery .photo-close { position: absolute; top: .75rem; right: .75rem; width: auto; height: auto; padding: 0; }
+.photo-gallery .photo-nav:focus-visible, .photo-gallery .photo-close button:focus-visible {
+    outline: 2px solid rgb(var(--accent)); outline-offset: 2px;
+}
+
+/* ---------- The 3D item (templates/_item3d.html, ROADMAP 16.0a; Shelf only) ----------
+   A box of six faces in CSS 3D: the cover in front, the back behind, the
+   spine on the left (as a book in the hand), the side on the right, top and
+   bottom. Its proportions come from the photos (utils/item3d.py): --a is
+   width / height, --dr depth / height; whatever places a box sets --h.
+   In the dialog (#item-3d) book_detail.js turns it (--rx, --ry) and lights
+   each face (--shade, 0 to 1: how far it's turned from the light, top left
+   in front). Every printed face is a photo; a face without one is plain,
+   by shape:
+     book    paper with fine lines (side, top, bottom)
+     sleeve  card in the cover's colour (--edge, read from its pixels)
+     jewel   a CD: the cover photo is the whole front, bar and all;
+             the spine drawn small unless there's a photo
+     case    a DVD or cassette: black plastic
+     tape    a VHS sleeve: a top without a photo is card in the cover's
+             colour (--edge); the open bottom is the black tape inside */
+.item3d-box {
+    --h: 400px;
+    --w: calc(var(--h) * var(--a, .66));
+    --d: max(3px, calc(var(--h) * var(--dr, .1)));
+    --pages: 238 232 218;          /* paper, in the hand's light */
+    --pages-line: 204 196 180;
+    --plastic: 22 22 24;
+    position: relative; width: var(--w); height: var(--h);
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+}
+.item3d-face {
+    position: absolute; left: 50%; top: 50%;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    overflow: hidden; background: rgb(var(--plastic));
+}
+/* Each face's light: a dark wash that deepens as it turns away */
+.item3d-face::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: rgb(var(--black) / calc(var(--shade, 0) * .62));
+}
+.item3d-face img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.item3d-front, .item3d-back {
+    width: var(--w); height: var(--h);
+    margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2);
+}
+.item3d-front { transform: translateZ(calc(var(--d) / 2)); }
+.item3d-back  { transform: rotateY(180deg) translateZ(calc(var(--d) / 2)); }
+.item3d-spine, .item3d-side {
+    width: var(--d); height: var(--h);
+    margin: calc(var(--h) / -2) 0 0 calc(var(--d) / -2);
+}
+.item3d-spine { transform: rotateY(-90deg) translateZ(calc(var(--w) / 2)); }
+.item3d-side  { transform: rotateY(90deg) translateZ(calc(var(--w) / 2)); }
+.item3d-top, .item3d-bottom {
+    width: var(--w); height: var(--d);
+    margin: calc(var(--d) / -2) 0 0 calc(var(--w) / -2);
+}
+.item3d-top    { transform: rotateX(90deg) translateZ(calc(var(--h) / 2)); }
+.item3d-bottom { transform: rotateX(-90deg) translateZ(calc(var(--h) / 2)); }
+
+/* A book: the pages, set a hair inside the covers. The hair is a share
+   of the book's height (--inset), not a fixed pixel: 1px was nothing on
+   the 3D view's 520px book but read as covers too big for the pages on
+   the heading's 48px ones (Phil, 2026-11-15). */
+.item3d-book { --inset: calc(var(--h) * .002); }
+.item3d-book .item3d-front { border-radius: 0 var(--cover-r, 1px) var(--cover-r, 1px) 0; }
+.item3d-book .item3d-back  { border-radius: var(--cover-r, 1px) 0 0 var(--cover-r, 1px); }
+.item3d-book .item3d-side {
+    transform: rotateY(90deg) translateZ(calc(var(--w) / 2 - var(--inset)));
+    background: repeating-linear-gradient(90deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
+}
+.item3d-book :is(.item3d-top, .item3d-bottom) {
+    background: repeating-linear-gradient(0deg, rgb(var(--pages)) 0 2px, rgb(var(--pages-line)) 2px 3px);
+}
+.item3d-book .item3d-top    { transform: rotateX(90deg) translateZ(calc(var(--h) / 2 - var(--inset))); }
+.item3d-book .item3d-bottom { transform: rotateX(-90deg) translateZ(calc(var(--h) / 2 - var(--inset))); }
+
+/* A record sleeve: card edges */
+.item3d-sleeve :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom) { background: rgb(var(--edge, 222 214 196)); }
+
+/* A VHS sleeve without a top photo: card in the cover's colour */
+.item3d-tape .item3d-top:not(:has(img)) { background: rgb(var(--edge, 222 214 196)); }
+
+/* A CD's right end is its inlay's other spine: the same, but upside down
+   (Phil, 2026-11-15), photo or drawn */
+.item3d-jewel .item3d-side > * { transform: rotate(180deg); }
+/* A CD's spine, when there's no photo: the artist and title, small, read
+   from the top down as on the inlay */
+.item3d-spine-print {
+    display: flex; align-items: center; justify-content: space-between; gap: 1em;
+    width: 100%; height: 100%; padding: 6% 0; overflow: hidden;
+    writing-mode: vertical-rl; white-space: nowrap;
+    color: rgb(236 232 222); font-size: calc(var(--d) * .42); line-height: var(--d);
+    font-family: var(--font-body, sans-serif); letter-spacing: .02em;
+}
+.item3d-spine-print span { overflow: hidden; text-overflow: ellipsis; min-height: 0; }
+
+/* The dialog it turns in */
+.item3d {
+    width: 100vw; height: 100dvh; max-width: none; max-height: none;
+    margin: 0; padding: 0; border: 0; background: transparent;
+    overflow: hidden;
+}
+.item3d[open] { display: grid; grid-template-rows: 1fr auto; place-items: center; }
+.item3d-stage {
+    position: relative; width: 100%; height: 100%;
+    display: grid; place-items: center;
+    perspective: 1800px; perspective-origin: 50% 40%;
+    cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.item3d-stage.dragging { cursor: grabbing; }
+/* As tall as fits, and no wider than 60% of the screen (an LP on a phone) */
+.item3d-stage .item3d-box { --h: min(58dvh, 520px, calc(60vw / var(--a, .66))); }
+/* The shadow it casts on the "table", which doesn't turn with it */
+.item3d-floor {
+    position: absolute; left: 50%; top: calc(50% + min(31dvh, 250px));
+    width: min(60vw, 360px); height: 40px; transform: translateX(-50%);
+    background: radial-gradient(closest-side, rgb(var(--black) / .5), transparent);
+    pointer-events: none;
+}
+.item3d-controls { display: flex; gap: .5rem; padding: 0 1rem 1.5rem; }
+.item3d-controls button, .item3d-close button {
+    padding: .4rem .9rem; background: rgb(var(--surface)); color: rgb(var(--ink));
+    border: var(--bw-btn) solid var(--outline-edge); border-radius: var(--r-pill);
+    box-shadow: var(--sh-btn); font-size: .875rem; cursor: pointer;
+}
+.item3d-controls button:focus-visible, .item3d-close button:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+.item3d-close { position: absolute; top: .75rem; right: .75rem; }
+.item3d-close button { width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.5rem; line-height: 1; }
+html:has(.item3d[open]) { overflow: hidden; }
+/* Darker than the zoom's: the item is the only thing to look at */
+.item3d::backdrop { background: rgb(var(--black) / .8); }
+
 /* ---------- Star rating (templates/rate_review.html) ---------- */
 .rating-group { isolation: isolate; }
 .rating-star { position: relative; z-index: 1; }
@@ -1977,6 +2150,59 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
     box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
+/* Books on the heading (ROADMAP 16.0a): some of your own books that turn
+   in 3D (templates/_item3d.html) on the Shelves heading's ledge, standing
+   upright with their spines out, side by side, half each side of the
+   title (Phil, 2026-11-15). Turned 6 degrees (rx -6, ry 84) so a sliver
+   of cover and the tops of the pages show, with the light each face would
+   have in the 3D view (book_detail.js faceLight, worked out once for this
+   pose). Each holder (.heading-book) is as wide as its turned book looks,
+   so the row packs them as they look; the box turns about its own centre
+   inside. No perspective: drawn flat, as an illustration, so every edge
+   that runs along the shelf stays parallel to it (a vanishing point tilted
+   the spines' tops and bottoms). No shadow under them either: it made
+   them look afloat. Decoration: no pointer events, no motion. */
+.heading-books { display: none; }
+:root[data-style="shelf"] .heading-books {
+    --bh: 4rem;                                     /* every book's height */
+    position: absolute;
+    /* on the ledge's top face, a little back from its edge */
+    bottom: calc(var(--ledge-front) + var(--ledge-top) * .45);
+    display: flex; align-items: flex-end;
+    pointer-events: none; user-select: none;
+}
+/* Flush against the case's sides: the left panel's inside strip, and the
+   frame on the right (Phil, 2026-11-15: "justified to either side, no gap") */
+:root[data-style="shelf"] .heading-books-left  { left: var(--side-w); }
+:root[data-style="shelf"] .heading-books-right {
+    right: 0;
+    /* the wall hides the last book's sliver of cover (below) */
+    clip-path: inset(-1rem 0 -1rem -1rem);
+}
+.heading-book {
+    --bw: calc(var(--bh) * var(--a));
+    --bd: max(3px, calc(var(--bh) * var(--dr)));
+    position: relative; display: block; transform-style: preserve-3d;
+    /* Narrower than the turned book looks (its spine plus about a tenth
+       of its cover): pressed together, each book's spine hides most of the
+       cover sliver of the one before, as on a full shelf. Later books
+       paint over earlier ones (each holder is its own 3D scene). */
+    width: calc(var(--bd) + var(--bw) * .035); height: var(--bh);
+}
+/* The last book on the right stands against the wall: it reaches past
+   the group's edge, which clips its cover so the spine meets the wall */
+.heading-books-right .heading-book:last-child { margin-right: calc(var(--bw) * -.07); }
+.heading-book .item3d-box {
+    --h: var(--bh); --rx: -6deg; --ry: 84deg;
+    position: absolute; left: 50%; top: 50%; margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2);
+}
+.heading-book .item3d-spine { --shade: .123; }
+.heading-book .item3d-front { --shade: .65; }
+.heading-book .item3d-top   { --shade: .295; }
+
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .heading-books { --bh: 3.6rem; }
+}
 /* A heading lit by a flashlight (trial on the item page only, Phil
    2026-11-13: .heading-lit on its heading card; take the class off to
    revert). A pool of torchlight on the case's back wall behind the
@@ -2487,6 +2713,25 @@ and to the right for its faces */
     --box-depth: 9px;
     padding: var(--box-depth) var(--box-depth) 0 0;
 }
+/* VHS faces (Phil, 2026-11-15): a VHS sleeve's top and right side photos,
+   when it has them (--face-top, --face-side: utils/photos.box_faces, set
+   on the item page's .cover-stand and on each Movies grid card), on the
+   flat cover box's faces, skewed with them; the photos run the way the 3D
+   view puts them (the top photo's top edge at the back, the side photo's
+   left edge at the front). Each keeps the face's light: the top a little
+   shaded, the side more. A face without a photo stays plain, and the
+   video-store rack's rental cases keep their own look. */
+:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::after,
+:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid[data-media="video"] .book-item[data-format="VHS"] .cover-box::after {
+    background: linear-gradient(rgb(0 0 0 / .08), rgb(0 0 0 / .08)),
+                var(--face-top, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-top));
+}
+:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::before,
+:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid[data-media="video"] .book-item[data-format="VHS"] .cover-box::before {
+    background: linear-gradient(rgb(0 0 0 / .22), rgb(0 0 0 / .22)),
+                var(--face-side, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-side));
+}
+
 /* An album is a thin sleeve: as on the grid (4px to a book's 7px), about
    half a book's depth (Phil, 2026-11-14) */
 :root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }

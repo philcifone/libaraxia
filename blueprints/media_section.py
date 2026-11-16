@@ -29,7 +29,7 @@ from utils.reviews import then_review_values
 from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
-from utils import cover_crop
+from utils import copy_fields, cover_crop
 from utils.image_utils import delete_image_file, is_safe_upload_path
 
 
@@ -407,6 +407,9 @@ def make_blueprint(section: Section) -> Blueprint:
             return section.add_page(values, dups)
 
         values, errors = section.form_values(request.form)
+        copy, copy_errors = copy_fields.from_form(request.form, m_type)
+        values.update(copy)
+        errors += copy_errors
         duplicates = section.duplicates_for(conn, values)
         if duplicates and not request.form.get('confirm_duplicate'):
             errors.append(f"This looks like a {section.item_m(values)['noun']} already on your household's "
@@ -423,6 +426,7 @@ def make_blueprint(section: Section) -> Blueprint:
             request.files.get('image'), request.form.get('existing_cover_url'))
         owned = not request.form.get('not_owned')
         new_id = section.insert(conn, values, cover, current_user.id, owned=owned)
+        copy_fields.save(conn, new_id, copy)
         conn.commit()
         if values['then'] == 'review':
             flash(f"'{values['title']}' added{'' if owned else ' as unshelved'}. Now your review.", 'success')
@@ -452,14 +456,18 @@ def make_blueprint(section: Section) -> Blueprint:
             return render_template('media_form.html', video=row, values=values,
                                    m=section.item_m(values), formats=section.formats,
                                    unshelved=not row['owned'],
+                                   **copy_fields.edit_context(row),
                                    **_book_tools_context(conn, row)), status
 
         if request.method == 'GET':
-            values = dict(row)
+            values = {**dict(row), **copy_fields.form_defaults(row)}
             values['barcode_input'] = row['barcode'] or ''
             return page(values)
 
         values, errors = section.form_values(request.form)
+        copy, copy_errors = copy_fields.from_form(request.form, m_type, row)
+        values.update(copy)
+        errors += copy_errors
         if not row['owned']:
             # The form had no Format; keep the stored one for "I own it now"
             values['format'] = row['format']
@@ -490,6 +498,7 @@ def make_blueprint(section: Section) -> Blueprint:
               values['publish_year'], values['runtime_minutes'], values['format'], values['barcode'],
               values['catalog_number'], values['genre'], values['description'], cover,
               values['video_kind'], values['season'], id, m_type))
+        copy_fields.save(conn, id, copy)
         conn.commit()
         flash(f"{section.item_m(values)['Noun']} updated.", 'success')
         return redirect(url_for(section.endpoint('show'), id=id))

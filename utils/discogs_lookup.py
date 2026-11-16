@@ -418,6 +418,8 @@ def release_details(release_id):
                 'format': album_format(_format_words(r.get('formats'))) or '',
                 'genre': genres[0] if genres else '',
                 'description': '\n\n'.join(n for n in notes if n),
+                # Kept on the item (16.0a): Fetch value asks Discogs about it
+                'discogs_release': str(int(release_id)),
             },
             'covers': _covers(r),
         }
