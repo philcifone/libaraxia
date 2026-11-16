@@ -114,8 +114,8 @@ def box_faces(conn, rows):
     on its faces (Phil, 2026-11-15; a VHS first, every type since 16.0c):
     {book_id: style}, where style sets --face-top / --face-side to the
     images' URLs, for the items among `rows` that have either. Each face is
-    its photo, or (a VHS) the left side's photo for the right, or the
-    placeholder the owner picked or the body's default set gives
+    its photo, or (a VHS) the left side's photo for the right, or (a CD)
+    its spine for the right, or the placeholder the owner picked
     (utils/faces.py; docs/FACES-SPEC.md section 5). A few queries per page
     of items; the item page, the library grids and their infinite scroll
     (book_utils.card_json) use it (styles.css "Box faces")."""
@@ -142,6 +142,10 @@ def box_faces(conn, rows):
         side = mine.get(SIDE) or held.get(SIDE)
         if not side and item['format'] == 'VHS':
             side = mine.get(SPINE)          # one long side does for both (16.0a)
+        if not side and item['format'] == 'CD':
+            # A CD's spine, photo or picked placeholder, on its thin box's
+            # right side: a subtle strip of print (Phil, 2026-11-16)
+            side = mine.get(SPINE) or held.get(SPINE)
         style = ''.join(f'--face-{kind}: url("{url}"); ' for kind, url in (('top', top), ('side', side)) if url)
         if style:
             out[item['id']] = style

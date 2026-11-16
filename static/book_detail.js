@@ -144,29 +144,15 @@ const item3d = {
     box: () => document.querySelector('#item-3d [data-item3d-box]'),
 
     // A record sleeve's four edges, and a VHS sleeve's top when it has no
-    // photo, are card in the cover's own colour: the
-    // average of the cover's outer rows and columns (--edge; styles.css has
-    // a plain card colour for a cover the canvas can't read).
+    // photo, are card in the cover's own colour (common.js coverEdge:
+    // --edge; styles.css has a plain card colour for a cover the canvas
+    // can't read).
     colour() {
         const box = this.box();
         const cover = box.querySelector('[data-item3d-cover]');
         if (!box.matches('.item3d-sleeve, .item3d-tape, .item3d-paper') || !cover?.naturalWidth) return;
-        try {
-            const c = document.createElement('canvas');
-            c.width = c.height = 24;
-            const ctx = c.getContext('2d');
-            ctx.drawImage(cover, 0, 0, c.width, c.height);
-            const px = ctx.getImageData(0, 0, c.width, c.height).data;
-            let r = 0, g = 0, b = 0, n = 0;
-            for (let y = 0; y < c.height; y++) {
-                for (let x = 0; x < c.width; x++) {
-                    if (x > 0 && x < c.width - 1 && y > 0 && y < c.height - 1) continue;
-                    const i = (y * c.width + x) * 4;
-                    r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
-                }
-            }
-            box.style.setProperty('--edge', `${r / n | 0} ${g / n | 0} ${b / n | 0}`);
-        } catch { /* keeps the plain card */ }
+        const edge = coverEdge(cover);     // common.js
+        if (edge) box.style.setProperty('--edge', edge);
     },
 
     render() {

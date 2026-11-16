@@ -88,6 +88,8 @@ For each face, first that exists:
 
 1. the item's photo of that kind;
 2. a VHS sleeve only: for the right side, the left side's photo (16.0a);
+   on the flat box only, a CD's right side is its spine (photo, else
+   picked placeholder; Phil, 2026-11-16);
 3. the item's chosen placeholder;
 4. the plain look (styles.css "The 3D item").
 

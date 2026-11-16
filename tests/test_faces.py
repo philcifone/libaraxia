@@ -270,6 +270,16 @@ def test_a_cd_spine_placeholder_makes_a_jewel_case(client, db, people, static_ro
     box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
     url = '/static/' + scalar(db, 'SELECT path FROM face_placeholders')
     assert 'item3d-paper' not in box and '--dr: 0.083;' in box and box.count(url) == 2
+    # and the spine is on the flat box's right side, on the grid and the
+    # item page (Phil, 2026-11-16, as a VHS); a spine photo beats it
+    card = re.search(r'<div class="book-item group" data-format="CD"[^>]*>',
+                     client.get('/records/').get_data(as_text=True)).group(0)
+    assert f'--face-side: url(&#34;{url}&#34;)' in card
+    upload(client, cd, 'spine', jpeg_bytes((40, 480)))
+    page = client.get(f'/records/{cd}').get_data(as_text=True)
+    stand = page[page.index('class="cover-stand'):]
+    stand = stand[:stand.index('>')]
+    assert '--face-side: url(&#34;/static/uploads/photos/' in stand
 
 
 def test_bulk_edit_applies_a_set_and_undoes_it(client, db, people, static_root):

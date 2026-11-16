@@ -1345,6 +1345,15 @@ def test_record_item_box_is_thinner():
     the grid (Phil, 2026-11-14)."""
     css = pathlib.Path('static/styles.css').read_text()
     assert ':root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }' in css
+    # a vinyl sleeve is card: 1px on the item page and the grid, in its
+    # cover's edge colour a shade darker; CDs and cassettes keep the
+    # record depth (Phil, 2026-11-16)
+    vinyl = ':not([data-format="CD"], [data-format="Cassette"]) { --box-depth: 1px; }'
+    assert ':root[data-style="shelf"] .cover-stand[data-media="record"]' + vinyl in css
+    assert ':root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .book-item' + vinyl in css
+    assert 'color-mix(in srgb, rgb(var(--edge, var(--box-side))) 70%, black)' in css
+    common = pathlib.Path('static/common.js').read_text()
+    assert "addEventListener('load', event => paintVinylEdge(event.target), true)" in common
 
 
 def test_empty_detail_fields_say_not_set(client, db, people):

@@ -5615,6 +5615,14 @@ html:has(.item3d[open]) {
   }
 }
 
+/* A vinyl sleeve is card: 1px, a hint of an edge, at every width (Phil,
+   2026-11-16); its colour is in "vinyl sleeve" below. Every record that isn't a CD or a cassette, as
+   utils/faces.medium_for has it; the item page's .cover-stand matches. */
+
+:root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .book-item:not([data-format="CD"], [data-format="Cassette"]) {
+  --box-depth: 1px;
+}
+
 :root[data-style="shelf"] .shelf-grid.grid .book-cover {
   display: flex;
   align-items: flex-end;
@@ -6812,6 +6820,26 @@ and to the right for its faces */
 
 :root[data-style="shelf"] .cover-stand[data-media="record"] {
   --box-depth: 5px;
+}
+
+/* ...and a vinyl sleeve is card, 1px, as on the grid (Phil, 2026-11-16) */
+
+:root[data-style="shelf"] .cover-stand[data-media="record"]:not([data-format="CD"], [data-format="Cassette"]) {
+  --box-depth: 1px;
+}
+
+/* vinyl sleeve: the thin box's top and side are card in the cover's edge
+   colour (--edge, common.js paintVinylEdge), a shade darker for the side
+   in shadow; the plain grey where the canvas can't read the cover, also a
+   shade darker, so a 1px edge still shows (Phil, 2026-11-16). A top or
+   side photo wins ("Box faces" below), so those faces are left out here. */
+
+:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="record"] .book-item, .cover-stand[data-media="record"]):not([data-format="CD"], [data-format="Cassette"]):not([style*="--face-side"]) .cover-box::before {
+  background: color-mix(in srgb, rgb(var(--edge, var(--box-side))) 70%, black);
+}
+
+:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="record"] .book-item, .cover-stand[data-media="record"]):not([data-format="CD"], [data-format="Cassette"]):not([style*="--face-top"]) .cover-box::after {
+  background: color-mix(in srgb, rgb(var(--edge, var(--box-top))) 82%, black);
 }
 
 /* A DVD case is under half a VHS clamshell's depth (14mm to 35mm): the

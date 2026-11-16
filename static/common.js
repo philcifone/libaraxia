@@ -424,6 +424,51 @@ function coverBoxHtml(src, alt, imgClass, { author = null } = {}) {
          + ` class="${imgClass}"><span class="cover-sheen" aria-hidden="true"></span></span>`;
 }
 
+// --- A cover's edge colour (Shelf) ------------------------------------------
+// The average of a cover's outer rows and columns, as "r g b" for rgb(),
+// or null when the canvas can't read it. A record sleeve is card in that
+// colour: the 3D view's edges (book_detail.js) and, below, a vinyl's thin
+// flat box on the grid and the item page (styles.css, "vinyl sleeve").
+function coverEdge(img) {
+    if (!img?.naturalWidth) return null;
+    try {
+        const c = document.createElement('canvas');
+        c.width = c.height = 24;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        const px = ctx.getImageData(0, 0, c.width, c.height).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let y = 0; y < c.height; y++) {
+            for (let x = 0; x < c.width; x++) {
+                if (x > 0 && x < c.width - 1 && y > 0 && y < c.height - 1) continue;
+                const i = (y * c.width + x) * 4;
+                r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
+            }
+        }
+        return `${r / n | 0} ${g / n | 0} ${b / n | 0}`;
+    } catch {
+        return null;
+    }
+}
+
+// A vinyl sleeve's flat box takes its cover's edge colour (--edge on its
+// .cover-box; Phil, 2026-11-16). Every record that isn't a CD or a
+// cassette, on a grid or the item page. Images load at any time (grids
+// add cards as you scroll), so a capture-phase load listener catches each.
+const VINYL_COVER = ':is([data-media="record"] .book-item, .cover-stand[data-media="record"])'
+    + ':not([data-format="CD"], [data-format="Cassette"]) .cover-box > img';
+function paintVinylEdge(img) {
+    if (!(img instanceof HTMLImageElement) || !img.matches(VINYL_COVER)) return;
+    const edge = coverEdge(img);
+    if (edge) img.parentElement.style.setProperty('--edge', edge);
+}
+if (document.documentElement.dataset.style === 'shelf') {
+    document.addEventListener('load', event => paintVinylEdge(event.target), true);
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll(VINYL_COVER).forEach(img => { if (img.complete) paintVinylEdge(img); });
+    });
+}
+
 // --- No cover -----------------------------------------------------------------
 // The JS twin of templates/_no_cover.html (keep the two in step): a plain
 // binding with the title on it, for cards built in script.
