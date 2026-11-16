@@ -2174,6 +2174,18 @@ html:has(.item3d[open]) { overflow: hidden; }
     box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
+/* A little taller than the other styles' heading cards (Phil, 2026-11-15),
+   so the books on it can stand most of its height */
+:root[data-style="shelf"] .page-heading {
+    padding-top: 1.5rem;
+    padding-bottom: calc(1rem + var(--ledge-h));
+}
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .page-heading {
+        padding-top: 1.25rem;
+        padding-bottom: calc(1rem + var(--ledge-h));
+    }
+}
 /* Books on the heading (ROADMAP 16.0a): some of your own books that turn
    in 3D (templates/_item3d.html) on the Shelves heading's ledge, standing
    upright with their spines out, side by side, half each side of the
@@ -2188,7 +2200,7 @@ html:has(.item3d[open]) { overflow: hidden; }
    them look afloat. Decoration: no pointer events, no motion. */
 .heading-books { display: none; }
 :root[data-style="shelf"] .heading-books {
-    --bh: 4rem;                                     /* every book's height */
+    --bh: 4.75rem;      /* every book's height: most of the case's inside (5rem) */
     position: absolute;
     /* on the ledge's top face, a little back from its edge */
     bottom: calc(var(--ledge-front) + var(--ledge-top) * .45);
@@ -2225,7 +2237,7 @@ html:has(.item3d[open]) { overflow: hidden; }
 .heading-book .item3d-top   { --shade: .295; }
 
 @media (max-width: 639px) {
-    :root[data-style="shelf"] .heading-books { --bh: 3.6rem; }
+    :root[data-style="shelf"] .heading-books { --bh: 4.6rem; }     /* of 4.75rem */
 }
 /* A heading lit by a flashlight (trial on the item page only, Phil
    2026-11-13: .heading-lit on its heading card; take the class off to

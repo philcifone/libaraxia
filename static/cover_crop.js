@@ -239,7 +239,10 @@ function initCropTool() {
     let source = null;              // uploads/... path of the image being cropped
     let image = null;               // its decoded <img>
     let rotate = 0;                 // clockwise degrees applied to the source
-    let mode = 'rect';
+    // Perspective first (Phil, 2026-11-15): most covers and photos are
+    // taken by hand at a slant, so the four corners are the usual job
+    const DEFAULT_MODE = 'quad';
+    let mode = DEFAULT_MODE;
     let ratioChoice = 'free';       // the Ratio chips: free, original, 1:1, 2:3, 3:4, 27:38
     let landscape = false;          // the Portrait / Landscape pair
     let rect = [0, 0, 1, 1];
@@ -711,7 +714,7 @@ function initCropTool() {
             setGeometry(top.geom);
             showResult(top);
         } else {
-            setGeometry({ v: 1, rotate: 0, mode: 'rect', box: [0, 0, 1, 1] });
+            setGeometry({ v: 1, rotate: 0, mode: DEFAULT_MODE, quad: boxCorners([0, 0, 1, 1]), aspect: null });
             showResult(null);
         }
         announce('Undone');
@@ -876,7 +879,7 @@ function initCropTool() {
         history = [];
         showResult(null);
         rotate = 0;
-        mode = 'rect';
+        mode = DEFAULT_MODE;
         ratioChoice = 'free';
         landscape = false;
         ratioArea = null;
