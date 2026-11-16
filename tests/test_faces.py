@@ -213,3 +213,25 @@ def test_add_book_with_a_page_set(client, db, people, static_root):
     client.post('/books/add', data={'submit_book': '1', 'title': 'Dune', 'author': 'Frank Herbert', 'face_set': deckle})
     book = scalar(db, "SELECT id FROM books WHERE title = 'Dune'")
     assert scalar(db, 'SELECT kind FROM item_faces WHERE book_id = ?', book) == 'side'
+
+
+def test_vhs_tapes_stand_on_the_movies_heading(client, db, people, static_root):
+    """Shelf style, your own Movies page (16.0c): your VHS tapes that turn
+    in 3D stand on the heading as books do on Shelves; a DVD doesn't, nor
+    a tape still missing its side, and not on the household's page."""
+    from test_photos import heading_books_of
+    bob = people['bob']
+    db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (bob,))
+    vhs = add_item(db, bob, 'video', 'VHS', real_cover(static_root, 'v.jpg', (400, 720)))
+    half = add_item(db, bob, 'video', 'VHS', real_cover(static_root, 'h.jpg', (400, 720)))
+    dvd = add_item(db, bob, 'video', 'DVD', real_cover(static_root, 'd.jpg', (400, 560)))
+    login(client, 'bob')
+    for item, side in ((vhs, 'side'), (dvd, 'spine')):
+        upload(client, item, 'back', jpeg_bytes((400, 720)))
+        upload(client, item, side, jpeg_bytes((140, 720)))
+    upload(client, half, 'back', jpeg_bytes((400, 720)))
+    html = client.get('/videos/').get_data(as_text=True)
+    assert heading_books_of(html) == ['/static/uploads/v.jpg']
+    assert 'item3d-tape' in html[html.index('data-heading-books'):]
+    assert 'data-heading-books' not in client.get('/records/').get_data(as_text=True)
+    assert 'data-heading-books' not in client.get('/videos/shared').get_data(as_text=True)

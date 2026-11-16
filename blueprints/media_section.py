@@ -16,11 +16,12 @@ Access is the same as for books (CLAUDE.md, Access Model): your own items,
 your household's (shared view), a friend's (by username), and the detail
 page goes through models.can_view_book.
 """
+import random
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from flask import (Blueprint, render_template, request, redirect, url_for, flash,
-                   abort, jsonify, current_app)
+                   abort, jsonify, current_app, session)
 from flask_login import login_required, current_user
 
 from models import can_view_book, get_library_members, is_friends_with
@@ -29,7 +30,7 @@ from utils.reviews import then_review_values
 from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
-from utils import copy_fields, cover_crop, faces
+from utils import copy_fields, cover_crop, faces, item3d
 from utils.image_utils import delete_image_file, is_safe_upload_path
 
 
@@ -345,8 +346,15 @@ def make_blueprint(section: Section) -> Blueprint:
     # ------------------------------------------------------ grids
     @login_required
     def index():
-        """Your own items."""
-        return grid_page([current_user.id], 'mine')
+        """Your own items. In the Shelf style, Movies' heading has a few of
+        your VHS tapes that turn in 3D standing on it, as Shelves has books
+        (16.0c; item3d.heading_books, the same seed as base.index)."""
+        standing = []
+        if (m_type == media.VIDEO and current_user.theme_style == 'shelf'
+                and request.headers.get('X-Requested-With') != 'XMLHttpRequest'):
+            seed = session.setdefault('heading_seed', random.randrange(2 ** 31))
+            standing = item3d.heading_books(get_db(), current_user.id, seed, media.VIDEO)
+        return grid_page([current_user.id], 'mine', heading_books=standing)
 
     @login_required
     def shared():

@@ -148,36 +148,46 @@ def model(item, item_photos, placeholders=None):
     }
 
 
-# --- Books standing on the Shelves heading (ROADMAP 16.0a) -------------------
+# --- Items standing on a section's heading (ROADMAP 16.0a, 16.0c) ------------
 
 HEADING_BOOKS = 10      # at most: five each side of the title, which a phone has room for
 
+# What stands on a section's heading: books on Shelves (16.0a), VHS tapes
+# on Movies (16.0c), spines out. The SQL picks the ones that may turn in 3D
+# (model() has the last word): a cover, a back, and the spine (a tape's
+# left or right side).
+_HEADING = {
+    BOOK: ('library_books', "(b.format IS NULL OR b.format <> 'Audiobook')",
+           "(SELECT COUNT(*) FROM item_photos p WHERE p.book_id = b.id AND p.kind IN ('back', 'spine')) = 2"),
+    VIDEO: ('library_videos', "b.format = 'VHS'",
+            "EXISTS (SELECT 1 FROM item_photos p WHERE p.book_id = b.id AND p.kind = 'back') "
+            "AND EXISTS (SELECT 1 FROM item_photos p WHERE p.book_id = b.id AND p.kind IN ('spine', 'side'))"),
+}
 
-def heading_books(conn, user_id, seed):
-    """Up to HEADING_BOOKS models of the user's own books that turn in 3D,
-    for the Shelves heading's ledge (Shelf style, their own Shelves page
-    only; drawn still, upright with spines out, by templates/_icons.html
-    page_heading).
+
+def heading_books(conn, user_id, seed, media_type=BOOK):
+    """Up to HEADING_BOOKS models of the user's own items that turn in 3D,
+    for the section heading's ledge (Shelf style, their own shelf only;
+    drawn still, upright with spines out, by templates/_icons.html
+    page_heading): books on Shelves, VHS tapes on Movies.
 
     `seed` is drawn at login (session['heading_seed']), so the choice
-    stays put for a visit and changes with the next. Each book's place in
+    stays put for a visit and changes with the next. Each item's place in
     the order comes from the seed and its own id, not from a shuffle of
-    the list: a book that gets its photos joins the ones standing there
+    the list: one that gets its photos joins the ones standing there
     without moving them.
     """
     import random
+    from utils import faces
+    view, fmt, has_photos = _HEADING[media_type]
     rows = conn.execute(f"""
-        SELECT b.* FROM library_books b
+        SELECT b.* FROM {view} b
         WHERE b.added_by = ? AND {on_shelf('b')}
-          AND b.cover_image_url IS NOT NULL
-          AND (b.format IS NULL OR b.format <> 'Audiobook')
-          AND (SELECT COUNT(*) FROM item_photos p
-               WHERE p.book_id = b.id AND p.kind IN ('back', 'spine')) = 2
+          AND b.cover_image_url IS NOT NULL AND {fmt} AND {has_photos}
     """, (user_id,)).fetchall()
     rows.sort(key=lambda b: random.Random(f"{seed}:{b['id']}").random())
-    out = []
-    from utils import faces
     default_sets = faces.defaults(conn)
+    out = []
     for book in rows:
         item_photos = photos.photos_of(conn, book['id'])
         m = model(book, item_photos, faces.placeholder_urls(conn, book, item_photos, default_sets))

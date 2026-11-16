@@ -91,7 +91,7 @@ From Phil, 2026-11-15. **Spec: [docs/FACES-SPEC.md](docs/FACES-SPEC.md).** Every
 - [x] 2. Admin → Placeholders: library and sets, default set per body.
 - [x] 3. Choosing on the edit page and the add form; face resolution; sleeve or clamshell.
 - [x] 4. Docs, screenshots.
-- [ ] Then: VHS tapes on the Movies heading, as the books on the Shelves one.
+- [x] Then: VHS tapes on the Movies heading, as the books on the Shelves one (same seed, your own Movies page).
 
 ### 16.0b Code review 🟠
 The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.
