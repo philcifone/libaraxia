@@ -1934,6 +1934,30 @@ html:has(.item3d[open]) { overflow: hidden; }
     box-shadow: inset 6px 0 0 rgb(var(--accent)), var(--box-shadow);
 }
 :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .no-cover { aspect-ratio: 1; }
+/* Records by size (Phil, 2026-11-15), Shelf style only: --size scales the
+   shelf height per format, so a CD stands beside an LP smaller, the way it
+   would on a real shelf. Not to scale (a CD case is 125 mm to a 12"
+   sleeve's 314, which came out too small): enough to get the idea
+   across, in the real order. An EP, a 12" single and a record with no
+   format are 12". The CD's photo is the whole case front, a little wider
+   than tall; a coverless CD or cassette is drawn its case's shape. */
+:root[data-style="shelf"] #book-container[data-media="record"] .book-item { --size: 1; }
+:root[data-style="shelf"] #book-container[data-media="record"] .book-item[data-format="10in"] { --size: .9; }
+:root[data-style="shelf"] #book-container[data-media="record"] .book-item[data-format="7in"] { --size: .72; }
+:root[data-style="shelf"] #book-container[data-media="record"] .book-item[data-format="CD"] { --size: .6; }
+:root[data-style="shelf"] #book-container[data-media="record"] .book-item[data-format="Cassette"] { --size: .55; }
+:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] .cover-box > .book-cover-img {
+    max-height: calc(var(--cover-h) * var(--size, 1));
+}
+:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] .no-cover {
+    height: calc(var(--cover-h) * var(--size, 1));
+}
+:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] .book-item[data-format="CD"] .no-cover {
+    aspect-ratio: 142 / 125;
+}
+:root[data-style="shelf"] #book-container.shelf-grid.grid[data-media="record"] .book-item[data-format="Cassette"] .no-cover {
+    aspect-ratio: 70 / 110;
+}
 /* The printing on a coverless box. The box is a size container (its width
    comes from the shelf height and aspect ratio, never from the text), so
    type and margins scale with it: a phone's 99px-wide book gets the same
