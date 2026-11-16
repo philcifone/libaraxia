@@ -1418,7 +1418,7 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
      book    paper with fine lines (side, top, bottom)
      sleeve  card in the cover's colour (--edge, read from its pixels)
      jewel   a CD: the cover photo is the whole front, bar and all;
-             the spine drawn small unless there's a photo
+             plastic edges, or card ones in a paper sleeve (.item3d-paper)
      case    a DVD or cassette: black plastic
      tape    a VHS sleeve: a top without a photo is card in the cover's
              colour (--edge); the open bottom is the black tape inside */
@@ -1489,16 +1489,9 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
 /* A CD's right end is its inlay's other spine: the same, but upside down
    (Phil, 2026-11-15), photo or drawn */
 .item3d-jewel .item3d-side > * { transform: rotate(180deg); }
-/* A CD's spine, when there's no photo: the artist and title, small, read
-   from the top down as on the inlay */
-.item3d-spine-print {
-    display: flex; align-items: center; justify-content: space-between; gap: 1em;
-    width: 100%; height: 100%; padding: 6% 0; overflow: hidden;
-    writing-mode: vertical-rl; white-space: nowrap;
-    color: rgb(236 232 222); font-size: calc(var(--d) * .42); line-height: var(--d);
-    font-family: var(--font-body, sans-serif); letter-spacing: .02em;
-}
-.item3d-spine-print span { overflow: hidden; text-overflow: ellipsis; min-height: 0; }
+/* A CD in a paper sleeve (front and back only, Phil 2026-11-15): thin,
+   its edges card in the cover's colour, as a record sleeve's */
+.item3d-paper :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom):not(:has(img)) { background: rgb(var(--edge, 222 214 196)); }
 
 /* The dialog it turns in */
 .item3d {
@@ -2174,6 +2167,18 @@ html:has(.item3d[open]) { overflow: hidden; }
     box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
 }
 :root[data-style="shelf"] .page-heading { padding-bottom: calc(.75rem + var(--ledge-h)); }
+/* A little taller than the other styles' heading cards (Phil, 2026-11-15),
+   so the books on it can stand most of its height */
+:root[data-style="shelf"] .page-heading {
+    padding-top: 1.5rem;
+    padding-bottom: calc(1rem + var(--ledge-h));
+}
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .page-heading {
+        padding-top: 1.25rem;
+        padding-bottom: calc(1rem + var(--ledge-h));
+    }
+}
 /* Books on the heading (ROADMAP 16.0a): some of your own books that turn
    in 3D (templates/_item3d.html) on the Shelves heading's ledge, standing
    upright with their spines out, side by side, half each side of the
@@ -2188,7 +2193,7 @@ html:has(.item3d[open]) { overflow: hidden; }
    them look afloat. Decoration: no pointer events, no motion. */
 .heading-books { display: none; }
 :root[data-style="shelf"] .heading-books {
-    --bh: 4rem;                                     /* every book's height */
+    --bh: 4.75rem;      /* every book's height: most of the case's inside (5rem) */
     position: absolute;
     /* on the ledge's top face, a little back from its edge */
     bottom: calc(var(--ledge-front) + var(--ledge-top) * .45);
@@ -2225,7 +2230,7 @@ html:has(.item3d[open]) { overflow: hidden; }
 .heading-book .item3d-top   { --shade: .295; }
 
 @media (max-width: 639px) {
-    :root[data-style="shelf"] .heading-books { --bh: 3.6rem; }
+    :root[data-style="shelf"] .heading-books { --bh: 4.6rem; }     /* of 4.75rem */
 }
 /* A heading lit by a flashlight (trial on the item page only, Phil
    2026-11-13: .heading-lit on its heading card; take the class off to
@@ -2737,21 +2742,23 @@ and to the right for its faces */
     --box-depth: 9px;
     padding: var(--box-depth) var(--box-depth) 0 0;
 }
-/* VHS faces (Phil, 2026-11-15): a VHS sleeve's top and right side photos,
-   when it has them (--face-top, --face-side: utils/photos.box_faces, set
-   on the item page's .cover-stand and on each Movies grid card), on the
-   flat cover box's faces, skewed with them; the photos run the way the 3D
-   view puts them (the top photo's top edge at the back, the side photo's
-   left edge at the front). Each keeps the face's light: the top a little
-   shaded, the side more. A face without a photo stays plain, and the
-   video-store rack's rental cases keep their own look. */
-:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::after,
-:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid[data-media="video"] .book-item[data-format="VHS"] .cover-box::after {
+/* Box faces (Phil, 2026-11-15; a VHS first, every type since 16.0c): an
+   item's top and right side photos, when it has them (--face-top,
+   --face-side: utils/photos.box_faces, set inline on the item page's
+   .cover-stand and on each library grid card), on the flat cover box's
+   faces, skewed with them; the photos run the way the 3D view puts them
+   (the top photo's top edge at the back, the side photo's left edge at the
+   front). Each keeps the face's light: the top a little shaded, the side
+   more. Only a face with a photo changes ([style*="--face-top"]), so a
+   face without one stays plain, and the video-store rack's rental
+   cases keep their own look. */
+:root[data-style="shelf"] .cover-stand[style*="--face-top"] .cover-box::after,
+:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid .book-item[style*="--face-top"] .cover-box::after {
     background: linear-gradient(rgb(0 0 0 / .08), rgb(0 0 0 / .08)),
                 var(--face-top, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-top));
 }
-:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::before,
-:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid[data-media="video"] .book-item[data-format="VHS"] .cover-box::before {
+:root[data-style="shelf"] .cover-stand[style*="--face-side"] .cover-box::before,
+:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid .book-item[style*="--face-side"] .cover-box::before {
     background: linear-gradient(rgb(0 0 0 / .22), rgb(0 0 0 / .22)),
                 var(--face-side, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-side));
 }

@@ -28,7 +28,7 @@
     {% if tab == 'shared' %}
     {% call shelf_header(m.type, tab) %}{% include '_household_members.html' %}{% endcall %}
     {% else %}
-    {{ shelf_header(m.type, tab, owner.username if tab == 'friend' else None) }}
+    {{ shelf_header(m.type, tab, owner.username if tab == 'friend' else None, heading_books=heading_books|default(none)) }}
     {% endif %}
 
     {# Bulk edit on your own and the household's grids, never a friend's (read-only) #}

@@ -69,9 +69,9 @@
                 <div class="self-center md:self-start md:row-span-2">
                     {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
-                    {# A VHS sleeve's top and right side photos, when it has them, go on
+                    {# The item's top and right side photos, when it has them, go on
                        the box's top and side faces (Phil, 2026-11-15; photos.box_faces,
-                       styles.css "VHS faces"); the cover stays flat and facing you #}
+                       styles.css "Box faces"); the cover stays flat and facing you #}
                     {% set face_style = box_faces([book]).get(book['id']) %}
                     <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}"
                          {% if face_style %}style="{{ face_style }}"{% endif %}>
@@ -616,11 +616,13 @@
             <div class="item3d-floor" aria-hidden="true"></div>
             <div class="item3d-controls">
                 <button type="button" data-click="item3dTurn" data-angle="0">Front</button>
-                {% if item3d.shape != 'sleeve' %}
+                {# A sleeve's edges are only worth a turn when photographed (a
+                   gatefold's spine); a right side when it's a photo of its own #}
+                {% if not (item3d.shape == 'sleeve' or item3d.paper) or item3d.faces.spine %}
                 <button type="button" data-click="item3dTurn" data-angle="90">{{ 'Left' if item3d.shape == 'tape' else 'Spine' }}</button>
                 {% endif %}
                 <button type="button" data-click="item3dTurn" data-angle="180">Back</button>
-                {% if item3d.shape == 'tape' %}
+                {% if item3d.shape == 'tape' or (item3d.shape != 'jewel' and item3d.faces.side) %}
                 <button type="button" data-click="item3dTurn" data-angle="270">Right</button>
                 {% endif %}
             </div>

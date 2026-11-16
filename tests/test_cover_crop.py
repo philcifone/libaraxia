@@ -538,3 +538,16 @@ def test_crop_save_is_the_owners_and_only_of_its_own_sources(client, app, db, pe
     db.commit()
     r = client.post(f'/covers/crop/save/{book}', json={'source': mine, 'geometry': json.loads(CROP)})
     assert r.status_code == 403 and exists(app, mine)
+
+
+def test_crop_tool_opens_in_perspective(client, db, people):
+    """Perspective is the crop tool's default mode, app wide (Phil,
+    2026-11-15): the dialog shows it pressed and first, and the script
+    starts, resets and undoes to it."""
+    book = add_book(db, people['bob'])
+    login(client, 'bob')
+    page = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    modes = page[page.index('id="crop-l-mode"'):]
+    assert modes.index('data-crop-mode="quad" aria-pressed="true"') < modes.index('data-crop-mode="rect" aria-pressed="false"')
+    js = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'cover_crop.js')).read()
+    assert "const DEFAULT_MODE = 'quad';" in js and "mode = 'rect';" not in js

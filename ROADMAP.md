@@ -81,8 +81,18 @@ Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app-
 ### 16.0a Photos, condition and value 🟢 (done 2026-11-15, merged to main)
 Built on branch `phase-16a-photos-value` (migrations 036 to 040); the full list is in [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md#phase-160a-photos-condition-and-value). Still open:
 - [ ] Later, low priority: a cover-shape override for sets that aren't the standard shape (non-square disc sets), which the 3D box would take its proportions from; until then such a set is right as soon as its own photos are (the box follows the cover photo's shape).
-- [ ] Later, low priority: more VHS shapes: the Disney clamshell (white plastic, rounded, opens like a book) and coloured tapes (Nickelodeon's orange) for the open bottom.
+- [ ] Later, low priority: the Disney clamshell's own shape (white plastic, rounded, opens like a book). Coloured tapes and plastic clamshells are placeholders in 16.0c.
 - [ ] Phil's setup (spec section 7): Discogs seller settings; an eBay developer account and production keys. The same steps go in the README at 16.1.
+
+### 16.0c Faces and placeholders 🟠
+From Phil, 2026-11-15. **Spec: [docs/FACES-SPEC.md](docs/FACES-SPEC.md).** Every face of every type takes a photo (a bottom too), and the plain faces become admin-chosen placeholder images, grouped into sets (White clamshell, Nickelodeon, clear or black DVD case) that an owner picks per item. A VHS with a top photo is a sleeve, without one a clamshell. Branch `phase-16c-faces`.
+- [x] Before it: the crop tool opens in Perspective everywhere; the Shelf style's heading bookcase is taller and its books stand most of its height.
+- [x] 1. Bottom kind; every face for every type; the 3D bottom face; flat box faces for every type.
+- [x] 2. Admin → Placeholders: library and sets (a default set per body at first; dropped, see below).
+- [x] 3. Choosing on the edit page and the add form; face resolution; sleeve or clamshell.
+- [x] 4. Docs, screenshots.
+- [x] Then: VHS tapes on the Movies heading, as the books on the Shelves one (same seed, your own Movies page).
+- [x] Then (Phil, 2026-11-16): Admin → Placeholders as one tab per medium (VHS sleeves and clamshells together; the set names say which); no default sets, nothing automatic (an item shows a placeholder only where its owner picked one); a top or bottom uploaded upright is turned to lie wide, a spine or side to stand tall. Bulk edit's More menu applies a set to the selection (undoable).
 
 ### 16.0b Code review 🟠
 The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.

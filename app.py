@@ -32,6 +32,7 @@ from blueprints.reviews import reviews_blueprint
 from blueprints.bulk import bulk_blueprint
 from blueprints.photos import photos_blueprint
 from blueprints.values import values_blueprint
+from blueprints.faces import faces_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
@@ -222,6 +223,7 @@ def create_app():
     app.register_blueprint(bulk_blueprint, url_prefix='/bulk')
     app.register_blueprint(photos_blueprint, url_prefix='/photos')
     app.register_blueprint(values_blueprint, url_prefix='/values')
+    app.register_blueprint(faces_blueprint, url_prefix='/faces')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media
@@ -294,12 +296,19 @@ def create_app():
         return marks_for(get_db(), user_id or _current_user.id, [row['id'] for row in rows])
     app.add_template_global(viewer_marks, 'viewer_marks')
 
-    # A VHS sleeve's top and side photos on the Shelf style's flat cover box
-    # (utils/photos.box_faces): {book_id: style}, for a page of items in one query
+    # An item's top and side faces on the Shelf style's flat cover box
+    # (utils/photos.box_faces): {book_id: style}, for a page of items at once
     def box_faces(rows):
         from utils.photos import box_faces as faces_for
         return faces_for(get_db(), rows) if rows else {}
     app.add_template_global(box_faces, 'box_faces')
+
+    # The placeholder sets an add form offers for a media type (16.0c,
+    # utils/faces.sets_for_type): [(body label, [set rows])]
+    def face_sets_for(media_type):
+        from utils.faces import sets_for_type
+        return sets_for_type(get_db(), media_type)
+    app.add_template_global(face_sets_for, 'face_sets_for')
 
     # The sidebar's count next to Notifications: a function, so it's only
     # queried on pages that draw the sidebar

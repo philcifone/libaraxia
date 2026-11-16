@@ -3,20 +3,24 @@ for it (ROADMAP 16.0a; Shelf style only for now).
 
 An item turns in 3D only when every printed face of its shape is a photo
 (Phil, 2026-11-15: "no fake or placeholder text in 3D renderings"). Until
-then its cover opens the gallery or the plain zoom. The one exception is a
-CD's spine, a few millimetres of small type, which is drawn from the title
-when there's no photo.
+then its cover opens the gallery or the plain zoom. Nothing is drawn: a
+CD with only a front and back is a paper sleeve (below).
+
+Every face takes a photo, whatever the shape (16.0c, docs/FACES-SPEC.md):
+the ones listed in NEEDS are printed and required; the rest, a book's
+pages, a tape's open bottom, a sleeve's edges, are drawn plain without one.
 
 Shapes, by media type and format:
 
     book    a book: cover, back and spine; the other three sides are paper
     sleeve  vinyl (LP, EP, 7in, 10in, 12in): cover and back on a card
-            sleeve a few millimetres thick
+            sleeve a few millimetres thick, or as thick as its spine photo
     jewel   a CD, in a jewel case or a card sleeve: the cover photo is the
             whole front, the hinge's bar and all (Phil, 2026-11-15: nothing
             drawn), the back the same size; the thickness from a spine
-            photo (a thin card sleeve) or a jewel case's; the spines drawn
-            from the title until there's a photo
+            photo, or a jewel case's with a spine placeholder. With only a
+            front and back it's a paper sleeve (Phil, 2026-11-15): thin,
+            its edges card in the cover's colour ('paper' in the model)
     case    a DVD or a cassette: cover, back and spine, on black plastic
     tape    a VHS slip sleeve: cover, back and at least one long side
             (Phil, 2026-11-15); one side's photo does for both, a missing
@@ -52,8 +56,10 @@ NEEDS = {
 }
 
 # Thickness as a share of the height, where no spine photo gives it: a
-# 12in sleeve is about 3 mm on 315; a jewel case 10.4 mm on 125
+# 12in sleeve is about 3 mm on 315; a jewel case 10.4 mm on 125; a CD's
+# paper sleeve about 2 mm on 125
 FIXED_DEPTH = {SLEEVE: 0.012, JEWEL: 0.083}
+PAPER_CD_DEPTH = 0.016
 
 
 def shape_for(media_type, fmt=None):
@@ -98,16 +104,20 @@ def missing(item, item_photos):
     for need in NEEDS[shape]:
         choices = need if isinstance(need, tuple) else (need,)
         if not any(item_photos[kind] for kind in choices):
-            out.append(' or '.join(photos.label(kind, fmt) for kind in choices))
+            out.append(' or '.join(photos.label(kind, fmt, media_type_of(item)) for kind in choices))
     return out
 
 
-def model(item, item_photos):
+def model(item, item_photos, placeholders=None):
     """What templates/_item3d.html draws, or None when the item isn't ready.
 
-    {'shape', 'faces': {'front', 'back', 'spine', 'side', 'top'} (URLs; a
+    `placeholders`: {kind: URL} of the placeholder faces it shows where it
+    has no photo (utils/faces.placeholder_urls, 16.0c); a photo wins.
+
+    {'shape', 'faces': {'front', 'back', 'spine', 'side', 'top', 'bottom'} (URLs; a
     face without one is plain), 'aspect' (the box's width over its height),
-    'depth' (thickness over height), 'title', 'author'}.
+    'depth' (thickness over height), 'paper' (a CD in a paper sleeve: no
+    spine photo or placeholder), 'title', 'author'}.
     """
     fmt = item['format']
     shape = shape_for(media_type_of(item), fmt)
@@ -120,54 +130,71 @@ def model(item, item_photos):
     for kind in photos.SINGLE:
         if item_photos[kind] and kind in photos.kinds_for(media_type_of(item), fmt):
             faces[kind] = url_for('static', filename=item_photos[kind]['path'])
+    for kind, url in (placeholders or {}).items():
+        faces.setdefault(kind, url)
     if shape == TAPE:
         # One long side's photo does for the other (most sleeves print
         # both alike); the thickness comes from whichever there is
         faces.setdefault('spine', faces.get('side'))
         faces.setdefault('side', faces['spine'])
     # The spine photo's own shape gives the thickness (its width over its
-    # height); a sleeve, and a CD without a spine photo, have a fixed one
+    # height; a gatefold's spine since 16.0c); a sleeve or a CD without
+    # one has a fixed one
     edge = item_photos[photos.SPINE] or item_photos[photos.SIDE]
-    depth = FIXED_DEPTH.get(shape) if shape == SLEEVE or not edge else None
+    # A CD with nothing on its spine, photo or placeholder: a paper sleeve
+    paper = shape == JEWEL and not (faces.get('spine') or faces.get('side'))
+    depth = (PAPER_CD_DEPTH if paper else FIXED_DEPTH.get(shape)) if not edge else None
     if depth is None:
         depth = _aspect(edge['path']) or 0.08
     return {
-        'shape': shape, 'faces': faces,
+        'shape': shape, 'faces': faces, 'paper': paper,
         'aspect': round(aspect, 4), 'depth': round(min(0.6, max(0.008, depth)), 4),
         'title': item['title'], 'author': item['author'],
     }
 
 
-# --- Books standing on the Shelves heading (ROADMAP 16.0a) -------------------
+# --- Items standing on a section's heading (ROADMAP 16.0a, 16.0c) ------------
 
 HEADING_BOOKS = 10      # at most: five each side of the title, which a phone has room for
 
+# What stands on a section's heading: books on Shelves (16.0a), VHS tapes
+# on Movies (16.0c), spines out. The SQL picks the ones that may turn in 3D
+# (model() has the last word): a cover, a back, and the spine (a tape's
+# left or right side).
+_HEADING = {
+    BOOK: ('library_books', "(b.format IS NULL OR b.format <> 'Audiobook')",
+           "(SELECT COUNT(*) FROM item_photos p WHERE p.book_id = b.id AND p.kind IN ('back', 'spine')) = 2"),
+    VIDEO: ('library_videos', "b.format = 'VHS'",
+            "EXISTS (SELECT 1 FROM item_photos p WHERE p.book_id = b.id AND p.kind = 'back') "
+            "AND EXISTS (SELECT 1 FROM item_photos p WHERE p.book_id = b.id AND p.kind IN ('spine', 'side'))"),
+}
 
-def heading_books(conn, user_id, seed):
-    """Up to HEADING_BOOKS models of the user's own books that turn in 3D,
-    for the Shelves heading's ledge (Shelf style, their own Shelves page
-    only; drawn still, upright with spines out, by templates/_icons.html
-    page_heading).
+
+def heading_books(conn, user_id, seed, media_type=BOOK):
+    """Up to HEADING_BOOKS models of the user's own items that turn in 3D,
+    for the section heading's ledge (Shelf style, their own shelf only;
+    drawn still, upright with spines out, by templates/_icons.html
+    page_heading): books on Shelves, VHS tapes on Movies.
 
     `seed` is drawn at login (session['heading_seed']), so the choice
-    stays put for a visit and changes with the next. Each book's place in
+    stays put for a visit and changes with the next. Each item's place in
     the order comes from the seed and its own id, not from a shuffle of
-    the list: a book that gets its photos joins the ones standing there
+    the list: one that gets its photos joins the ones standing there
     without moving them.
     """
     import random
+    from utils import faces
+    view, fmt, has_photos = _HEADING[media_type]
     rows = conn.execute(f"""
-        SELECT b.* FROM library_books b
+        SELECT b.* FROM {view} b
         WHERE b.added_by = ? AND {on_shelf('b')}
-          AND b.cover_image_url IS NOT NULL
-          AND (b.format IS NULL OR b.format <> 'Audiobook')
-          AND (SELECT COUNT(*) FROM item_photos p
-               WHERE p.book_id = b.id AND p.kind IN ('back', 'spine')) = 2
+          AND b.cover_image_url IS NOT NULL AND {fmt} AND {has_photos}
     """, (user_id,)).fetchall()
     rows.sort(key=lambda b: random.Random(f"{seed}:{b['id']}").random())
     out = []
     for book in rows:
-        m = model(book, photos.photos_of(conn, book['id']))
+        item_photos = photos.photos_of(conn, book['id'])
+        m = model(book, item_photos, faces.placeholder_urls(conn, book, item_photos))
         if m:
             out.append(m)
             if len(out) == HEADING_BOOKS:

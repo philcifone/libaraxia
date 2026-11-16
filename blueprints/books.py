@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers
+from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces
 from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -127,6 +127,8 @@ def add_book():
             media.book_format(request.form.get("format")),   # Book (NULL) or Audiobook
         ))
         copy_fields.save(conn, cursor.lastrowid, copy)
+        # The placeholder set picked on the form (16.0c)
+        faces.apply_on_add(conn, cursor.lastrowid, (request.form.get('face_set') or '').strip())
         conn.commit()
 
         if request.form.get("then") == "review":
@@ -588,11 +590,13 @@ def _book_tools_context(conn, book):
         # The Photos section (_photos_edit.html, ROADMAP 16.0a)
         'photos': photos.photos_of(conn, book['id']),
         'photo_kinds': photos.kinds_for(media.media_type_of(book), book['format']),
-        'photo_labels': {kind: photos.label(kind, book['format']) for kind in photos.KINDS},
+        'photo_labels': {kind: photos.label(kind, book['format'], media.media_type_of(book)) for kind in photos.KINDS},
         # What it still needs before it turns in 3D (utils/item3d.py)
         'photos_missing_3d': item3d.missing(book, photos.photos_of(conn, book['id'])),
         'has_3d_shape': item3d.shape_for(media.media_type_of(book), book['format']) is not None,
         'photo_limit': photos.MAX_PER_ITEM,
+        # Placeholder faces it may pick (utils/faces.py, 16.0c)
+        'face_options': faces.options_for(conn, book),
     }
 
 @books_blueprint.route("/book/<int:id>")
@@ -750,7 +754,7 @@ def render_item_page(conn, book):
     item_photos = photos.photos_of(conn, id)
     cover_url = (url_for('static', filename=book['cover_image_url'])
                  if upload_exists(book['cover_image_url']) else None)
-    photo_slides = photos.slides(item_photos, cover_url, book['format'])
+    photo_slides = photos.slides(item_photos, cover_url, book['format'], media.media_type_of(book))
 
     # Condition (16.0a): "NM / VG+" for a record (record, then sleeve), the
     # label for a book or movie; the full labels on hover
@@ -767,7 +771,7 @@ def render_item_page(conn, book):
         "book_detail.html",
         book=book,
         item_photos=item_photos,
-        item3d=item3d.model(book, item_photos),
+        item3d=item3d.model(book, item_photos, faces.placeholder_urls(conn, book, item_photos)),
         condition_text=condition_text,
         condition_title=condition_title,
         value_line=copy_fields.source_line(book),

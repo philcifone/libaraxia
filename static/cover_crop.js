@@ -239,7 +239,10 @@ function initCropTool() {
     let source = null;              // uploads/... path of the image being cropped
     let image = null;               // its decoded <img>
     let rotate = 0;                 // clockwise degrees applied to the source
-    let mode = 'rect';
+    // Perspective first (Phil, 2026-11-15): most covers and photos are
+    // taken by hand at a slant, so the four corners are the usual job
+    const DEFAULT_MODE = 'quad';
+    let mode = DEFAULT_MODE;
     let ratioChoice = 'free';       // the Ratio chips: free, original, 1:1, 2:3, 3:4, 27:38
     let landscape = false;          // the Portrait / Landscape pair
     let rect = [0, 0, 1, 1];
@@ -711,7 +714,7 @@ function initCropTool() {
             setGeometry(top.geom);
             showResult(top);
         } else {
-            setGeometry({ v: 1, rotate: 0, mode: 'rect', box: [0, 0, 1, 1] });
+            setGeometry({ v: 1, rotate: 0, mode: DEFAULT_MODE, quad: boxCorners([0, 0, 1, 1]), aspect: null });
             showResult(null);
         }
         announce('Undone');
@@ -728,7 +731,9 @@ function initCropTool() {
             return;
         }
         dialog.close();
-        location.hash = 'photos';
+        // Back to where the photo is listed: the edit page's Photos, or the
+        // button's own section (data-return)
+        location.hash = photoTarget.button?.dataset.return || 'photos';
         location.reload();
     }
 
@@ -832,7 +837,7 @@ function initCropTool() {
 
     function hasSource() {
         if (photoTarget) return true;
-        return !!(pickedFile() || $('existing_cover_url')?.value || openButton.dataset.currentCover);
+        return !!(pickedFile() || $('existing_cover_url')?.value || openButton?.dataset.currentCover);
     }
 
     // A picked file is uploaded once and remembered per File, so reopening the
@@ -856,7 +861,7 @@ function initCropTool() {
         if (photoTarget) return photoTarget.source;
         const file = pickedFile();
         if (file) return stageFile(file);
-        return $('existing_cover_url')?.value || openButton.dataset.currentCover || null;
+        return $('existing_cover_url')?.value || openButton?.dataset.currentCover || null;
     }
 
     function loadImage(path) {
@@ -876,7 +881,7 @@ function initCropTool() {
         history = [];
         showResult(null);
         rotate = 0;
-        mode = 'rect';
+        mode = DEFAULT_MODE;
         ratioChoice = 'free';
         landscape = false;
         ratioArea = null;
@@ -906,7 +911,9 @@ function initCropTool() {
         }
     }
 
-    openButton.addEventListener('click', openTool);
+    // No cover button on a page that only crops photos (Admin ->
+    // Placeholders, 16.0c): the tool is opened by data-click="cropPhoto"
+    openButton?.addEventListener('click', openTool);
 
     // --- The form's side ------------------------------------------------------------------------
 
@@ -921,7 +928,7 @@ function initCropTool() {
     }
 
     function refreshButton() {
-        openButton.classList.toggle('hidden', !hasSource());
+        openButton?.classList.toggle('hidden', !hasSource());
     }
 
     // A new cover came from somewhere else (picked file, lookup, "Find a better

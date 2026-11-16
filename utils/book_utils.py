@@ -902,7 +902,9 @@ def card_json(conn, viewer_id, books):
     (as its label) and rating."""
     from utils import media
     from utils.image_utils import upload_exists
+    from utils.photos import box_faces
     marks = viewer_marks(conn, viewer_id, [b['id'] for b in books])
+    faces = box_faces(conn, books)
     out = []
     for b in books:
         mark = marks.get(b['id'], {})
@@ -926,6 +928,8 @@ def card_json(conn, viewer_id, books):
             'year': b['publish_year'],
             'status': media.STATUS_LABELS.get(status, status) if status else None,
             'rating': mark.get('rating'),
+            # The Shelf style's box faces: top and side photos (photos.box_faces)
+            'faces': faces.get(b['id'], ''),
         })
     return out
 

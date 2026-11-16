@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import crumbs %}
+{#- Admin -> Placeholders (ROADMAP 16.0c, docs/FACES-SPEC.md; blueprints/faces.py):
+    one tab per medium (books, vinyl, CDs, cassettes, DVDs, VHS; common.js
+    initTabs, the tab in the URL hash), each with its placeholder images by
+    face, uploaded then cropped with the cover's crop tool (cover_crop.js
+    photo mode: each Crop button carries the image and its crop route), and
+    the named sets that group them. Plain form posts; each comes back to
+    its tab. -#}
+
+{% block title %}Placeholders - Admin{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% set field = 'bg-primary border border-rule-strong rounded-lg px-2 py-1 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent' %}
+{% set button = 'px-3 py-1 text-sm rounded-lg btn btn-outline text-content-primary' %}
+
+{% block content %}
+    <div class="page-frame-narrow pt-20 pb-12 space-y-6">
+        {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Placeholders') }}
+
+        <div>
+            <h1 class="text-3xl font-display text-content-primary mb-2">Placeholders</h1>
+            <p class="text-content-secondary text-sm">
+                Photos of the plain parts of things: a clamshell's plastic top and sides, an orange tape's
+                bottom, a clear DVD case's edge, a book's pages. Upload them under their medium, then group
+                them into named sets ("White clamshell", "Nickelodeon"). An owner picks a set when adding an
+                item, or a set or single placeholders on its edit page; anything left unpicked keeps the plain
+                look. Tops and bottoms are turned to lie wide and sides to stand tall as they upload.
+            </p>
+        </div>
+
+        <div data-tabs class="space-y-6">
+            <div class="bg-secondary rounded-xl overflow-hidden card grid grid-cols-3 sm:flex sm:items-stretch" role="tablist" aria-label="Mediums" hidden>
+                {% for group in library %}
+                <button type="button" role="tab" id="tab-medium-{{ group.medium }}" aria-controls="medium-{{ group.medium }}" aria-selected="false" class="tab">{{ group.label }}</button>
+                {% endfor %}
+            </div>
+
+        {% for group in library %}
+        <section role="tabpanel" id="medium-{{ group.medium }}" aria-labelledby="tab-medium-{{ group.medium }}"
+                 class="bg-secondary rounded-lg p-5 card space-y-6 scroll-mt-20" data-face-medium="{{ group.medium }}">
+            <h2 class="text-2xl font-display text-content-primary">{{ group.label }}</h2>
+
+            {# Upload: which face, a name, the image #}
+            <form action="{{ url_for('faces.add') }}" method="POST" enctype="multipart/form-data"
+                  class="flex flex-wrap items-end gap-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="medium" value="{{ group.medium }}">
+                <label class="text-sm text-content-secondary">Face
+                    <select name="kind" class="block {{ field }}">
+                        {% for k in group.kinds %}<option value="{{ k.kind }}">{{ k.label }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label class="text-sm text-content-secondary">Name
+                    <input name="name" maxlength="60" placeholder="Black clamshell" class="block {{ field }}">
+                </label>
+                <label class="text-sm text-content-secondary">Image
+                    <input type="file" name="photo" accept="image/*" required class="block text-sm text-content-primary">
+                </label>
+                <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">Add to {{ group.label }}</button>
+            </form>
+
+            {# The library, by face #}
+            {% for k in group.kinds %}
+            <div class="space-y-2">
+                <h3 class="label text-sm pb-1">{{ k.label }}{% if k.rows %} ({{ k.rows|length }}){% endif %}</h3>
+                {% if not k.rows %}
+                <p class="text-sm text-content-secondary">None yet.</p>
+                {% else %}
+                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {% for p in k.rows %}
+                    <li class="flex gap-3 items-start" data-placeholder="{{ p.id }}">
+                        <img src="{{ url_for('static', filename=p.path) }}" alt="{{ p.name }}"
+                             class="{{ 'h-28 w-auto max-w-[3rem]' if k.kind in ('spine', 'side') else 'h-12 w-auto max-w-[9rem]' }} object-contain border border-rule-strong shrink-0">
+                        <div class="min-w-0 flex-1 space-y-2">
+                            <form action="{{ url_for('faces.rename', placeholder_id=p.id) }}" method="POST" class="flex gap-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <label for="ph-name-{{ p.id }}" class="sr-only">Name</label>
+                                <input id="ph-name-{{ p.id }}" name="name" value="{{ p.name }}" maxlength="60" class="min-w-0 flex-1 {{ field }}">
+                                <button type="submit" class="{{ button }}">Save</button>
+                            </form>
+                            <div class="flex gap-3">
+                                <button type="button" data-click="cropPhoto" data-source="{{ p.path }}"
+                                        data-url="{{ url_for('faces.crop', placeholder_id=p.id) }}" data-return="medium-{{ group.medium }}"
+                                        class="text-sm underline text-content-secondary hover:text-content-primary">Crop</button>
+                                <form action="{{ url_for('faces.delete', placeholder_id=p.id) }}" method="POST"
+                                      data-confirm="{{ 'Delete ' ~ p.name ~ '? Items that use it show the plain look there again.' }}" data-confirm-ok="Delete">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            {# Sets #}
+            <div class="space-y-3">
+                <h3 class="label text-sm pb-1">Sets</h3>
+                {% for s in group.sets %}
+                <form action="{{ url_for('faces.update_set', set_id=s.row.id) }}" method="POST"
+                      class="bg-primary rounded-lg p-3 border border-card space-y-3" data-face-set="{{ s.row.id }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label for="set-name-{{ s.row.id }}" class="sr-only">Set name</label>
+                        <input id="set-name-{{ s.row.id }}" name="name" value="{{ s.row.name }}" maxlength="60" class="{{ field }} font-medium">
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {% for k in group.kinds %}
+                        <label class="text-sm text-content-secondary">{{ k.label }}
+                            <select name="face_{{ k.kind }}" class="block w-full {{ field }}">
+                                <option value="">None</option>
+                                {% for p in k.rows %}<option value="{{ p.id }}" {{ 'selected' if s.members.get(k.kind) and s.members[k.kind].id == p.id }}>{{ p.name }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="flex gap-3 items-center">
+                        <button type="submit" class="{{ button }}">Save set</button>
+                        <button type="submit" formaction="{{ url_for('faces.delete_set', set_id=s.row.id) }}"
+                                data-confirm="{{ 'Delete the set ' ~ s.row.name ~ '? Items it filled in keep their faces.' }}" data-confirm-ok="Delete"
+                                class="text-sm underline text-content-secondary hover:text-content-primary">Delete set</button>
+                    </div>
+                </form>
+                {% else %}
+                <p class="text-sm text-content-secondary">No sets yet.</p>
+                {% endfor %}
+                <form action="{{ url_for('faces.add_set') }}" method="POST" class="flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="medium" value="{{ group.medium }}">
+                    <label for="new-set-{{ group.medium }}" class="sr-only">New set's name</label>
+                    <input id="new-set-{{ group.medium }}" name="name" maxlength="60" required
+                           placeholder="{{ {'vhs': 'Nickelodeon', 'dvd': 'Clear case', 'cd': 'Jewel case', 'book': 'Deckle edge'}.get(group.medium, 'New set') }}"
+                           class="{{ field }}">
+                    <button type="submit" class="{{ button }}">New set</button>
+                </form>
+            </div>
+        </section>
+        {% endfor %}
+        </div>
+    </div>
+    {# The crop tool, in photo mode only (no cover here) #}
+    {% include '_cover_crop.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='cover_crop.js') }}"></script>
+{% endblock %}
