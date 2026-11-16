@@ -87,10 +87,10 @@ Built on branch `phase-16a-photos-value` (migrations 036 to 040); the full list 
 ### 16.0c Faces and placeholders 🟠
 From Phil, 2026-11-15. **Spec: [docs/FACES-SPEC.md](docs/FACES-SPEC.md).** Every face of every type takes a photo (a bottom too), and the plain faces become admin-chosen placeholder images, grouped into sets (Clamshell, Nickelodeon, clear or black DVD case) that an owner picks per item. A VHS with a top photo is a sleeve, without one a clamshell. Branch `phase-16c-faces`.
 - [x] Before it: the crop tool opens in Perspective everywhere; the Shelf style's heading bookcase is taller and its books stand most of its height.
-- [ ] 1. Bottom kind; every face for every type; the 3D bottom face; flat box faces for every type.
-- [ ] 2. Admin → Placeholders: library and sets, default set per body.
-- [ ] 3. Choosing on the edit page and the add form; face resolution; sleeve or clamshell.
-- [ ] 4. Docs, screenshots.
+- [x] 1. Bottom kind; every face for every type; the 3D bottom face; flat box faces for every type.
+- [x] 2. Admin → Placeholders: library and sets, default set per body.
+- [x] 3. Choosing on the edit page and the add form; face resolution; sleeve or clamshell.
+- [x] 4. Docs, screenshots.
 - [ ] Then: VHS tapes on the Movies heading, as the books on the Shelves one.
 
 ### 16.0b Code review 🟠

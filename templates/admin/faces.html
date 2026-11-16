@@ -103,7 +103,7 @@
                         <input id="set-name-{{ s.row.id }}" name="name" value="{{ s.row.name }}" maxlength="60" class="{{ field }} font-medium">
                         <label class="flex items-center gap-2 text-sm text-content-primary">
                             <input type="checkbox" name="is_default" value="1" {{ 'checked' if s.row.is_default }}>
-                            Default for {{ group.label|lower }}
+                            Default for {{ group.label }}
                         </label>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
