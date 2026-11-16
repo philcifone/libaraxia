@@ -69,12 +69,16 @@ class PhotoError(ValueError):
     """An upload that isn't a usable image; the message is safe to show."""
 
 
+# The admin's placeholder face images (ROADMAP 16.0c, utils/faces.py)
+FACES_FOLDER = 'uploads/faces'
+
+
 def photo_folder(book_id):
     """The stored prefix of an item's photos: 'uploads/photos/<id>'."""
     return f'uploads/photos/{int(book_id)}'
 
 
-def save_photo(file, book_id):
+def save_photo(file, book_id, folder=None):
     """Save an uploaded photo of an item; returns its stored path
     ('uploads/photos/<book_id>/<random>.jpg').
 
@@ -91,13 +95,15 @@ def save_photo(file, book_id):
         img.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise PhotoError("That file isn't an image this site can read (use a JPEG, PNG or WebP).")
-    return save_photo_image(ImageOps.exif_transpose(img), book_id)
+    return save_photo_image(ImageOps.exif_transpose(img), book_id, folder)
 
 
-def save_photo_image(img, book_id):
+def save_photo_image(img, book_id, folder=None):
     """save_photo's second half, for an image already open and upright (a
     cropped photo, blueprints/photos.crop): flatten, resize, re-encode with
-    no metadata, save under the item's folder. Returns the stored path."""
+    no metadata, save under the item's folder, or under `folder` (an
+    'uploads/...' prefix: the admin's placeholder faces, FACES_FOLDER).
+    Returns the stored path."""
     if img.mode in ('RGBA', 'LA', 'P'):
         rgba = img.convert('RGBA')
         img = Image.new('RGB', rgba.size, (255, 255, 255))
@@ -109,7 +115,7 @@ def save_photo_image(img, book_id):
     clean = Image.new('RGB', img.size)
     clean.paste(img)
 
-    rel = f'{photo_folder(book_id)}/{uuid.uuid4().hex}.jpg'
+    rel = f'{folder or photo_folder(book_id)}/{uuid.uuid4().hex}.jpg'
     full = os.path.join(STATIC_ROOT, rel)
     os.makedirs(os.path.dirname(full), exist_ok=True)
     clean.save(full, 'JPEG', quality=85, optimize=True)
@@ -205,6 +211,9 @@ def find_orphaned_images(db_connection):
     # cleanup after photos shipped would delete every one of them.
     photos = db_connection.execute("SELECT path FROM item_photos").fetchall()
     db_images.update(row['path'] for row in photos)
+    # Placeholder faces (16.0c): the admin's library
+    faces = db_connection.execute("SELECT path FROM face_placeholders").fetchall()
+    db_images.update(row['path'] for row in faces)
 
     current_app.logger.info(f"Found {len(db_images)} images referenced in database")
 

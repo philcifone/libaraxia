@@ -29,7 +29,7 @@ from utils.reviews import then_review_values
 from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
-from utils import copy_fields, cover_crop
+from utils import copy_fields, cover_crop, faces
 from utils.image_utils import delete_image_file, is_safe_upload_path
 
 
@@ -257,6 +257,7 @@ class Section:
         if values['not_owned']:
             values['format'] = None    # unshelved: no copy, so no format
         values['then'] = 'review' if form.get('then') == 'review' else ''
+        values['face_set'] = (form.get('face_set') or '').strip()    # kept if the form comes back
         # A cover saved by the lookup, kept across a re-shown form
         cover = form.get('existing_cover_url')
         values['existing_cover_url'] = cover if is_safe_upload_path(cover) else ''
@@ -427,6 +428,9 @@ def make_blueprint(section: Section) -> Blueprint:
         owned = not request.form.get('not_owned')
         new_id = section.insert(conn, values, cover, current_user.id, owned=owned)
         copy_fields.save(conn, new_id, copy)
+        # The placeholder set picked on the form (16.0c: "Clamshell")
+        if not faces.apply_on_add(conn, new_id, (request.form.get('face_set') or '').strip()):
+            flash("That set of placeholders isn't for this format, so it wasn't used.", 'info')
         conn.commit()
         if values['then'] == 'review':
             flash(f"'{values['title']}' added{'' if owned else ' as unshelved'}. Now your review.", 'success')

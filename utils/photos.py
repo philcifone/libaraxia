@@ -111,19 +111,39 @@ def delete(conn, photo_id, book_id):
 
 def box_faces(conn, rows):
     """The Shelf style's flat cover box with an item's top and right side
-    photos on its faces (Phil, 2026-11-15; a VHS first, every type since
-    16.0c): {book_id: style}, where style sets --face-top / --face-side to
-    the photos' URLs, for the items among `rows` that have either. One
-    query per page of items; the item page, the library grids and their
-    infinite scroll (book_utils.card_json) use it (styles.css "Box faces")."""
+    on its faces (Phil, 2026-11-15; a VHS first, every type since 16.0c):
+    {book_id: style}, where style sets --face-top / --face-side to the
+    images' URLs, for the items among `rows` that have either. Each face is
+    its photo, or (a VHS) the left side's photo for the right, or the
+    placeholder the owner picked or the body's default set gives
+    (utils/faces.py; docs/FACES-SPEC.md section 5). A few queries per page
+    of items; the item page, the library grids and their infinite scroll
+    (book_utils.card_json) use it (styles.css "Box faces")."""
+    from utils import faces
     ids = [r['id'] for r in rows]
     if not ids:
         return {}
     marks = ','.join('?' * len(ids))
-    out = {}
+    shot = {}           # {book_id: {kind: url}}: photos of the faces that matter here
     for row in conn.execute(f"SELECT book_id, kind, path FROM item_photos "
-                            f"WHERE kind IN ('{TOP}', '{SIDE}') AND book_id IN ({marks})", ids):
+                            f"WHERE kind IN ('{TOP}', '{SIDE}', '{SPINE}') AND book_id IN ({marks})", ids):
         if image_utils.upload_exists(row['path']):
-            url = url_for('static', filename=row['path'])
-            out[row['book_id']] = out.get(row['book_id'], '') + f'--face-{row["kind"]}: url("{url}"); '
+            shot.setdefault(row['book_id'], {})[row['kind']] = url_for('static', filename=row['path'])
+    choices = {}
+    for row in conn.execute(f'SELECT f.book_id, f.kind, p.* FROM item_faces f '
+                            f'JOIN face_placeholders p ON p.id = f.placeholder_id '
+                            f'WHERE f.book_id IN ({marks})', ids):
+        choices.setdefault(row['book_id'], {})[row['kind']] = row
+    default_sets = faces.defaults(conn)
+    out = {}
+    for item in rows:
+        mine = shot.get(item['id'], {})
+        held = faces.placeholder_urls(conn, item, mine, default_sets, choices.get(item['id'], {}))
+        top = mine.get(TOP) or held.get(TOP)
+        side = mine.get(SIDE) or held.get(SIDE)
+        if not side and item['format'] == 'VHS':
+            side = mine.get(SPINE)          # one long side does for both (16.0a)
+        style = ''.join(f'--face-{kind}: url("{url}"); ' for kind, url in (('top', top), ('side', side)) if url)
+        if style:
+            out[item['id']] = style
     return out

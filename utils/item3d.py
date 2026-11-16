@@ -106,8 +106,11 @@ def missing(item, item_photos):
     return out
 
 
-def model(item, item_photos):
+def model(item, item_photos, placeholders=None):
     """What templates/_item3d.html draws, or None when the item isn't ready.
+
+    `placeholders`: {kind: URL} of the placeholder faces it shows where it
+    has no photo (utils/faces.placeholder_urls, 16.0c); a photo wins.
 
     {'shape', 'faces': {'front', 'back', 'spine', 'side', 'top', 'bottom'} (URLs; a
     face without one is plain), 'aspect' (the box's width over its height),
@@ -124,6 +127,8 @@ def model(item, item_photos):
     for kind in photos.SINGLE:
         if item_photos[kind] and kind in photos.kinds_for(media_type_of(item), fmt):
             faces[kind] = url_for('static', filename=item_photos[kind]['path'])
+    for kind, url in (placeholders or {}).items():
+        faces.setdefault(kind, url)
     if shape == TAPE:
         # One long side's photo does for the other (most sleeves print
         # both alike); the thickness comes from whichever there is
@@ -171,8 +176,11 @@ def heading_books(conn, user_id, seed):
     """, (user_id,)).fetchall()
     rows.sort(key=lambda b: random.Random(f"{seed}:{b['id']}").random())
     out = []
+    from utils import faces
+    default_sets = faces.defaults(conn)
     for book in rows:
-        m = model(book, photos.photos_of(conn, book['id']))
+        item_photos = photos.photos_of(conn, book['id'])
+        m = model(book, item_photos, faces.placeholder_urls(conn, book, item_photos, default_sets))
         if m:
             out.append(m)
             if len(out) == HEADING_BOOKS:

@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers
+from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces
 from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -127,6 +127,8 @@ def add_book():
             media.book_format(request.form.get("format")),   # Book (NULL) or Audiobook
         ))
         copy_fields.save(conn, cursor.lastrowid, copy)
+        # The placeholder set picked on the form (16.0c)
+        faces.apply_on_add(conn, cursor.lastrowid, (request.form.get('face_set') or '').strip())
         conn.commit()
 
         if request.form.get("then") == "review":
@@ -593,6 +595,8 @@ def _book_tools_context(conn, book):
         'photos_missing_3d': item3d.missing(book, photos.photos_of(conn, book['id'])),
         'has_3d_shape': item3d.shape_for(media.media_type_of(book), book['format']) is not None,
         'photo_limit': photos.MAX_PER_ITEM,
+        # Placeholder faces it may pick (utils/faces.py, 16.0c)
+        'face_options': faces.options_for(conn, book),
     }
 
 @books_blueprint.route("/book/<int:id>")
@@ -767,7 +771,7 @@ def render_item_page(conn, book):
         "book_detail.html",
         book=book,
         item_photos=item_photos,
-        item3d=item3d.model(book, item_photos),
+        item3d=item3d.model(book, item_photos, faces.placeholder_urls(conn, book, item_photos)),
         condition_text=condition_text,
         condition_title=condition_title,
         value_line=copy_fields.source_line(book),

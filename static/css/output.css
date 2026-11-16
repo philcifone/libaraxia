@@ -3117,8 +3117,16 @@ summary.chip::-webkit-details-marker {
   max-width: 16rem;
 }
 
+.max-w-\[2\.5rem\] {
+  max-width: 2.5rem;
+}
+
 .max-w-\[300px\] {
   max-width: 300px;
+}
+
+.max-w-\[3rem\] {
+  max-width: 3rem;
 }
 
 .max-w-\[5rem\] {
@@ -3127,6 +3135,10 @@ summary.chip::-webkit-details-marker {
 
 .max-w-\[8rem\] {
   max-width: 8rem;
+}
+
+.max-w-\[9rem\] {
+  max-width: 9rem;
 }
 
 .max-w-full {
@@ -3552,6 +3564,10 @@ summary.chip::-webkit-details-marker {
 
 .border-t {
   border-top-width: 1px;
+}
+
+.border-dashed {
+  border-style: dashed;
 }
 
 .border-accent {
@@ -9386,6 +9402,10 @@ html[data-gr-bar="on"] body {
 
   .sm\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sm\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .sm\:grid-cols-\[10rem_minmax\(0\2c 1fr\)\] {

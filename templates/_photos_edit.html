@@ -3,13 +3,15 @@
    item form, since a form can't hold forms. Every action is a plain POST to
    blueprints/photos.py that comes back to #photos; static/photos.js uploads
    a picked file at once (no Upload click) and the gallery one file at a time
-   with a progress line. No placeholders where there's no photo: just Add.
+   with a progress line.
    Crop opens the cover's crop tool on that photo (cover_crop.js photo
    mode; its dialog is in the item form above) and saves to photos.crop.
    A line says what the item still needs before it turns in 3D
    (utils/item3d.py; ROADMAP 16.0a).
+   A face without a photo offers the admin's placeholders for it, and the
+   item's placeholder sets fill several at once (16.0c, blueprints/faces.py).
    Needs: book, photos, photo_kinds, photo_labels, photo_limit,
-   photos_missing_3d, has_3d_shape, m (or a book page's noun). #}
+   photos_missing_3d, has_3d_shape, face_options, m (or a book page's noun). #}
 {% set noun = m.noun if m else 'book' %}
 {% set gallery = photos['gallery'] %}
 <section id="photos" class="bg-secondary-bg rounded-xl p-4 sm:p-6 mt-8 card" data-photos-book="{{ book['id'] }}">
@@ -28,6 +30,23 @@
     </p>
     {% endif %}
     <p class="text-sm mt-2" data-photos-status role="status" aria-live="polite"></p>
+
+    {# Placeholder sets (16.0c, utils/faces.py): the admin's named groups for
+       this kind of item ("Clamshell": top, right side and bottom), filling
+       its faces without photos in one go #}
+    {% set fo = face_options %}
+    {% if fo and fo.sets %}
+    <div class="mt-4 flex flex-wrap items-center gap-2" data-face-sets>
+        <span class="text-sm text-content-secondary">Use a set:</span>
+        {% for set in fo.sets %}
+        <form action="{{ url_for('faces.apply_set', book_id=book['id']) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" name="set_id" value="{{ set['id'] }}"
+                    class="px-3 py-1 text-sm rounded-lg btn btn-outline text-content-primary">{{ set['name'] }}</button>
+        </form>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <div class="mt-6 grid sm:grid-cols-2 gap-6">
         {% for kind in photo_kinds if kind != 'gallery' %}
@@ -59,6 +78,27 @@
                 </form>
                 {% endif %}
             </div>
+            {# No photo: the placeholder that stands in for it (16.0c), the
+               owner's pick or else the default; a photo always wins #}
+            {% if not photo and fo and fo.kinds.get(kind) %}
+            {% set picked = fo.chosen.get(kind) %}
+            <form action="{{ url_for('faces.choose', book_id=book['id']) }}" method="POST"
+                  class="flex flex-wrap items-center gap-2" data-face-choice="{{ kind }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="kind" value="{{ kind }}">
+                {% if picked %}
+                <img src="{{ url_for('static', filename=picked['path']) }}" alt="Placeholder: {{ picked['name'] }}"
+                     class="{{ 'h-16 w-auto max-w-[2.5rem]' if kind in ('spine', 'side') else 'h-8 w-auto max-w-[8rem]' }} object-contain border border-dashed border-rule-strong">
+                {% endif %}
+                <label for="face-{{ kind }}" class="text-sm text-content-secondary">Placeholder</label>
+                <select id="face-{{ kind }}" name="placeholder_id"
+                        class="bg-primary border border-rule-strong rounded-lg px-2 py-1 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    <option value="">Default</option>
+                    {% for p in fo.kinds[kind] %}<option value="{{ p['id'] }}"{% if picked and picked['id'] == p['id'] %} selected{% endif %}>{{ p['name'] }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Save</button>
+            </form>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

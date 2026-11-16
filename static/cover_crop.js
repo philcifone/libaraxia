@@ -731,7 +731,9 @@ function initCropTool() {
             return;
         }
         dialog.close();
-        location.hash = 'photos';
+        // Back to where the photo is listed: the edit page's Photos, or the
+        // button's own section (data-return)
+        location.hash = photoTarget.button?.dataset.return || 'photos';
         location.reload();
     }
 
@@ -835,7 +837,7 @@ function initCropTool() {
 
     function hasSource() {
         if (photoTarget) return true;
-        return !!(pickedFile() || $('existing_cover_url')?.value || openButton.dataset.currentCover);
+        return !!(pickedFile() || $('existing_cover_url')?.value || openButton?.dataset.currentCover);
     }
 
     // A picked file is uploaded once and remembered per File, so reopening the
@@ -859,7 +861,7 @@ function initCropTool() {
         if (photoTarget) return photoTarget.source;
         const file = pickedFile();
         if (file) return stageFile(file);
-        return $('existing_cover_url')?.value || openButton.dataset.currentCover || null;
+        return $('existing_cover_url')?.value || openButton?.dataset.currentCover || null;
     }
 
     function loadImage(path) {
@@ -909,7 +911,9 @@ function initCropTool() {
         }
     }
 
-    openButton.addEventListener('click', openTool);
+    // No cover button on a page that only crops photos (Admin ->
+    // Placeholders, 16.0c): the tool is opened by data-click="cropPhoto"
+    openButton?.addEventListener('click', openTool);
 
     // --- The form's side ------------------------------------------------------------------------
 
@@ -924,7 +928,7 @@ function initCropTool() {
     }
 
     function refreshButton() {
-        openButton.classList.toggle('hidden', !hasSource());
+        openButton?.classList.toggle('hidden', !hasSource());
     }
 
     // A new cover came from somewhere else (picked file, lookup, "Find a better
