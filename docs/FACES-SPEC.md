@@ -93,7 +93,7 @@ For each face, first that exists:
 3. the item's chosen placeholder;
 4. the plain look (styles.css "The 3D item"); on the flat box a book's
    plain top and side are lined pages, as in 3D (styles.css "book pages";
-   an audiobook stays plain; Phil, 2026-11-16).
+   audiobooks and unowned books too; Phil, 2026-11-16).
 
 Nothing is automatic: an item shows a placeholder only where its owner
 picked one (Phil, 2026-11-16).

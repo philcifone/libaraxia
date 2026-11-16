@@ -2788,14 +2788,14 @@ and to the right for its faces */
    view's paper (.item3d-book) and the books on the heading, in the box's
    own top and side colours so the dark mode shade still holds: lines
    along the fore-edge (the side) and across the top (Phil, 2026-11-16).
-   An audiobook isn't paper and keeps the plain box; a top or side photo
+   Every book, audiobooks and unowned ones too (Phil); a top or side photo
    or placeholder wins ("Box faces" above), so those faces are left out. */
-:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([data-format="Audiobook"]):not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {
+:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {
     background: repeating-linear-gradient(90deg,
         rgb(var(--box-side)) 0 2px,
         color-mix(in srgb, rgb(var(--box-side)) 84%, black) 2px 3px);
 }
-:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([data-format="Audiobook"]):not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {
+:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {
     background: repeating-linear-gradient(0deg,
         rgb(var(--box-top)) 0 2px,
         color-mix(in srgb, rgb(var(--box-top)) 88%, black) 2px 3px);

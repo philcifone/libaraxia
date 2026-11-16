@@ -1488,11 +1488,12 @@ def test_wishlist_covers_show_the_format(client, db, people):
 
 def test_book_box_shows_pages():
     """A book's flat box, on the grid and the item page, has lined pages
-    on its top and side unless a photo or placeholder fills that face; an
-    audiobook keeps the plain box (Phil, 2026-11-16)."""
+    on its top and side unless a photo or placeholder fills that face; audiobooks
+    and unowned books too (Phil, 2026-11-16)."""
     css = pathlib.Path('static/styles.css').read_text()
     who = (':root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, '
-           '.cover-stand[data-media="book"]):not([data-format="Audiobook"])')
+           '.cover-stand[data-media="book"])')
+    assert 'Audiobook"]):not([style*="--face-' not in css
     assert who + ':not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {' in css
     assert who + ':not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {' in css
     assert 'repeating-linear-gradient(90deg,\n        rgb(var(--box-side)) 0 2px' in css
