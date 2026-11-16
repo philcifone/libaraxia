@@ -3,21 +3,19 @@
 The admin's images for a face of an item that has no photo of it: a
 clamshell's plastic top, an orange tape's bottom, a clear DVD shell's edge,
 a page texture. Each is for one face kind (spine, side, top, bottom) of one
-**body**, the kind of thing it belongs to; named **sets** group a body's
-placeholders (at most one per face), and one set per body may be its
-default. An owner picks placeholders per item (`item_faces`), one face at a
-time or a set at once.
+**medium** (books, vinyl, CDs, cassettes, DVDs, VHS: one tab each on the
+admin page); named **sets** group a medium's placeholders (at most one per
+face: "White clamshell", "Nickelodeon"). An owner picks placeholders per
+item (`item_faces`), a set on the add form or the edit page, or one face
+at a time on the edit page. Nothing is automatic: an item nobody picked
+for keeps the plain look.
 
 Which image a face shows, first that exists (spec section 5):
     the item's photo of that face
-    a VHS sleeve's right side: its left side's photo (16.0a)
+    a VHS sleeve's right side: its left side's photo (16.0a; a VHS with a
+        top photo is a sleeve, spec section 6)
     the item's chosen placeholder
-    the default set of the item's body
     nothing: the plain look in styles.css ("The 3D item", "Box faces")
-
-A VHS is a sleeve when it has a top photo and a clamshell otherwise
-(spec section 6), so its body, and the default set it falls back on,
-follow from its photos.
 
 Queries and rules only; files are saved by image_utils.save_photo (under
 FACES_FOLDER) and removed by image_utils.delete_image_file. Routes are in
@@ -30,18 +28,16 @@ from utils.media import BOOK, VIDEO, RECORD, AUDIOBOOK, media_type_of
 
 KINDS = photos.EDGES        # the faces a placeholder can stand in for
 
-# Bodies, in the admin page's order: (label, a media type and format that
-# have it, for the face labels: a book's side is its "Fore-edge")
-BODIES = {
+# Mediums, in the admin page's tab order: (label, a media type and format
+# that have it, for the face labels: a book's side is its "Fore-edge")
+MEDIA = {
     'book': ('Books', BOOK, None),
     'vinyl': ('Vinyl', RECORD, 'LP'),
     'cd': ('CDs', RECORD, 'CD'),
     'cassette': ('Cassettes', RECORD, 'Cassette'),
     'dvd': ('DVDs', VIDEO, 'DVD'),
-    'vhs_sleeve': ('VHS sleeves', VIDEO, 'VHS'),
-    'vhs_clamshell': ('VHS clamshells', VIDEO, 'VHS'),
+    'vhs': ('VHS', VIDEO, 'VHS'),
 }
-VHS_SLEEVE, VHS_CLAMSHELL = 'vhs_sleeve', 'vhs_clamshell'
 NAME_MAX = 60
 
 
@@ -49,37 +45,26 @@ class FaceError(ValueError):
     """A request the rules refuse; the message is safe to show."""
 
 
-def body_label(body):
-    return BODIES[body][0]
+def medium_label(medium):
+    return MEDIA[medium][0]
 
 
-def kind_label(body, kind):
-    """A face's name for this body: "Fore-edge" on a book, "Left side" on a VHS."""
-    _, media_type, fmt = BODIES[body]
+def kind_label(medium, kind):
+    """A face's name for this medium: "Fore-edge" on a book, "Left side" on a VHS."""
+    _, media_type, fmt = MEDIA[medium]
     return photos.label(kind, fmt, media_type)
 
 
-def bodies_for(media_type, fmt=None):
-    """The bodies whose placeholders an item may use: a VHS may be a sleeve
-    or a clamshell, so it gets both; an audiobook has no box."""
+def medium_for(media_type, fmt=None):
+    """The medium whose placeholders an item may use; None for an audiobook,
+    which has no box."""
     if media_type == BOOK:
-        return () if fmt == AUDIOBOOK else ('book',)
+        return None if fmt == AUDIOBOOK else 'book'
     if media_type == VIDEO:
-        return (VHS_SLEEVE, VHS_CLAMSHELL) if fmt == 'VHS' else ('dvd',)
+        return 'vhs' if fmt == 'VHS' else 'dvd'
     if media_type == RECORD:
-        return {'CD': ('cd',), 'Cassette': ('cassette',)}.get(fmt, ('vinyl',))
-    return ()
-
-
-def body_of(item, item_photos):
-    """The one body an item is now, whose default set it falls back on: a
-    VHS is a sleeve once it has a top photo, a clamshell until then."""
-    bodies = bodies_for(media_type_of(item), item['format'])
-    if not bodies:
-        return None
-    if bodies == (VHS_SLEEVE, VHS_CLAMSHELL):
-        return VHS_SLEEVE if item_photos.get(photos.TOP) else VHS_CLAMSHELL
-    return bodies[0]
+        return {'CD': 'cd', 'Cassette': 'cassette'}.get(fmt, 'vinyl')
+    return None
 
 
 def _clean_name(name):
@@ -100,35 +85,35 @@ def placeholder(conn, placeholder_id):
 
 
 def library(conn):
-    """Everything the admin page shows, by body in BODIES' order:
-    [{'body', 'label', 'kinds': [{'kind', 'label', 'rows': [rows]}],
+    """Everything the admin page shows, by medium in MEDIA's order:
+    [{'medium', 'label', 'kinds': [{'kind', 'label', 'rows': [rows]}],
       'sets': [{'row', 'members': {kind: placeholder row}}]}]."""
-    by_body = {body: {kind: [] for kind in KINDS} for body in BODIES}
+    by_medium = {m: {kind: [] for kind in KINDS} for m in MEDIA}
     for row in conn.execute('SELECT * FROM face_placeholders ORDER BY name COLLATE NOCASE, id'):
-        if row['body'] in by_body:
-            by_body[row['body']][row['kind']].append(row)
-    sets = {body: [] for body in BODIES}
+        if row['medium'] in by_medium:
+            by_medium[row['medium']][row['kind']].append(row)
     members = {}
     for row in conn.execute('SELECT m.set_id, m.kind, p.* FROM face_set_members m '
                             'JOIN face_placeholders p ON p.id = m.placeholder_id'):
         members.setdefault(row['set_id'], {})[row['kind']] = row
+    sets = {m: [] for m in MEDIA}
     for row in conn.execute('SELECT * FROM face_sets ORDER BY name COLLATE NOCASE, id'):
-        if row['body'] in sets:
-            sets[row['body']].append({'row': row, 'members': members.get(row['id'], {})})
-    return [{'body': body, 'label': body_label(body),
-             'kinds': [{'kind': kind, 'label': kind_label(body, kind), 'rows': by_body[body][kind]}
+        if row['medium'] in sets:
+            sets[row['medium']].append({'row': row, 'members': members.get(row['id'], {})})
+    return [{'medium': m, 'label': medium_label(m),
+             'kinds': [{'kind': kind, 'label': kind_label(m, kind), 'rows': by_medium[m][kind]}
                        for kind in KINDS],
-             'sets': sets[body]}
-            for body in BODIES]
+             'sets': sets[m]}
+            for m in MEDIA]
 
 
-def add_placeholder(conn, body, kind, name, path):
+def add_placeholder(conn, medium, kind, name, path):
     """Insert a placeholder (its file already saved). Returns its id. The
     caller commits."""
-    if body not in BODIES or kind not in KINDS:
+    if medium not in MEDIA or kind not in KINDS:
         raise FaceError('Unknown kind of placeholder.')
-    return conn.execute('INSERT INTO face_placeholders (body, kind, name, path) VALUES (?, ?, ?, ?)',
-                        (body, kind, _clean_name(name), path)).lastrowid
+    return conn.execute('INSERT INTO face_placeholders (medium, kind, name, path) VALUES (?, ?, ?, ?)',
+                        (medium, kind, _clean_name(name), path)).lastrowid
 
 
 def rename_placeholder(conn, placeholder_id, name):
@@ -163,17 +148,17 @@ def face_set(conn, set_id):
     return conn.execute('SELECT * FROM face_sets WHERE id = ?', (set_id,)).fetchone()
 
 
-def create_set(conn, body, name):
-    if body not in BODIES:
+def create_set(conn, medium, name):
+    if medium not in MEDIA:
         raise FaceError('Unknown kind of set.')
-    return conn.execute('INSERT INTO face_sets (body, name) VALUES (?, ?)',
-                        (body, _clean_name(name))).lastrowid
+    return conn.execute('INSERT INTO face_sets (medium, name) VALUES (?, ?)',
+                        (medium, _clean_name(name))).lastrowid
 
 
-def update_set(conn, set_id, name, members, is_default):
-    """Rename a set, set its members ({kind: placeholder id or None}) and
-    whether it's its body's default (taking that from any other set). Every
-    member must be a placeholder of the set's body and of that face."""
+def update_set(conn, set_id, name, members):
+    """Rename a set and set its members ({kind: placeholder id or None}).
+    Every member must be a placeholder of the set's medium and of that
+    face. Items it was applied to keep the faces it gave them."""
     row = face_set(conn, set_id)
     if not row:
         raise FaceError('That set is gone.')
@@ -184,13 +169,10 @@ def update_set(conn, set_id, name, members, is_default):
         if not pid:
             continue
         ph = placeholder(conn, pid)
-        if not ph or ph['body'] != row['body'] or ph['kind'] != kind:
+        if not ph or ph['medium'] != row['medium'] or ph['kind'] != kind:
             raise FaceError("That placeholder doesn't fit this set.")
         conn.execute('INSERT INTO face_set_members (set_id, kind, placeholder_id) VALUES (?, ?, ?)',
                      (set_id, kind, pid))
-    if is_default:
-        conn.execute('UPDATE face_sets SET is_default = 0 WHERE body = ? AND id <> ?', (row['body'], set_id))
-    conn.execute('UPDATE face_sets SET is_default = ? WHERE id = ?', (1 if is_default else 0, set_id))
 
 
 def delete_set(conn, set_id):
@@ -202,20 +184,19 @@ def delete_set(conn, set_id):
 
 def options_for(conn, item):
     """What the edit page offers an item: {'kinds': {kind: [placeholder rows
-    of its bodies]}, 'sets': [set rows with at least one member], 'chosen':
-    {kind: placeholder row}}. Empty when it has no body."""
-    bodies = bodies_for(media_type_of(item), item['format'])
+    of its medium]}, 'sets': [set rows with at least one member], 'chosen':
+    {kind: placeholder row}}. Empty when it has no medium."""
+    medium = medium_for(media_type_of(item), item['format'])
     out = {'kinds': {kind: [] for kind in KINDS}, 'sets': [], 'chosen': chosen(conn, item['id'])}
-    if not bodies:
+    if not medium:
         return out
-    marks = ','.join('?' * len(bodies))
-    for row in conn.execute(f'SELECT * FROM face_placeholders WHERE body IN ({marks}) '
-                            f'ORDER BY body, name COLLATE NOCASE, id', bodies):
+    for row in conn.execute('SELECT * FROM face_placeholders WHERE medium = ? '
+                            'ORDER BY name COLLATE NOCASE, id', (medium,)):
         out['kinds'][row['kind']].append(row)
     out['sets'] = conn.execute(
-        f'SELECT s.* FROM face_sets s WHERE s.body IN ({marks}) '
-        f'AND EXISTS (SELECT 1 FROM face_set_members m WHERE m.set_id = s.id) '
-        f'ORDER BY s.body, s.name COLLATE NOCASE, s.id', bodies).fetchall()
+        'SELECT s.* FROM face_sets s WHERE s.medium = ? '
+        'AND EXISTS (SELECT 1 FROM face_set_members m WHERE m.set_id = s.id) '
+        'ORDER BY s.name COLLATE NOCASE, s.id', (medium,)).fetchall()
     return out
 
 
@@ -228,14 +209,14 @@ def chosen(conn, book_id):
 
 def choose(conn, item, kind, placeholder_id):
     """Set (or with None, clear) the placeholder for one face of an item.
-    It must be for that face and one of the item's bodies."""
+    It must be for that face and the item's medium."""
     if kind not in KINDS:
         raise FaceError('Unknown face.')
     conn.execute('DELETE FROM item_faces WHERE book_id = ? AND kind = ?', (item['id'], kind))
     if not placeholder_id:
         return
     ph = placeholder(conn, placeholder_id)
-    if not ph or ph['kind'] != kind or ph['body'] not in bodies_for(media_type_of(item), item['format']):
+    if not ph or ph['kind'] != kind or ph['medium'] != medium_for(media_type_of(item), item['format']):
         raise FaceError("That placeholder doesn't fit this item.")
     conn.execute('INSERT INTO item_faces (book_id, kind, placeholder_id) VALUES (?, ?, ?)',
                  (item['id'], kind, placeholder_id))
@@ -245,7 +226,7 @@ def apply_set(conn, item, set_id):
     """Fill an item's choices from a set: each of the set's faces replaces
     the item's choice for that face; faces the set leaves out are kept."""
     row = face_set(conn, set_id)
-    if not row or row['body'] not in bodies_for(media_type_of(item), item['format']):
+    if not row or row['medium'] != medium_for(media_type_of(item), item['format']):
         raise FaceError("That set doesn't fit this item.")
     for member in conn.execute('SELECT kind, placeholder_id FROM face_set_members WHERE set_id = ?', (set_id,)):
         choose(conn, item, member['kind'], member['placeholder_id'])
@@ -254,14 +235,14 @@ def apply_set(conn, item, set_id):
 
 def sets_for_type(conn, media_type):
     """The sets an add form offers before the format is known: every set,
-    with members, of the bodies this media type has, by body:
-    [(body label, [set rows])]."""
-    bodies = [b for b, (_, mt, _f) in BODIES.items() if mt == media_type]
+    with members, of the mediums this media type has, by medium:
+    [(medium label, [set rows])]."""
+    mediums = [m for m, (_, mt, _f) in MEDIA.items() if mt == media_type]
     rows = conn.execute(
         'SELECT s.* FROM face_sets s WHERE EXISTS (SELECT 1 FROM face_set_members m WHERE m.set_id = s.id) '
         'ORDER BY s.name COLLATE NOCASE, s.id').fetchall()
-    return [(body_label(b), [r for r in rows if r['body'] == b]) for b in bodies
-            if any(r['body'] == b for r in rows)]
+    return [(medium_label(m), [r for r in rows if r['medium'] == m]) for m in mediums
+            if any(r['medium'] == m for r in rows)]
 
 
 def apply_on_add(conn, book_id, set_id):
@@ -278,37 +259,23 @@ def apply_on_add(conn, book_id, set_id):
         return False
 
 
-def defaults(conn):
-    """{body: {kind: placeholder row}} from each body's default set."""
-    out = {}
-    for row in conn.execute('SELECT s.body, m.kind, p.* FROM face_sets s '
-                            'JOIN face_set_members m ON m.set_id = s.id '
-                            'JOIN face_placeholders p ON p.id = m.placeholder_id '
-                            'WHERE s.is_default = 1'):
-        out.setdefault(row['body'], {})[row['kind']] = row
-    return out
-
-
-def placeholder_urls(conn, item, item_photos, default_sets=None, choices=None):
-    """{kind: URL} of the placeholders an item's faces show where it has no
-    photo of that face (spec section 5, steps 3 and 4); a VHS sleeve's right
-    side is left to its left side's photo (step 2). `default_sets` and
-    `choices` may be passed in, read once for a page of items."""
-    body = body_of(item, item_photos)
-    if not body:
+def placeholder_urls(conn, item, item_photos, choices=None):
+    """{kind: URL} of the placeholders an item's owner picked for faces it
+    has no photo of (spec section 5, step 3); a VHS sleeve's right side is
+    left to its left side's photo (step 2). `choices` may be passed in,
+    read once for a page of items."""
+    if not medium_for(media_type_of(item), item['format']):
         return {}
     if choices is None:
         choices = chosen(conn, item['id'])
-    if default_sets is None:
-        default_sets = defaults(conn)
-    fallback = default_sets.get(body, {})
+    sleeve = item_photos.get(photos.TOP) and item_photos.get(photos.SPINE)
     out = {}
     for kind in KINDS:
         if item_photos.get(kind):
             continue
-        if (kind == photos.SIDE and body == VHS_SLEEVE and item_photos.get(photos.SPINE)):
+        if kind == photos.SIDE and item['format'] == 'VHS' and sleeve:
             continue
-        row = choices.get(kind) or fallback.get(kind)
+        row = choices.get(kind)
         if row and image_utils.upload_exists(row['path']):
             out[kind] = _url(row)
     return out

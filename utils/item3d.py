@@ -191,11 +191,10 @@ def heading_books(conn, user_id, seed, media_type=BOOK):
           AND b.cover_image_url IS NOT NULL AND {fmt} AND {has_photos}
     """, (user_id,)).fetchall()
     rows.sort(key=lambda b: random.Random(f"{seed}:{b['id']}").random())
-    default_sets = faces.defaults(conn)
     out = []
     for book in rows:
         item_photos = photos.photos_of(conn, book['id'])
-        m = model(book, item_photos, faces.placeholder_urls(conn, book, item_photos, default_sets))
+        m = model(book, item_photos, faces.placeholder_urls(conn, book, item_photos))
         if m:
             out.append(m)
             if len(out) == HEADING_BOOKS:

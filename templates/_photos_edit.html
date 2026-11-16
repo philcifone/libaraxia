@@ -79,7 +79,7 @@
                 {% endif %}
             </div>
             {# No photo: the placeholder that stands in for it (16.0c), the
-               owner's pick or else the default; a photo always wins #}
+               owner's pick, else the plain look; a photo always wins #}
             {% if not photo and fo and fo.kinds.get(kind) %}
             {% set picked = fo.chosen.get(kind) %}
             <form action="{{ url_for('faces.choose', book_id=book['id']) }}" method="POST"
@@ -93,7 +93,7 @@
                 <label for="face-{{ kind }}" class="text-sm text-content-secondary">Placeholder</label>
                 <select id="face-{{ kind }}" name="placeholder_id"
                         class="bg-primary border border-rule-strong rounded-lg px-2 py-1 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    <option value="">Default</option>
+                    <option value="">None</option>
                     {% for p in fo.kinds[kind] %}<option value="{{ p['id'] }}"{% if picked and picked['id'] == p['id'] %} selected{% endif %}>{{ p['name'] }}</option>{% endfor %}
                 </select>
                 <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Save</button>

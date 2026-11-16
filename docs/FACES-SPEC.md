@@ -35,44 +35,50 @@ sets that an owner picks per item.
 Admin → Placeholders. Global: every user can pick them; only admins add,
 crop, rename or delete them.
 
-- Grouped by **body**, the kind of thing a face belongs to:
+- Grouped by **medium**, one tab each on the admin page:
 
-  | body | items |
+  | medium | items |
   |---|---|
   | `book` | books (not audiobooks) |
   | `vinyl` | LP, EP, 7", 10", 12" |
   | `cd` | CD |
   | `cassette` | Cassette |
   | `dvd` | DVD (every non-VHS video) |
-  | `vhs_sleeve` | VHS, card slip sleeve |
-  | `vhs_clamshell` | VHS, plastic clamshell |
+  | `vhs` | VHS, sleeve or clamshell alike |
 
+  (Earlier drafts split VHS into sleeve and clamshell bodies with a default
+  set each. Phil, 2026-11-16: the names say what a set is, so one VHS tab;
+  and nothing automatic, so no defaults.)
 - Each placeholder is an image for one face kind (spine, side, top or
-  bottom) of one body, with a name, uploaded through the crop tool
-  (Perspective by default). Several per body and kind.
-- **Sets**: a named group for one body ("Clamshell", "Nickelodeon
-  clamshell", "Clear DVD case", "Black DVD case") with at most one
-  placeholder per face kind. One set per body may be the **default**.
-- Tables: `face_placeholders` (id, body, kind, name, path, created_at),
-  `face_sets` (id, body, name, is_default; one default per body by a partial
-  unique index), `face_set_members` (set_id, kind, placeholder_id; CASCADE),
-  and `item_faces` (book_id, kind, placeholder_id; the owner's choice per
-  face; CASCADE from both sides).
+  bottom) of one medium, with a name, uploaded through the crop tool
+  (Perspective by default). Several per medium and kind. On upload a top or
+  bottom is turned a quarter turn if it came in upright, and a spine or
+  side if it came in wide (`image_utils.save_photo(shape=)`).
+- **Sets**: a named group for one medium ("White clamshell", "Nickelodeon",
+  "Clear DVD case", "Black DVD case") with at most one placeholder per face
+  kind.
+- Tables: `face_placeholders` (id, medium, kind, name, path, created_at),
+  `face_sets` (id, medium, name), `face_set_members` (set_id, kind,
+  placeholder_id; CASCADE), and `item_faces` (book_id, kind,
+  placeholder_id; the owner's choice per face; CASCADE from both sides).
 - Deleting a placeholder removes its file and every choice of it; those
-  faces fall back to the default set or the plain look.
+  faces go back to the plain look.
 
 ## 4. Choosing on an item
 
 - On the edit page's Photos section, each face slot without a photo offers
-  the placeholders for that face from the item's bodies (a VHS sees both
-  sleeve and clamshell ones), and "Default". The current choice shows as a
+  the placeholders for that face from the item's medium, and "None". The current choice shows as a
   small preview, marked as a placeholder.
-- A row of the body's sets ("Use a set: Clamshell, Nickelodeon clamshell")
+- A row of the medium's sets ("Use a set: Clamshell, Nickelodeon clamshell")
   fills the item's choices in one go (copies its members into
   `item_faces`). Editing a set later does not change items that used it;
   replacing a placeholder's image does (it's the same placeholder).
 - The add form for a VHS (and other types with sets) offers the same set
   choice, applied when the item is saved.
+- Bulk edit's More menu has **Placeholder set** (where the section has
+  sets): fills the selected items' faces from one set, skips items of
+  another medium and items that aren't yours, and undoes like any bulk
+  edit (each face back to what it had).
 - A photo always wins over a placeholder; deleting the photo brings the
   placeholder back.
 
@@ -83,26 +89,26 @@ For each face, first that exists:
 1. the item's photo of that kind;
 2. a VHS sleeve only: for the right side, the left side's photo (16.0a);
 3. the item's chosen placeholder;
-4. the default set of the item's body;
-5. the plain look (styles.css "The 3D item").
+4. the plain look (styles.css "The 3D item").
+
+Nothing is automatic: an item shows a placeholder only where its owner
+picked one (Phil, 2026-11-16).
 
 ## 6. Sleeve or clamshell
 
 A VHS is a **sleeve** when it has a top photo (front, back, top and a side
 show a printed slip sleeve), and a **clamshell** otherwise (front, back and
 a side: the sleeve's spine shows through the plastic, and the plastic is
-the rest). The body follows: `vhs_sleeve` or `vhs_clamshell`, which decides
-the default set used in step 4 above. Same size either way (Phil). A VHS
-with only a cover is a clamshell by this rule, so once an admin makes a
-default clamshell set, every such tape's flat box shows it; that is wanted
-(Phil: most VHS have covers only, and can be updated).
+the rest). Same size either way (Phil). The only rule that depends on it
+is step 2 above: a sleeve's right side repeats its left side's photo.
 
 ## 7. Steps (branch `phase-16c-faces`, a commit each)
 
 1. Bottom kind, every face for every type, labels, 3D bottom face, flat box
    faces for every type (photos only).
 2. The library: migration, Admin → Placeholders (upload with crop, rename,
-   delete), sets with a default per body.
+   delete), sets. Later reworked: one tab per medium, no defaults,
+   strips turned the right way on upload.
 3. Choosing: edit page slots and sets, add form's set, the face resolution
    of section 5 in 3D and on the flat box, sleeve or clamshell.
 4. Docs (ARCHITECTURE), tests throughout, screenshots as `claude`.

@@ -16,7 +16,8 @@ The request names an action key; which table and column it touches comes
 from ACTIONS, never from the request.
 
 Two kinds of action:
-  item edits  change the `books` row: genre, format, owned, remove, restore.
+  item edits  change the `books` row: genre, format, owned, remove, restore;
+              and an item's placeholder faces (`item_faces`, 16.0c).
               Owner or admin only.
   marks       change the user's own rows on any item they can view
               (models.can_view_book): status, shelves, tags.
@@ -649,6 +650,76 @@ def _tag_remove_restore(conn, user, book_id, before, after, params):
     return True
 
 
+# ------------------------------------------------------------------ placeholder set (16.0c)
+
+def _faces_params(conn, user, params):
+    """A set of placeholders (utils/faces.py) to fill the items' faces
+    from: the request names the set; its medium and members are read here,
+    so the journal keeps what the set was when it was applied."""
+    from utils import faces
+    raw = params.get('set_id') if isinstance(params, dict) else None
+    try:
+        set_id = int(raw)
+    except (TypeError, ValueError):
+        raise BulkError('Pick a set first.')
+    row = faces.face_set(conn, set_id)
+    members = {r['kind']: r['placeholder_id'] for r in conn.execute(
+        'SELECT kind, placeholder_id FROM face_set_members WHERE set_id = ?', (set_id,))}
+    if not row or not members:
+        raise BulkError('That set is gone or empty.')
+    return {'set_id': set_id, 'set_name': row['name'], 'medium': row['medium'], 'members': members}
+
+
+def _faces_now(conn, book_id, kinds):
+    """{kind: placeholder id or None} an item has picked, for these faces."""
+    picked = {r['kind']: r['placeholder_id'] for r in conn.execute(
+        'SELECT kind, placeholder_id FROM item_faces WHERE book_id = ?', (book_id,))}
+    return {kind: picked.get(kind) for kind in kinds}
+
+
+def _faces_set(conn, book_id, values):
+    """Write {kind: placeholder id or None} (None clears the face)."""
+    for kind, pid in values.items():
+        conn.execute('DELETE FROM item_faces WHERE book_id = ? AND kind = ?', (book_id, kind))
+        if pid is not None:
+            conn.execute('INSERT INTO item_faces (book_id, kind, placeholder_id) VALUES (?, ?, ?)',
+                         (book_id, kind, pid))
+
+
+def _faces_plan(conn, user, book, params):
+    from utils import faces
+    if faces.medium_for(media.media_type_of(book), book['format']) != params['medium']:
+        return 'skip', f'Not for {faces.medium_label(params["medium"])}', None, None
+    before = _faces_now(conn, book['id'], params['members'])
+    after = dict(params['members'])
+    return ('same' if before == after else 'change'), '', before, after
+
+
+def _faces_write(conn, user, book_id, before, after, params):
+    guard, args = _owner_ok(user)
+    owner = conn.execute('SELECT 1 FROM books WHERE id = ?' + guard, (book_id, *args)).fetchone()
+    if not owner or _faces_now(conn, book_id, before) != before:
+        return False, after
+    _faces_set(conn, book_id, after)
+    return True, after
+
+
+def _faces_current(conn, user, book_id, params):
+    return _faces_now(conn, book_id, params['members'])
+
+
+def _faces_restore(conn, user, book_id, before, after, params):
+    guard, args = _owner_ok(user)
+    if not conn.execute('SELECT 1 FROM books WHERE id = ?' + guard, (book_id, *args)).fetchone():
+        return False
+    # A placeholder deleted since leaves that face plain rather than failing
+    kept = {kind: (pid if pid is not None and conn.execute(
+        'SELECT 1 FROM face_placeholders WHERE id = ?', (pid,)).fetchone() else None)
+        for kind, pid in before.items()}
+    _faces_set(conn, book_id, kept)
+    return True
+
+
 # ------------------------------------------------------------------ the whitelist
 
 def _no_notes(rows, params):
@@ -726,6 +797,13 @@ ACTIONS = {
         summary=lambda p, n: f'Put {_count(n)} back on the shelf',
         key=lambda b: None, label=lambda k, p: 'Removed → On the shelf',
         same_text=lambda p: 'Already on the shelf', owner_only=True),
+    'faces': Action(
+        _faces_params, _faces_plan, _faces_write, _faces_current, _faces_restore,
+        describe=lambda p: f'Use the placeholder set {_quote(p["set_name"])}',
+        summary=lambda p, n: f'Placeholder set {_quote(p["set_name"])} used on {_count(n)}',
+        key=lambda b: None, label=lambda k, p: f'Use the placeholder set {_quote(p["set_name"])}',
+        same_text=lambda p: f'Already using {_quote(p["set_name"])}',
+        owner_only=True),
     'status': Action(
         _status_params, _status_plan, _status_write, _status_current, _status_restore,
         describe=lambda p: 'Clear the status' if p['status'] == 'untracked'
@@ -1066,6 +1144,9 @@ def selection(conn, user, ids):
                 'SELECT uc.name FROM collection_books cb JOIN user_collections uc '
                 'ON uc.collection_id = cb.collection_id WHERE uc.user_id = ? AND cb.book_id = ? '
                 'ORDER BY uc.name COLLATE NOCASE', (user.id, book_id))],
+            'faces': [r['name'] for r in conn.execute(
+                'SELECT p.name FROM item_faces f JOIN face_placeholders p ON p.id = f.placeholder_id '
+                'WHERE f.book_id = ? ORDER BY p.name COLLATE NOCASE', (book_id,))],
             'yours': bool(user.is_admin or book['added_by'] == user.id),
         })
     return out
@@ -1074,9 +1155,13 @@ def selection(conn, user, ids):
 def options(conn, user, media_type):
     """What the sheet's pickers offer for one type: its statuses (plus "no
     status", worded for the type), formats, your shelves for the section, and
-    your tags with counts."""
+    your tags with counts, and the placeholder sets for the type (16.0c;
+    "White clamshell (VHS)")."""
+    from utils import faces
     kind = media_type if media_type in media.MEDIA_TYPES else media.BOOK
     return {
+        'face_sets': [{'id': r['id'], 'name': f'{r["name"]} ({label})'}
+                      for label, rows in faces.sets_for_type(conn, kind) for r in rows],
         'statuses': [{'value': s, 'label': media.STATUS_LABELS[s]} for s in media.STATUSES[kind]]
                     + [{'value': 'untracked', 'label': media.NO_STATUS_LABEL[kind]}],
         'formats': [{'value': f, 'label': media.format_label(f)} for f in media.FORMATS[kind]],

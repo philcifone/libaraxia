@@ -154,6 +154,10 @@ function buildParams(kind, v) {
             return { action: 'remove', params: { note: text || null }, valid: true };
         case 'restore':
             return { action: 'restore', params: {}, valid: true };
+        case 'faces': {
+            const id = Number(v.value);
+            return { action: 'faces', params: { set_id: id }, valid: Number.isInteger(id) && id > 0 };
+        }
         case 'shelf': {
             const action = v.mode === 'remove' ? 'shelf_remove' : 'shelf_add';
             if (v.shelf === '__new__' && action === 'shelf_add') {
@@ -183,7 +187,7 @@ function tagHint(typed) {
 
 // What a selected item has now, for the action in hand: the line under its
 // title in the choose step. `item` is one row of POST /bulk/selection.
-const OWNER_ONLY = new Set(['genre', 'format', 'kind', 'owned', 'remove', 'restore']);
+const OWNER_ONLY = new Set(['genre', 'format', 'kind', 'owned', 'remove', 'restore', 'faces']);
 function nowText(kind, item) {
     if (OWNER_ONLY.has(kind) && !item.yours) return 'Not yours, will be skipped';
     switch (kind) {
@@ -196,6 +200,7 @@ function nowText(kind, item) {
         case 'restore': return item.removed ? 'Removed' : 'On the shelf';
         case 'shelf': return item.shelves.length ? 'In ' + item.shelves.join(', ') : 'In no collections';
         case 'tag': return item.tags.length ? item.tags.join(', ') : 'No tags';
+        case 'faces': return item.faces?.length ? item.faces.join(', ') : 'No placeholders';
         default: return '';
     }
 }
@@ -488,6 +493,7 @@ function idFromHref(href) {
         restore: { title: 'Put back on the shelf' },
         shelf:   { title: 'Collections' },   // custom collections; code says shelf
         tag:     { title: 'Tags' },
+        faces:   { title: 'Placeholder set' },   // 16.0c
     };
     const sheet = { kind: null, action: null, params: null, ids: [], view: null, plan: null, excluded: new Set(), stage: 'choose' };
     const genre = { list: [], cleared: false, active: -1, filter: '' };
@@ -556,6 +562,7 @@ function idFromHref(href) {
         fillSelect($('bulk-status'), options.statuses.map(s =>
             [s.value, s.value === 'untracked' ? `${s.label} (clears the status)` : s.label]), 'Choose a status');
         fillSelect($('bulk-format'), options.formats.map(f => [f.value, f.label]), 'Choose a format');
+        fillSelect($('bulk-faces'), (options.face_sets || []).map(f => [String(f.id), f.name]), 'Choose a set');
         fillShelves();
         const tags = $('bulk-tag-list');
         tags.replaceChildren();
@@ -587,6 +594,7 @@ function idFromHref(href) {
         $('bulk-genre-input').value = '';
         $('bulk-status').value = '';
         $('bulk-format').value = '';
+        $('bulk-faces').value = '';
         document.querySelectorAll('input[name="bulk-owned"], input[name="bulk-kind"]').forEach(r => { r.checked = false; });
         $('bulk-note').value = '';
         $('bulk-shelf-new').value = '';
@@ -609,6 +617,7 @@ function idFromHref(href) {
             shelf: () => ({ mode: radio('bulk-shelf-mode'), shelf: $('bulk-shelf').value,
                             newName: $('bulk-shelf-new').value, mediaType: mediaType() }),
             tag: () => ({ mode: radio('bulk-tag-mode'), text: $('bulk-tag-input').value }),
+            faces: () => ({ value: $('bulk-faces').value }),
         }[kind];
         return v ? buildParams(kind, v()) : null;
     }
@@ -653,7 +662,7 @@ function idFromHref(href) {
             genre.list = res.data?.success ? res.data.genres : [];
             renderGenreList();
         }
-        if (!options && ['status', 'format', 'shelf', 'tag'].includes(kind)) {
+        if (!options && ['status', 'format', 'shelf', 'tag', 'faces'].includes(kind)) {
             const res = await api('/bulk/options?type=' + type);
             if (res.data?.success) { options = res.data; fillPanels(); }
         }

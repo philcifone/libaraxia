@@ -159,6 +159,9 @@ def test_what_each_panel_sends():
     assert call('buildParams', 'remove', {'text': '  '}) == {'action': 'remove', 'params': {'note': None},
                                                               'valid': True}     # the note is optional
     assert call('buildParams', 'restore', {}) == {'action': 'restore', 'params': {}, 'valid': True}
+    # a placeholder set (16.0c): its id, as a number
+    assert call('buildParams', 'faces', {'value': '4'}) == {'action': 'faces', 'params': {'set_id': 4}, 'valid': True}
+    assert call('buildParams', 'faces', {'value': ''})['valid'] is False
     assert call('buildParams', 'genre', {'text': 'cookbooks', 'genres': GENRES}) == {
         'action': 'genre', 'params': {'genre': 'Cookbooks'}, 'valid': True}
     assert call('buildParams', 'nothing', {})['valid'] is False
@@ -199,6 +202,8 @@ def test_now_text_shows_the_value_the_action_changes():
     assert call('nowText', 'restore', item) == 'Removed'
     assert call('nowText', 'shelf', item) == 'In Jazz, Keep'
     assert call('nowText', 'tag', item) == 'No tags'
+    assert call('nowText', 'faces', item) == 'No placeholders'
+    assert call('nowText', 'faces', {**item, 'faces': ['Shell top']}) == 'Shell top'
     # Item edits on someone else's item say so up front; marks don't
     theirs = {**item, 'yours': False}
     assert call('nowText', 'genre', theirs) == 'Not yours, will be skipped'

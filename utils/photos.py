@@ -134,11 +134,10 @@ def box_faces(conn, rows):
                             f'JOIN face_placeholders p ON p.id = f.placeholder_id '
                             f'WHERE f.book_id IN ({marks})', ids):
         choices.setdefault(row['book_id'], {})[row['kind']] = row
-    default_sets = faces.defaults(conn)
     out = {}
     for item in rows:
         mine = shot.get(item['id'], {})
-        held = faces.placeholder_urls(conn, item, mine, default_sets, choices.get(item['id'], {}))
+        held = faces.placeholder_urls(conn, item, mine, choices.get(item['id'], {}))
         top = mine.get(TOP) or held.get(TOP)
         side = mine.get(SIDE) or held.get(SIDE)
         if not side and item['format'] == 'VHS':

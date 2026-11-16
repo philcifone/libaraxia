@@ -195,30 +195,28 @@ CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
 CREATE UNIQUE INDEX idx_item_photos_one_each ON item_photos(book_id, kind) WHERE kind <> 'gallery';
 
 -- Placeholder faces (migration 041, ROADMAP 16.0c, docs/FACES-SPEC.md): the
--- admin's images for a face without a photo, by body ('book', 'vinyl',
--- 'cd', 'cassette', 'dvd', 'vhs_sleeve', 'vhs_clamshell'; utils/faces.py),
--- named sets of them, and each item's choices. Files under
+-- admin's images for a face without a photo, by medium ('book', 'vinyl',
+-- 'cd', 'cassette', 'dvd', 'vhs'; utils/faces.MEDIA), named sets of them,
+-- and each item's choices (nothing is automatic: an item shows a
+-- placeholder only where its owner picked one). Files under
 -- static/uploads/faces/; find_orphaned_images reads face_placeholders.
 CREATE TABLE face_placeholders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    body TEXT NOT NULL,
+    medium TEXT NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
     name TEXT NOT NULL,
     path TEXT NOT NULL,              -- 'uploads/faces/...', relative to static/
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_face_placeholders_body ON face_placeholders(body, kind);
+CREATE INDEX idx_face_placeholders_medium ON face_placeholders(medium, kind);
 
--- A named group of placeholders for one body, one per face at most; one
--- set per body may be its default (used where an item chose nothing)
+-- A named group of one medium's placeholders, one per face at most
 CREATE TABLE face_sets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    body TEXT NOT NULL,
+    medium TEXT NOT NULL,
     name TEXT NOT NULL,
-    is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE UNIQUE INDEX idx_face_sets_one_default ON face_sets(body) WHERE is_default = 1;
 
 CREATE TABLE face_set_members (
     set_id INTEGER NOT NULL REFERENCES face_sets(id) ON DELETE CASCADE,

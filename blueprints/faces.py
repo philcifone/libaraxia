@@ -1,8 +1,9 @@
 """Placeholder faces (ROADMAP 16.0c, docs/FACES-SPEC.md; utils/faces.py).
 
-Admin -> Placeholders (/faces/admin): the library of placeholder images by
-body and face, uploaded and cropped with the cover's crop tool, and the
-named sets that group them. Admins only.
+Admin -> Placeholders (/faces/admin): one tab per medium (books, vinyl,
+CDs, cassettes, DVDs, VHS), each with its placeholder images by face,
+uploaded and cropped with the cover's crop tool, and the named sets that
+group them. Admins only.
 
 On an item's edit page (_photos_edit.html): its owner or an admin picks a
 placeholder for a face, or fills its faces from a set. Plain form posts that
@@ -21,9 +22,10 @@ from blueprints.photos import _item_for_owner, _done
 faces_blueprint = Blueprint('faces', __name__)
 
 
-def _back(body=None):
-    """The admin page, at the body's section."""
-    return redirect(url_for('faces.admin', _anchor=f'body-{body}' if body in faces.BODIES else None))
+def _back(medium=None):
+    """The admin page, on the medium's tab (common.js opens the tab the
+    hash names)."""
+    return redirect(url_for('faces.admin', _anchor=f'medium-{medium}' if medium in faces.MEDIA else None))
 
 
 @faces_blueprint.route('/admin')
@@ -38,33 +40,35 @@ def admin():
 @admin_required
 @limiter.limit('120 per hour')
 def add():
-    """Upload a placeholder: body, kind, name and the file (`photo`)."""
+    """Upload a placeholder: medium, kind, name and the file (`photo`). A
+    top or bottom is turned to lie wide, a spine or side to stand tall."""
     conn = get_db()
-    body, kind = request.form.get('body'), request.form.get('kind')
-    if body not in faces.BODIES or kind not in faces.KINDS:
+    medium, kind = request.form.get('medium'), request.form.get('kind')
+    if medium not in faces.MEDIA or kind not in faces.KINDS:
         abort(400)
     file = request.files.get('photo')
     if not file or not file.filename:
         flash('Choose an image first.', 'error')
-        return _back(body)
+        return _back(medium)
     try:
-        name = faces._clean_name(request.form.get('name') or faces.kind_label(body, kind))
-        path = save_photo(file, None, folder=image_utils.FACES_FOLDER)
+        name = faces._clean_name(request.form.get('name') or faces.kind_label(medium, kind))
+        path = save_photo(file, None, folder=image_utils.FACES_FOLDER,
+                          shape='wide' if kind in ('top', 'bottom') else 'tall')
     except (PhotoError, faces.FaceError) as e:
         flash(str(e), 'error')
-        return _back(body)
+        return _back(medium)
     try:
-        faces.add_placeholder(conn, body, kind, name, path)
+        faces.add_placeholder(conn, medium, kind, name, path)
         conn.commit()
     except Exception:
         conn.rollback()
         faces.remove_file(path)
         current_app.logger.exception('Saving placeholder face')
         flash("Couldn't save that placeholder.", 'error')
-        return _back(body)
-    current_app.logger.info('Admin %s added a %s %s placeholder', current_user.id, body, kind)
-    flash(f'{faces.body_label(body)}: "{name}" added. Crop it if it needs straightening.', 'success')
-    return _back(body)
+        return _back(medium)
+    current_app.logger.info('Admin %s added a %s %s placeholder', current_user.id, medium, kind)
+    flash(f'{faces.medium_label(medium)}: "{name}" added. Crop it if it needs straightening.', 'success')
+    return _back(medium)
 
 
 def _placeholder_or_404(conn, placeholder_id):
@@ -86,7 +90,7 @@ def rename(placeholder_id):
         flash('Renamed.', 'success')
     except faces.FaceError as e:
         flash(str(e), 'error')
-    return _back(row['body'])
+    return _back(row['medium'])
 
 
 @faces_blueprint.route('/admin/<int:placeholder_id>/delete', methods=['POST'])
@@ -99,8 +103,8 @@ def delete(placeholder_id):
     conn.commit()
     faces.remove_file(path)
     current_app.logger.info('Admin %s deleted placeholder %s', current_user.id, placeholder_id)
-    flash(f'"{row["name"]}" deleted. Items that used it show their default again.', 'success')
-    return _back(row['body'])
+    flash(f'"{row["name"]}" deleted. Items that used it show the plain look there again.', 'success')
+    return _back(row['medium'])
 
 
 @faces_blueprint.route('/admin/<int:placeholder_id>/crop', methods=['POST'])
@@ -142,21 +146,21 @@ def crop(placeholder_id):
 @admin_required
 def add_set():
     conn = get_db()
-    body = request.form.get('body')
+    medium = request.form.get('medium')
     try:
-        faces.create_set(conn, body, request.form.get('name'))
+        faces.create_set(conn, medium, request.form.get('name'))
         conn.commit()
         flash('Set added: pick its faces below.', 'success')
     except faces.FaceError as e:
         flash(str(e), 'error')
-    return _back(body)
+    return _back(medium)
 
 
 @faces_blueprint.route('/admin/sets/<int:set_id>/update', methods=['POST'])
 @login_required
 @admin_required
 def update_set(set_id):
-    """Name, members (face_<kind> = placeholder id or empty) and default."""
+    """Name and members (face_<kind> = placeholder id or empty)."""
     conn = get_db()
     row = faces.face_set(conn, set_id)
     if not row:
@@ -166,14 +170,13 @@ def update_set(set_id):
         value = request.form.get(f'face_{kind}') or ''
         members[kind] = int(value) if value.isdigit() else None
     try:
-        faces.update_set(conn, set_id, request.form.get('name'), members,
-                         request.form.get('is_default') == '1')
+        faces.update_set(conn, set_id, request.form.get('name'), members)
         conn.commit()
         flash(f'"{faces.face_set(conn, set_id)["name"]}" saved.', 'success')
     except faces.FaceError as e:
         conn.rollback()
         flash(str(e), 'error')
-    return _back(row['body'])
+    return _back(row['medium'])
 
 
 @faces_blueprint.route('/admin/sets/<int:set_id>/delete', methods=['POST'])
@@ -187,7 +190,7 @@ def delete_set(set_id):
     faces.delete_set(conn, set_id)
     conn.commit()
     flash(f'"{row["name"]}" deleted. Items it filled in keep their faces.', 'success')
-    return _back(row['body'])
+    return _back(row['medium'])
 
 
 # --- On an item: its owner or an admin -----------------------------------------
@@ -201,7 +204,7 @@ def _item(conn, book_id):
 @faces_blueprint.route('/item/<int:book_id>/choose', methods=['POST'])
 @login_required
 def choose(book_id):
-    """One face's placeholder: kind, placeholder_id (empty: the default)."""
+    """One face's placeholder: kind, placeholder_id (empty: none, the plain look)."""
     conn = get_db()
     item = _item(conn, book_id)
     kind = request.form.get('kind')
@@ -212,7 +215,7 @@ def choose(book_id):
     except faces.FaceError as e:
         conn.rollback()
         return _done(item, str(e), ok=False, status=400)
-    return _done(item, 'Placeholder saved.' if value else 'Back to the default.')
+    return _done(item, 'Placeholder saved.' if value else 'Placeholder removed.')
 
 
 @faces_blueprint.route('/item/<int:book_id>/set', methods=['POST'])

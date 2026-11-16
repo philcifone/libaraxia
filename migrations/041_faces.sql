@@ -4,34 +4,32 @@
 -- orange tape's bottom, a page texture), grouped into named sets an owner
 -- picks per item.
 --
--- body: which kind of thing a placeholder is for ('book', 'vinyl', 'cd',
--- 'cassette', 'dvd', 'vhs_sleeve', 'vhs_clamshell'; utils/faces.BODIES,
--- checked in code). kind: the face it stands in for. A placeholder's file
--- is under static/uploads/faces/; find_orphaned_images reads this table.
+-- medium: which kind of thing a placeholder or set is for ('book',
+-- 'vinyl', 'cd', 'cassette', 'dvd', 'vhs'; utils/faces.MEDIA, checked in
+-- code; one tab each on the admin page). kind: the face it stands in
+-- for. A placeholder's file is under static/uploads/faces/;
+-- find_orphaned_images reads this table.
 
 INSERT INTO photo_kinds (code, label, single, position) VALUES ('bottom', 'Bottom', 1, 5);
 UPDATE photo_kinds SET position = 6 WHERE code = 'gallery';
 
 CREATE TABLE face_placeholders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    body TEXT NOT NULL,
+    medium TEXT NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
     name TEXT NOT NULL,
     path TEXT NOT NULL,              -- 'uploads/faces/...', relative to static/
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_face_placeholders_body ON face_placeholders(body, kind);
+CREATE INDEX idx_face_placeholders_medium ON face_placeholders(medium, kind);
 
--- A named group of placeholders for one body, one per face at most; one
--- set per body may be its default (used where an item chose nothing)
+-- A named group of one medium's placeholders, one per face at most
 CREATE TABLE face_sets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    body TEXT NOT NULL,
+    medium TEXT NOT NULL,
     name TEXT NOT NULL,
-    is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE UNIQUE INDEX idx_face_sets_one_default ON face_sets(body) WHERE is_default = 1;
 
 CREATE TABLE face_set_members (
     set_id INTEGER NOT NULL REFERENCES face_sets(id) ON DELETE CASCADE,

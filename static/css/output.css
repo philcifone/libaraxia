@@ -3271,6 +3271,10 @@ summary.chip::-webkit-details-marker {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .grid-cols-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -9336,6 +9340,10 @@ html[data-gr-bar="on"] body {
     display: inline;
   }
 
+  .sm\:flex {
+    display: flex;
+  }
+
   .sm\:table-cell {
     display: table-cell;
   }
@@ -9402,6 +9410,10 @@ html[data-gr-bar="on"] body {
 
   .sm\:items-center {
     align-items: center;
+  }
+
+  .sm\:items-stretch {
+    align-items: stretch;
   }
 
   .sm\:gap-2 {

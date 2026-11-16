@@ -48,6 +48,13 @@
                 <p class="text-sm text-content-secondary mt-2">A season stays with its item; set it on the item's page.</p>
             </fieldset>
 
+            {# faces: a placeholder set (16.0c, Admin -> Placeholders) #}
+            <div id="bulk-in-faces" class="hidden">
+                <label for="bulk-faces" class="block text-sm text-content-secondary mb-1">Placeholder set for <span data-bulk-count></span></label>
+                <select id="bulk-faces" class="bulk-field"></select>
+                <p class="text-sm text-content-secondary mt-2">Fills the faces the set has (a clamshell's top, side and bottom, say) where an item has no photo of them. Items of another format are skipped.</p>
+            </div>
+
             {# remove #}
             <div id="bulk-in-remove" class="hidden">
                 <label for="bulk-note" class="block text-sm text-content-secondary mb-1">Note, kept with each item (optional)</label>

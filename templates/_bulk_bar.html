@@ -28,10 +28,13 @@
                                                 ('format', 'Format', 'more'),
                                                 ('kind', 'Movie or TV', 'more'),
                                                 ('owned', 'Owned or unshelved', 'more'),
+                                                ('faces', 'Placeholder set', 'more'),
                                                 ('remove', 'Remove from library', 'more'),
                                                 ('restore', 'Restore to library', 'more')] %}
-                    {# Movie or TV (15.1): the Movies & TV grids only #}
-                    {% if key != 'kind' or (m is defined and m and m.type == 'video') %}
+                    {# Movie or TV (15.1): the Movies & TV grids only. Placeholder
+                       set (16.0c): where the section has sets #}
+                    {% set bar_type = m.type if m is defined and m else 'book' %}
+                    {% if (key != 'kind' or bar_type == 'video') and (key != 'faces' or face_sets_for(bar_type)) %}
                     <li role="none"{% if key == 'restore' %} id="bulk-restore-item" hidden{% endif %}>
                         <button type="button" role="menuitem" data-click="bulkOpen" data-action="{{ key }}"
                                 data-tier="{{ tier }}" class="bulk-menu-item {{ 'bulk-menu-danger' if key == 'remove' }}">{{ label }}</button>

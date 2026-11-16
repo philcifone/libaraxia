@@ -78,7 +78,7 @@ def photo_folder(book_id):
     return f'uploads/photos/{int(book_id)}'
 
 
-def save_photo(file, book_id, folder=None):
+def save_photo(file, book_id, folder=None, shape=None):
     """Save an uploaded photo of an item; returns its stored path
     ('uploads/photos/<book_id>/<random>.jpg').
 
@@ -89,13 +89,23 @@ def save_photo(file, book_id, folder=None):
     publish where home is. Copying the pixels into a new image, rather than
     trusting save() to leave EXIF, XMP and comments out, makes that certain.
 
+    `shape` ('wide' or 'tall') turns an image that came in the other way a
+    quarter turn anticlockwise: a placeholder for a top or bottom is a wide
+    strip and one for a spine or side a tall one, whichever way the phone
+    held it (blueprints/faces.add). The crop tool fixes the rare one that
+    lands upside down.
+
     Raises PhotoError for anything Pillow can't read as an image."""
     try:
         img = Image.open(file)
         img.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise PhotoError("That file isn't an image this site can read (use a JPEG, PNG or WebP).")
-    return save_photo_image(ImageOps.exif_transpose(img), book_id, folder)
+    img = ImageOps.exif_transpose(img)
+    w, h = img.size
+    if (shape == 'wide' and h > w) or (shape == 'tall' and w > h):
+        img = img.transpose(Image.Transpose.ROTATE_90)
+    return save_photo_image(img, book_id, folder)
 
 
 def save_photo_image(img, book_id, folder=None):
