@@ -419,3 +419,23 @@ def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
     left = html[html.index('heading-books-left'):html.index('heading-books-right')]
     right = html[html.index('heading-books-right'):html.index('<h1', html.index('heading-books-right'))]
     assert left.count('class="heading-book"') == right.count('class="heading-book"') == 5
+
+
+def test_records_stand_at_their_real_sizes(client, db, people):
+    """The Music grid carries each record's format, and the Shelf style
+    (only) stands each format smaller than a 12" sleeve, in the real order
+    but not to scale (Phil, 2026-11-15)."""
+    for fmt in ('LP', 'CD', '7in'):
+        book = add_book(db, people['bob'], title=f'Album {fmt}')
+        db.execute("UPDATE books SET media_type = 'record', format = ? WHERE id = ?", (fmt, book))
+    db.commit()
+    login(client, 'bob')
+    grid = client.get('/records/').get_data(as_text=True)
+    for fmt in ('LP', 'CD', '7in'):
+        assert f'<div class="book-item group" data-format="{fmt}"' in grid
+    css = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'styles.css')).read()
+    sizes = dict(re.findall(r':root\[data-style="shelf"\] #book-container\[data-media="record"\] \.book-item\[data-format="(\w+)"\] \{ --size: ([.\d]+); \}', css))
+    assert sizes == {'10in': '.9', '7in': '.72', 'CD': '.6', 'Cassette': '.55'}
+    # and only there: no other style sizes records by format
+    assert css.count('--size: ') == 5
+    assert 'max-height: calc(var(--cover-h) * var(--size, 1))' in css
