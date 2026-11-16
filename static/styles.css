@@ -2721,6 +2721,20 @@ and to the right for its faces */
     --box-depth: 9px;
     padding: var(--box-depth) var(--box-depth) 0 0;
 }
+/* VHS faces (Phil, 2026-11-15): a VHS sleeve's top and right side photos,
+   when it has them (--face-top, --face-side, set by book_detail.html), on
+   the item page's box faces, skewed with them; the photos run the way the
+   3D view puts them (the top photo's top edge at the back, the side
+   photo's left edge at the front). Each keeps the face's light: the top
+   a little shaded, the side more. A face without a photo stays plain. */
+:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::after {
+    background: linear-gradient(rgb(0 0 0 / .08), rgb(0 0 0 / .08)),
+                var(--face-top, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-top));
+}
+:root[data-style="shelf"] .cover-stand[data-format="VHS"] .cover-box::before {
+    background: linear-gradient(rgb(0 0 0 / .22), rgb(0 0 0 / .22)),
+                var(--face-side, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-side));
+}
 /* An album is a thin sleeve: as on the grid (4px to a book's 7px), about
    half a book's depth (Phil, 2026-11-14) */
 :root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }

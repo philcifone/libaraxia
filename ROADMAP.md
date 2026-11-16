@@ -92,6 +92,7 @@ New features (Phil, 2026-11-14), before the code review and the screenshots so b
   - [x] The gallery's Previous / Next are plain translucent `<` `>` buttons.
   - [x] The crop tool's Save saves the cover there and then on an Edit page (`POST /covers/crop/save/<id>`), so adding photos afterwards can't lose it. On an Add page it still saves with the form (there's no item yet).
   - [x] Your 3D books sit on the Shelves heading (Shelf style, your own Books page only), upright with their spines out, split evenly either side of the title, up to five a side (Phil, 2026-11-15: "mostly spine"; tried cover-forward, then a stack on the right). Drawn flat (spines parallel to the shelf), no shadow. Chosen by a number drawn at login; still, lit as the 3D view would light them; not links, no effects.
+  - [x] A VHS's top and right side photos, when it has them, on the item page's flat cover box (its top and side faces, skewed with them); other types keep plain faces.
   - [ ] Later, low priority: a cover-shape override for sets that aren't the standard shape (non-square disc sets), which the 3D box would take its proportions from; until then such a set is right as soon as its own photos are (the box follows the cover photo's shape).
   - [ ] Later, low priority: more VHS shapes: the Disney clamshell (white plastic, rounded, opens like a book) and coloured tapes (Nickelodeon's orange) for the open bottom.
 - [ ] Phil's setup (spec section 7): Discogs seller settings; an eBay developer account and production keys. The same steps go in the README at 16.1.

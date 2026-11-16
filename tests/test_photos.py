@@ -299,6 +299,15 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     upload(client, vhs, 'top', jpeg_bytes((400, 100)))
     box = box_of(client.get(f'/videos/{vhs}').get_data(as_text=True))
     assert box.count('/static/uploads/photos/') == 4
+
+    # The item page's flat cover box wears the top and right side photos on
+    # its faces, a VHS only (Phil, 2026-11-15)
+    page = client.get(f'/videos/{vhs}').get_data(as_text=True)
+    stand = page[page.index('class="cover-stand'):]
+    stand = stand[:stand.index('>')]
+    assert '--face-top: url(' in stand and '--face-side: url(' in stand
+    dvd_page = client.get(f'/videos/{dvd}').get_data(as_text=True)
+    assert '--face-' not in dvd_page
     assert 'data-angle="270"' in box
 
 

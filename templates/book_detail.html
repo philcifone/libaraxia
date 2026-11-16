@@ -69,7 +69,17 @@
                 <div class="self-center md:self-start md:row-span-2">
                     {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
-                    <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}">
+                    {# A VHS sleeve's top and right side photos, when it has them, go on
+                       the box's top and side faces (Phil, 2026-11-15; styles.css
+                       "VHS faces"); the cover stays flat and facing you #}
+                    {% set faces = namespace(style='') %}
+                    {% if m.type == 'video' and book['format'] == 'VHS' %}
+                        {% for kind in ('top', 'side') if item_photos[kind] %}
+                            {% set faces.style = faces.style ~ '--face-' ~ kind ~ ': url("' ~ url_for('static', filename=item_photos[kind]['path']) ~ '"); ' %}
+                        {% endfor %}
+                    {% endif %}
+                    <div class="cover-stand w-full max-w-[300px]" data-media="{{ m.type }}" data-format="{{ book['format'] or '' }}"
+                         {% if faces.style %}style="{{ faces.style }}"{% endif %}>
                         {% if book.cover_image_url|upload_exists %}
                             {# A tap shows it bigger (#cover-zoom, below) #}
                             {# openCover (book_detail.js): in the Shelf style the item in 3D
