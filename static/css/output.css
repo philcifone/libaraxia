@@ -4965,6 +4965,13 @@ html:has(.cover-zoom[open]) {
   background: rgb(var(--edge, 222 214 196));
 }
 
+/* A CD's right end is its inlay's other spine: the same, but upside down
+   (Phil, 2026-11-15), photo or drawn */
+
+.item3d-jewel .item3d-side > * {
+  transform: rotate(180deg);
+}
+
 /* A CD's spine, when there's no photo: the artist and title, small, read
    from the top down as on the inlay */
 

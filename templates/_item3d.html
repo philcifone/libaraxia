@@ -17,7 +17,8 @@
     <div class="item3d-face item3d-back">
         <img src="{{ model.faces.back }}" alt="" draggable="false">
     </div>
-    {# A CD's inlay has the same spine at both ends #}
+    {# A CD's inlay has the same spine at both ends, the right one upside
+       down (styles.css turns it) #}
     {% for face, url in (('spine', model.faces.spine), ('side', model.faces.side or (model.faces.spine if model.shape == 'jewel'))) %}
     <div class="item3d-face item3d-{{ face }}">
         {% if url %}

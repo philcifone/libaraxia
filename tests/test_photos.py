@@ -275,6 +275,9 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     upload(client, cd, 'spine', jpeg_bytes((10, 500)))
     box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
     assert 'item3d-spine-print' not in box and '--dr: 0.02;' in box
+    # the right end is the same spine, upside down, as on the inlay
+    css = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'styles.css')).read()
+    assert '.item3d-jewel .item3d-side > * { transform: rotate(180deg); }' in css
 
     tall = real_cover(static_root, 't.jpg', (400, 720))
     dvd = add_item(db, bob, 'video', 'DVD', tall)
