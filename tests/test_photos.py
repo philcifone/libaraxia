@@ -279,12 +279,14 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     cd = add_item(db, bob, 'record', 'CD', square)
     upload(client, cd, 'back', jpeg_bytes((500, 500)))
     box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
-    assert 'item3d-jewel' in box and 'hinge' not in box and '--a: 1.0; --dr: 0.083;' in box
-    assert box.count('item3d-spine-print') == 2 and '>Blue<' in box
+    # Front and back only: a paper sleeve (Phil, 2026-11-15), thin, card
+    # edges, nothing drawn, no Spine button
+    assert 'item3d-jewel item3d-paper' in box and 'hinge' not in box and '--a: 1.0; --dr: 0.016;' in box
+    assert 'spine-print' not in box and '>Blue<' not in box and 'data-angle="90"' not in box
     # A card sleeve: its thin spine photo sets the thickness
     upload(client, cd, 'spine', jpeg_bytes((10, 500)))
     box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
-    assert 'item3d-spine-print' not in box and '--dr: 0.02;' in box
+    assert 'item3d-paper' not in box and '--dr: 0.02;' in box and 'data-angle="90"' in box
     # the right end is the same spine, upside down, as on the inlay
     css = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'styles.css')).read()
     assert '.item3d-jewel .item3d-side > * { transform: rotate(180deg); }' in css

@@ -235,3 +235,20 @@ def test_vhs_tapes_stand_on_the_movies_heading(client, db, people, static_root):
     assert 'item3d-tape' in html[html.index('data-heading-books'):]
     assert 'data-heading-books' not in client.get('/records/').get_data(as_text=True)
     assert 'data-heading-books' not in client.get('/videos/shared').get_data(as_text=True)
+
+
+def test_a_cd_spine_placeholder_makes_a_jewel_case(client, db, people, static_root):
+    """A CD with front and back only is a paper sleeve; with a CD spine
+    placeholder (picked or the default set's) it's a jewel case, as thick
+    as one, the placeholder on both ends."""
+    login(client, 'alice')
+    add_placeholder(client, 'cd', 'spine', 'Clear spine', size=(40, 480))
+    make_set(client, db, 'cd', 'Jewel case', {'spine': 'Clear spine'})
+    login(client, 'bob')
+    cd = add_item(db, people['bob'], 'record', 'CD', real_cover(static_root, 'cd.jpg', (500, 440)))
+    upload(client, cd, 'back', jpeg_bytes((500, 440)))
+    assert 'item3d-paper' in box_of(client.get(f'/records/{cd}').get_data(as_text=True))
+    client.post(f'/faces/item/{cd}/choose', data={'kind': 'spine', 'placeholder_id': placeholder_id(db, 'Clear spine')})
+    box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
+    url = '/static/' + scalar(db, 'SELECT path FROM face_placeholders')
+    assert 'item3d-paper' not in box and '--dr: 0.083;' in box and box.count(url) == 2

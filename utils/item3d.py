@@ -3,9 +3,8 @@ for it (ROADMAP 16.0a; Shelf style only for now).
 
 An item turns in 3D only when every printed face of its shape is a photo
 (Phil, 2026-11-15: "no fake or placeholder text in 3D renderings"). Until
-then its cover opens the gallery or the plain zoom. The one exception is a
-CD's spine, a few millimetres of small type, which is drawn from the title
-when there's no photo.
+then its cover opens the gallery or the plain zoom. Nothing is drawn: a
+CD with only a front and back is a paper sleeve (below).
 
 Every face takes a photo, whatever the shape (16.0c, docs/FACES-SPEC.md):
 the ones listed in NEEDS are printed and required; the rest, a book's
@@ -19,8 +18,9 @@ Shapes, by media type and format:
     jewel   a CD, in a jewel case or a card sleeve: the cover photo is the
             whole front, the hinge's bar and all (Phil, 2026-11-15: nothing
             drawn), the back the same size; the thickness from a spine
-            photo (a thin card sleeve) or a jewel case's; the spines drawn
-            from the title until there's a photo
+            photo, or a jewel case's with a spine placeholder. With only a
+            front and back it's a paper sleeve (Phil, 2026-11-15): thin,
+            its edges card in the cover's colour ('paper' in the model)
     case    a DVD or a cassette: cover, back and spine, on black plastic
     tape    a VHS slip sleeve: cover, back and at least one long side
             (Phil, 2026-11-15); one side's photo does for both, a missing
@@ -56,8 +56,10 @@ NEEDS = {
 }
 
 # Thickness as a share of the height, where no spine photo gives it: a
-# 12in sleeve is about 3 mm on 315; a jewel case 10.4 mm on 125
+# 12in sleeve is about 3 mm on 315; a jewel case 10.4 mm on 125; a CD's
+# paper sleeve about 2 mm on 125
 FIXED_DEPTH = {SLEEVE: 0.012, JEWEL: 0.083}
+PAPER_CD_DEPTH = 0.016
 
 
 def shape_for(media_type, fmt=None):
@@ -114,7 +116,8 @@ def model(item, item_photos, placeholders=None):
 
     {'shape', 'faces': {'front', 'back', 'spine', 'side', 'top', 'bottom'} (URLs; a
     face without one is plain), 'aspect' (the box's width over its height),
-    'depth' (thickness over height), 'title', 'author'}.
+    'depth' (thickness over height), 'paper' (a CD in a paper sleeve: no
+    spine photo or placeholder), 'title', 'author'}.
     """
     fmt = item['format']
     shape = shape_for(media_type_of(item), fmt)
@@ -138,11 +141,13 @@ def model(item, item_photos, placeholders=None):
     # height; a gatefold's spine since 16.0c); a sleeve or a CD without
     # one has a fixed one
     edge = item_photos[photos.SPINE] or item_photos[photos.SIDE]
-    depth = FIXED_DEPTH.get(shape) if not edge else None
+    # A CD with nothing on its spine, photo or placeholder: a paper sleeve
+    paper = shape == JEWEL and not (faces.get('spine') or faces.get('side'))
+    depth = (PAPER_CD_DEPTH if paper else FIXED_DEPTH.get(shape)) if not edge else None
     if depth is None:
         depth = _aspect(edge['path']) or 0.08
     return {
-        'shape': shape, 'faces': faces,
+        'shape': shape, 'faces': faces, 'paper': paper,
         'aspect': round(aspect, 4), 'depth': round(min(0.6, max(0.008, depth)), 4),
         'title': item['title'], 'author': item['author'],
     }

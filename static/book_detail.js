@@ -150,7 +150,7 @@ const item3d = {
     colour() {
         const box = this.box();
         const cover = box.querySelector('[data-item3d-cover]');
-        if (!box.matches('.item3d-sleeve, .item3d-tape') || !cover?.naturalWidth) return;
+        if (!box.matches('.item3d-sleeve, .item3d-tape, .item3d-paper') || !cover?.naturalWidth) return;
         try {
             const c = document.createElement('canvas');
             c.width = c.height = 24;

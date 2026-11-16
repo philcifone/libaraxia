@@ -4844,7 +4844,7 @@ html:has(.cover-zoom[open]) {
      book    paper with fine lines (side, top, bottom)
      sleeve  card in the cover's colour (--edge, read from its pixels)
      jewel   a CD: the cover photo is the whole front, bar and all;
-             the spine drawn small unless there's a photo
+             plastic edges, or card ones in a paper sleeve (.item3d-paper)
      case    a DVD or cassette: black plastic
      tape    a VHS sleeve: a top without a photo is card in the cover's
              colour (--edge); the open bottom is the black tape inside */
@@ -4988,31 +4988,11 @@ html:has(.cover-zoom[open]) {
   transform: rotate(180deg);
 }
 
-/* A CD's spine, when there's no photo: the artist and title, small, read
-   from the top down as on the inlay */
+/* A CD in a paper sleeve (front and back only, Phil 2026-11-15): thin,
+   its edges card in the cover's colour, as a record sleeve's */
 
-.item3d-spine-print {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1em;
-  width: 100%;
-  height: 100%;
-  padding: 6% 0;
-  overflow: hidden;
-  writing-mode: vertical-rl;
-  white-space: nowrap;
-  color: rgb(236 232 222);
-  font-size: calc(var(--d) * .42);
-  line-height: var(--d);
-  font-family: var(--font-body, sans-serif);
-  letter-spacing: .02em;
-}
-
-.item3d-spine-print span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-height: 0;
+.item3d-paper :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom):not(:has(img)) {
+  background: rgb(var(--edge, 222 214 196));
 }
 
 /* The dialog it turns in */
