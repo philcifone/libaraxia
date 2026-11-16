@@ -1417,7 +1417,7 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
    by shape:
      book    paper with fine lines (side, top, bottom)
      sleeve  card in the cover's colour (--edge, read from its pixels)
-     jewel   a CD case: black plastic, the hinge's bar left of the cover,
+     jewel   a CD: the cover photo is the whole front, bar and all;
              the spine drawn small unless there's a photo
      case    a DVD or cassette: black plastic
      tape    a VHS sleeve: a top without a photo is card in the cover's
@@ -1486,18 +1486,7 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
 /* A VHS sleeve without a top photo: card in the cover's colour */
 .item3d-tape .item3d-top:not(:has(img)) { background: rgb(var(--edge, 222 214 196)); }
 
-/* A jewel case: the hinge's bar with its ridges, then the booklet; the
-   back is the inlay, the full width of the case */
-.item3d-jewel .item3d-front { display: flex; }
-.item3d-jewel .item3d-front img { flex: 1 1 0; min-width: 0; width: auto; }
-.item3d-hinge {
-    flex: 0 0 12.7%;
-    background:
-        linear-gradient(90deg, rgb(255 255 255 / .09), transparent 30%, rgb(255 255 255 / .05) 85%, rgb(0 0 0 / .5)),
-        repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 255 255 / .07) 5px 6px),
-        rgb(var(--plastic));
-}
-/* Its spine, when there's no photo: the artist and title, small, read
+/* A CD's spine, when there's no photo: the artist and title, small, read
    from the top down as on the inlay */
 .item3d-spine-print {
     display: flex; align-items: center; justify-content: space-between; gap: 1em;

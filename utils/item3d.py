@@ -12,8 +12,11 @@ Shapes, by media type and format:
     book    a book: cover, back and spine; the other three sides are paper
     sleeve  vinyl (LP, EP, 7in, 10in, 12in): cover and back on a card
             sleeve a few millimetres thick
-    jewel   a CD's jewel case: the hinge's black bar left of the cover, the
-            back the full width of the case, spines drawn unless there's a photo
+    jewel   a CD, in a jewel case or a card sleeve: the cover photo is the
+            whole front, the hinge's bar and all (Phil, 2026-11-15: nothing
+            drawn), the back the same size; the thickness from a spine
+            photo (a thin card sleeve) or a jewel case's; the spines drawn
+            from the title until there's a photo
     case    a DVD or a cassette: cover, back and spine, on black plastic
     tape    a VHS slip sleeve: cover, back and at least one long side
             (Phil, 2026-11-15); one side's photo does for both, a missing
@@ -51,9 +54,6 @@ NEEDS = {
 # Thickness as a share of the height, where no spine photo gives it: a
 # 12in sleeve is about 3 mm on 315; a jewel case 10.4 mm on 125
 FIXED_DEPTH = {SLEEVE: 0.012, JEWEL: 0.083}
-# A jewel case is 142 mm wide and the booklet shows through 124 of it: the
-# rest, on the left, is the hinge's black bar
-JEWEL_BAR = 0.127
 
 
 def shape_for(media_type, fmt=None):
@@ -125,13 +125,12 @@ def model(item, item_photos):
         # both alike); the thickness comes from whichever there is
         faces.setdefault('spine', faces.get('side'))
         faces.setdefault('side', faces['spine'])
-    depth = FIXED_DEPTH.get(shape)
+    # The spine photo's own shape gives the thickness (its width over its
+    # height); a sleeve, and a CD without a spine photo, have a fixed one
+    edge = item_photos[photos.SPINE] or item_photos[photos.SIDE]
+    depth = FIXED_DEPTH.get(shape) if shape == SLEEVE or not edge else None
     if depth is None:
-        # The spine photo's own shape: its width is the thickness
-        edge = item_photos[photos.SPINE] or item_photos[photos.SIDE]
         depth = _aspect(edge['path']) or 0.08
-    if shape == JEWEL:
-        aspect = aspect / (1 - JEWEL_BAR)       # the case is wider than its booklet
     return {
         'shape': shape, 'faces': faces,
         'aspect': round(aspect, 4), 'depth': round(min(0.6, max(0.008, depth)), 4),

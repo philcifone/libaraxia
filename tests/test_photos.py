@@ -252,8 +252,8 @@ def test_3d_only_with_every_photo_its_shape_needs(client, db, people, static_roo
 
 
 def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
-    """An LP is a thin sleeve of cover and back; a CD a jewel case, wider
-    than its booklet by the hinge's bar, its spine drawn until there's a
+    """An LP is a thin sleeve of cover and back; a CD the shape of its
+    cover photo (the whole case front, nothing drawn), its spine drawn until there's a
     photo; a DVD needs its spine; a VHS sleeve its back and a side."""
     bob = people['bob']
     login(client, 'bob')
@@ -267,12 +267,14 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     assert 'data-angle="90"' not in box            # no Spine button: nothing to see
 
     cd = add_item(db, bob, 'record', 'CD', square)
-    upload(client, cd, 'back', jpeg_bytes((568, 500)))
+    upload(client, cd, 'back', jpeg_bytes((500, 500)))
     box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
-    assert 'item3d-jewel' in box and 'item3d-hinge' in box and '--a: 1.1455;' in box
+    assert 'item3d-jewel' in box and 'hinge' not in box and '--a: 1.0; --dr: 0.083;' in box
     assert box.count('item3d-spine-print') == 2 and '>Blue<' in box
-    upload(client, cd, 'spine', jpeg_bytes((40, 500)))
-    assert 'item3d-spine-print' not in box_of(client.get(f'/records/{cd}').get_data(as_text=True))
+    # A card sleeve: its thin spine photo sets the thickness
+    upload(client, cd, 'spine', jpeg_bytes((10, 500)))
+    box = box_of(client.get(f'/records/{cd}').get_data(as_text=True))
+    assert 'item3d-spine-print' not in box and '--dr: 0.02;' in box
 
     tall = real_cover(static_root, 't.jpg', (400, 720))
     dvd = add_item(db, bob, 'video', 'DVD', tall)

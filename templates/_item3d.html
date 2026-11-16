@@ -12,8 +12,6 @@
 <div class="item3d-box item3d-{{ model.shape }} {{ class }}" data-item3d-box
      style="--a: {{ model.aspect }}; --dr: {{ model.depth }};">
     <div class="item3d-face item3d-front">
-        {# A jewel case: the hinge's black bar, left of the booklet #}
-        {% if model.shape == 'jewel' %}<span class="item3d-hinge"></span>{% endif %}
         <img src="{{ model.faces.front }}" alt="" data-item3d-cover draggable="false">
     </div>
     <div class="item3d-face item3d-back">
