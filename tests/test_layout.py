@@ -1496,4 +1496,8 @@ def test_book_box_shows_pages():
     assert 'Audiobook"]):not([style*="--face-' not in css
     assert who + ':not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {' in css
     assert who + ':not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {' in css
-    assert 'repeating-linear-gradient(90deg,\n        rgb(var(--box-side)) 0 2px' in css
+    assert 'repeating-linear-gradient(90deg,\n        rgb(var(--box-side)) 0 var(--leaf)' in css
+    # finer leaves on a 2x or 3x screen, so a 5px box shows several lines
+    # rather than one (Phil, 2026-11-17)
+    assert '@media (min-resolution: 3dppx)' in css
+    assert '--leaf: calc(2px / 3); --leaf-line: calc(1px / 3);' in css

@@ -5596,10 +5596,13 @@ html:has(.item3d[open]) {
 
 :root[data-style="shelf"] .shelf-grid.grid {
   --box-depth: 7px;
-  --box-top: 226 224 218;
+  --box-top: 228 224 214;
   /* the top of the pages, in shade */
-  --box-side: 196 193 186;
+  --box-side: 198 193 182;
   /* the fore-edge, darker */
+  /* Paper is a touch warm, not grey: red up, blue down a few points from
+       the old neutral, here and in the dark and default values below
+       (Phil, 2026-11-17) */
 }
 
 :root[data-style="shelf"] .shelf-grid.grid:is([data-media="video"], [data-media="record"]) {
@@ -5611,8 +5614,8 @@ html:has(.item3d[open]) {
    they were brighter than most covers and read as a white outline. */
 
 :root[data-style="shelf"][data-mode="dark"] .shelf-grid.grid {
-  --box-top: 178 174 166;
-  --box-side: 146 142 135;
+  --box-top: 180 174 162;
+  --box-side: 148 142 132;
 }
 
 :root[data-style="shelf"][data-mode="dark"] .shelf-grid.grid:is([data-media="video"], [data-media="record"]) {
@@ -5622,8 +5625,8 @@ html:has(.item3d[open]) {
 
 @media (prefers-color-scheme: dark) {
   :root[data-style="shelf"]:not([data-mode="light"]) .shelf-grid.grid {
-    --box-top: 178 174 166;
-    --box-side: 146 142 135;
+    --box-top: 180 174 162;
+    --box-side: 148 142 132;
   }
 
   :root[data-style="shelf"]:not([data-mode="light"]) .shelf-grid.grid:is([data-media="video"], [data-media="record"]) {
@@ -6461,22 +6464,22 @@ html:root[data-style="outrun"] {
 
 :root[data-style="shelf"] {
   --box-depth: 5px;
-  --box-top: 226 224 218;
-  --box-side: 196 193 186;
+  --box-top: 228 224 214;
+  --box-side: 198 193 182;
   /* How dark the shadow a box casts is (the shadow itself is set on
        the box, below, since it depends on the box's own depth) */
   --box-shade: .32;
 }
 
 :root[data-style="shelf"][data-mode="dark"] {
-  --box-top: 178 174 166;
-  --box-side: 146 142 135;
+  --box-top: 180 174 162;
+  --box-side: 148 142 132;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-style="shelf"]:not([data-mode="light"]) {
-    --box-top: 178 174 166;
-    --box-side: 146 142 135;
+    --box-top: 180 174 162;
+    --box-side: 148 142 132;
   }
 }
 
@@ -6891,16 +6894,40 @@ and to the right for its faces */
    Every book, audiobooks and unowned ones too (Phil); a top or side photo
    or placeholder wins ("Box faces" above), so those faces are left out. */
 
+/* The stripes are sized in device pixels: two of paper, one of line, so
+   they stay crisp. In CSS pixels that left a 5-7px box one or two lines
+   on a phone, where the heading's 3D books show many; a 2x or 3x screen
+   has room for finer leaves, so it gets them (Phil, 2026-11-17). */
+
+:root[data-style="shelf"] {
+  --leaf: 2px;
+  --leaf-line: 1px;
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+  :root[data-style="shelf"] {
+    --leaf: 1px;
+    --leaf-line: .5px;
+  }
+}
+
+@media (-webkit-min-device-pixel-ratio: 3), (min-resolution: 3dppx) {
+  :root[data-style="shelf"] {
+    --leaf: calc(2px / 3);
+    --leaf-line: calc(1px / 3);
+  }
+}
+
 :root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {
   background: repeating-linear-gradient(90deg,
-        rgb(var(--box-side)) 0 2px,
-        color-mix(in srgb, rgb(var(--box-side)) 84%, black) 2px 3px);
+        rgb(var(--box-side)) 0 var(--leaf),
+        color-mix(in srgb, rgb(var(--box-side)) 84%, black) var(--leaf) calc(var(--leaf) + var(--leaf-line)));
 }
 
 :root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {
   background: repeating-linear-gradient(0deg,
-        rgb(var(--box-top)) 0 2px,
-        color-mix(in srgb, rgb(var(--box-top)) 88%, black) 2px 3px);
+        rgb(var(--box-top)) 0 var(--leaf),
+        color-mix(in srgb, rgb(var(--box-top)) 88%, black) var(--leaf) calc(var(--leaf) + var(--leaf-line)));
 }
 
 /* A DVD case is under half a VHS clamshell's depth (14mm to 35mm): the
