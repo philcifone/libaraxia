@@ -81,6 +81,89 @@ def test_js_rotation_agrees_with_the_server_renderer(geom, turns):
         assert all(abs(p - q) <= 40 for p, q in zip(a, e)), (a, e)
 
 
+def _patterned(w=80, h=120):
+    img = Image.new('RGB', (w, h), 'white')
+    for x in range(w):
+        for y in range(h):
+            img.putpixel((x, y), (x * 3 % 256, y * 2 % 256, (x + y) % 256))
+    return img
+
+
+@pytest.mark.parametrize('geom', [RECT, QUAD])
+@pytest.mark.parametrize('rotate', [0, 90, 180, 270])
+@pytest.mark.parametrize('axis', ['h', 'v'])
+def test_js_flip_agrees_with_the_server_renderer(geom, rotate, axis):
+    """Flipping the view, whatever the turn, gives the mirror image of the
+    crop as it was: the stored source flip must pick the right axis."""
+    img = _patterned()
+    before = call('rotateGeometry', geom, rotate // 90)
+    flipped = call('flipGeometry', before, axis)
+    assert flipped['rotate'] == before['rotate']          # a flip never turns
+    assert cover_crop.is_convex_quad([tuple(p) for p in flipped['quad']]) if geom['mode'] == 'quad' else True
+    expected = cover_crop.render(img, cover_crop.parse_geometry(before)).transpose(
+        Image.Transpose.FLIP_LEFT_RIGHT if axis == 'h' else Image.Transpose.FLIP_TOP_BOTTOM)
+    actual = cover_crop.render(img, cover_crop.parse_geometry(flipped))
+    if geom['mode'] == 'rect':
+        assert actual.size == expected.size
+    w, h = expected.size
+    actual = actual.resize(expected.size)
+    for fx, fy in [(.3, .3), (.5, .5), (.7, .6), (.2, .8)]:
+        a = actual.getpixel((int(w * fx), int(h * fy)))
+        e = expected.getpixel((int(w * fx), int(h * fy)))
+        assert all(abs(p - q) <= 40 for p, q in zip(a, e)), (a, e)
+
+
+def test_disc_hole_matches_the_server():
+    assert call('mapSquare', [[0, 0], [1, 0], [1, 1], [0, 1]], [0.3, 0.7]) == pytest.approx([0.3, 0.7])
+    script = (f'console.log(require({json.dumps(str(SCRIPT))}).DISC_HOLE)')
+    out = subprocess.run([NODE, '-e', script], capture_output=True, text=True, timeout=30, check=True)
+    assert float(out.stdout) == pytest.approx(cover_crop.DISC_HOLE)
+
+
+@pytest.mark.parametrize('quad', [
+    [[0.1, 0.3], [0.9, 0.2], [0.95, 0.6], [0.05, 0.55]],      # a disc on a table, shot at a slant
+    [[0.2, 0.1], [0.8, 0.15], [0.7, 0.9], [0.1, 0.85]],
+    [[0.1, 0.1], [0.9, 0.1], [0.9, 0.9], [0.1, 0.9]],          # square on: affine
+])
+def test_overlay_map_is_the_servers_homography(quad):
+    """The disc the overlay draws is where the server cuts it: the browser's
+    square-to-quad map agrees with perspective_coeffs at every point."""
+    a, b, c, d, e, f, g, h = cover_crop.perspective_coeffs([tuple(p) for p in quad], 1, 1)
+    for u, v in [(0, 0), (1, 0), (1, 1), (0, 1), (0.5, 0.5), (0.25, 0.8), (0.9, 0.1)]:
+        w = g * u + h * v + 1
+        expected = [(a * u + b * v + c) / w, (d * u + e * v + f) / w]
+        assert call('mapSquare', quad, [u, v]) == pytest.approx(expected, abs=1e-9)
+
+
+def test_disc_outline_hole_is_on_the_true_centre():
+    """On a slanted quad the hole sits at the projected centre (where the
+    diagonals cross), not the middle of the drawn ellipse."""
+    quad = [[0.1, 0.3], [0.9, 0.2], [0.95, 0.6], [0.05, 0.55]]
+    out = call('discOutline', quad, 8)
+    assert len(out['edge']) == 8 and len(out['hole']) == 8
+    hx = sum(p[0] for p in out['hole']) / 8
+    hy = sum(p[1] for p in out['hole']) / 8
+    centre = call('mapSquare', quad, [0.5, 0.5])
+    assert [hx, hy] == pytest.approx(centre, abs=2e-3)
+
+
+def test_disc_ratio_and_geometry():
+    assert call('ratioFor', 'disc', True, 800, 600) == 1
+    state = {'rotate': 0, 'mode': 'quad', 'rect': [0, 0, 1, 1], 'aspect': 1, 'mask': 'disc',
+             'quad': [[0, 0], [1, 0], [1, 1], [0, 1]]}
+    g = call('toGeometry', state)
+    assert cover_crop.parse_geometry(g)['mask'] == 'disc'
+    assert call('isUntouched', g) is False                     # the whole picture, but cut round
+    assert 'mask' not in call('toGeometry', {**state, 'mask': None})
+
+
+@pytest.mark.parametrize('axis', ['h', 'v'])
+def test_flipping_twice_is_the_identity(axis):
+    out = call('flipGeometry', call('flipGeometry', QUAD, axis), axis)
+    assert out['flip_h'] is False and out['flip_v'] is False
+    assert [n for p in out['quad'] for n in p] == pytest.approx([n for p in QUAD['quad'] for n in p])
+
+
 def test_resize_rect_follows_the_pointer_with_the_opposite_corner_fixed():
     # drag the bottom-right corner of the full frame to the middle
     assert call('resizeRect', [0, 0, 1, 1], 2, [0.5, 0.5]) == [0, 0, 0.5, 0.5]
@@ -163,6 +246,8 @@ def test_to_geometry_is_what_the_server_accepts():
     state = {'rotate': 0, 'mode': 'quad', 'rect': [0, 0, 1, 1], 'aspect': 0.7,
              'quad': [[.1, .1], [.9, .1], [.9, .9], [.1, .9]]}
     assert cover_crop.parse_geometry(call('toGeometry', state))['aspect'] == 0.7
+    state = {**state, 'flipH': True}
+    assert cover_crop.parse_geometry(call('toGeometry', state))['flip_h'] is True
 
 
 def test_is_untouched_only_for_the_whole_unturned_picture():
@@ -177,5 +262,7 @@ def test_is_untouched_only_for_the_whole_unturned_picture():
     assert call('isUntouched', {**whole_rect, 'box': [0, 0, 0.5, 1]}) is False
     assert call('isUntouched', {**whole_quad, 'aspect': 0.5}) is False
     assert call('isUntouched', QUAD) is False
+    assert call('isUntouched', call('flipGeometry', whole_quad, 'h')) is False
+    assert call('isUntouched', call('flipGeometry', call('flipGeometry', whole_rect, 'v'), 'v')) is True
     # turned all the way round is back where it started
     assert call('isUntouched', call('rotateGeometry', whole_quad, 4)) is True

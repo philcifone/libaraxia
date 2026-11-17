@@ -116,7 +116,7 @@ def crop_source():
 @login_required
 @limiter.limit("600 per hour")
 def crop_preview():
-    """A rendered crop as a JPEG. Nothing is stored: the tool shows the blob,
+    """A rendered crop as a JPEG (WebP for a disc). Nothing is stored: the tool shows the blob,
     and the real render happens when the form is saved."""
     data = request.get_json(silent=True) or {}
     source = data.get('source')
@@ -125,13 +125,13 @@ def crop_preview():
     try:
         geom = cover_crop.parse_geometry(data.get('geometry'))
         img = cover_crop.downscale(cover_crop.open_source(source))
-        jpeg = cover_crop.render_to_jpeg(img, geom)
+        body, mimetype = cover_crop.render_preview(img, geom)
     except ValueError as err:
         return _crop_error(str(err))
     except Exception:
         current_app.logger.exception('Cover crop preview failed')
         return _crop_error("Couldn't render the crop.", 500)
-    response = send_file(BytesIO(jpeg), mimetype='image/jpeg')
+    response = send_file(BytesIO(body), mimetype=mimetype)
     response.headers['Cache-Control'] = 'no-store'
     return response
 

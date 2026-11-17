@@ -154,7 +154,7 @@ def crop(photo_id):
         with Image.open(os.path.join(image_utils.STATIC_ROOT, row['path'])) as img:
             img.load()
             upright = cover_crop._to_rgb(ImageOps.exif_transpose(img))
-        new_path = image_utils.save_photo_image(cover_crop.render(upright, geom), book['id'])
+        new_path = image_utils.save_photo_image(cover_crop.render(upright, geom), book['id'], keep_alpha=True)
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception:

@@ -372,6 +372,19 @@ def test_crop_a_photo(client, db, people, static_root):
     assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom, 'source': new}).status_code == 404
 
 
+def test_crop_a_photo_to_a_disc_keeps_it_see_through(client, db, people, static_root):
+    book = add_book(db, people['bob'])
+    login(client, 'bob')
+    upload(client, book, 'back', jpeg_bytes((600, 600)))
+    photo, old = db.execute('SELECT id, path FROM item_photos').fetchone()
+    geom = {'v': 1, 'rotate': 0, 'mask': 'disc', 'mode': 'rect', 'box': [0, 0, 1, 1]}
+    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom, 'source': old}).get_json()['success']
+    new = scalar(db, 'SELECT path FROM item_photos WHERE id = ?', photo)
+    assert new.endswith('.webp')
+    with Image.open(static_root / new) as img:
+        assert img.mode == 'RGBA' and img.getpixel((0, 0))[3] == 0
+
+
 # --- Books on the Shelves heading (ROADMAP 16.0a) -----------------------------
 
 def heading_books_of(html):

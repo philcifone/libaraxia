@@ -11,8 +11,17 @@ Geometry is a small JSON document, validated by `parse_geometry`:
      "quad": [[x, y] x 4: top-left, top-right, bottom-right, bottom-left],
      "aspect": 0.6667}            # width / height, optional
 
-`rotate` is clockwise degrees (0/90/180/270) and is applied first; every
-coordinate is a fraction of the *rotated* image, i.e. of what the user sees.
+`rotate` is clockwise degrees (0/90/180/270). Optional `flip_h` / `flip_v`
+(booleans, default false) mirror the *source* left-right / top-bottom before
+the turn, so a VHS sleeve or jewel case insert can match the manufactured
+piece. Order: flip, then rotate, then crop; every coordinate is a fraction of
+the flipped and rotated image, i.e. of what the user sees.
+
+`mask: "disc"` (optional) cuts the result to a CD / DVD: a circle filling the
+square with the spindle hole (15 mm on a 120 mm disc) made transparent and the
+clear hub ring kept. A quad's aspect is forced to 1, so a disc photographed
+at a slant comes out round. The result is RGBA, saved as WebP (see
+`ALPHA_FORMAT` in utils/image_utils.py); every other crop stays RGB/JPEG.
 
 Staged files: a freshly picked photo is uploaded once, at up to 2400 px, to
 uploads/crop/<token>.jpg so the crop works from a big original instead of the
@@ -29,10 +38,10 @@ import time
 from io import BytesIO
 
 from flask import current_app
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
 from utils.book_utils import MAX_IMAGE_SIZE, allowed_file, save_cover_image
-from utils.image_utils import delete_image_file, is_safe_upload_path
+from utils.image_utils import ALPHA_FORMAT, delete_image_file, is_safe_upload_path
 
 GEOMETRY_VERSION = 1
 STAGE_MAX = (2400, 2400)            # staged originals are shrunk to this
@@ -44,6 +53,8 @@ MIN_BOX = 0.02                      # smallest crop, as a fraction of each side
 MIN_PIXELS = 16                     # ... and in source pixels
 MIN_QUAD_AREA = 0.01                # smallest quad, as a fraction of the image
 MAX_JSON_CHARS = 1000
+MASKS = (None, 'disc')
+DISC_HOLE = 15 / 120                # spindle hole over disc diameter (CD and DVD alike)
 _EPS = 1e-6
 _STAGED_RE = re.compile(r'^uploads/crop/[A-Za-z0-9_-]{20,}\.jpg$')
 
@@ -105,6 +116,15 @@ def parse_geometry(raw):
     rotate = raw.get('rotate', 0)
     if isinstance(rotate, bool) or rotate not in (0, 90, 180, 270):
         raise ValueError('The rotation must be 0, 90, 180 or 270.')
+    flips = {}
+    for key in ('flip_h', 'flip_v'):
+        value = raw.get(key, False)
+        if not isinstance(value, bool):
+            raise ValueError('The flip is not valid.')
+        flips[key] = value
+    mask = raw.get('mask')
+    if mask not in MASKS:
+        raise ValueError('The crop shape is not valid.')
     mode = raw.get('mode')
 
     if mode == 'rect':
@@ -117,7 +137,7 @@ def parse_geometry(raw):
         w, h = min(w, 1 - x), min(h, 1 - y)
         if w < MIN_BOX or h < MIN_BOX:
             raise ValueError('The crop box is too small.')
-        return {'v': 1, 'rotate': int(rotate), 'mode': 'rect', 'box': [x, y, w, h]}
+        return {'v': 1, 'rotate': int(rotate), **flips, 'mask': mask, 'mode': 'rect', 'box': [x, y, w, h]}
 
     if mode == 'quad':
         points = raw.get('quad')
@@ -135,7 +155,9 @@ def parse_geometry(raw):
         aspect = raw.get('aspect')
         if aspect is not None:
             aspect = _number(aspect, 0.1, 10, slack=0)
-        return {'v': 1, 'rotate': int(rotate), 'mode': 'quad',
+        if mask == 'disc':
+            aspect = 1.0                # a disc is round, however it was photographed
+        return {'v': 1, 'rotate': int(rotate), **flips, 'mask': mask, 'mode': 'quad',
                 'quad': [list(p) for p in quad], 'aspect': aspect}
 
     raise ValueError('The crop mode is not valid.')
@@ -210,8 +232,45 @@ _QUARTER_TURNS = {
 }
 
 
+def disc_mask(size, hole=DISC_HOLE):
+    """An 'L' mask for a disc filling `size`: 255 on the disc, 0 outside it
+    and in the spindle hole. Drawn at 4x (2x for big renders) and shrunk with
+    a box filter, which averages each block of samples: that is the
+    anti-aliasing, a soft one-pixel edge instead of a staircase."""
+    w, h = size
+    scale = 4 if max(w, h) <= 1000 else 2
+    big = Image.new('L', (w * scale, h * scale), 0)
+    draw = ImageDraw.Draw(big)
+    draw.ellipse((0, 0, w * scale - 1, h * scale - 1), fill=255)
+    cx, cy = w * scale / 2, h * scale / 2
+    rx, ry = cx * hole, cy * hole
+    draw.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=0)
+    return big.resize((w, h), Image.Resampling.BOX)
+
+
+def cut_disc(img):
+    """The rendered square as an RGBA disc. Fully clear pixels are set to
+    white: they compress to nothing, and a viewer that ignores alpha shows
+    a plain background rather than the table the disc was photographed on."""
+    mask = disc_mask(img.size)
+    disc = img.convert('RGBA')
+    disc.putalpha(mask)
+    clear = Image.new('RGBA', img.size, (255, 255, 255, 0))
+    return Image.composite(disc, clear, mask.point(lambda a: 255 if a else 0))
+
+
 def render(img, geom):
-    """Render parsed geometry against an RGB image (already EXIF-upright)."""
+    """Render parsed geometry against an RGB image (already EXIF-upright).
+    RGB, or RGBA for a disc."""
+    out = _render_shape(img, geom)
+    return cut_disc(out) if geom.get('mask') == 'disc' else out
+
+
+def _render_shape(img, geom):
+    if geom.get('flip_h'):
+        img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if geom.get('flip_v'):
+        img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
     turn = _QUARTER_TURNS[geom['rotate']]
     if turn is not None:
         img = img.transpose(turn)
@@ -233,11 +292,16 @@ def render(img, geom):
     return img.transform((out_w, out_h), Image.Transform.PERSPECTIVE, coeffs, Image.Resampling.BICUBIC)
 
 
-def render_to_jpeg(img, geom, quality=80):
-    """Bytes of a rendered preview."""
+def render_preview(img, geom, quality=80):
+    """(bytes, mimetype) of a rendered preview: JPEG, or WebP for a disc so
+    the tool shows its transparency."""
     out = BytesIO()
-    render(img, geom).save(out, 'JPEG', quality=quality)
-    return out.getvalue()
+    result = render(img, geom)
+    if result.mode == 'RGBA':
+        result.save(out, ALPHA_FORMAT[0], quality=quality)
+        return out.getvalue(), ALPHA_FORMAT[2]
+    result.save(out, 'JPEG', quality=quality)
+    return out.getvalue(), 'image/jpeg'
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +430,7 @@ def apply_form_crop(form, allowed_sources=()):
     if not (is_staged(source) or source in {s for s in allowed_sources if s}):
         raise ValueError("That cover can't be cropped.")
     geom = parse_geometry(raw)
-    new_path = save_cover_image(render(open_source(source), geom))
+    new_path = save_cover_image(render(open_source(source), geom), keep_alpha=True)
     if is_staged(source):
         delete_image_file(source)
     return new_path

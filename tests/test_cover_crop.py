@@ -35,6 +35,8 @@ def geom(**changes):
 @pytest.mark.parametrize('raw', [RECT, QUAD, json.dumps(RECT),
                                  geom(rotate=270), geom(box=[0, 0, 1, 1]),
                                  {**QUAD, 'aspect': 0.6667},
+                                 geom(flip_h=True), {**QUAD, 'flip_v': True},
+                                 geom(mask='disc'), {**QUAD, 'mask': 'disc'}, geom(mask=None),
                                  geom(box=[0.5, 0.5, 0.5 + 1e-9, 0.5])])    # float fuzz is clamped
 def test_parse_accepts_valid(raw):
     out = cover_crop.parse_geometry(raw)
@@ -43,6 +45,8 @@ def test_parse_accepts_valid(raw):
 
 @pytest.mark.parametrize('raw', [
     geom(v=2), geom(v=True), geom(rotate=45), geom(rotate='90'), geom(rotate=True),
+    geom(flip_h=1), geom(flip_v='true'), geom(flip_h=None),
+    geom(mask='circle'), geom(mask=True), geom(mask=['disc']),
     geom(box=[0.1, 0.1, float('nan'), 0.5]), geom(box=[0.1, 0.1, float('inf'), 0.5]),
     geom(box=[-0.1, 0, 0.5, 0.5]), geom(box=[0.1, 0.1, 1.5, 0.5]),
     geom(box=[0.6, 0.1, 0.5, 0.5]),            # runs off the right edge
@@ -144,6 +148,52 @@ def test_other_rotations(rotate, corner):
     img.putpixel((0, 0), (255, 0, 0))
     out = cover_crop.render(img, cover_crop.parse_geometry(geom(rotate=rotate, box=[0, 0, 1, 1])))
     assert out.getpixel(corner) == (255, 0, 0)
+
+
+def test_flips_mirror_the_source_before_the_turn():
+    """A red pixel at the top-left: flip_h sends it top-right, flip_v
+    bottom-left; flip_h then a quarter turn clockwise lands it bottom-right."""
+    img = Image.new('RGB', (40, 20), 'white')
+    img.putpixel((0, 0), (255, 0, 0))
+    whole = dict(box=[0, 0, 1, 1])
+    assert cover_crop.render(img, cover_crop.parse_geometry(geom(flip_h=True, **whole))).getpixel((39, 0)) == (255, 0, 0)
+    assert cover_crop.render(img, cover_crop.parse_geometry(geom(flip_v=True, **whole))).getpixel((0, 19)) == (255, 0, 0)
+    out = cover_crop.render(img, cover_crop.parse_geometry(geom(flip_h=True, rotate=90, **whole)))
+    assert out.size == (20, 40) and out.getpixel((19, 39)) == (255, 0, 0)
+
+
+def test_disc_cuts_a_round_disc_with_a_see_through_spindle_hole():
+    """Outside the disc and in the 15 mm hole of a 120 mm disc: clear. The
+    clear hub ring between the hole and the label: kept."""
+    img = Image.new('RGB', (400, 400), 'navy')
+    out = cover_crop.render(img, cover_crop.parse_geometry(geom(mask='disc', box=[0, 0, 1, 1])))
+    assert out.mode == 'RGBA' and out.size == (400, 400)
+    alpha = lambda x, y: out.getpixel((x, y))[3]
+    assert alpha(0, 0) == 0 and alpha(399, 399) == 0              # corners
+    assert alpha(200, 200) == 0 and alpha(200 + 20, 200) == 0     # hole: radius 25 px
+    assert alpha(200 + 32, 200) == 255                            # hub ring, just outside it
+    assert alpha(200 + 150, 200) == 255 and alpha(5, 200) == 255  # body, near the rim
+    assert out.getpixel((0, 0))[:3] == (255, 255, 255)            # clear pixels carry no photo
+
+
+def test_disc_in_perspective_comes_out_square():
+    """A disc photographed at a slant: the quad's own shape would give a
+    squashed result, so a disc forces the aspect to 1."""
+    slanted = {**QUAD, 'mask': 'disc', 'aspect': 0.5,
+               'quad': [[0.1, 0.3], [0.9, 0.2], [0.95, 0.6], [0.05, 0.55]]}
+    parsed = cover_crop.parse_geometry(slanted)
+    assert parsed['aspect'] == 1.0
+    out = cover_crop.render(Image.new('RGB', (400, 300), 'navy'), parsed)
+    assert out.mode == 'RGBA' and out.width == out.height
+
+
+def test_other_crops_stay_rgb():
+    assert cover_crop.render(Image.new('RGB', (40, 40)), cover_crop.parse_geometry(RECT)).mode == 'RGB'
+
+
+def test_parse_defaults_flips_off():
+    out = cover_crop.parse_geometry(RECT)
+    assert out['flip_h'] is False and out['flip_v'] is False
 
 
 # --- helpers that guard paths -----------------------------------------------
@@ -249,6 +299,16 @@ def test_preview_returns_a_jpeg(client, app, people, made):
         assert img.size == (150, 225)
     r = post_preview(client, source, QUAD)
     assert r.status_code == 200 and r.mimetype == 'image/jpeg'
+
+
+def test_preview_of_a_disc_is_a_transparent_webp(client, app, people, made):
+    source = put_cover(app, size=(300, 300))
+    made.append(source)
+    login(client, 'bob')
+    r = post_preview(client, source, geom(mask='disc', box=[0, 0, 1, 1]))
+    assert r.status_code == 200 and r.mimetype == 'image/webp'
+    with Image.open(io.BytesIO(r.data)) as img:
+        assert img.mode == 'RGBA' and img.getpixel((0, 0))[3] == 0
 
 
 def test_preview_downscales_big_sources(client, app, people, made):
@@ -516,6 +576,22 @@ def test_crop_save_replaces_the_cover_at_once(client, app, db, people, made):
     client.post(f'/covers/crop/save/{book}', json={'source': source, 'geometry': json.loads(CROP)})
     second = track(app, made, scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book))
     assert exists(app, second) and not exists(app, first) and not exists(app, source)
+
+
+def test_crop_save_of_a_disc_keeps_its_transparency(client, app, db, people, made):
+    """A bare CD as the cover: saved as WebP with alpha, not flattened to a
+    white JPEG like every other cover."""
+    old = put_cover(app, size=(300, 300))
+    book = add_book(db, people['bob'], cover=old)
+    login(client, 'bob')
+    r = client.post(f'/covers/crop/save/{book}',
+                    json={'source': old, 'geometry': geom(mask='disc', box=[0, 0, 1, 1])})
+    assert r.get_json()['success']
+    path = track(app, made, scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book))
+    assert path.endswith('.webp') and not exists(app, old)
+    with Image.open(os.path.join(app.root_path, 'static', path)) as img:
+        assert img.mode == 'RGBA' and img.getpixel((0, 0))[3] == 0 and img.getpixel((150, 150))[3] == 0
+        assert img.getpixel((150, 60))[3] == 255
 
 
 def test_crop_save_is_the_owners_and_only_of_its_own_sources(client, app, db, people, made):

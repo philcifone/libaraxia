@@ -14,9 +14,12 @@
 //   - "Save" writes the hidden inputs crop_source and cover_crop; the route
 //     renders the real crop (utils/cover_crop.py) when the form is saved.
 //
-// Geometry (shared with the server): {v:1, rotate, mode:'rect', box:[x,y,w,h]}
-// or {v:1, rotate, mode:'quad', quad:[tl,tr,br,bl], aspect}, all as fractions
-// of the image *after* the clockwise `rotate` (0/90/180/270).
+// Geometry (shared with the server): {v:1, rotate, flip_h, flip_v, mode:'rect',
+// box:[x,y,w,h]} or {v:1, rotate, flip_h, flip_v, mode:'quad', quad:[tl,tr,br,bl],
+// aspect}, all as fractions of the image *after* the source is mirrored
+// (flip_h / flip_v) and then turned by the clockwise `rotate` (0/90/180/270).
+// `mask: 'disc'` (the Ratio row's Disc) cuts the square result to a CD / DVD
+// with the spindle hole transparent; the server forces a quad's aspect to 1.
 //
 // The pure helpers at the top are exported for node (tests/test_cover_crop_js.py);
 // the DOM part below runs only in a browser. Shared helpers (escapeHtml,
@@ -32,6 +35,8 @@ const MIN_BOX = 0.02;           // smallest crop side, as a fraction
 const MIN_AREA = 0.01;          // smallest quad, as a fraction of the image
 const EPS = 1e-6;
 const STAGE_PAD = 28;          // px of stage kept clear round the image
+const DISC_HOLE = 15 / 120;     // spindle hole over disc diameter (utils/cover_crop.py)
+const DISC_STEPS = 96;          // points per circle in the overlay
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
@@ -69,6 +74,63 @@ function rotateGeometry(geom, turns = 1) {
         };
     }
     return g;
+}
+
+// Mirror the *view* left-right ('h') or top-bottom ('v'). The flips are stored
+// on the source, before the turn, so the turn never has to change. A mirror of
+// the view is a mirror of the source on the same axis when the source isn't
+// turned or is upside down, and on the other axis when it is turned a quarter:
+// mirroring left-right after a quarter turn is the same picture as mirroring
+// top-bottom before it. The crop shape mirrors with the view so it stays on
+// the same part of the picture; a quad's corners swap names (top-left <->
+// top-right for 'h') so they still wind clockwise.
+function flipGeometry(geom, axis) {
+    const sameAxis = geom.rotate % 180 === 0;
+    const key = (axis === 'h') === sameAxis ? 'flip_h' : 'flip_v';
+    const g = { ...geom, flip_h: !!geom.flip_h, flip_v: !!geom.flip_v };
+    g[key] = !g[key];
+    const m = axis === 'h' ? ([x, y]) => [1 - x, y] : ([x, y]) => [x, 1 - y];
+    if (g.mode === 'rect') {
+        const [x, y, w, h] = g.box;
+        g.box = axis === 'h' ? [1 - x - w, y, w, h] : [x, 1 - y - h, w, h];
+    } else {
+        const [tl, tr, br, bl] = g.quad;
+        g.quad = (axis === 'h' ? [tr, tl, bl, br] : [bl, br, tr, tl]).map(m);
+    }
+    return g;
+}
+
+// The projective map from the unit square onto a quad (corners top-left,
+// top-right, bottom-right, bottom-left), as a function of [u, v]. Heckbert's
+// closed form for the square-to-quad case: the same homography the server
+// solves by elimination (perspective_coeffs), so a circle drawn through it
+// is where the server's round disc will come from. On a slanted photo the
+// disc's centre isn't the middle of its ellipse; the map puts the hole on
+// the true centre, so lining up the hole is a second check on the corners.
+function squareToQuad([[x0, y0], [x1, y1], [x2, y2], [x3, y3]]) {
+    const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3;
+    const dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3;
+    const den = dx1 * dy2 - dx2 * dy1;
+    const g = (dx3 * dy2 - dx2 * dy3) / den;   // both 0 for a parallelogram (affine)
+    const h = (dx1 * dy3 - dx3 * dy1) / den;
+    const a = x1 - x0 + g * x1, b = x3 - x0 + h * x3;
+    const d = y1 - y0 + g * y1, e = y3 - y0 + h * y3;
+    return ([u, v]) => {
+        const w = g * u + h * v + 1;
+        return [(a * u + b * v + x0) / w, (d * u + e * v + y0) / w];
+    };
+}
+
+const mapSquare = (quad, point) => squareToQuad(quad)(point);
+
+// The disc's edge and spindle hole inside a quad, as two closed polylines.
+function discOutline(quad, steps = DISC_STEPS) {
+    const map = squareToQuad(quad);
+    const circle = r => Array.from({ length: steps }, (_, i) => {
+        const t = 2 * Math.PI * i / steps;
+        return map([0.5 + r * Math.cos(t), 0.5 + r * Math.sin(t)]);
+    });
+    return { edge: circle(0.5), hole: circle(0.5 * DISC_HOLE) };
 }
 
 function quadArea(quad) {
@@ -153,6 +215,7 @@ function fractionalRatio(pixelRatio, imgW, imgH) {
 // base; landscape turns it over. Original and 1:1 ignore the orientation.
 function ratioFor(choice, landscape, imgW, imgH) {
     if (choice === 'free') return null;
+    if (choice === 'disc') return 1;
     if (choice === 'original') return imgW / imgH;
     const [a, b] = choice.split(':').map(Number);
     const r = a / b;
@@ -179,19 +242,21 @@ function isRectangle(quad, tol = 1e-3) {
 }
 
 // What goes to the server
-function toGeometry({ rotate, mode, rect, quad, aspect }) {
-    if (mode === 'rect') return { v: 1, rotate, mode, box: rect.map(round6) };
-    return { v: 1, rotate, mode, quad: quad.map(p => p.map(round6)), aspect: aspect || null };
+function toGeometry({ rotate, flipH = false, flipV = false, mask = null, mode, rect, quad, aspect }) {
+    const base = { v: 1, rotate, flip_h: flipH, flip_v: flipV, ...(mask ? { mask } : {}), mode };
+    if (mode === 'rect') return { ...base, box: rect.map(round6) };
+    return { ...base, quad: quad.map(p => p.map(round6)), aspect: aspect || null };
 }
 
 function round6(v) {
     return Math.round(v * 1e6) / 1e6;
 }
 
-// The whole picture, not turned: saving this would change nothing, so Save
-// waits for a change. A quad with an aspect still stretches the picture.
+// The whole picture, not turned or mirrored: saving this would change
+// nothing, so Save waits for a change. A quad with an aspect still stretches
+// the picture. (Both flips at once is a half turn, so that counts as one.)
 function isUntouched(geom, tol = 1e-4) {
-    if (geom.rotate !== 0) return false;
+    if (geom.rotate !== 0 || geom.flip_h || geom.flip_v || geom.mask) return false;
     const corners = geom.mode === 'rect' ? boxCorners(geom.box) : geom.quad;
     if (geom.mode !== 'rect' && geom.aspect) return false;
     return boxCorners([0, 0, 1, 1]).every(([x, y], i) =>
@@ -200,9 +265,9 @@ function isUntouched(geom, tol = 1e-4) {
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        rotatePoint, rotateBox, rotateQuad, rotateGeometry, quadArea, isConvex, resizeRect,
+        rotatePoint, rotateBox, rotateQuad, rotateGeometry, flipGeometry, quadArea, isConvex, resizeRect,
         moveRect, fitRatio, fractionalRatio, ratioFor, boundingBox, boxCorners, isRectangle,
-        toGeometry, isUntouched,
+        toGeometry, isUntouched, mapSquare, discOutline, DISC_HOLE,
     };
 }
 
@@ -228,6 +293,7 @@ function initCropTool() {
     const dim = $('crop-dim');
     const outline = $('crop-outline');
     const thirds = $('crop-thirds');
+    const discLine = $('crop-disc');
     const handles = [...stage.querySelectorAll('.crop-handle')];
     const thumb = $('crop-thumb');
     const openButton = $('crop-open');
@@ -249,11 +315,13 @@ function initCropTool() {
     let source = null;              // uploads/... path of the image being cropped
     let image = null;               // its decoded <img>
     let rotate = 0;                 // clockwise degrees applied to the source
+    let flipH = false;              // the source mirrored left-right, before the turn
+    let flipV = false;              // ... and top-bottom
     // Perspective first (Phil, 2026-11-15): most covers and photos are
     // taken by hand at a slant, so the four corners are the usual job
     const DEFAULT_MODE = 'quad';
     let mode = DEFAULT_MODE;
-    let ratioChoice = 'free';       // the Ratio chips: free, original, 1:1, 2:3, 3:4, 27:38
+    let ratioChoice = 'free';       // the Ratio chips: free, original, 1:1, 2:3, 3:4, 27:38, disc
     let landscape = false;          // the Portrait / Landscape pair
     let rect = [0, 0, 1, 1];
     let ratioArea = null;           // area to keep across ratio changes; null = the box as it is
@@ -294,7 +362,8 @@ function initCropTool() {
     }
 
     function geometry() {
-        return toGeometry({ rotate, mode, rect, quad, aspect: selectedRatio() });
+        return toGeometry({ rotate, flipH, flipV, mask: ratioChoice === 'disc' ? 'disc' : null,
+                            mode, rect, quad, aspect: selectedRatio() });
     }
 
     function setBusyText(text) {
@@ -352,25 +421,37 @@ function initCropTool() {
 
     // --- Drawing ----------------------------------------------------------------
 
-    // Draw the source turned clockwise by `turns` degrees into a W x H box at
-    // the current origin. W x H is the *turned* size, so for 90 and 270 the
-    // image itself is drawn H wide and W tall before the context rotates it.
+    // Draw the source, mirrored as flipH / flipV say, into a w x h box at the
+    // current origin. A negative scale mirrors about the origin, so the box is
+    // first moved over by its own width (or height) to land back in place.
+    function paintSource(target, w, h) {
+        target.save();
+        target.translate(flipH ? w : 0, flipV ? h : 0);
+        target.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+        target.drawImage(image, 0, 0, w, h);
+        target.restore();
+    }
+
+    // Draw the (mirrored) source turned clockwise by `rotate` degrees into a
+    // W x H box at the current origin. W x H is the *turned* size, so for 90
+    // and 270 the image itself is drawn H wide and W tall before the context
+    // rotates it. Mirror first, then turn: the server's order.
     function paintRotated(target, W, H) {
         target.save();
         if (rotate === 0) {
-            target.drawImage(image, 0, 0, W, H);
+            paintSource(target, W, H);
         } else if (rotate === 90) {
             target.translate(W, 0);
             target.rotate(Math.PI / 2);
-            target.drawImage(image, 0, 0, H, W);
+            paintSource(target, H, W);
         } else if (rotate === 180) {
             target.translate(W, H);
             target.rotate(Math.PI);
-            target.drawImage(image, 0, 0, W, H);
+            paintSource(target, W, H);
         } else {
             target.translate(0, H);
             target.rotate(-Math.PI / 2);
-            target.drawImage(image, 0, 0, H, W);
+            paintSource(target, H, W);
         }
         target.restore();
     }
@@ -412,10 +493,25 @@ function initCropTool() {
         // out (the SVG has no viewBox, so units are stage pixels and a stale
         // size can't skew it). The margin round the picture stays unshaded.
         const { offX, offY, dispW, dispH } = layoutBox;
-        dim.setAttribute('d', `M${offX} ${offY}h${dispW}v${dispH}h${-dispW}Z M${d.join('L')}Z`);
+        const picture = `M${offX} ${offY}h${dispW}v${dispH}h${-dispW}Z`;
         outline.setAttribute('points', d.join(' '));
 
-        const showThirds = mode === 'rect';
+        // Disc: shade all but the disc itself, hole included, and draw its
+        // edge and hole; the corners' quad stays as a faint guide
+        const disc = ratioChoice === 'disc';
+        overlay.classList.toggle('is-disc', disc);
+        if (disc) {
+            const { edge, hole } = discOutline(corners());
+            const ring = pts => `M${pts.map(toStage).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`;
+            const rings = `${ring(edge)} ${ring(hole)}`;
+            dim.setAttribute('d', `${picture} ${rings}`);
+            discLine.setAttribute('d', rings);
+        } else {
+            dim.setAttribute('d', `${picture} M${d.join('L')}Z`);
+            discLine.removeAttribute('d');
+        }
+
+        const showThirds = mode === 'rect' && !disc;
         thirds.style.display = showThirds ? '' : 'none';
         if (showThirds) {
             const [x0, y0] = pts[0];
@@ -615,8 +711,8 @@ function initCropTool() {
     function syncToolbar() {
         dialog.querySelectorAll('[data-crop-mode]').forEach(b => setPressed(b, b.dataset.cropMode === mode));
         dialog.querySelectorAll('[data-crop-ratio]').forEach(b => setPressed(b, b.dataset.cropRatio === ratioChoice));
-        // Free, Original and 1:1 have no tall or wide version
-        const fixedShape = ratioChoice === 'free' || ratioChoice === '1:1' || ratioChoice === 'original';
+        // Free, Original, 1:1 and Disc have no tall or wide version
+        const fixedShape = ['free', '1:1', 'original', 'disc'].includes(ratioChoice);
         dialog.querySelectorAll('[data-crop-orient]').forEach(b => {
             setPressed(b, !fixedShape && (b.dataset.cropOrient === 'landscape') === landscape);
             b.disabled = fixedShape;
@@ -627,6 +723,11 @@ function initCropTool() {
     function setGeometry(g) {
         ratioArea = null;
         rotate = g.rotate;
+        flipH = !!g.flip_h;
+        flipV = !!g.flip_v;
+        // The disc is part of the geometry (Undo, reopening a saved crop)
+        if (g.mask === 'disc') ratioChoice = 'disc';
+        else if (ratioChoice === 'disc') ratioChoice = 'free';
         mode = g.mode;
         if (g.mode === 'rect') {
             rect = g.box.slice();
@@ -661,6 +762,13 @@ function initCropTool() {
         });
     });
 
+    dialog.querySelectorAll('[data-crop-flip]').forEach(button => {
+        button.addEventListener('click', () => {
+            setGeometry(flipGeometry(geometry(), button.dataset.cropFlip));
+            announce(button.dataset.cropFlip === 'h' ? 'Flipped left to right' : 'Flipped top to bottom');
+        });
+    });
+
     function applyRatio() {
         syncToolbar();
         const ratio = selectedRatio();
@@ -688,9 +796,12 @@ function initCropTool() {
     });
 
     $('crop-reset').addEventListener('click', () => {
+        // Keeps the Disc choice; in Crop mode the box is then squared up
+        const mask = ratioChoice === 'disc' ? { mask: 'disc' } : {};
         setGeometry(mode === 'rect'
-            ? { v: 1, rotate: 0, mode, box: [0, 0, 1, 1] }
-            : { v: 1, rotate: 0, mode, quad: boxCorners([0, 0, 1, 1]), aspect: null });
+            ? { v: 1, rotate: 0, mode, box: [0, 0, 1, 1], ...mask }
+            : { v: 1, rotate: 0, mode, quad: boxCorners([0, 0, 1, 1]), aspect: null, ...mask });
+        if (mask.mask) applyRatio();
     });
 
     // --- Crop, Undo, Cancel, Save ------------------------------------------------------
@@ -970,6 +1081,8 @@ function initCropTool() {
         history = [];
         showResult(null);
         rotate = 0;
+        flipH = false;
+        flipV = false;
         mode = DEFAULT_MODE;
         ratioChoice = 'free';
         landscape = false;

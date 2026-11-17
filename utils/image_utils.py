@@ -69,6 +69,23 @@ class PhotoError(ValueError):
     """An upload that isn't a usable image; the message is safe to show."""
 
 
+# How an image that must keep its transparency is stored: a disc cut by
+# the crop tool (utils/cover_crop.py). Everything else is flattened to JPEG.
+# WebP rather than PNG (a tenth the size for a photo) or AVIF (a little
+# smaller again, but slower to encode and fewer tools open it).
+ALPHA_FORMAT = ('WEBP', '.webp', 'image/webp')
+
+
+def save_alpha(img, rel):
+    """Save an RGBA image at static/<rel>; `rel` is given without its extension.
+    Returns the stored path. A fresh encode carries no metadata."""
+    rel += ALPHA_FORMAT[1]
+    full = os.path.join(STATIC_ROOT, rel)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    img.save(full, ALPHA_FORMAT[0], quality=85)
+    return rel
+
+
 # The admin's placeholder face images (ROADMAP 16.0c, utils/faces.py)
 FACES_FOLDER = 'uploads/faces'
 
@@ -108,12 +125,17 @@ def save_photo(file, book_id, folder=None, shape=None):
     return save_photo_image(img, book_id, folder)
 
 
-def save_photo_image(img, book_id, folder=None):
+def save_photo_image(img, book_id, folder=None, keep_alpha=False):
     """save_photo's second half, for an image already open and upright (a
     cropped photo, blueprints/photos.crop): flatten, resize, re-encode with
     no metadata, save under the item's folder, or under `folder` (an
     'uploads/...' prefix: the admin's placeholder faces, FACES_FOLDER).
-    Returns the stored path."""
+    With `keep_alpha`, an RGBA image (a disc from the crop tool) keeps its
+    transparency as WebP. Returns the stored path."""
+    if keep_alpha and img.mode == 'RGBA':
+        img = img.copy()
+        img.thumbnail((PHOTO_MAX_SIDE, PHOTO_MAX_SIDE), Image.LANCZOS)
+        return save_alpha(img, f'{folder or photo_folder(book_id)}/{uuid.uuid4().hex}')
     if img.mode in ('RGBA', 'LA', 'P'):
         rgba = img.convert('RGBA')
         img = Image.new('RGB', rgba.size, (255, 255, 255))

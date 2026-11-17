@@ -133,7 +133,7 @@ def crop(placeholder_id):
             img.load()
             upright = cover_crop._to_rgb(ImageOps.exif_transpose(img))
         new_path = image_utils.save_photo_image(cover_crop.render(upright, geom), None,
-                                                folder=image_utils.FACES_FOLDER)
+                                                folder=image_utils.FACES_FOLDER, keep_alpha=True)
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception:

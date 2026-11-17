@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any, List, Iterable
 from utils.database import get_db
 from flask_login import current_user
 from urllib.parse import urljoin, urlparse, parse_qs, quote
-from utils.image_utils import is_safe_upload_path
+from utils.image_utils import ALPHA_FORMAT, is_safe_upload_path
 from utils.search import by_or_plain, fits
 from models import get_library_members
 
@@ -750,9 +750,19 @@ def thumbnail_jpeg(url: str) -> Optional[bytes]:
     img.save(out, 'JPEG', quality=80)
     return out.getvalue()
 
-def save_cover_image(img: Image.Image) -> str:
-    """Normalize, resize and save a cover image. Returns the path relative to static/."""
+def save_cover_image(img: Image.Image, keep_alpha: bool = False) -> str:
+    """Normalize, resize and save a cover image. Returns the path relative to static/.
+    Covers are flattened onto white JPEG, except with `keep_alpha` for an
+    RGBA image (a disc cut by the crop tool), which is kept transparent."""
     img = ImageOps.exif_transpose(img)
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_folder, exist_ok=True)
+    if keep_alpha and img.mode == 'RGBA':
+        img = img.copy()
+        img.thumbnail(MAX_IMAGE_SIZE)
+        filename = f"cover_{uuid.uuid4().hex}{ALPHA_FORMAT[1]}"
+        img.save(os.path.join(upload_folder, filename), ALPHA_FORMAT[0], quality=85)
+        return os.path.join('uploads', filename)
     if img.mode in ('RGBA', 'LA', 'P'):
         img = img.convert('RGBA')
         background = Image.new('RGB', img.size, (255, 255, 255))
@@ -762,8 +772,6 @@ def save_cover_image(img: Image.Image) -> str:
         img = img.convert('RGB')
     img.thumbnail(MAX_IMAGE_SIZE)
 
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    os.makedirs(upload_folder, exist_ok=True)
     filename = f"cover_{uuid.uuid4().hex}.jpg"
     img.save(os.path.join(upload_folder, filename), 'JPEG', quality=85, optimize=True)
     return os.path.join('uploads', filename)

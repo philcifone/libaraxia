@@ -20,6 +20,7 @@
             <path id="crop-dim" fill-rule="evenodd"/>
             <g id="crop-thirds"></g>
             <polygon id="crop-outline"/>
+            <path id="crop-disc"/>
         </svg>
         <button type="button" class="crop-handle" data-corner="0" aria-label="Top-left corner"></button>
         <button type="button" class="crop-handle" data-corner="1" aria-label="Top-right corner"></button>
@@ -34,38 +35,51 @@
     </div>
 
     <aside class="crop-panel card" aria-label="Crop options">
-        <section class="crop-sec" aria-labelledby="crop-l-mode">
-            <h3 id="crop-l-mode" class="label crop-label">Mode</h3>
-            <div class="crop-seg" role="group" aria-labelledby="crop-l-mode">
-                <button type="button" data-crop-mode="quad" aria-pressed="true">Perspective</button>
-                <button type="button" data-crop-mode="rect" aria-pressed="false">Crop</button>
-            </div>
-        </section>
-
-        <section class="crop-sec" aria-labelledby="crop-l-ratio">
-            <h3 id="crop-l-ratio" class="label crop-label">Ratio</h3>
-            <div class="crop-ratio-row">
-                <div class="crop-chips" role="group" aria-labelledby="crop-l-ratio">
-                    <button type="button" data-crop-ratio="free" aria-pressed="true">Free</button>
-                    <button type="button" data-crop-ratio="original" aria-pressed="false" title="The picture's own shape">Orig.</button>
-                    <button type="button" data-crop-ratio="1:1" aria-pressed="false" title="LP or CD">1:1</button>
-                    <button type="button" data-crop-ratio="2:3" aria-pressed="false" title="Book">2:3</button>
-                    <button type="button" data-crop-ratio="3:4" aria-pressed="false">3:4</button>
-                    <button type="button" data-crop-ratio="27:38" aria-pressed="false" title="DVD case, 27:38">DVD</button>
+        {# Top row: two pairs side by side, the mode and the orientation the
+           ratios below take. On roomy screens the halves line up with the
+           ratio grid's columns (same gutter). #}
+        <section class="crop-sec crop-top">
+            <div>
+                <h3 id="crop-l-mode" class="label crop-label">Mode</h3>
+                <div class="crop-seg" role="group" aria-labelledby="crop-l-mode">
+                    <button type="button" data-crop-mode="quad" aria-pressed="true" aria-label="Perspective" title="Perspective: drag the four corners onto a slanted shape">{{ icon('perspective') }}</button>
+                    <button type="button" data-crop-mode="rect" aria-pressed="false" aria-label="Crop" title="Crop: a straight box">{{ icon('crop') }}</button>
                 </div>
-                <div class="crop-seg crop-orient" role="group" aria-label="Orientation">
+            </div>
+            <div>
+                <h3 id="crop-l-orient" class="label crop-label">Orientation</h3>
+                <div class="crop-seg crop-orient" role="group" aria-labelledby="crop-l-orient">
                     <button type="button" data-crop-orient="portrait" aria-pressed="true" aria-label="Portrait" title="Portrait">{{ icon('portrait') }}</button>
                     <button type="button" data-crop-orient="landscape" aria-pressed="false" aria-label="Landscape" title="Landscape">{{ icon('landscape') }}</button>
                 </div>
             </div>
         </section>
 
+        <section class="crop-sec" aria-labelledby="crop-l-ratio">
+            <h3 id="crop-l-ratio" class="label crop-label">Ratio</h3>
+            <div class="crop-chips" role="group" aria-labelledby="crop-l-ratio">
+                <button type="button" data-crop-ratio="free" aria-pressed="true" aria-label="Free" title="Free: any shape">{{ icon('unlock') }}</button>
+                <button type="button" data-crop-ratio="original" aria-pressed="false" aria-label="Original" title="Original: the picture's own shape">OG</button>
+                <button type="button" data-crop-ratio="1:1" aria-pressed="false" title="LP or CD">1:1</button>
+                <button type="button" data-crop-ratio="2:3" aria-pressed="false" title="Book">2:3</button>
+                <button type="button" data-crop-ratio="3:4" aria-pressed="false">3:4</button>
+                <button type="button" data-crop-ratio="27:38" aria-pressed="false" title="DVD case, 27:38">DVD</button>
+                {# A bare CD or DVD: cut round, spindle hole see-through, the
+                   clear hub ring kept. In Perspective, fit the drawn disc and
+                   hole to a disc photographed at a slant #}
+                <button type="button" data-crop-ratio="disc" aria-pressed="false" aria-label="Disc" title="Disc: a CD or DVD, cut round with the centre hole see-through">{{ icon('dvd') }}</button>
+            </div>
+        </section>
+
         <section class="crop-sec" aria-labelledby="crop-l-view">
-            <h3 id="crop-l-view" class="label crop-label">Straighten</h3>
+            <h3 id="crop-l-view" class="label crop-label">Turn and flip</h3>
             <div class="crop-view" role="group" aria-labelledby="crop-l-view">
                 <button type="button" class="crop-btn" data-crop-rotate="-1" aria-label="Rotate left" title="Rotate left">{{ icon('rotate-ccw') }}</button>
                 <button type="button" class="crop-btn" data-crop-rotate="1" aria-label="Rotate right" title="Rotate right">{{ icon('rotate-cw') }}</button>
-                <button type="button" id="crop-reset" class="crop-btn">Reset</button>
+                {# Mirror the pixels, e.g. a VHS sleeve or jewel case insert shot
+                   from the wrong side, to match the manufactured piece #}
+                <button type="button" class="crop-btn" data-crop-flip="h" aria-label="Flip left to right" title="Flip left to right">{{ icon('flip-h') }}</button>
+                <button type="button" class="crop-btn" data-crop-flip="v" aria-label="Flip top to bottom" title="Flip top to bottom">{{ icon('flip-v') }}</button>
             </div>
         </section>
 
@@ -79,8 +93,10 @@
         </section>
 
         <div class="crop-actions">
-            <button type="button" id="crop-do" class="crop-btn crop-primary">Crop</button>
+            {# Reset and Undo together; the primaries (Crop, Save) on the right #}
+            <button type="button" id="crop-reset" class="crop-btn">Reset</button>
             <button type="button" id="crop-undo" class="crop-btn" hidden>Undo</button>
+            <button type="button" id="crop-do" class="crop-btn crop-primary">Crop</button>
             <button type="button" id="crop-cancel" class="crop-btn">Cancel</button>
             <button type="button" id="crop-save" class="crop-btn crop-primary" disabled>Save</button>
         </div>

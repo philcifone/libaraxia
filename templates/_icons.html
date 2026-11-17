@@ -8,7 +8,7 @@
    icon), vhs (Lucide "videotape"), dvd (a disc with a hole), audiobook (Lucide
    "book-headphones"), turntable, disc-2 and cassette-tape (Lucide, the
    LP, CD and Cassette badges on the Music grid), and the sidebar's: bell, feed, bookmark (wishlist),
-   collections, user, settings; scan (Lucide scan-barcode, Do I have this?), star (Reviews), sun and moon (the sidebar's mode toggle), rotate-cw, rotate-ccw, portrait and landscape (the cover crop tool's toolbar), library-house (the Shelves heading's Mine / Household toggle: the
+   collections, user, settings; scan (Lucide scan-barcode, Do I have this?), star (Reviews), sun and moon (the sidebar's mode toggle), rotate-cw, rotate-ccw, flip-h, flip-v, perspective, crop, unlock, portrait and landscape (the cover crop tool's toolbar; it borrows dvd for its Disc ratio), library-house (the Shelves heading's Mine / Household toggle: the
    library's books inside a house outline). Stroke icons in currentColor,
    24x24, hidden from screen readers: the caller supplies the words. #}
 {% macro icon(name, class='w-5 h-5') -%}
@@ -132,6 +132,37 @@
 {%- elif name == 'rotate-ccw' %}
     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
     <path d="M3 3v5h5"/>
+{%- elif name == 'perspective' %}
+    {# A rectangle seen at a slant, a dot on each corner: the crop tool's
+       four-corner mode (hand-drawn; Lucide has no perspective icon) #}
+    <path d="M4 4 20 7v10L4 20Z"/>
+    <circle cx="4" cy="4" r="1"/>
+    <circle cx="20" cy="7" r="1"/>
+    <circle cx="20" cy="17" r="1"/>
+    <circle cx="4" cy="20" r="1"/>
+{%- elif name == 'crop' %}
+    {# Lucide "crop" #}
+    <path d="M6 2v14a2 2 0 0 0 2 2h14"/>
+    <path d="M18 22V8a2 2 0 0 0-2-2H2"/>
+{%- elif name == 'unlock' %}
+    {# Lucide "lock-open": the crop tool's Free ratio #}
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+{%- elif name == 'flip-h' %}
+    {# Lucide "flip-horizontal-2" / "flip-vertical-2": the crop tool's mirrors #}
+    <path d="m3 7 5 5-5 5V7"/>
+    <path d="m21 7-5 5 5 5V7"/>
+    <path d="M12 20v2"/>
+    <path d="M12 14v2"/>
+    <path d="M12 8v2"/>
+    <path d="M12 2v2"/>
+{%- elif name == 'flip-v' %}
+    <path d="m17 3-5 5-5-5h10"/>
+    <path d="m17 21-5-5-5 5h10"/>
+    <path d="M4 12H2"/>
+    <path d="M10 12H8"/>
+    <path d="M16 12h-2"/>
+    <path d="M22 12h-2"/>
 {%- elif name == 'check-square' %}
     {# Lucide "square-check-big": bulk edit's Select button #}
     <path d="m9 11 3 3L22 4"/>

@@ -7645,7 +7645,8 @@ and to the right for its faces */
 /* ---- Cover crop tool (static/cover_crop.js, templates/_cover_crop.html, ROADMAP 15.3) ----
    One screen, nothing scrolls: the dialog is a grid exactly as tall as the
    window (100dvh). Roomy screens: the picture (a .card) on the left, the tools
-   (a .card panel: mode, ratio, straighten, result, actions) on the right.
+   (a .card panel: mode and orientation, ratio, turn and flip, result,
+   actions) on the right.
    Phones and short windows: the picture on top and the tools in compact rows
    under it, the result a thumbnail you tap to compare. Everything is drawn from
    the style tokens (outline, card edge and shadow, radius, accent), so it is
@@ -7780,6 +7781,20 @@ html:has(#add-item) {
   stroke: rgb(var(--red));
 }
 
+/* Disc: the drawn disc and hole are what you line up; the corners' quad is a faint guide */
+
+.crop-overlay #crop-disc {
+  fill: none;
+  stroke: rgb(var(--accent));
+  stroke-width: 2;
+}
+
+.crop-overlay.is-disc #crop-outline {
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  stroke-opacity: .7;
+}
+
 .crop-busy {
   position: absolute;
   left: 50%;
@@ -7897,6 +7912,12 @@ html:has(#add-item) {
   max-height: 100%;
   -o-object-fit: contain;
      object-fit: contain;
+}
+
+/* A checkerboard behind the result, so a disc's see-through hole and corners show as such */
+
+.crop-result img, .crop-thumb img {
+  background: repeating-conic-gradient(rgb(var(--rule)) 0 25%, rgb(var(--paper)) 0 50%) 50% / 12px 12px;
 }
 
 .crop-dialog.has-result .crop-result img {
@@ -8018,26 +8039,32 @@ html:has(#add-item) {
   box-shadow: none;
 }
 
-.crop-ratio-row {
+.crop-top {
   display: grid;
-  gap: .5rem;
+  grid-template-columns: 1fr 1fr;
+  gap: .4rem;
 }
 
 .crop-chips {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: .4rem;
+}
+
+.crop-chips svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .crop-view {
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: .4rem;
 }
 
 .crop-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(6, 1fr);
   gap: .5rem;
   padding: .85rem;
   margin-top: auto;
@@ -8102,9 +8129,41 @@ html:has(#add-item) {
   }
 }
 
+/* Beside the picture, the actions in two rows on a 6-column grid: Reset,
+   Undo, Crop over Cancel, Save. Undo is hidden until the first Crop, and
+   then Reset and Crop take half the row each. Phones keep one row. */
+
+@media (min-width: 720px) {
+  .crop-actions > .crop-btn {
+    grid-column: span 2;
+  }
+
+  .crop-actions > :is(#crop-cancel, #crop-save) {
+    grid-column: span 3;
+  }
+
+  .crop-actions:has(#crop-undo[hidden]) > :is(#crop-reset, #crop-do) {
+    grid-column: span 3;
+  }
+}
+
 @media (min-width: 720px) and (min-height: 621px) {
   .crop-thumb {
     display: none;
+  }
+
+  /* Seven ratios in two full rows (4 then 3) on a 12-column grid */
+
+  .crop-chips {
+    grid-template-columns: repeat(12, 1fr);
+  }
+
+  .crop-chips > button {
+    grid-column: span 3;
+  }
+
+  .crop-chips > button:nth-child(n + 5) {
+    grid-column: span 4;
   }
 }
 
@@ -8147,26 +8206,13 @@ html:has(#add-item) {
     display: none;
   }
 
-  .crop-ratio-row {
-    grid-template-columns: 1fr auto;
-    align-items: stretch;
-  }
-
   .crop-chips {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: .3rem;
   }
 
   .crop-chips > button {
     padding: 0;
-  }
-
-  .crop-orient {
-    width: 5.5rem;
-  }
-
-  .crop-view {
-    grid-template-columns: 1fr 1fr 2fr;
   }
 
   .crop-actions {
@@ -8207,12 +8253,8 @@ html:has(#add-item) {
     padding: .4rem .6rem;
   }
 
-  .crop-ratio-row {
-    gap: .3rem;
-  }
-
   .crop-chips {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: .2rem;
   }
 
@@ -8221,9 +8263,6 @@ html:has(#add-item) {
   }
 
   .crop-actions {
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
-    grid-template-columns: none;
     gap: .3rem;
     padding: .4rem .6rem;
   }
