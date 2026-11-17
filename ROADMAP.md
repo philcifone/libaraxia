@@ -82,7 +82,7 @@ Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app-
 Built on branch `phase-16a-photos-value` (migrations 036 to 040); the full list is in [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md#phase-160a-photos-condition-and-value). Still open:
 - [ ] Later, low priority: a cover-shape override for sets that aren't the standard shape (non-square disc sets), which the 3D box would take its proportions from; until then such a set is right as soon as its own photos are (the box follows the cover photo's shape).
 - [ ] Later, low priority: the Disney clamshell's own shape (white plastic, rounded, opens like a book). Coloured tapes and plastic clamshells are placeholders in 16.0c.
-- [ ] Phil's setup (spec section 7): Discogs seller settings; an eBay developer account and production keys. The same steps go in the README at 16.1.
+- [ ] Phil's setup (spec section 7): Discogs seller settings (done 2026-11-17, price suggestions verified); an eBay developer account and production keys. The same steps go in the README at 16.1.
 
 ### 16.0c Faces and placeholders 🟠
 From Phil, 2026-11-15. **Spec: [docs/FACES-SPEC.md](docs/FACES-SPEC.md).** Every face of every type takes a photo (a bottom too), and the plain faces become admin-chosen placeholder images, grouped into sets (White clamshell, Nickelodeon, clear or black DVD case) that an owner picks per item. A VHS with a top photo is a sleeve, without one a clamshell. Branch `phase-16c-faces`.

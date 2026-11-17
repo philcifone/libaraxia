@@ -187,15 +187,15 @@ These go in the README's setup section at the 16.1 pass, and in `.env.example` n
 **Discogs (records)**
 
 1. You already have the token if album search works: `DISCOGS_TOKEN` from discogs.com, Settings, Developers, "Generate new token". The value fetch uses the same one.
-2. Fill in your **seller settings**: discogs.com, Settings, Seller Settings. Discogs gives price suggestions only to accounts with these filled in. You don't have to list or sell anything. Set the **currency** to the one in `VALUE_CURRENCY` (USD by default).
+2. Fill in your **seller settings**: discogs.com, Settings, Seller Settings. Discogs gives price suggestions only to accounts with these filled in. You don't have to list or sell anything. Set the **currency** to the one in `VALUE_CURRENCY` (USD by default). Currency and address alone are not enough (the API answers 404 "You must fill out your seller settings first"): it also took connecting a **PayPal** account as a payment method and setting up a **shipping** method (Phil, 2026-11-17). Discogs then starts an identity verification, but price suggestions work while it is pending.
 3. Restart the app. Settings, Maintenance, **Test value sources** (step 6) says whether it works.
 
 **eBay (books, movies)**
 
 1. Sign up at **developer.ebay.com** (the eBay Developers Program) with an eBay account, and accept the API license agreement. Approval of the account can take a day.
-2. Under **Application Keys**, create a keyset for **Production** (not Sandbox, which has no real listings).
+2. Under **Application Keys**, create a keyset for **Production**. eBay gives every developer two environments, each with its own keys: **Sandbox**, a fake test copy of eBay with made-up listings, and **Production**, real eBay. Sandbox keys would return no useful prices.
 3. Before the production keys work, eBay asks how the app handles **Marketplace Account Deletion** notifications. This app stores no eBay user data (only prices), so choose the **exemption** ("not persisting eBay data") rather than setting up a notification endpoint.
-4. Copy the keyset's **App ID (Client ID)** and **Cert ID (Client Secret)** into `.env` as `EBAY_CLIENT_ID` and `EBAY_CLIENT_SECRET`. Set `EBAY_MARKETPLACE` if you're not on ebay.com (`EBAY_GB`, `EBAY_DE`, ...) and `VALUE_CURRENCY` to match.
+4. Copy the keyset's **App ID (Client ID)** and **Cert ID (Client Secret)** into `.env` as `EBAY_CLIENT_ID` and `EBAY_CLIENT_SECRET`. In the US, that's all: the defaults search US listings in dollars. Elsewhere, set `EBAY_MARKETPLACE` to your country's eBay site (`EBAY_GB` for ebay.co.uk, `EBAY_DE` for ebay.de, ...) and `VALUE_CURRENCY` to its currency.
 5. Restart the app and use **Test value sources**.
 
 The default Browse API limit (5,000 calls a day) is plenty; nothing needs applying for.
