@@ -1320,6 +1320,17 @@
 /* Toast colours, used by both the Jinja partial and showFlashMessage().
    Text on accent/red fills uses --on-accent (4.5:1+ in every style and mode). */
 .flash-message { border: 1px solid rgb(var(--rule-strong)); box-shadow: var(--sh-hard); }
+/* A link in a message ("Go to book"): bold and underlined. On the filled
+   messages it takes the message's own text colour, not the accent-text of
+   bare links, which on an accent fill is the background colour again.
+   --on-accent is the one colour that clears 4.5:1 on every fill in every
+   style, mode and accent. The info message keeps the usual link colour. */
+.flash-message a { text-decoration: underline; font-weight: 700; white-space: nowrap; }
+.flash-body { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem 1.75rem; }
+.flash-body a { display: inline-flex; align-items: center; gap: .5rem; margin-left: auto; }
+.flash-arrow { width: 1.6rem; height: 1.6rem; flex-shrink: 0; transition: transform .15s ease; }
+.flash-body a:hover .flash-arrow { transform: translateX(3px); }
+:is(.flash-success, .flash-error, .flash-warning) a { color: inherit; }
 .flash-success { background: rgb(var(--accent));     color: rgb(var(--on-accent)); }
 .flash-error   { background: rgb(var(--red-strong)); color: rgb(var(--on-accent)); }
 .flash-warning { background: rgb(var(--yellow));     color: rgb(var(--on-accent)); }   /* done, with a but */

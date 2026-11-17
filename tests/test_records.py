@@ -72,6 +72,9 @@ def test_add_vinyl_by_hand(client, db, people):
     r = client.post('/records/add', data=form(format='7in', title='Big Yellow Taxi'))
     row = db.execute("SELECT * FROM books WHERE title = 'Big Yellow Taxi'").fetchone()
     assert r.status_code == 302 and r.headers['Location'].endswith(f"/records/{row['id']}")
+    # The message links back to a blank form (adding several in a row)
+    page = client.get(f"/records/{row['id']}").get_data(as_text=True)
+    assert '<a href="/records/add" data-flash-link>Add another' in page
     assert (row['media_type'], row['format'], row['publisher'], row['catalog_number'],
             row['runtime_minutes'], row['barcode']) == ('record', '7in', 'Reprise', 'MS 2038', 36, None)
     assert row['added_by'] == people['alice']

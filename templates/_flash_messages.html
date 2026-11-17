@@ -1,15 +1,29 @@
 {# Server-side flash messages. Closing, auto-dismiss after 5 s and
    showFlashMessage() for messages raised from JS are in static/common.js;
-   the slide animations are in static/styles.css. #}
+   the slide animations are in static/styles.css.
+
+   A message is a string, or a dict {text, link, url} for one with a link
+   ("Book added. Go to book"): built by the route with url_for, escaped here
+   like any text, and kept up (data-flash-keep) so there's time to click.
+   The link sits at the far end with a long arrow, wrapping to its own line
+   (still at the end) when there's no room. #}
+{% from '_icons.html' import icon %}
 <div id="flash-container" class="fixed top-4 inset-x-4 sm:left-auto sm:right-4 z-50 space-y-2 sm:max-w-md">
     {% for category, message in get_flashed_messages(with_categories=true) %}
-        <div role="status" class="flash-message mb-2 px-4 py-3 rounded-lg flex items-start gap-3 animate-slide-in
+        <div role="status" {% if message is mapping %}data-flash-keep {% endif %}class="flash-message mb-2 px-4 py-3 rounded-lg flex items-start gap-3 animate-slide-in
             {% if category == 'success' %}flash-success
             {% elif category == 'warning' %}flash-warning
             {% elif category in ['danger', 'error'] %}flash-error
             {% else %}flash-info
             {% endif %}">
+            {% if message is mapping %}
+            <div class="flex-1 flash-body">
+                <span>{{ message.text }}</span>
+                <a href="{{ message.url }}" data-flash-link>{{ message.link }}{{ icon('arrow-long', 'flash-arrow') }}</a>
+            </div>
+            {% else %}
             <div class="flex-1">{{ message }}</div>
+            {% endif %}
             <button type="button" data-dismiss-flash
                     class="flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
                     aria-label="Close message">

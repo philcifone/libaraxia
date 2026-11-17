@@ -139,8 +139,13 @@ def add_book():
             # The library won't show it, so go to its page, where the review is
             flash("Book added as unshelved, so it isn't on your shelf. Rate and review it here.", "success")
             return redirect(url_for("books.show_book", id=cursor.lastrowid))
-        flash("Book added successfully!", "success")
-        return redirect(url_for("base.index"))
+        # On to the new book, with a link back to a blank form in the
+        # message for adding several in a row (Phil, 2026-11-17). A dict
+        # flash is {text, link, url}: _flash_messages.html renders the link
+        # and keeps the message up until closed.
+        flash({"text": "Book added successfully!", "link": "Add another",
+               "url": url_for("books.add_book")}, "success")
+        return redirect(url_for("books.show_book", id=cursor.lastrowid))
 
     return render_add_book()
 

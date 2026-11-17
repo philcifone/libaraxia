@@ -101,6 +101,8 @@ function dismissFlash(element) {
 }
 
 function scheduleFlashDismiss(flashMessage) {
+    // A message with a link stays until closed or the next page
+    if (flashMessage.hasAttribute('data-flash-keep')) return;
     setTimeout(() => {
         if (flashMessage.isConnected) dismissFlash(flashMessage);
     }, FLASH_DISMISS_TIME);

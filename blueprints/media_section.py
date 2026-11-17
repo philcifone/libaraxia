@@ -450,7 +450,10 @@ def make_blueprint(section: Section) -> Blueprint:
             return redirect(url_for('read.rate_review', book_id=new_id, **{'from': 'reviews'}))
         im = section.item_m(values)
         if owned:
-            flash(f"'{values['title']}' added to your {im['plural']}.", 'success')
+            # A link back to a blank form, for adding several in a row, as
+            # books do (Phil, 2026-11-17; a dict flash, see _flash_messages.html)
+            flash({'text': f"'{values['title']}' added to your {im['plural']}.",
+                   'link': 'Add another', 'url': url_for(section.endpoint('add'))}, 'success')
         else:
             flash(f"'{values['title']}' added as unshelved, so it isn't on your {im['shelf']}. "
                   f"Rate and review it here.", 'success')

@@ -139,6 +139,18 @@ def test_add_book_owned_by_default(client, db, people):
     assert scalar(db, "SELECT owned FROM books WHERE title = 'Piranesi'") == 1
 
 
+def test_add_book_goes_to_it_with_an_add_another_link(client, db, people):
+    """On to the new book; the message links back to a blank form for
+    adding several in a row and stays up until closed (Phil, 2026-11-17)."""
+    login(client, 'bob')
+    r = client.post('/books/add', data=BOOK_FORM, follow_redirects=True)
+    book = scalar(db, "SELECT id FROM books WHERE title = 'Piranesi'")
+    assert r.request.path == f'/books/book/{book}'
+    page = r.get_data(as_text=True)
+    assert '<a href="/books/add" data-flash-link>Add another' in page
+    assert 'data-flash-keep' in page
+
+
 def test_add_album_not_owned(client, db, people):
     login(client, 'alice')
     client.post('/records/add', data={'title': 'Blue', 'author': 'Joni Mitchell', 'format': 'CD',

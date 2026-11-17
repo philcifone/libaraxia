@@ -104,6 +104,9 @@ def test_add_video_by_hand(client, db, people):
     assert row['runtime_minutes'] == 124 and row['catalog_number'] == '80123'
     assert row['added_by'] == people['alice']
     assert r.headers['Location'].endswith(f"/videos/{row['id']}")
+    # The message links back to a blank form (adding several in a row)
+    page = client.get(f"/videos/{row['id']}").get_data(as_text=True)
+    assert '<a href="/videos/add" data-flash-link>Add another' in page
 
 
 def test_add_form_prefills_scanned_barcode(client, people):
