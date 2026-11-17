@@ -39,8 +39,10 @@
         {# px: the title and icon sit well in from the card's sides #}
         <header class="py-2 px-3 md:px-6 {{ 'flex items-center justify-between gap-6' if format_icon else 'text-center' }}">
             <div class="min-w-0">
-                <h1 class="text-4xl font-display text-content-primary mb-2">
-                    {{ book['title'] }}
+                {# data-fit-title: a long title steps down a size until it
+                   wraps to three lines at most (book_detail.js fitTitle) #}
+                <h1 class="text-4xl font-display text-content-primary mb-2" data-fit-title>
+                    <span data-fit-title-text>{{ book['title'] }}</span>
                     {% if book['subtitle'] %}
                         <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
                     {% endif %}
