@@ -8,7 +8,7 @@
     {% with fab_items=[('Library', url_for('books.add_book')), ('Wishlist', url_for('wishlist.add_to_wishlist', type='book'))] %}{% include '_add_fab.html' %}{% endwith %}
 
     {% from '_shelves.html' import shelf_header %}
-    {% call shelf_header('book', 'shared') %}{% include '_household_members.html' %}{% endcall %}
+    {% call shelf_header('book', 'shared', heading_books=heading_books) %}{% include '_household_members.html' %}{% endcall %}
 
     {% include '_bulk_result.html' %}
 

@@ -26,7 +26,7 @@
 
     {% from '_shelves.html' import shelf_header %}
     {% if tab == 'shared' %}
-    {% call shelf_header(m.type, tab) %}{% include '_household_members.html' %}{% endcall %}
+    {% call shelf_header(m.type, tab, heading_books=heading_books|default(none)) %}{% include '_household_members.html' %}{% endcall %}
     {% else %}
     {{ shelf_header(m.type, tab, owner.username if tab == 'friend' else None, heading_books=heading_books|default(none)) }}
     {% endif %}

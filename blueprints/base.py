@@ -81,11 +81,18 @@ def index():
     """Your Library: the books you own. In the Shelf style a few of your
     books that turn in 3D stand on the heading's shelf (ROADMAP 16.0a):
     chosen by a number drawn at login, or here for a remembered sign-in."""
-    standing = []
-    if current_user.theme_style == 'shelf' and request.headers.get('X-Requested-With') != 'XMLHttpRequest':
-        seed = session.setdefault('heading_seed', random.randrange(2 ** 31))
-        standing = item3d.heading_books(get_db(), current_user.id, seed)
-    return library_page("index.html", [current_user.id], current_user.id, heading_books=standing)
+    return library_page("index.html", [current_user.id], current_user.id,
+                        heading_books=_standing_books())
+
+
+def _standing_books():
+    """The 3D books on the Shelves heading (Shelf style, not for the
+    infinite-scroll fetches). Your own, on Mine and Household alike, so
+    toggling the house leaves the same books standing (Phil, 2026-11-16)."""
+    if current_user.theme_style != 'shelf' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return []
+    seed = session.setdefault('heading_seed', random.randrange(2 ** 31))
+    return item3d.heading_books(get_db(), current_user.id, seed)
 
 
 @base_blueprint.route("/shared-library")
@@ -96,7 +103,8 @@ def shared_library():
     others, owner_ids, member_filter = households.member_choice(
         get_db(), current_user.id, request.args.getlist("member", type=int))
     return library_page("shared_library.html", owner_ids, current_user.id,
-                        household_members=others, member_filter=member_filter)
+                        household_members=others, member_filter=member_filter,
+                        heading_books=_standing_books())
 
 
 @base_blueprint.route("/friends-libraries")

@@ -3230,6 +3230,51 @@ and to the right for its faces */
 .heading-toggle:hover .house-outline { stroke: rgb(var(--ink-2)); }
 .heading-toggle.is-on .house-outline { stroke: currentColor; }
 .heading-toggle:focus-visible { outline: 2px solid rgb(var(--accent-text)); outline-offset: 2px; }
+/* Shelf: the toggle is a button with rounded corners, as the item page's
+   status chips are (Phil, 2026-11-16): off, a well pressed into the case
+   (the tabs' recess, shaded from the top, a lit lower lip); on, it stands
+   out of it, lit from above. The icon keeps its colours: the raised fill
+   is the case's own back wall (--shelf-back) rather than the accent,
+   which would swallow the accent books, or the card surface, too white in
+   light mode and too black in dark (Phil, 2026-11-16). The padding is taken back by the negative margin, so the
+   heading keeps its height and the books on the ledge their room. */
+:root[data-style="shelf"] .heading-toggle {
+    display: block;
+    padding: .25rem;
+    margin-block: -.25rem;
+    border: 1px solid rgb(0 0 0 / .3);
+    border-radius: var(--r-lg);
+    background-color: var(--tab-recess);
+    box-shadow: inset 0 2px 4px rgb(0 0 0 / .35), inset 0 -1px 0 rgb(255 255 255 / .08);
+    transition: background-color .15s, box-shadow .15s;
+}
+:root[data-style="shelf"] .heading-toggle:hover {
+    background-color: color-mix(in srgb, var(--tab-recess), rgb(var(--surface)) 50%);
+}
+:root[data-style="shelf"] .heading-toggle.is-on {
+    background-color: rgb(var(--shelf-back));
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .16), rgb(0 0 0 / .06));
+    border-color: rgb(0 0 0 / .22);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh);
+}
+/* Light mode: a brighter top on the raised button, or the wall's darker
+   wood makes it look dull (Phil, 2026-11-16) */
+:root[data-style="shelf"][data-mode="light"] .heading-toggle.is-on {
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / .3), rgb(255 255 255 / .06));
+}
+@media (prefers-color-scheme: light) {
+    :root[data-style="shelf"]:not([data-mode="dark"]) .heading-toggle.is-on {
+        background-image: linear-gradient(to bottom, rgb(255 255 255 / .3), rgb(255 255 255 / .06));
+    }
+}
+:root[data-style="shelf"] .heading-toggle.is-on:hover {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--sh-md);
+}
+/* Pressed: sinks back in, whichever way it is going */
+:root[data-style="shelf"] .heading-toggle:active {
+    background-image: none;
+    box-shadow: inset 0 2px 4px rgb(0 0 0 / .4);
+}
 
 /* ---- Mode: Light | Dark, and "Follow system" (ROADMAP 12.4) ----
    The link only shows once a mode was chosen (_follow_system.html). It's a

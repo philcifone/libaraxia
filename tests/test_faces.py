@@ -241,7 +241,7 @@ def test_add_book_with_a_page_set(client, db, people, static_root):
 def test_vhs_tapes_stand_on_the_movies_heading(client, db, people, static_root):
     """Shelf style, your own Movies page (16.0c): your VHS tapes that turn
     in 3D stand on the heading as books do on Shelves; a DVD doesn't, nor
-    a tape still missing its side, and not on the household's page."""
+    a tape still missing its side; the household's page keeps yours."""
     from test_photos import heading_books_of
     bob = people['bob']
     db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (bob,))
@@ -257,7 +257,8 @@ def test_vhs_tapes_stand_on_the_movies_heading(client, db, people, static_root):
     assert heading_books_of(html) == ['/static/uploads/v.jpg']
     assert 'item3d-tape' in html[html.index('data-heading-books'):]
     assert 'data-heading-books' not in client.get('/records/').get_data(as_text=True)
-    assert 'data-heading-books' not in client.get('/videos/shared').get_data(as_text=True)
+    # the household's Movies keep yours standing (Phil, 2026-11-16)
+    assert heading_books_of(client.get('/videos/shared').get_data(as_text=True)) == ['/static/uploads/v.jpg']
 
 
 def test_a_cd_spine_placeholder_makes_a_jewel_case(client, db, people, static_root):

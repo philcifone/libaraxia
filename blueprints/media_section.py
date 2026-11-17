@@ -349,12 +349,16 @@ def make_blueprint(section: Section) -> Blueprint:
         """Your own items. In the Shelf style, Movies' heading has a few of
         your VHS tapes that turn in 3D standing on it, as Shelves has books
         (16.0c; item3d.heading_books, the same seed as base.index)."""
-        standing = []
-        if (m_type == media.VIDEO and current_user.theme_style == 'shelf'
-                and request.headers.get('X-Requested-With') != 'XMLHttpRequest'):
-            seed = session.setdefault('heading_seed', random.randrange(2 ** 31))
-            standing = item3d.heading_books(get_db(), current_user.id, seed, media.VIDEO)
-        return grid_page([current_user.id], 'mine', heading_books=standing)
+        return grid_page([current_user.id], 'mine', heading_books=standing_items())
+
+    def standing_items():
+        """Your own tapes on the heading, on Mine and Household alike, so
+        toggling the house leaves the same ones standing (Phil, 2026-11-16)."""
+        if (m_type != media.VIDEO or current_user.theme_style != 'shelf'
+                or request.headers.get('X-Requested-With') == 'XMLHttpRequest'):
+            return []
+        seed = session.setdefault('heading_seed', random.randrange(2 ** 31))
+        return item3d.heading_books(get_db(), current_user.id, seed, media.VIDEO)
 
     @login_required
     def shared():
@@ -362,7 +366,8 @@ def make_blueprint(section: Section) -> Blueprint:
         or chosen members' and yours with ?member= (utils/households.member_choice)."""
         others, owner_ids, member_filter = households.member_choice(
             get_db(), current_user.id, request.args.getlist('member', type=int))
-        return grid_page(owner_ids, 'shared', household_members=others, member_filter=member_filter)
+        return grid_page(owner_ids, 'shared', household_members=others, member_filter=member_filter,
+                         heading_books=standing_items())
 
     @login_required
     def friends():

@@ -410,8 +410,11 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     assert sorted(first) == ['/static/uploads/a.jpg', '/static/uploads/b.jpg']
     assert heading_books_of(client.get('/base/index').get_data(as_text=True)) == first
 
-    # Only on your own Shelves, and only in the style that has a shelf
-    assert 'data-heading-books' not in client.get('/base/shared-library').get_data(as_text=True)
+    # The household's Shelves keep the same books of yours standing, so the
+    # house toggle doesn't empty the ledge (Phil, 2026-11-16); a friend's
+    # Shelves have none, nor any style without a shelf
+    assert heading_books_of(client.get('/base/shared-library').get_data(as_text=True)) == first
+    assert 'data-heading-books' not in client.get('/base/library/bob').get_data(as_text=True)
     db.execute("UPDATE users SET theme_style = 'house' WHERE id = ?", (bob,))
     db.commit()
     assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
