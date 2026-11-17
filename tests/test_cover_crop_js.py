@@ -163,3 +163,19 @@ def test_to_geometry_is_what_the_server_accepts():
     state = {'rotate': 0, 'mode': 'quad', 'rect': [0, 0, 1, 1], 'aspect': 0.7,
              'quad': [[.1, .1], [.9, .1], [.9, .9], [.1, .9]]}
     assert cover_crop.parse_geometry(call('toGeometry', state))['aspect'] == 0.7
+
+
+def test_is_untouched_only_for_the_whole_unturned_picture():
+    """Save waits for a change (Phil, 2026-11-16: Save without pressing Crop)."""
+    whole_quad = {'v': 1, 'rotate': 0, 'mode': 'quad', 'aspect': None,
+                  'quad': [[0, 0], [1, 0], [1, 1], [0, 1]]}
+    whole_rect = {'v': 1, 'rotate': 0, 'mode': 'rect', 'box': [0, 0, 1, 1]}
+    assert call('isUntouched', whole_quad) is True
+    assert call('isUntouched', whole_rect) is True
+    # turned, cut, or stretched to a ratio: something to save
+    assert call('isUntouched', {**whole_quad, 'rotate': 90}) is False
+    assert call('isUntouched', {**whole_rect, 'box': [0, 0, 0.5, 1]}) is False
+    assert call('isUntouched', {**whole_quad, 'aspect': 0.5}) is False
+    assert call('isUntouched', QUAD) is False
+    # turned all the way round is back where it started
+    assert call('isUntouched', call('rotateGeometry', whole_quad, 4)) is True

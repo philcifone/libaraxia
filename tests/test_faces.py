@@ -56,10 +56,15 @@ def test_upload_rename_crop_delete(client, db, people, static_root):
     assert scalar(db, 'SELECT name FROM face_placeholders WHERE id = ?', pid) == 'Black clamshell top'
 
     geom = {'v': 1, 'rotate': 0, 'mode': 'rect', 'box': [0, 0, 0.5, 1.0]}
-    r = client.post(f'/faces/admin/{pid}/crop', json={'geometry': geom})
+    r = client.post(f'/faces/admin/{pid}/crop', json={'geometry': geom, 'source': path})
     assert r.status_code == 200 and r.get_json()['success']
     new = scalar(db, 'SELECT path FROM face_placeholders WHERE id = ?', pid)
     assert new != path and not (static_root / path).exists() and (static_root / new).is_file()
+    # The same Save again (a second tap, a retry) names the old file: refused,
+    # rather than cropping the cropped one a second time
+    r = client.post(f'/faces/admin/{pid}/crop', json={'geometry': geom, 'source': path})
+    assert r.status_code == 409
+    assert scalar(db, 'SELECT path FROM face_placeholders WHERE id = ?', pid) == new
 
     client.post(f'/faces/admin/{pid}/delete')
     assert scalar(db, 'SELECT COUNT(*) FROM face_placeholders') == 0

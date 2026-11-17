@@ -108,3 +108,13 @@ def test_household_member_can_track_shared_book(client, db, people):
     client.post('/collections/collections/status/add', data={'id': book, 'status': 'currently reading'})
     assert scalar(db, 'SELECT status FROM collections WHERE user_id = ? AND book_id = ?',
                   people['bob'], book) == 'currently reading'
+
+
+def test_remember_me_is_ticked_by_default(client):
+    """The Home Screen app on iOS loses a session cookie whenever the app is
+    killed, so the login form asks for the 30-day remember-me cookie unless
+    unticked (Phil, 2026-11-16)."""
+    import re
+    page = client.get('/auth/login').get_data(as_text=True)
+    box = re.search(r'<input id="remember_me"[^>]*>', page).group(0)
+    assert re.search(r'\schecked[\s>]', box)

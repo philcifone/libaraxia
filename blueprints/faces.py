@@ -122,6 +122,11 @@ def crop(placeholder_id):
     if not is_safe_upload_path(row['path']):
         abort(404)
     data = request.get_json(silent=True) or {}
+    # The tool names the file it opened. A second Save of the same crop
+    # (a slow answer, a second tap) would otherwise re-crop the file the
+    # first one made: turned twice, cut twice. Phil, 2026-11-16.
+    if data.get('source') != row['path']:
+        return jsonify({'success': False, 'error': 'This image changed since the crop tool opened. Reload the page.'}), 409
     try:
         geom = cover_crop.parse_geometry(data.get('geometry'))
         with Image.open(os.path.join(image_utils.STATIC_ROOT, row['path'])) as img:

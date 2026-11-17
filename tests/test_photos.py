@@ -355,16 +355,21 @@ def test_crop_a_photo(client, db, people, static_root):
     html = client.get(f'/books/edit/{book}').get_data(as_text=True)
     assert f'data-url="/photos/photo/{photo}/crop"' in html and 'data-click="cropPhoto"' in html
     geom = {'v': 1, 'rotate': 0, 'mode': 'rect', 'box': [0.25, 0.0, 0.5, 1.0]}
-    r = client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom})
+    r = client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom, 'source': old})
     assert r.status_code == 200 and r.get_json()['success']
     new = scalar(db, 'SELECT path FROM item_photos WHERE id = ?', photo)
     assert new != old and not (static_root / old).exists()
     with Image.open(static_root / new) as img:
         assert img.size == (400, 600)
-    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': {'v': 9}}).status_code == 400
+    # A repeated Save names the file it was made on, which is gone: refused,
+    # so the photo isn't cut in half again
+    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom, 'source': old}).status_code == 409
+    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom}).status_code == 409
+    assert scalar(db, 'SELECT path FROM item_photos WHERE id = ?', photo) == new
+    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': {'v': 9}, 'source': new}).status_code == 400
     client.get('/auth/logout')
     login(client, 'carol')
-    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom}).status_code == 404
+    assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom, 'source': new}).status_code == 404
 
 
 # --- Books on the Shelves heading (ROADMAP 16.0a) -----------------------------

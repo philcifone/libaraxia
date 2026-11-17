@@ -134,7 +134,7 @@ def caption(photo_id):
 @limiter.limit('120 per hour')
 def crop(photo_id):
     """Crop or straighten a photo with the cover's crop tool (cover_crop.js
-    in photo mode): JSON {"geometry": ...} as the tool makes it. The photo
+    in photo mode): JSON {"geometry": ..., "source": the path it opened}. The photo
     is rendered from its own file and saved as a new one (no metadata, as
     every photo); the old file goes. Owner or admin."""
     import os
@@ -144,6 +144,11 @@ def crop(photo_id):
     data = request.get_json(silent=True) or {}
     if not is_safe_upload_path(row['path']):
         abort(404)
+    # The tool names the file it opened. A second Save of the same crop
+    # (a slow answer, a second tap) would otherwise re-crop the file the
+    # first one made: turned twice, cut twice. Phil, 2026-11-16.
+    if data.get('source') != row['path']:
+        return jsonify({'success': False, 'error': 'This image changed since the crop tool opened. Reload the page.'}), 409
     try:
         geom = cover_crop.parse_geometry(data.get('geometry'))
         with Image.open(os.path.join(image_utils.STATIC_ROOT, row['path'])) as img:

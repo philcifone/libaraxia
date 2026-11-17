@@ -3298,7 +3298,7 @@ html:has(#add-item) { overscroll-behavior-y: none; }
 /* The picture */
 .crop-stage {
     grid-area: stage; position: relative; min-width: 0; min-height: 0; overflow: hidden;
-    touch-action: none; user-select: none; -webkit-user-select: none;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     background: rgb(var(--fill));
 }
 .crop-stage:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 3px; }

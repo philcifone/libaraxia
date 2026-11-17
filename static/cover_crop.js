@@ -188,11 +188,21 @@ function round6(v) {
     return Math.round(v * 1e6) / 1e6;
 }
 
+// The whole picture, not turned: saving this would change nothing, so Save
+// waits for a change. A quad with an aspect still stretches the picture.
+function isUntouched(geom, tol = 1e-4) {
+    if (geom.rotate !== 0) return false;
+    const corners = geom.mode === 'rect' ? boxCorners(geom.box) : geom.quad;
+    if (geom.mode !== 'rect' && geom.aspect) return false;
+    return boxCorners([0, 0, 1, 1]).every(([x, y], i) =>
+        Math.abs(corners[i][0] - x) < tol && Math.abs(corners[i][1] - y) < tol);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         rotatePoint, rotateBox, rotateQuad, rotateGeometry, quadArea, isConvex, resizeRect,
         moveRect, fitRatio, fractionalRatio, ratioFor, boundingBox, boxCorners, isRectangle,
-        toGeometry,
+        toGeometry, isUntouched,
     };
 }
 
@@ -250,6 +260,7 @@ function initCropTool() {
     let quad = boxCorners(rect);
     let history = [];               // [{key, geom, blob, url}]: one per Crop press
     let busy = false;
+    let saving = false;             // a Save is in flight: no second one
     let requestId = 0;
     let layoutBox = { cw: 0, ch: 0, dispW: 0, dispH: 0, offX: 0, offY: 0 };
     let drag = null;
@@ -290,6 +301,37 @@ function initCropTool() {
         const el = $('crop-busy');
         el.hidden = !text;
         el.textContent = text || '';
+    }
+
+    // An error, shown on the picture for a few seconds and read out
+    let errorTimer = 0;
+    function showError(text) {
+        announce(text);
+        setBusyText(text);
+        clearTimeout(errorTimer);
+        errorTimer = setTimeout(() => setBusyText(''), 4000);
+    }
+
+    // Every request gives up after REQUEST_TIMEOUT, body included. A phone
+    // web app woken from the background can be left holding a dead
+    // connection, and a fetch on it never settles: Crop sat on
+    // "Cropping..." and every Save did nothing until the app was closed
+    // (Phil, 2026-11-16). `read` turns the response into its body.
+    const REQUEST_TIMEOUT = 30000;
+    async function send(url, options, read) {
+        const abort = new AbortController();
+        const timer = setTimeout(() => abort.abort(), REQUEST_TIMEOUT);
+        try {
+            const response = await fetch(url, { ...options, signal: abort.signal });
+            return { response, body: await read(response) };
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+    const readJson = response => response.json().catch(() => ({}));
+    function failure(err, fallback) {
+        console.error(fallback, err);
+        return err?.name === 'AbortError' ? 'No answer from the server. Try again.' : fallback;
     }
 
     // Where the stage's drawing area starts on screen: inside its border (a
@@ -390,6 +432,15 @@ function initCropTool() {
         handles.forEach((handle, i) => {
             handle.style.transform = `translate3d(${pts[i][0] - 22}px, ${pts[i][1] - 22}px, 0)`;
         });
+        refreshSave();
+    }
+
+    // Save is there from the start (Phil, 2026-11-16: turning a cropped
+    // picture meant pressing Crop just to get a Save). It crops first if
+    // the shape has moved on, and waits for a change to the whole picture.
+    function refreshSave() {
+        // Not while a Crop is out either: Save would find it busy and stop
+        $('crop-save').disabled = !image || saving || busy || isUntouched(geometry());
     }
 
     function scheduleDraw() {
@@ -658,7 +709,6 @@ function initCropTool() {
             $('crop-thumb-img').removeAttribute('src');
         }
         $('crop-undo').hidden = !entry;
-        $('crop-save').hidden = !entry;
     }
 
     // Render the current shape on the server and show it. Resolves true when
@@ -675,20 +725,18 @@ function initCropTool() {
         const button = $('crop-do');
         button.disabled = true;
         button.textContent = 'Cropping...';
+        refreshSave();
         try {
-            const response = await fetch('/covers/crop/preview', {
+            const { response, body } = await send('/covers/crop/preview', {
                 method: 'POST',
                 headers: getCSRFHeaders(),
                 body: JSON.stringify({ source, geometry: geom, fetched: $('existing_cover_url')?.value || '' }),
-            });
+            }, r => (r.ok ? r.blob() : readJson(r)));
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                announce(data.error || "Couldn't render the crop.");
-                setBusyText(data.error || "Couldn't render the crop.");
-                setTimeout(() => setBusyText(''), 3000);
+                showError(body.error || "Couldn't render the crop.");
                 return false;
             }
-            const blob = await response.blob();
+            const blob = body;
             if (mine !== requestId) return false;           // a newer press superseded this one
             const entry = { key, geom, blob, url: URL.createObjectURL(blob) };
             history.push(entry);
@@ -696,13 +744,13 @@ function initCropTool() {
             announce('Cropped');
             return true;
         } catch (err) {
-            console.error('Crop preview failed', err);
-            announce("Couldn't render the crop.");
+            showError(failure(err, "Couldn't render the crop."));
             return false;
         } finally {
             busy = false;
-            button.disabled = false;
+            button.disabled = saving;                       // a Save still going keeps it off
             button.textContent = 'Crop';
+            refreshSave();
         }
     }
 
@@ -720,21 +768,25 @@ function initCropTool() {
         announce('Undone');
     }
 
+    // Resolves true when the photo is saved and the page is reloading.
+    // `source` tells the route which file this crop was made on, so a
+    // repeated Save can't crop the result a second time.
     async function savePhoto(geom) {
-        const response = await fetch(photoTarget.saveUrl, {
-            method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ geometry: geom }),
-        });
-        const data = await response.json().catch(() => ({}));
+        const { response, body: data } = await send(photoTarget.saveUrl, {
+            method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ geometry: geom, source }),
+        }, readJson);
         if (!response.ok || !data.success) {
-            setBusyText(data.error || "Couldn't crop that photo.");
-            setTimeout(() => setBusyText(''), 3000);
-            return;
+            showError(data.error || "Couldn't crop that photo.");
+            return false;
         }
-        dialog.close();
         // Back to where the photo is listed: the edit page's Photos, or the
-        // button's own section (data-return)
-        location.hash = photoTarget.button?.dataset.return || 'photos';
+        // button's own section (data-return). Read before close(): the
+        // close handler clears photoTarget.
+        const back = photoTarget.button?.dataset.return || 'photos';
+        dialog.close();
+        location.hash = back;
         location.reload();
+        return true;
     }
 
     // An Edit page: the cropped cover is saved now, not with the form, so
@@ -742,14 +794,12 @@ function initCropTool() {
     // form's own cover inputs are cleared: the saved cover is the cover, and
     // Save Changes mustn't put the uncropped pick back over it.
     async function saveCover(geom) {
-        const response = await fetch(openButton.dataset.saveUrl, {
+        const { response, body: data } = await send(openButton.dataset.saveUrl, {
             method: 'POST', headers: getCSRFHeaders(), body: JSON.stringify({ source, geometry: geom, fetched: $('existing_cover_url')?.value || '' }),
-        });
-        const data = await response.json().catch(() => ({}));
+        }, readJson);
         if (!response.ok || !data.success) {
-            setBusyText(data.error || "Couldn't save the crop.");
-            setTimeout(() => setBusyText(''), 3000);
-            return;
+            showError(data.error || "Couldn't save the crop.");
+            return false;
         }
         clearCrop(false);
         if ($('image')) $('image').value = '';
@@ -763,13 +813,38 @@ function initCropTool() {
         $('crop-saved')?.classList.remove('hidden');
         announce('Cropped cover saved.');
         dialog.close();
+        return true;
+    }
+
+    // Save shows it's working and takes one press: a slow answer used to
+    // look like nothing happened, and a second tap sent the crop again
+    function setSaving(on) {
+        saving = on;
+        const button = $('crop-save');
+        button.textContent = on ? 'Saving...' : 'Save';
+        $('crop-do').disabled = on;
+        refreshSave();
     }
 
     async function save() {
-        if (!await doCrop()) return;                        // crop first if the handles moved on
-        const top = history[history.length - 1];
-        if (photoTarget) return savePhoto(top.geom);
-        if (openButton.dataset.saveUrl) return saveCover(top.geom);
+        if (saving || !image) return;
+        setSaving(true);
+        try {
+            if (!await doCrop()) return;                    // crop first if the handles moved on
+            const top = history[history.length - 1];
+            if (photoTarget) await savePhoto(top.geom);
+            else if (openButton.dataset.saveUrl) await saveCover(top.geom);
+            else saveToForm(top);
+        } catch (err) {
+            showError(failure(err, "Couldn't save the crop."));
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    // An Add page (or an Edit page without a save route): the crop goes
+    // with the form, in its hidden inputs
+    function saveToForm(top) {
         sourceInput.value = source;
         cropInput.value = JSON.stringify(top.geom);
 
@@ -806,6 +881,19 @@ function initCropTool() {
     document.addEventListener('touchmove', event => {
         if (dialog.open && event.touches.length > 1) event.preventDefault();
     }, { passive: false });
+    // Phil, 2026-11-16: it still zoomed now and then, in the Home Screen
+    // app. preventDefault() on a *pointer* event doesn't cancel the touch's
+    // own gestures in Safari, and touch-action isn't honoured everywhere
+    // either: a quick tap then drag on a corner is iOS's one-finger zoom
+    // (double-tap-and-drag), and a long press brings up its magnifier. Only
+    // cancelling the touch events does it. Pointer events still arrive, so
+    // dragging is unaffected; the result thumbnail keeps its tap.
+    const stageTouch = event => {
+        if (!event.target.closest('#crop-thumb')) event.preventDefault();
+    };
+    stage.addEventListener('touchstart', stageTouch, { passive: false });
+    stage.addEventListener('touchmove', stageTouch, { passive: false });
+    stage.addEventListener('touchend', stageTouch, { passive: false });
 
     function cleanup() {
         lockZoom(false);
@@ -815,6 +903,7 @@ function initCropTool() {
         endDrag();
         image = null;
         source = null;
+        refreshSave();
         setBusyText('');
         (photoTarget?.button || openButton)?.focus();
         photoTarget = null;

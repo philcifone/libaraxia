@@ -44,8 +44,11 @@
                         </div>
                     </div>
 
+                    {# Ticked by default (Phil, 2026-11-16): without it the login is a
+                       session cookie, and iOS ends the Home Screen app's session
+                       whenever it kills the app. Untick on a shared computer. #}
                     <div class="flex items-center">
-                        <input id="remember_me" name="remember_me" type="checkbox"
+                        <input id="remember_me" name="remember_me" type="checkbox" checked
                             class="h-4 w-4 rounded border-rule-strong bg-primary-bg text-accent focus:ring-accent">
                         <label for="remember_me" class="ml-2 block text-sm text-content-secondary">
                             Remember me
