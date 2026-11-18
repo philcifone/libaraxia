@@ -5084,3 +5084,152 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
 :root[data-style="cyberpunk"] .label {
     background: linear-gradient(rgb(var(--accent)), rgb(var(--accent))) right bottom / 5px 3px no-repeat;
 }
+
+/* ---- Cyberpunk finishing touches (phase 3) ---- */
+
+/* The screen: a faint flat grid behind everything (body::before), and over
+   everything a CRT's scanlines and darkened edges (body::after, above the
+   top bar and sidebar, never catching a click). body is see-through so the
+   grid shows; <html> keeps the paper colour. Static, apart from a faint
+   slow flicker for those who don't ask for reduced motion. */
+:root[data-style="cyberpunk"] body { background: transparent; }
+:root[data-style="cyberpunk"] body::before,
+:root[data-style="cyberpunk"] body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+:root[data-style="cyberpunk"] body::before {
+    z-index: -1;
+    background-image:
+        linear-gradient(rgb(var(--ink) / .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(var(--ink) / .035) 1px, transparent 1px);
+    background-size: 96px 96px;
+}
+:root[data-style="cyberpunk"] body::after {
+    z-index: 70;
+    background:
+        radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / .32) 100%),
+        repeating-linear-gradient(to bottom, rgb(0 0 0 / .16) 0 1px, transparent 1px 3px);
+}
+@media (prefers-reduced-motion: no-preference) {
+    :root[data-style="cyberpunk"] body::after { animation: cp-flicker 7s steps(1, end) infinite; }
+}
+@keyframes cp-flicker {
+    0%, 100% { opacity: 1; }
+    46%      { opacity: .82; }
+    47%      { opacity: 1; }
+    83%      { opacity: .9; }
+    84%      { opacity: 1; }
+}
+@media print {
+    :root[data-style="cyberpunk"] body::before,
+    :root[data-style="cyberpunk"] body::after { content: none; }
+}
+
+/* RGB split, as on the reference's lettering: the alert colour a pixel to
+   the left, blue to the right. Page titles also get its faded echo below.
+   Headings only, never running text. */
+:root[data-style="cyberpunk"] .page-title {
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .6), 1px 0 rgb(var(--blue) / .6),
+                 0 .55em 3px rgb(var(--accent) / .14);
+}
+:root[data-style="cyberpunk"] .site-title {
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .6), 1px 0 rgb(var(--blue) / .6);
+}
+:root[data-style="cyberpunk"] :is(h2, h3).font-display {
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .45), 1px 0 rgb(var(--blue) / .45);
+}
+
+/* Stats (_profile_stats.html): the number tiles are readouts, big numbers
+   in the title face with a corner block; the other panels are thin boxes. */
+:root[data-style="cyberpunk"] :is(.stat-tile, .stat-panel) {
+    border: 1px solid rgb(var(--rule));
+    background-image: linear-gradient(rgb(var(--accent)), rgb(var(--accent)));
+    background-size: 10px 3px;
+    background-position: top left;
+    background-repeat: no-repeat;
+}
+:root[data-style="cyberpunk"] .stat-tile > dd:first-of-type {
+    font-family: var(--font-display);
+    font-weight: 400;
+    color: rgb(var(--accent-text));
+    letter-spacing: .04em;
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .45), 1px 0 rgb(var(--blue) / .45);
+}
+:root[data-style="cyberpunk"] .stat-tile > dt { text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; }
+
+/* Bars are segmented, like a meter: the chart's months stack in blocks, the
+   year bars and every progress bar (reading goal, cover fetch) run in cells.
+   The goal tick is the alert colour. */
+:root[data-style="cyberpunk"] .chart-fill {
+    border-radius: 0;
+    -webkit-mask-image: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px);
+    mask-image: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px);
+}
+:root[data-style="cyberpunk"] :is(.year-bar .year-seg, [role="progressbar"] > *) {
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px);
+    mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px);
+}
+:root[data-style="cyberpunk"] :is(.year-goal, .year-goal-key) { background: rgb(var(--cp-alert)); }
+
+/* Loading: the spinners (script.js) become a bar filling cell by cell */
+.cp-loader { display: none; }
+:root[data-style="cyberpunk"] svg.animate-spin { display: none; }
+:root[data-style="cyberpunk"] .cp-loader {
+    display: inline-block;
+    width: 4.5rem;
+    height: .8rem;
+    padding: 2px;
+    border: 1px solid rgb(var(--accent) / .7);
+}
+:root[data-style="cyberpunk"] .cp-loader::before {
+    content: "";
+    display: block;
+    height: 100%;
+    background: repeating-linear-gradient(90deg, rgb(var(--accent)) 0 6px, transparent 6px 8px);
+    animation: cp-load 1.2s steps(8, end) infinite;
+}
+@keyframes cp-load {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    :root[data-style="cyberpunk"] .cp-loader::before { animation: none; }
+}
+
+/* The boot screen (cyberpunk.js sets data-boot once per login): the screen
+   (::before) and the text (::after), typed a line at a time by revealing
+   the box in six steps (it is exactly six lines tall), then the lot fades.
+   Over everything but the scanlines; a click anywhere ends it. */
+:root[data-style="cyberpunk"][data-boot]::before,
+:root[data-style="cyberpunk"][data-boot]::after {
+    position: fixed;
+    z-index: 65;
+    animation: cp-boot-out .2s ease-in .8s forwards;
+}
+:root[data-style="cyberpunk"][data-boot]::before {
+    content: "";
+    inset: 0;
+    background: rgb(var(--paper));
+}
+:root[data-style="cyberpunk"][data-boot]::after {
+    content: "LIBARAXIA // CATALOG TERMINAL\A\A> MOUNTING SHELVES ......... OK\A> INDEXING COLLECTIONS ..... OK\A> LINKING FRIENDS .......... OK\A> READY_";
+    white-space: pre;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font: 400 clamp(1rem, 4vw, 1.5rem) / 1.5 var(--font-body);
+    height: 9em;                            /* six lines of 1.5 */
+    color: rgb(var(--accent-text));
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .5), 1px 0 rgb(var(--blue) / .5);
+    animation: cp-boot-type .55s steps(6, end) both, cp-boot-out .2s ease-in .8s forwards;
+}
+@keyframes cp-boot-type {
+    from { clip-path: inset(0 0 100% 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+@keyframes cp-boot-out {
+    to { opacity: 0; visibility: hidden; }
+}

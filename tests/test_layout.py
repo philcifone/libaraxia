@@ -1547,3 +1547,26 @@ def test_cyberpunk_cards_are_never_clipped():
     assert '--cp-diag' not in root
     # Positioned cards stay positioned; the overlay only makes static ones relative
     assert ':is(.card, .card-link):not(.absolute, .fixed, .sticky) { position: relative; }' in section
+
+
+def test_cyberpunk_boot_screen_once_per_login(client, people):
+    """Cyberpunk's boot screen (phase 3): base.html carries the login mark
+    (the seed drawn at login) and loads cyberpunk.js in <head>, not deferred,
+    so the screen is up before the first paint. The script boots once per
+    mark, never with reduced motion or blocked storage; the screen is CSS."""
+    login(client, 'alice')
+    page = client.get('/collections/collections').get_data(as_text=True)
+    head = page[:page.index('</head>')]
+    assert '<meta name="login-mark" content="' in head
+    assert head.index('name="login-mark"') < head.index('cyberpunk.js')
+    assert '<script src="/static/cyberpunk.js"></script>' in head        # not deferred
+    js = pathlib.Path('static/cyberpunk.js').read_text()
+    assert "prefers-reduced-motion: reduce" in js and 'localStorage' in js and 'catch' in js
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root[data-style="cyberpunk"][data-boot]::after' in css
+    # The CRT layer never catches a click and is off in print
+    crt = css[css.index('/* ---- Cyberpunk finishing touches (phase 3)'):]
+    assert 'pointer-events: none' in crt and '@media print' in crt
+    # Signed out (the sign-in page): no mark, so no boot
+    client.post('/auth/logout')
+    assert 'login-mark' not in client.get('/auth/login').get_data(as_text=True)

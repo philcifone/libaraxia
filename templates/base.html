@@ -29,6 +29,11 @@
     <script src="{{ url_for('static', filename='shelf.js') }}"></script>
     {# Shelf: the tilt glare, on or off per device in Appearance (16.0 step 12) #}
     <script src="{{ url_for('static', filename='tilt.js') }}" defer></script>
+    {# Cyberpunk: the boot screen once per login. login-mark is the seed drawn
+       at login (auth.py); cyberpunk.js boots once per new mark. Not deferred:
+       the screen is up before the first paint. #}
+    {% if current_user.is_authenticated and session.get('heading_seed') %}<meta name="login-mark" content="{{ session['heading_seed'] }}">{% endif %}
+    <script src="{{ url_for('static', filename='cyberpunk.js') }}"></script>
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}bg-primary min-h-screen{% endblock %}">
