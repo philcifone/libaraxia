@@ -1,0 +1,34 @@
+{# The item's catalog card (paper-cards trial, Phil 2026-11-18; Shelf style
+   only, styles.css "Paper cards"): the facts badge typed out as a library's
+   main-entry card. `catalog` is utils/catalog_card.entry(book). In the
+   Shelf style this replaces .item-facts beside the cover; in the others
+   it's hidden (display: none, so a screen reader hears one copy).
+
+   Layout, as a cataloguer typed it: the call number down the left margin;
+   the heading (author or artist) on the top line, at the first indention;
+   the title paragraph and the collation at the second, their run-on lines
+   back at the first; the tracings at the foot; the accession number in the
+   corner. A title entry (a movie) has no heading: its title paragraph
+   starts on the top line, in hanging indent. The copy's own details
+   (condition; price paid and value for the owner) are the library's
+   pencilled note. #}
+<div class="catalog-card entry-card self-center md:self-start" data-catalog-card>
+    <div class="entry-grid">
+        <p class="entry-call"><span class="sr-only">Call number: </span>
+            {%- for line in catalog.call_number %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor -%}
+        </p>
+        <div class="entry-body">
+            {% if catalog.heading %}<p class="entry-heading">{{ catalog.heading }}</p>{% endif %}
+            <p class="entry-para{{ ' entry-hanging' if not catalog.heading }}">{{ catalog.title }}</p>
+            {% if catalog.physical %}<p class="entry-para">{{ catalog.physical }}</p>{% endif %}
+            {% if catalog.number %}<p class="entry-para">{{ catalog.number }}</p>{% endif %}
+            {% set notes = [] %}
+            {% if condition_text %}{% set _ = notes.append('Cond.: ' ~ condition_text) %}{% endif %}
+            {% if can_manage and book['price_paid_cents'] is not none %}{% set _ = notes.append('Paid ' ~ book['price_paid_cents']|money) %}{% endif %}
+            {% if can_manage and book['value_cents'] is not none %}{% set _ = notes.append('Value ' ~ book['value_cents']|money) %}{% endif %}
+            {% if notes %}<p class="entry-para entry-note" title="{{ condition_title }}">{{ notes|join('. ') }}.</p>{% endif %}
+            {% if catalog.tracings %}<p class="entry-tracings">{{ catalog.tracings }}</p>{% endif %}
+        </div>
+    </div>
+    <p class="entry-accession"><span class="sr-only">Accession number </span>{{ catalog.accession }}</p>
+</div>

@@ -15,8 +15,10 @@
 {# wrap=False: just the card, for a page that already sets the width.
    urls: {type: url} for a page that isn't a shelf (Reviews, ROADMAP 13);
    without it the links come from shelf_url() and keep the scope. #}
-{% macro section_switch(section, scope=None, username=None, class='pb-4', wrap=True, urls=None) -%}
-<div class="{{ 'page-frame' if wrap }} {{ class }}">
+{# cabinet: the top of the shelf pages' catalog cabinet (Shelf style; see
+   styles.css "Catalog cabinet"); shelf_header passes it, Reviews doesn't. #}
+{% macro section_switch(section, scope=None, username=None, class='pb-4', wrap=True, urls=None, cabinet=False) -%}
+<div class="{{ 'page-frame' if wrap }} {{ class }}{{ ' cabinet-part cabinet-top' if cabinet }}">
     <div class="bg-secondary rounded-xl overflow-hidden card">
         <nav class="flex items-stretch" aria-label="Section">
             {% for key, label in SECTION_NAMES.items() %}
@@ -60,5 +62,5 @@
 {# Called with {% call shelf_header(...) %}: what the call wraps goes right
    under the heading (the household's "Shared Library with ..." box) #}
 {% if caller %}{{ caller() }}{% endif %}
-{{ section_switch(section, scope, username) }}
+{{ section_switch(section, scope, username, cabinet=True) }}
 {%- endmacro %}

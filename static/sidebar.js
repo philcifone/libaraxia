@@ -77,6 +77,13 @@ async function setAppearance(kind, value) {     // kind: 'style', 'mode', 'accen
         });
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.message);
+        // A shelf page's catalog cabinet is laid out by the server for the
+        // Shelf style (Filters in the bottom row, Batch; _view_bar.html), so
+        // switching into or out of Shelf there reloads it, once saved
+        if (kind === 'style' && (value === 'shelf') !== (previous === 'shelf')
+                && document.querySelector('.cabinet-part')) {
+            location.reload();
+        }
     } catch (err) {
         root.dataset[kind] = previous;
         press(previous);

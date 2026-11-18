@@ -68,7 +68,7 @@
                stretches the facts' row). #}
             <div class="grid grid-cols-[7rem_minmax(0,1fr)] sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[300px_minmax(0,1fr)] md:grid-rows-[auto_1fr] gap-x-4 gap-y-6 md:gap-8">
                 <!-- Book Cover Section -->
-                <div class="self-center md:self-start md:row-span-2">
+                <div class="item-cover self-center md:self-start md:row-span-2">
                     {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
                        like the grid's (.cover-box, display: contents elsewhere; 14c) #}
                     {# The item's top and right side photos, when it has them, go on
@@ -174,6 +174,9 @@
                             {% endif %}
                         </div>
                 </div>
+
+                {# The facts as a catalog card, in the Shelf style instead of the badge #}
+                {% include '_catalog_card.html' %}
 
                 <!-- The rest: under the badge on a phone, beside the cover from md -->
                 <div class="col-span-2 md:col-span-1 md:col-start-2 space-y-6">
@@ -342,7 +345,20 @@
            comes back here, not at the top (collections._back); a session
            comes back to the History tab (#item-history). #}
         {% if not in_wishlist %}
-        <section id="your-info" class="scroll-mt-20 bg-secondary rounded-xl p-4 md:p-8 mb-8 card" aria-labelledby="your-info-heading">
+        {# book-card (paper-cards trial, Phil 2026-11-18; Shelf style only,
+           styles.css "Paper cards"): the library's book card, the review's
+           notebook card in front of it, and the kraft pocket they stand in,
+           which holds the collections and tags. On the book card: the
+           library's name, the status boxes (the status buttons, the current
+           one ticked in ink) and the ledger (.ledger, below: a line for each
+           checkout and check-in, stamped). The review gets a pencil after
+           its last word. The printing is decoration (aria-hidden); the
+           ledger and the pencil are hidden in the other styles, where the
+           history list and the Edit review button are the same things. #}
+        <section id="your-info" class="library-card book-card scroll-mt-20 bg-secondary rounded-xl p-4 md:p-8 mb-8 card" aria-labelledby="your-info-heading">
+            <div class="page-furniture" aria-hidden="true">
+                <span class="running-head">Libaraxia Library</span>
+            </div>
             <h2 id="your-info-heading" class="text-2xl font-display text-content-primary mb-6">
                 {{ current_user.username.capitalize() }}'s {{ m.info_heading }}
             </h2>
@@ -415,33 +431,38 @@
                     </div>
 
                     <div role="tabpanel" id="item-review" aria-labelledby="tab-item-review" class="pt-5">
+                        {# The Shelf book card's way to the review page: a pencil after the
+                           last word (.review-pencil), in place of the button below #}
+                        {% set pencil %}<a href="{{ url_for('read.rate_review', book_id=book.id) }}" class="review-pencil"
+                           aria-label="{{ 'Edit review' if read_data else 'Write a review' }}" title="{{ 'Edit review' if read_data else 'Write a review' }}">{{ icon('pencil', 'w-4 h-4') }}</a>{% endset %}
                         {% if read_data %}
                         {% if read_data['rating'] %}{# a review can have no rating #}
                         <p class="text-xl whitespace-nowrap">
                             <span class="text-yellow-400" aria-hidden="true">{{ '★' * (read_data['rating']|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - read_data['rating']|int) }}</span>
                             <span class="sr-only">Rated {{ read_data['rating']|int }} of 5</span>
+                            {%- if not read_data['comment'] %} {{ pencil }}{% endif %}
                         </p>
                         {% else %}
-                        <p class="text-sm text-content-secondary italic">No rating</p>
+                        <p class="text-sm text-content-secondary italic">No rating{% if not read_data['comment'] %} {{ pencil }}{% endif %}</p>
                         {% endif %}
                         {% if read_data['comment'] %}
                         <div class="mt-3" data-read-more>
-                            <p id="your-review" class="read-more-text measure text-content-primary leading-relaxed whitespace-pre-wrap">{{ read_data['comment'] }}</p>
+                            <p id="your-review" class="read-more-text measure text-content-primary leading-relaxed whitespace-pre-wrap">{{ read_data['comment'] }} {{ pencil }}</p>
                             <button type="button" class="read-more-toggle" data-click="toggleReadMore"
                                     aria-controls="your-review" aria-expanded="false" hidden>Read more</button>
                         </div>
                         {% endif %}
                         {% else %}
-                        <p class="text-content-secondary italic">No review yet.</p>
+                        <p class="text-content-secondary italic">No review yet. {{ pencil }}</p>
                         {% endif %}
-                        <a href="{{ url_for('read.rate_review', book_id=book.id) }}"
+                        <a href="{{ url_for('read.rate_review', book_id=book.id) }}" data-review-button
                            class="inline-flex mt-4 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
                             {% if read_data %}Edit review{% else %}Write a review{% endif %}
                         </a>
                     </div>
 
                     <div role="tabpanel" id="item-history" aria-labelledby="tab-item-history" class="pt-5">
-                        <div class="flex items-center justify-between gap-4 mb-3">
+                        <div class="history-head flex items-center justify-between gap-4 mb-3">
                             <h3 class="label text-sm pb-1">{{ m.history }}</h3>
                             <button type="button" data-click="showAddSessionForm"
                                     class="shrink-0 text-sm px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">
@@ -450,7 +471,11 @@
                         </div>
 
                         <!-- Add/Edit Session Form (Hidden by default) -->
-                        <div id="session-form-container" class="hidden bg-primary rounded-lg p-4 mb-4 border-2 border-accent">
+                        {# session_prefill (?finished=1, just marked done): book_detail.js opens
+                           the form with these, today as the finished date #}
+                        <div id="session-form-container" class="hidden bg-primary rounded-lg p-4 mb-4 border-2 border-accent"
+                             {% if session_prefill %}data-prefill-mode="{{ session_prefill.mode }}" data-prefill-session="{{ session_prefill.session_id }}"
+                             data-prefill-started="{{ session_prefill.started }}" data-prefill-completed="{{ session_prefill.completed }}"{% endif %}>
                             {# No dates is allowed (read long ago) but asked first (book_detail.js, 14c) #}
                             <form action="{{ url_for('read.manage_session', book_id=book.id) }}" method="POST"
                                   data-submit="saveSession"
@@ -523,8 +548,37 @@
                             {% endfor %}
                         </ol>
                         {% else %}
-                        <p class="text-content-secondary text-sm italic">{{ m.no_sessions }}</p>
+                        <p class="history-empty text-content-secondary text-sm italic">{{ m.no_sessions }}</p>
                         {% endif %}
+
+                        {# The Shelf book card's ledger: the same reads as the list above, as a
+                           library card has them: a line when one went out (started) and
+                           one when it came back (finished), each stamped with its date and
+                           signed with your name; edit and delete on the read's last line;
+                           a blank line to add one. Hidden in the other styles. #}
+                        <h3 class="sr-only ledger-heading">{{ m.history }}</h3>
+                        <ol class="ledger">
+                            {% for session in reading_sessions %}
+                            {% set actions %}<span class="ledger-actions">
+                                <button type="button" data-click="editSession" data-session-id="{{ session.session_id }}"
+                                        data-date-started="{{ session.date_started or '' }}" data-date-completed="{{ session.date_completed or '' }}"
+                                        aria-label="Edit this {{ m.session|lower }}" title="Edit">{{ icon('pencil', 'w-4 h-4') }}</button>
+                                <button type="button" data-click="deleteSession" data-session-id="{{ session.session_id }}" data-book-id="{{ book.id }}"
+                                        aria-label="Delete this {{ m.session|lower }}" title="Delete">{{ icon('x', 'w-4 h-4') }}</button>
+                            </span>{% endset %}
+                            {% if session.date_started %}
+                            <li><span class="ledger-date">{{ session.date_started|stamp_date }}</span>
+                                <span class="borrower">{{ current_user.username }}</span> <span class="ledger-what">checked out</span>
+                                {% if not session.date_completed %}{{ actions }}{% endif %}</li>
+                            {% endif %}
+                            {% if session.date_completed or not session.date_started %}
+                            <li><span class="ledger-date">{{ session.date_completed|stamp_date or '' }}{% if not session.date_completed %}<span class="sr-only">Date unknown</span>{% endif %}</span>
+                                <span class="borrower">{{ current_user.username }}</span> <span class="ledger-what">checked in</span>
+                                {{ actions }}</li>
+                            {% endif %}
+                            {% endfor %}
+                            <li class="ledger-add"><button type="button" data-click="showAddSessionForm">+ Add</button></li>
+                        </ol>
                     </div>
 
                     <div role="tabpanel" id="item-tags" aria-labelledby="tab-item-tags" class="pt-5">

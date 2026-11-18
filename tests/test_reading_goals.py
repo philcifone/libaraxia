@@ -104,9 +104,19 @@ def test_marking_read_offers_today_as_the_finished_date(client, db, people):
     alice = people['alice']
     book = add_book(db, alice, 'Dune')
     login(client, 'alice')
-    r = client.post('/collections/collections/status/add', data={'id': book, 'status': 'read'})
-    assert 'finished=1' in r.headers['Location']
+    # Marking it read comes back to the item page (not the review page), on
+    # its History, where the session form opens with today filled in
+    item = f'http://localhost/books/book/{book}?from=x#your-info'
+    r = client.post('/collections/collections/status/add', headers={'Referer': item},
+                    data={'id': book, 'status': 'read', 'anchor': 'your-info'})
+    assert r.headers['Location'].endswith(f'/books/book/{book}?from=x&finished=1#item-history')
+    assert 'rate_review' not in r.headers['Location']
     today = date.today().isoformat()
+    page = client.get(f'/books/book/{book}?finished=1').get_data(as_text=True)
+    assert 'data-prefill-mode="add"' in page and f'data-prefill-completed="{today}"' in page
+    assert 'data-prefill-mode' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+
+    # The review page still makes the same offer for ?finished=1
     page = client.get(f'/read/rate_review/{book}?finished=1').get_data(as_text=True)
     assert 'data-prefill-mode="add"' in page and f'data-prefill-completed="{today}"' in page
 

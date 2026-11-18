@@ -47,7 +47,7 @@ def test_item_badge_puts_cover_and_facts_on_one_midline(client, db, people):
     book = add_book(db, people['alice'], title='Dune')
     login(client, 'alice')
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert '<div class="self-center md:self-start md:row-span-2">' in page
+    assert '<div class="item-cover self-center md:self-start md:row-span-2">' in page
     assert 'item-facts self-center md:self-start' in page
 
 

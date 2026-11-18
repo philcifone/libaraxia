@@ -24,6 +24,8 @@
     {% endif %}
     {% include '_add_fab.html' %}
 
+    {# The tabs, search and view bar are one catalog cabinet in the Shelf style #}
+    {% set cabinet = true %}
     {% from '_shelves.html' import shelf_header %}
     {% if tab == 'shared' %}
     {% call shelf_header(m.type, tab, heading_books=heading_books|default(none)) %}{% include '_household_members.html' %}{% endcall %}

@@ -40,7 +40,11 @@
 {# One row everywhere: sort, the grid/list switch and Select. The match count
    lives under the search box (_search_sort_filter.html), so the selects keep
    the width on a phone. #}
-<div class="view-bar flex items-center gap-2 sm:gap-3 mb-6">
+{# cabinet-base: the catalog cabinet's bottom row on a shelf page (Shelf style).
+   There the filter button and panel come here, last in the row (see
+   _search_sort_filter.html), and bulk select is called Batch. #}
+{% set in_cabinet = cabinet|default(false) and theme_style == 'shelf' %}
+<div class="view-bar flex items-center gap-2 sm:gap-3 mb-6{{ ' cabinet-part cabinet-base relative z-30' if cabinet|default(false) }}">
         <form method="GET" action="{{ request.path }}" id="sort-form" class="flex-1 min-w-0 flex items-center justify-end gap-2">
             {% for key in request.args %}
             {% if key not in ('sort_by', 'sort_order', 'page', 'csrf_token') %}
@@ -73,13 +77,15 @@
         <div class="shrink-0 flex border border-rule-strong rounded-lg overflow-hidden" role="group" aria-label="View">
             <button type="button" id="grid-view-btn" data-click="switchView" data-view="grid"
                     class="view-toggle-btn px-2.5 py-1.5" aria-pressed="true" aria-label="Grid view">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <span class="cab-text" aria-hidden="true">Grid</span>
+                <svg class="cab-icon w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
                 </svg>
             </button>
             <button type="button" id="list-view-btn" data-click="switchView" data-view="list"
                     class="view-toggle-btn px-2.5 py-1.5 border-l border-rule-strong" aria-pressed="false" aria-label="List view">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <span class="cab-text" aria-hidden="true">List</span>
+                <svg class="cab-icon w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/>
                 </svg>
             </button>
@@ -100,10 +106,11 @@
         {% if bulk_select|default(false) %}
         {% from '_icons.html' import icon %}
         <button type="button" id="bulk-select-btn" data-click="bulkToggleSelect" aria-pressed="false"
-                aria-label="Select" title="Select items to edit"
+                aria-label="{{ 'Batch' if in_cabinet else 'Select' }}" title="Select items to edit"
                 class="view-toggle-btn shrink-0 inline-flex items-center gap-1.5 border border-rule-strong rounded-lg px-2.5 py-1.5 text-sm">
             {# icon only on a phone: the label squeezed the sort menus #}
-            {{ icon('check-square', 'w-4 h-4') }}<span data-bulk-label class="hidden sm:inline">Select</span>
+            <span class="cab-icon inline-flex">{{ icon('check-square', 'w-4 h-4') }}</span><span data-bulk-label data-idle="{{ 'Batch' if in_cabinet else 'Select' }}" class="hidden sm:inline">{{ 'Batch' if in_cabinet else 'Select' }}</span>
         </button>
         {% endif %}
+        {% if in_cabinet and books %}{% include '_filter_toggle.html' %}{% include '_filter_panel.html' %}{% endif %}
 </div>

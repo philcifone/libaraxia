@@ -25,6 +25,14 @@ function openSessionForm(mode, sessionId, dateStarted, dateCompleted) {
     f.container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// Just marked Read / Watched / Listened (?finished=1): the form opens with
+// today as the finished date (data-prefill-*, read.finish_offer)
+(function openPrefilledSession() {
+    const p = sessionForm().container?.dataset;
+    if (!p || !p.prefillMode) return;
+    openSessionForm(p.prefillMode, p.prefillSession || '', p.prefillStarted || '', p.prefillCompleted || '');
+})();
+
 registerActions({
     showAddSessionForm: () => openSessionForm('add', '', '', ''),
 
