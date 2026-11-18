@@ -5361,17 +5361,23 @@ html:has(.item3d[open]) {
   /* Light and shade: the lamp tokens on :root (Shelf: the rest of the
        app), the inside shade a little deeper in the big case */
   --case-shade: .22;
-  /* The books show their top and right faces, so we stand above and to
-       the right of the case, and from there the inside of its left panel
-       is in view: a strip half as wide as the shelf top is tall. The
-       angle is that 1:2 slope (atan .5), where each shelf runs back into
-       the panel. */
-  --side-w: calc(var(--ledge-top) / 2);
-  --side-angle: 26.57deg;
-  /* The case's outside faces go back at 45 degrees, like the books' own
-       (Phil: the 1:2 slope of the inside looked too blunt at the top left
-       corner), so the top face runs right as far as it is tall. */
+  /* One view for the whole case: we stand above and to the right, so
+       everything that goes back (the books' faces, the case's outside
+       faces, the inside of its left panel) runs up and right at 45
+       degrees, as far as it is deep. The case is as deep as its shelves,
+       whose depth on screen is the top face's height, so that one number
+       sets all three:
+       - the case's outside top and right faces (--case-run): the top face
+         runs right as far as it is tall (Phil: the old 1:2 slope looked
+         too blunt at the top left corner);
+       - the inside of the left panel (--side-w), in view from where we
+         stand: a strip as wide as the right face, each shelf's top face
+         running back into it on the 45-degree wedge (--side-angle). It
+         used to be half that, on a 1:2 slope, and looked shallower than
+         the right side (Phil, 2026-11-17). */
   --case-run: var(--ledge-top);
+  --side-w: var(--case-run);
+  --side-angle: 45deg;
   row-gap: var(--shelf-gap);
   -moz-column-gap: 1.5rem;
        column-gap: 1.5rem;
@@ -5388,7 +5394,14 @@ html:has(.item3d[open]) {
   border-bottom-width: 0;
   /* the last ledge is the bottom */
   background-color: rgb(var(--shelf-back));
+  --case-blur: 28px;
+  /* the big case's inner shadow reaches further */
+  --wall-top: 24px;
+  /* the padding-top: where the shelf pattern starts */
   background-image:
+        /* the case's inner shadow along the top (above the first shelf,
+           so it can lie over everything) */
+        linear-gradient(to bottom, var(--case-fall)),
         /* depth: the back wall darkens where it meets the shelf, the top
            face is darker at the back than at its front edge, and the front
            edge has a lit line along its top and a shaded one along its
@@ -5416,13 +5429,18 @@ html:has(.item3d[open]) {
         transparent 0 var(--cover-h),
         rgb(var(--shelf-top)) var(--cover-h) calc(var(--cover-h) + var(--ledge-top)),
         rgb(var(--shelf-front)) calc(var(--cover-h) + var(--ledge-top)) calc(var(--cover-h) + var(--ledge)),
-        transparent calc(var(--cover-h) + var(--ledge)) var(--shelf-pitch));
-  background-position: 0 24px;
-  /* the padding-top */
+        transparent calc(var(--cover-h) + var(--ledge)) var(--shelf-pitch)),
+        /* the inner shadow down both sides: under the shelves, so only the
+           wall darkens; the left one from where the panel meets the wall */
+        linear-gradient(to right, var(--case-fall)),
+        linear-gradient(to left, var(--case-fall));
+  background-position: 0 0, 0 var(--wall-top), 0 var(--wall-top), 0 var(--wall-top), 0 var(--wall-top),
+                         var(--side-w) 0, 100% 0;
   /* the two panel layers are one strip down the left, a shelf per tile */
-  background-size: auto, var(--side-w) var(--shelf-pitch), var(--side-w) var(--shelf-pitch), auto;
-  background-repeat: repeat, repeat-y, repeat-y, repeat;
-  box-shadow: inset 0 0 28px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
+  background-size: 100% var(--case-blur), auto, var(--side-w) var(--shelf-pitch), var(--side-w) var(--shelf-pitch), auto,
+                     var(--case-blur) 100%, var(--case-blur) 100%;
+  background-repeat: no-repeat, repeat, repeat-y, repeat-y, repeat, no-repeat, no-repeat;
+  box-shadow: var(--sh-lg);
 }
 
 /* Phone: three shorter books per shelf instead of two tall ones with
@@ -5440,7 +5458,7 @@ html:has(.item3d[open]) {
     -moz-column-gap: .75rem;
          column-gap: .75rem;
     padding: 20px .75rem 0;
-    background-position: 0 20px;
+    --wall-top: 20px;
     --frame: 8px;
     border-width: var(--frame);
     border-bottom-width: 0;
@@ -5891,6 +5909,8 @@ html:has(.item3d[open]) {
   /* the shadow a shelf casts on the wall below */
   --case-shade: .18;
   /* the frame's shadow on the inside of a case */
+  --case-blur: 20px;
+  /* ...and how far in it reaches */
   --front-shade: .2;
   /* bottom 1px of the front edge */
   --lip-shade: .06;
@@ -5901,6 +5921,26 @@ html:has(.item3d[open]) {
   --ledge-paint: linear-gradient(to bottom,
         rgb(var(--shelf-top)) 0 45%,
         rgb(var(--shelf-front)) 45% 100%);
+}
+
+/* The case's inner shadow: the frame shading the back wall, along the top
+   and both sides, --case-blur deep. It used to be an inset box-shadow, but
+   an inset shadow paints over the element's own backgrounds, and the
+   ledges are backgrounds, so it darkened the shelves too: the bottom board
+   read darker than the frame (Phil, 2026-11-17). Now it is three gradient
+   bands, one per side, laid under the ledges in each case's layer list.
+   The left band starts at the inner edge of the left panel's strip, where
+   the panel meets the wall; the strip itself is the panel, in its own
+   shade. --case-fall is the inset shadow's falloff (a blur is a gaussian:
+   half strength at the edge, about a third a quarter of the way in, a
+   sixth half way, gone at the end). Declared on each case, not on :root,
+   so its var()s are that case's own (the grid's deeper shade and blur). */
+
+:root[data-style="shelf"] :is(.shelf-grid.grid, .page-heading, .case-card, .shelf-case) {
+  --case-fall: rgb(0 0 0 / calc(var(--case-shade) * .5)) 0,
+                 rgb(0 0 0 / calc(var(--case-shade) * .31)) calc(var(--case-blur) * .25),
+                 rgb(0 0 0 / calc(var(--case-shade) * .16)) calc(var(--case-blur) * .5),
+                 transparent var(--case-blur);
 }
 
 /* Top bar: a wooden header with cream lettering */
@@ -5995,18 +6035,20 @@ html:has(.item3d[open]) {
 
 :root[data-style="shelf"] :is(.page-heading, .case-card) {
   --frame: 8px;
-  --case-run: 10px;
-  /* how far the outside faces go back */
   /* The ledge as on the grid (follow-up, Phil 2026-11-12: "more depth"):
        a top face seen from above, darker at the back, and a front edge with
        a lit line along its top and a shaded one along its bottom. */
   --ledge-top: 10px;
   --ledge-front: 8px;
   --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
-  /* The inside of the left panel, in view from above and to the right:
-       a strip half as wide as the top face is tall, with the top face
-       running back into it on the grid's 1:2 slant. */
-  --side-w: calc(var(--ledge-top) / 2);
+  /* Depth as on the grid: the case is as deep as its ledge, so the
+       outside faces (--case-run) and the inside of the left panel
+       (--side-w) are as wide as the top face is tall, and every one of
+       them goes back at 45 degrees. The var()s are resolved where used,
+       so .case-card's taller ledge carries them along. */
+  --case-run: var(--ledge-top);
+  --side-w: var(--case-run);
+  --side-angle: 45deg;
   position: relative;
   /* Room for the top face, and for the right face inside the page frame,
        as the grid has: a case and the grid beside it end at the same place
@@ -6018,36 +6060,50 @@ html:has(.item3d[open]) {
   border-radius: 0;
   background-color: rgb(var(--shelf-back));
   background-image:
+        /* the case's inner shadow along the top (clear of the ledge, so it
+           can lie over everything) */
+        linear-gradient(to bottom, var(--case-fall)),
         /* front edge: lit arris, then a shaded bottom pixel */
         linear-gradient(to bottom, var(--ledge-lit) 0 var(--ledge-lit-w), transparent var(--ledge-lit-w) calc(100% - 1px),
                         rgb(0 0 0 / var(--front-shade)) calc(100% - 1px)),
         /* top face: darker at the back */
         linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
+        /* the wall darkens toward the shelf, as in the grid; over the left
+           panel too, as there, so the corner shades as one */
+        linear-gradient(to bottom, transparent calc(100% - var(--ledge-h) - 22px),
+                        rgb(0 0 0 / var(--wall-shade)) calc(100% - var(--ledge-h)), transparent 0),
         /* left panel: the top face's wedge, then the strip above it */
-        conic-gradient(from 26.57deg at 0 calc(100% - var(--ledge-front)),
-                       rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
+        conic-gradient(from var(--side-angle) at 0 calc(100% - var(--ledge-front)),
+                       rgb(var(--shelf-top)) 0 calc(90deg - var(--side-angle)), transparent 0),
         linear-gradient(to bottom, rgb(var(--shelf-side)) 0 calc(100% - var(--ledge-front)), transparent 0),
         /* the ledge's two faces */
         linear-gradient(to bottom, rgb(var(--shelf-top)) 0 var(--ledge-top), rgb(var(--shelf-front)) var(--ledge-top)),
-        /* the wall darkens toward the shelf, as in the grid */
-        linear-gradient(to bottom, transparent calc(100% - var(--ledge-h) - 22px),
-                        rgb(0 0 0 / var(--wall-shade)) calc(100% - var(--ledge-h)));
+        /* the inner shadow down both sides, under the ledge, so only the
+           wall darkens (the left one from where the panel meets it) */
+        linear-gradient(to right, var(--case-fall)),
+        linear-gradient(to left, var(--case-fall));
   background-size:
+        100% var(--case-blur),
         100% var(--ledge-front),
         100% var(--ledge-top),
+        100% 100%,
         var(--side-w) 100%,
         var(--side-w) 100%,
         100% var(--ledge-h),
-        100% 100%;
+        var(--case-blur) 100%,
+        var(--case-blur) 100%;
   background-position:
+        0 0,
         bottom,
         0 calc(100% - var(--ledge-front)),
         0 0,
         0 0,
+        0 0,
         bottom,
-        0 0;
+        var(--side-w) 0,
+        100% 0;
   background-repeat: no-repeat;
-  box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
+  box-shadow: var(--sh-lg);
 }
 
 :root[data-style="shelf"] .page-heading {
@@ -6100,11 +6156,14 @@ html:has(.item3d[open]) {
           user-select: none;
 }
 
-/* Flush against the case's sides: the left panel's inside strip, and the
-   frame on the right (Phil, 2026-11-15: "justified to either side, no gap") */
+/* Flush against the case's sides (Phil, 2026-11-15: "justified to either
+   side, no gap"): on the left, against the panel where they stand, which
+   is as far in from the frame as they stand back from the ledge's edge
+   (45 degrees), so they cover the back of the panel's strip as a book
+   would; on the right, the frame. */
 
 :root[data-style="shelf"] .heading-books-left  {
-  left: var(--side-w);
+  left: calc(var(--ledge-top) * .45);
 }
 
 :root[data-style="shelf"] .heading-books-right {
@@ -6615,18 +6674,20 @@ html:root[data-style="outrun"] {
 
 :root[data-style="shelf"] .shelf-case {
   --frame: 8px;
-  --case-run: 10px;
   --ledge-top: 10px;
   --ledge-front: 8px;
   --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
   --row-sink: 4px;
   --row-pad: 1.25rem;
   /* the shelves' text and covers from the case's sides */
-  /* The inside of the left panel, in view from above and to the right
-       (Phil, 2026-11-13: "add more perspective", as the small cases have):
-       a strip down the case's side, each ledge running back into it on the
-       1:2 slant (.shelf-row::after, the heading's plank) */
-  --side-w: calc(var(--ledge-top) / 2);
+  /* Depth as on the grid and the small cases: the outside faces and the
+       inside of the left panel as wide as the ledge's top face is tall,
+       all going back at 45 degrees. The panel's inside (Phil, 2026-11-13:
+       "add more perspective") is a strip down the case's side, each ledge
+       running back into it (.shelf-row::after). */
+  --case-run: var(--ledge-top);
+  --side-w: var(--case-run);
+  --side-angle: 45deg;
   position: relative;
   margin-top: var(--case-run);
   margin-right: var(--case-run);
@@ -6640,10 +6701,17 @@ html:root[data-style="outrun"] {
   border-bottom-width: 0;
   border-radius: 0;
   background-color: rgb(var(--shelf-back));
-  background-image: linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side)));
-  background-size: var(--side-w) 100%;
+  /* The left panel's strip, and the case's inner shadow (top, left,
+       right). The rows' ledges are children, so they lie over all of it. */
+  background-image:
+        linear-gradient(to bottom, var(--case-fall)),
+        linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side))),
+        linear-gradient(to right, var(--case-fall)),
+        linear-gradient(to left, var(--case-fall));
+  background-size: 100% var(--case-blur), var(--side-w) 100%, var(--case-blur) 100%, var(--case-blur) 100%;
+  background-position: 0 0, 0 0, var(--side-w) 0, 100% 0;
   background-repeat: no-repeat;
-  box-shadow: inset 0 0 20px rgb(0 0 0 / var(--case-shade)), var(--sh-lg);
+  box-shadow: var(--sh-lg);
 }
 
 /* the right face runs from the top face down to the last ledge */
@@ -6811,14 +6879,19 @@ html:root[data-style="outrun"] {
   height: calc(var(--shelf-y) + var(--ledge-h));
   /* down to its ledge's foot */
   pointer-events: none;
+  /* The row's own shading carried across the strip, so the plank and
+       the wall read as one into the corner: the top face darker at the
+       back, the wall (and here the panel) darkening toward the ledge. */
   background-image:
-        conic-gradient(from 26.57deg at 0 100%, rgb(var(--shelf-top)) 0 63.43deg, transparent 0),
+        linear-gradient(to bottom, rgb(0 0 0 / var(--top-shade)), transparent),
+        linear-gradient(to bottom, transparent, rgb(0 0 0 / var(--wall-shade))),
+        conic-gradient(from var(--side-angle) at 0 100%, rgb(var(--shelf-top)) 0 calc(90deg - var(--side-angle)), transparent 0),
         linear-gradient(rgb(var(--shelf-side)), rgb(var(--shelf-side))),
         linear-gradient(to bottom, var(--ledge-lit) 0 var(--ledge-lit-w), transparent var(--ledge-lit-w) calc(100% - 1px),
                         rgb(0 0 0 / var(--front-shade)) calc(100% - 1px)),
         linear-gradient(rgb(var(--shelf-front)), rgb(var(--shelf-front)));
-  background-size: 100% var(--ledge-top), 100% calc(100% - var(--ledge-front)), 100% var(--ledge-front), 100% var(--ledge-front);
-  background-position: 0 calc(100% - var(--ledge-front)), 0 0, bottom, bottom;
+  background-size: 100% var(--ledge-top), 100% 26px, 100% var(--ledge-top), 100% calc(100% - var(--ledge-front)), 100% var(--ledge-front), 100% var(--ledge-front);
+  background-position: 0 calc(100% - var(--ledge-front)), 0 calc(100% - var(--ledge-h)), 0 calc(100% - var(--ledge-front)), 0 0, bottom, bottom;
   background-repeat: no-repeat;
 }
 
