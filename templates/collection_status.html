@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 
 {% block title %}{% if is_custom %}{{ collection.name }}{% else %}{{ status_labels[status] }}{% endif %} - libaraxia{% endblock %}
 {% block body_class %}bg-primary-bg min-h-screen{% endblock %}
@@ -15,34 +15,29 @@
         {% else %}
         {{ crumbs([(target_username, url_for('user.profile', username=target_username))], shelf_name) }}
         {% endif %}
-        <!-- Header Section -->
-        <div class="flex flex-col items-center space-y-6 mb-8">
-            <h1 class="text-4xl font-display text-content-primary">
-                {% if is_custom %}
-                    {{ collection.name }}
-                {% elif is_own_profile %}
-                    {{ shelf_name }}
-                {% else %}
-                    {{ target_username }}: {{ shelf_name }}
-                {% endif %}
-            </h1>
-        </div>
+        {# The page's heading card, as on every other page (in Shelf, a small
+           bookcase; no books stand on it) #}
+        {% if is_custom or is_own_profile %}{% set heading_name = shelf_name %}
+        {% else %}{% set heading_name = target_username ~ ': ' ~ shelf_name %}{% endif %}
+        {{ page_heading('collections', heading_name, class='mb-8') }}
         </div>
 
         {% if is_own_profile %}{% include '_bulk_result.html' %}{% endif %}
 
+            {% if books %}
             {# Bulk edit on your own collections; a friend's status page is read-only #}
-            {% set bulk_select = is_own_profile and books|length > 0 %}
+            {% set bulk_select = is_own_profile %}
             {% include '_book_grid.html' %}
             {% if bulk_select %}{% include '_bulk_select.html' %}{% endif %}
-
-            {% if not books %}
-            <div class="page-frame py-16 text-center">
-                <div class="bg-secondary-bg rounded-lg p-8 max-w-md mx-auto card">
-                    <p class="text-content-secondary text-lg italic">
-                        Nothing on this shelf yet.
-                    </p>
-                </div>
+            {% else %}
+            {# Empty: one bare shelf with the note on its back wall, like the
+               Collections page's empty rows (a card everywhere but Shelf;
+               the ledge is hidden there, .shelf-row:empty) #}
+            <div class="page-frame pb-32">
+                <section class="shelf-case bg-secondary rounded-lg p-4 sm:p-8 card">
+                    <p class="shelf-case-note text-content-secondary text-center italic mt-6">Nothing on this shelf yet</p>
+                    <div class="shelf-row mt-4"></div>
+                </section>
             </div>
             {% endif %}
     </main>

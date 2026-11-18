@@ -148,3 +148,21 @@ def test_grid_covers_carry_the_author_for_the_missing_file_fallback(client, db, 
     put(db, people['alice'], title='Gone', author='Nobody', cover='uploads/flaky.jpg')
     login(client, 'alice')
     assert 'alt="Gone" data-author="Nobody"' in client.get('/base/index').get_data(as_text=True)
+
+
+def test_collection_page_heading_and_empty_shelf(client, db, people, shelves):
+    """A collection page has the heading card (a bookcase in Shelf). An empty
+    one is a single bare shelf with its note: no grid, no Select."""
+    login(client, 'alice')
+    full = client.get('/collections/collections/status/read').get_data(as_text=True)
+    assert 'page-heading' in full and 'id="book-container"' in full
+    assert 'shelf-case-note' not in full
+    empty_id = db.execute("INSERT INTO user_collections (user_id, name, media_type) VALUES (?, 'Empty', 'book')",
+                          (people['alice'],)).lastrowid
+    db.commit()
+    for url in ('/collections/collections/status/currently%20reading',
+                f'/collections/collections/{empty_id}/view'):
+        html = client.get(url).get_data(as_text=True)
+        assert 'page-heading' in html, url
+        assert 'shelf-case-note' in html and 'class="shelf-row' in html, url
+        assert 'id="book-container"' not in html and SELECT not in html, url
