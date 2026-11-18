@@ -2105,9 +2105,13 @@ html:has(.item3d[open]) { overflow: hidden; }
     --under-shade: .28;         /* the shadow a shelf casts on the wall below */
     --case-shade: .18;          /* the frame's shadow on the inside of a case */
     --case-blur: 20px;          /* ...and how far in it reaches */
-    --front-shade: .2;          /* bottom 1px of the front edge */
+    /* The front edge is flat wood like the frame's top boards (Phil,
+       2026-11-18): no lit line along its top, no dark line at its foot.
+       Kept as variables, so the video-store rack can still give its
+       shelves a yellow edge. */
+    --front-shade: 0;           /* bottom 1px of the front edge */
     --lip-shade: .06;           /* a case's outside top face, at its front lip */
-    --ledge-lit: rgb(255 255 255 / .2);     /* the lit arris of the front edge */
+    --ledge-lit: transparent;   /* the lit arris of the front edge */
     --ledge-lit-w: 1px;
     --ledge-paint: linear-gradient(to bottom,
         rgb(var(--shelf-top)) 0 45%,
