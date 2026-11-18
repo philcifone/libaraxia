@@ -11311,46 +11311,104 @@ html[data-gr-bar="on"] body {
   }
 }
 
-/* The boot screen (cyberpunk.js sets data-boot once per login): the screen
-   (::before) and the text (::after), typed a line at a time by revealing
-   the box in six steps (it is exactly six lines tall), then the lot fades:
-   1.5 s in all (Phil, 2026-11-18).
-   Over everything but the scanlines; a click anywhere ends it. */
+/* The boot screen (cyberpunk.js, once per login; 5 s, Phil 2026-11-18).
+   data-boot="on": a plain cover from the first paint, until the script has
+   the body. data-boot="run": the screen (.cp-boot) is up and covers the page
+   itself. The script times every piece through custom properties: --d its
+   start, --dur its length, --n its characters. Lines are typed by revealing
+   them a character at a time (VT323 is monospaced, so --n even steps are
+   --n characters); each OK pops in after its dots; the last line ends in a
+   two-character block cursor that blinks; then a flash and a short cut to
+   the app. No fade in: it is simply there. Under the scanlines (70). */
 
-:root[data-style="cyberpunk"][data-boot]::before,
-:root[data-style="cyberpunk"][data-boot]::after {
-  position: fixed;
-  z-index: 65;
-  animation: cp-boot-out .2s ease-in 1.3s forwards;
-}
-
-:root[data-style="cyberpunk"][data-boot]::before {
+:root[data-style="cyberpunk"][data-boot="on"]::before {
   content: "";
+  position: fixed;
   inset: 0;
+  z-index: 65;
   background: rgb(var(--paper));
 }
 
-:root[data-style="cyberpunk"][data-boot]::after {
-  content: "LIBARAXIA // CATALOG TERMINAL\A\A> MOUNTING SHELVES ......... OK\A> INDEXING COLLECTIONS ..... OK\A> LINKING FRIENDS .......... OK\A> READY_";
+.cp-boot {
+  display: none;
+}
+
+:root[data-style="cyberpunk"] .cp-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 66;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 max(1rem, 50vw - 17ch);
+  background: rgb(var(--paper));
+  font: 400 clamp(1.05rem, 4.2vw, 1.6rem) / 1.5 var(--font-body);
+  color: rgb(var(--ink-2));
   white-space: pre;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  font: 400 clamp(1rem, 4vw, 1.5rem) / 1.5 var(--font-body);
-  height: 9em;
-  /* six lines of 1.5 */
+  cursor: default;
+  animation: cp-boot-flash var(--dur) ease-out var(--d),
+               cp-boot-out var(--out-dur) ease-in var(--out) forwards;
+}
+
+:root[data-style="cyberpunk"] .cp-boot-head {
   color: rgb(var(--accent-text));
   text-shadow: -1px 0 rgb(var(--cp-alert) / .5), 1px 0 rgb(var(--blue) / .5);
-  animation: cp-boot-type .9s steps(6, end) both, cp-boot-out .2s ease-in 1.3s forwards;
+}
+
+:root[data-style="cyberpunk"] .cp-boot-type {
+  display: inline-block;
+  animation: cp-boot-type var(--dur) steps(var(--n), end) var(--d) both;
+}
+
+:root[data-style="cyberpunk"] .cp-boot-ok {
+  color: rgb(var(--accent-text));
+  animation: cp-boot-show var(--dur) var(--d) both;
+}
+
+:root[data-style="cyberpunk"] .cp-boot-cursor {
+  display: inline-block;
+  width: 2ch;
+  height: 1em;
+  vertical-align: -.1em;
+  background: rgb(var(--accent));
+  animation: cp-boot-show 1ms var(--d) both,
+               cp-boot-blink .32s steps(1, end) var(--d) infinite;
 }
 
 @keyframes cp-boot-type {
   from {
-    clip-path: inset(0 0 100% 0);
+    clip-path: inset(0 100% 0 0);
   }
 
   to   {
     clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes cp-boot-show {
+  from {
+    visibility: hidden;
+  }
+
+  to   {
+    visibility: visible;
+  }
+}
+
+@keyframes cp-boot-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes cp-boot-flash {
+  0%   {
+    background-color: rgb(var(--accent) / .55);
+    color: rgb(var(--paper));
+  }
+
+  100% {
+    background-color: rgb(var(--paper));
   }
 }
 

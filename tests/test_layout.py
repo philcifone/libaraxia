@@ -1562,8 +1562,13 @@ def test_cyberpunk_boot_screen_once_per_login(client, people):
     assert '<script src="/static/cyberpunk.js"></script>' in head        # not deferred
     js = pathlib.Path('static/cyberpunk.js').read_text()
     assert "prefers-reduced-motion: reduce" in js and 'localStorage' in js and 'catch' in js
+    # Five seconds (Phil, 2026-11-18), the last line ending in the cursor;
+    # the text goes in with textContent, never innerHTML
+    assert 'const END = 5000;' in js and "'> ENTERING LIBARAXIA '" in js and 'cursor: true' in js
+    assert 'innerHTML' not in js
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':root[data-style="cyberpunk"][data-boot]::after' in css
+    assert ':root[data-style="cyberpunk"][data-boot="on"]::before' in css
+    assert '.cp-boot { display: none; }' in css             # only Cyberpunk shows it
     # The CRT layer never catches a click and is off in print
     crt = css[css.index('/* ---- Cyberpunk finishing touches (phase 3)'):]
     assert 'pointer-events: none' in crt and '@media print' in crt
