@@ -11313,14 +11313,15 @@ html[data-gr-bar="on"] body {
 
 /* The boot screen (cyberpunk.js sets data-boot once per login): the screen
    (::before) and the text (::after), typed a line at a time by revealing
-   the box in six steps (it is exactly six lines tall), then the lot fades.
+   the box in six steps (it is exactly six lines tall), then the lot fades:
+   1.5 s in all (Phil, 2026-11-18).
    Over everything but the scanlines; a click anywhere ends it. */
 
 :root[data-style="cyberpunk"][data-boot]::before,
 :root[data-style="cyberpunk"][data-boot]::after {
   position: fixed;
   z-index: 65;
-  animation: cp-boot-out .2s ease-in .8s forwards;
+  animation: cp-boot-out .2s ease-in 1.3s forwards;
 }
 
 :root[data-style="cyberpunk"][data-boot]::before {
@@ -11340,7 +11341,7 @@ html[data-gr-bar="on"] body {
   /* six lines of 1.5 */
   color: rgb(var(--accent-text));
   text-shadow: -1px 0 rgb(var(--cp-alert) / .5), 1px 0 rgb(var(--blue) / .5);
-  animation: cp-boot-type .55s steps(6, end) both, cp-boot-out .2s ease-in .8s forwards;
+  animation: cp-boot-type .9s steps(6, end) both, cp-boot-out .2s ease-in 1.3s forwards;
 }
 
 @keyframes cp-boot-type {

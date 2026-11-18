@@ -33,5 +33,5 @@
     // The screen covers the page, so a skipping click lands on <html>, not a link
     document.addEventListener('pointerdown', done, true);
     document.addEventListener('keydown', done, true);
-    setTimeout(done, 1100);     // the CSS fades it out by then anyway
+    setTimeout(done, 1600);     // the CSS has faded it out by 1.5 s anyway
 })();
