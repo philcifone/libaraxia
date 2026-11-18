@@ -138,6 +138,8 @@
    Two independent settings on <html>, saved per user (Profile → Appearance):
      data-style = house (Gruvbox, square, bold lines) | classic (the original look)
                 | outrun (80s neon, dark only: the Mode setting is ignored)
+                | cyberpunk (a HUD fork of Outrun: its fonts, dark only, a
+                  small Gruvbox CRT palette, thin lines and cut corners)
                 | shelf (iBooks-style bookcase; House colours for now)
      data-mode  = system (follow the OS) | light | dark
    Colours are RGB channels so Tailwind alpha modifiers (bg-accent/20) work.
@@ -221,6 +223,32 @@
         --outline-edge: rgb(var(--accent) / .85);
     }
 
+    /* Cyberpunk (forked from Outrun, Phil 2026-11-18): Outrun's fonts, fixed
+       (the Font choice doesn't apply), square, no glows: thin solid lines.
+       The cut corners and the lines that follow them are the "Cyberpunk"
+       section after "Outrun effects"; these are the plain-shape fallbacks. */
+    :root[data-style="cyberpunk"] {
+        --font-body: "VT323", ui-monospace, monospace;
+        --font-display: "Audiowide", system-ui, sans-serif;
+        --font-title: var(--font-display);
+        --r-sm: 0; --r: 0; --r-md: 0; --r-lg: 0; --r-xl: 0; --r-2xl: 0; --r-3xl: 0; --r-pill: 0;
+        --sh-sm: none; --sh: none; --sh-md: none; --sh-lg: none; --sh-xl: none; --sh-2xl: none; --sh-inner: none;
+        --sh-hard: none;
+        --card-border: rgb(var(--accent) / .7);
+        --bw-card: 1px;
+        --bw-btn: 1px;
+        --card-edge: rgb(var(--accent) / .7);
+        --card-edge-nested: rgb(var(--rule));
+        --sh-card: none;
+        --sh-card-hover: none;
+        --card-press: none;
+        --sh-btn: none;
+        --sh-btn-hover: none;
+        --btn-press: none;
+        --bw-outline: 1px;
+        --outline-edge: rgb(var(--accent) / .7);
+    }
+
     /* Shelf (ROADMAP 10.1, light pass): soft and rounded like the iBooks
        shelf, with House's accents on its own parchment and walnut neutrals.
        The bookcase itself is at the end of this file; its wood is the flat
@@ -278,27 +306,28 @@
 
     /* ---- Font choice (Profile -> Appearance -> Font; users.font, data-font).
        "theme" (no block) keeps the style's own fonts. A choice sets body,
-       headings and page titles alike, in every style but Outrun (its fonts
-       are fixed; the picker hides there); it comes after the style blocks. ---- */
-    :root[data-font="baskerville"]:not([data-style="outrun"]) {
+       headings and page titles alike, in every style but Outrun and
+       Cyberpunk (their fonts are fixed; the picker hides there); it comes
+       after the style blocks. ---- */
+    :root[data-font="baskerville"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "Libre Baskerville", Georgia, serif;
         --font-display: "Libre Baskerville", Georgia, serif;
         --font-title: var(--font-display);
     }
     /* Garamond's small x-height reads a size smaller than the rest at the
        same font-size; font-size-adjust scales it to match. */
-    :root[data-font="garamond"]:not([data-style="outrun"]) {
+    :root[data-font="garamond"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "EB Garamond Variable", Garamond, Georgia, serif;
         --font-display: "EB Garamond Variable", Garamond, Georgia, serif;
         --font-title: var(--font-display);
         font-size-adjust: .44;   /* about Literata's size; .5 overshot */
     }
-    :root[data-font="literata"]:not([data-style="outrun"]) {
+    :root[data-font="literata"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "Literata Variable", Georgia, serif;
         --font-display: "Literata Variable", Georgia, serif;
         --font-title: var(--font-display);
     }
-    :root[data-font="jost"]:not([data-style="outrun"]) {
+    :root[data-font="jost"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "Jost Variable", "Futura", system-ui, sans-serif;
         --font-display: "Jost Variable", "Futura", system-ui, sans-serif;
         --font-title: var(--font-display);
@@ -317,13 +346,13 @@
        Contrast (WCAG): every shade is >= 4.5:1 behind its
        --on-accent text; as text on --surface, all >= 4.5 except light green
        (4.16, the original) and dark red (4.29). ---- */
-    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; --acc-t: 142 192 124; --acc-t-hover: 176 211 163; --acc-n: 5 217 232; }
-    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; --acc-t: 162 188 178; --acc-t-hover: 190 208 201; --acc-n: 92 148 255; }
-    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; --acc-t: 222 164 180; --acc-t-hover: 232 191 202; --acc-n: 190 110 255; }
-    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; --acc-t: 254 160 82; --acc-t-hover: 254 188 134; --acc-n: 255 158 0; }
-    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; --acc-t: 253 148 136; --acc-t-hover: 254 180 172; --acc-n: 255 56 120; }
-    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; --acc-t: 250 189 47; --acc-t-hover: 252 209 109; --acc-n: 255 230 0; }
-    [data-swatch="green"] { --acc-l: 121 116 14; --acc-d: 152 151 26; --acc-n: 57 255 140; }
+    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; --acc-t: 142 192 124; --acc-t-hover: 176 211 163; --acc-n: 5 217 232; --acc-c: 142 192 124; --acc-ch: 176 211 163; }
+    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; --acc-t: 162 188 178; --acc-t-hover: 190 208 201; --acc-n: 92 148 255; --acc-c: 131 165 152; --acc-ch: 162 188 178; }
+    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; --acc-t: 222 164 180; --acc-t-hover: 232 191 202; --acc-n: 190 110 255; --acc-c: 211 134 155; --acc-ch: 222 164 180; }
+    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; --acc-t: 254 160 82; --acc-t-hover: 254 188 134; --acc-n: 255 158 0; --acc-c: 254 128 25; --acc-ch: 254 160 82; }
+    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; --acc-t: 253 148 136; --acc-t-hover: 254 180 172; --acc-n: 255 56 120; --acc-c: 251 73 52; --acc-ch: 252 118 103; }
+    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; --acc-t: 250 189 47; --acc-t-hover: 252 209 109; --acc-n: 255 230 0; --acc-c: 250 189 47; --acc-ch: 252 209 109; }
+    [data-swatch="green"] { --acc-l: 121 116 14; --acc-d: 152 151 26; --acc-n: 57 255 140; --acc-c: 184 187 38; --acc-ch: 208 210 110; }
 
     /* Accent as text (text-accent, tailwind.config.js textColor). The same
        colour as the accent everywhere except OG dark, whose greys need the
@@ -346,6 +375,10 @@
        red the classic Outrun hot pink. All >= 5:1 as text on the darks and
        behind the dark --on-accent text. */
     :root[data-style="outrun"] .accent-swatch { background: rgb(var(--acc-n, 57 255 140)); }
+    /* Cyberpunk: every accent's Gruvbox bright shade (--acc-c), the old CRT
+       phosphor colours, with a paler hover (--acc-ch). All >= 5:1 as text on
+       its near-blacks and behind its near-black --on-accent text. */
+    :root[data-style="cyberpunk"] .accent-swatch { background: rgb(var(--acc-c, 184 187 38)); }
 
     /* ---- House palette (Gruvbox). Light is the default for any style-less page. ---- */
 
@@ -548,6 +581,47 @@
         --neon-pink: 255 42 109;    /* #ff2a6d */
         --neon-cyan: 5 217 232;     /* #05d9e8 */
         --neon-orange: 255 158 0;   /* #ff9e00 */
+    }
+
+    /* ---- Cyberpunk palette: dark only, the same html:root trick as
+       Outrun. Gruvbox's neutrals pushed toward black, its bright colours for
+       text, accents and statuses. A small palette on purpose: the chosen
+       accent for lines and highlights, one alert colour (--cp-alert) for the
+       second highlight, cream ink, and a dim grey (--cp-dim) for inactive
+       things (the reference's greyed-out "waiting" items). ---- */
+    html:root[data-style="cyberpunk"] {
+        color-scheme: dark;
+        --paper: 15 17 18;          /* #0f1112 */
+        --surface: 21 24 26;        /* #15181a */
+        --fill: 29 32 33;           /* #1d2021 */
+        --rule: 60 56 54;           /* #3c3836 */
+        --rule-strong: 102 92 84;   /* #665c54 */
+        --accent: var(--acc-c, 184 187 38);         /* #b8bb26, or the chosen accent's bright shade */
+        --accent-hover: var(--acc-ch, 208 210 110);
+        --accent-text: var(--accent);
+        --accent-text-hover: var(--accent-hover);
+        --chart-bar: var(--accent);
+        --on-accent: 15 17 18;      /* #0f1112 */
+        --ink: 235 219 178;         /* #ebdbb2 */
+        --ink-2: 213 196 161;       /* #d5c4a1 */
+        --muted: 168 153 132;       /* #a89984 */
+        --faint: 146 131 116;       /* #928374: 5.3:1 on --surface */
+        --red: 251 73 52;           /* #fb4934 */
+        --red-strong: 251 73 52;
+        --yellow: 250 189 47;       /* #fabd2f */
+        --green: 184 187 38;        /* #b8bb26 */
+        --blue: 131 165 152;        /* #83a598 */
+        --blue-strong: 131 165 152;
+        --orange: 254 128 25;       /* #fe8019 */
+        --purple: 211 134 155;      /* #d3869b */
+        --black: 0 0 0;
+        /* The fixed parts of the look, whatever the accent */
+        --cp-alert: 254 128 25;     /* #fe8019, Gruvbox bright orange */
+        --cp-dim: 80 73 69;         /* #504945 */
+    }
+    /* The alert colour never sits next to an accent of its own family */
+    html:root[data-style="cyberpunk"]:is([data-accent="orange"], [data-accent="red"], [data-accent="yellow"]) {
+        --cp-alert: 142 192 124;    /* #8ec07c, Gruvbox bright aqua */
     }
 
     /* ---- Shelf palette: parchment and maple in light, walnut in dark. The
@@ -868,10 +942,10 @@
     }
 
     /* ---- Avatars (every profile picture and initial, in templates and
-       JS-built HTML): round, but square in Negative Earth and Outrun, which
+       JS-built HTML): round, but square in Negative Earth, Outrun and Cyberpunk, which
        square everything (Phil, 2026-11-15) ---- */
     .avatar { border-radius: 9999px; }
-    :root:is([data-style="house"], [data-style="outrun"]) .avatar { border-radius: 0; }
+    :root:is([data-style="house"], [data-style="outrun"], [data-style="cyberpunk"]) .avatar { border-radius: 0; }
 
     /* ---- Small details from philcifone.com / negativeearth.net (House only) ---- */
 
@@ -1293,10 +1367,12 @@
         box-shadow: 0 0 0 2px rgb(var(--paper)), 0 0 12px 3px rgb(var(--accent) / .8);
     }
 
-    /* Dark only: the Mode pickers have nothing to do, so they say so */
+    /* Dark only: the Mode pickers have nothing to do, so they say so
+       (Cyberpunk too: dark only, fixed fonts) */
     :root[data-style="outrun"] :is([data-mode-picker], [data-font-picker]) { display: none; }
+    :root[data-style="cyberpunk"] :is([data-mode-picker], [data-font-picker]) { display: none; }
     [data-outrun-note] { display: none; }
-    :root[data-style="outrun"] [data-outrun-note] { display: block; }
+    :root:is([data-style="outrun"], [data-style="cyberpunk"]) [data-outrun-note] { display: block; }
 }
 
 @layer utilities {
@@ -3331,7 +3407,7 @@ html:has(.item3d[open]) { overflow: hidden; }
    hover:bg-primary and data-[active=true]:border-accent. */
 :root { --tab-recess: rgb(var(--fill)); --tab-sink: none; }
 :root[data-mode="dark"],
-html:root[data-style="outrun"] { --tab-recess: rgb(var(--paper)); }
+html:root:is([data-style="outrun"], [data-style="cyberpunk"]) { --tab-recess: rgb(var(--paper)); }
 :root[data-style="classic"]:not([data-palette="walnut"])[data-mode="dark"] {
     --tab-recess: color-mix(in srgb, rgb(var(--surface)), black 30%);
 }
@@ -4834,3 +4910,24 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
 }
 /* Shelf: the magnifier stays a round glass */
 :root[data-style="shelf"] .crop-loupe { border-radius: 50%; }
+
+/* ==== Cyberpunk (forked from Outrun, Phil 2026-11-18) ====
+   A sci-fi HUD after Phil's reference: no sky, grid, sunset or glow; a flat
+   near-black screen, thin lines in the accent, titles in Audiowide capitals.
+   Its tokens are in Themes (shape block, palette). Unlayered and at the end,
+   so these beat the Tailwind utilities (border-rule, bg-...) on the same
+   elements, as the Shelf blocks above do. */
+:root[data-style="cyberpunk"] .topbar {
+    border-bottom: 1px solid rgb(var(--accent) / .7);
+}
+:root[data-style="cyberpunk"] :is(.site-title, .page-title) {
+    font-family: var(--font-title);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: rgb(var(--accent-text));
+}
+:root[data-style="cyberpunk"] :is(h2, h3).font-display {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}

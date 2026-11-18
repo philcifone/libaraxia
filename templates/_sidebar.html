@@ -61,7 +61,7 @@
                    class="sidebar-icon {{ 'is-active' if request.endpoint == 'user.settings' or request.path.startswith('/admin') }}">
                     {{ icon('settings') }}
                 </a>
-                {# data-mode-picker: hidden in Outrun, which is dark only #}
+                {# data-mode-picker: hidden in Outrun and Cyberpunk, which are dark only #}
                 <button type="button" class="sidebar-icon" data-mode-toggle data-mode-picker
                         title="Light or dark mode" aria-label="Switch between light and dark mode">
                     <span class="mode-icon-moon">{{ icon('moon') }}</span>
@@ -78,7 +78,7 @@
             {# Cyclers (14c): each click moves to the next style, accent or
                font and saves it, like Settings -> Account -> Appearance
                (sidebar.js). data-cycle-values / -names are the choices in
-               order. The font one is hidden in Outrun, which has its own
+               order. The font one is hidden in Outrun and Cyberpunk, which have their own
                fonts. Hidden until the toggle above opens the row. #}
             <div id="sidebar-cyclers" class="sidebar-icons flex items-center justify-center gap-3" hidden>
                 {% for kind, icon_name, what, choices, extra in [

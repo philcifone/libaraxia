@@ -609,6 +609,31 @@ def test_outrun_style_is_dark_only_with_neon_accents(client, db, people):
         assert (d / file).is_file() and (d / 'OFL.txt').is_file(), font
 
 
+def test_cyberpunk_style_is_dark_only_with_outruns_fonts(client, db, people):
+    """Cyberpunk (forked from Outrun, Phil 2026-11-18): selectable, dark only
+    with Outrun's fixed fonts (Mode and Font pickers hidden, the same note),
+    every accent's Gruvbox bright shade, and none of Outrun's scenery."""
+    login(client, 'alice')
+    assert client.post('/user/update_theme', json={'style': 'cyberpunk'}).status_code == 200
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-style="cyberpunk"' in page and 'data-outrun-note' in page
+
+    css = pathlib.Path('static/styles.css').read_text()
+    assert 'html:root[data-style="cyberpunk"] {' in css          # outranks House dark blocks
+    for key in ('baskerville', 'garamond', 'literata', 'jost'):
+        assert f':root[data-font="{key}"]:not([data-style="outrun"]):not([data-style="cyberpunk"])' in css
+    assert ':root[data-style="cyberpunk"] :is([data-mode-picker], [data-font-picker])' in css
+    assert ':root:is([data-style="outrun"], [data-style="cyberpunk"]) [data-outrun-note]' in css
+    for name in ('aqua', 'blue', 'purple', 'orange', 'red', 'yellow', 'green'):
+        rule = re.search(r'\[data-swatch="' + name + r'"\]\s*\{([^}]*)\}', css).group(1)
+        assert '--acc-c:' in rule and '--acc-ch:' in rule, name
+    cyber = re.search(r'html:root\[data-style="cyberpunk"\] \{([^}]*)\}', css).group(1)
+    assert '--accent: var(--acc-c,' in cyber and '--cp-alert:' in cyber
+    # Outrun's look stays Outrun's: no sky, grid, sunset or neon in Cyberpunk
+    assert '--neon-' not in cyber
+    assert not re.search(r'data-style="cyberpunk"\][^{]*body::(before|after)[^{]*\{[^}]*perspective', css)
+
+
 def test_shelf_style_bookcase(client, db, people):
     """Shelf (10.1 light pass): selectable in both modes, and the bookcase's
     ledge gradient uses the same numbers as the rows it sits under."""
@@ -1452,11 +1477,12 @@ def test_tabs_are_raised_and_recessed_in_every_style():
     assert '[data-style="classic"] .tab-active' not in css
 
 
-def test_avatars_are_square_in_negative_earth_and_outrun():
-    """Every avatar is .avatar: round, square in Negative Earth and Outrun
-    (Phil, 2026-11-15). No avatar keeps a bare rounded-full, which would stay round."""
+def test_avatars_are_square_in_negative_earth_outrun_and_cyberpunk():
+    """Every avatar is .avatar: round, square in Negative Earth, Outrun and
+    Cyberpunk (Phil, 2026-11-15). No avatar keeps a bare rounded-full, which would stay round."""
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':root:is([data-style="house"], [data-style="outrun"]) .avatar { border-radius: 0; }' in css
+    assert (':root:is([data-style="house"], [data-style="outrun"], [data-style="cyberpunk"])'
+            ' .avatar { border-radius: 0; }') in css
     for path in list(pathlib.Path('templates').rglob('*.html')) + list(pathlib.Path('static').glob('*.js')):
         for line in path.read_text().splitlines():
             if 'rounded-full' in line:
