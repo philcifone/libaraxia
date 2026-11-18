@@ -21,11 +21,18 @@
 {% else %}
 {% set placeholder = 'Search ' ~ whose ~ ' ' ~ plural %}
 {% endif %}
-<div class="search-form-container page-frame pb-4 {{ 'pt-20' if top_padding }}">
+{# cabinet-part: a row of the catalog cabinet in the Shelf style (styles.css
+   "Catalog cabinet"); cabinet-end when nothing comes after it (no grid, so
+   no view bar, and no off-shelf hint) #}
+{# filters_below: in the Shelf style's catalog cabinet over a grid, the
+   filter button and its panel are at the end of the view bar (_view_bar.html
+   works it out the same way), and the box takes the whole row #}
+{% set filters_below = cabinet|default(false) and theme_style == 'shelf' and books %}
+<div class="search-form-container page-frame pb-4 {{ 'pt-20' if top_padding }}{{ ' cabinet-part' if cabinet|default(false) }}{{ ' cabinet-end' if cabinet|default(false) and not books and not off_shelf and not on_wishlist }}">
   <div class="relative z-30">
     <div class="grid grid-cols-4 gap-2">
         <!-- Search -->
-        <form method="GET" action="{{ search_action or request.path }}" class="col-span-3"
+        <form method="GET" action="{{ search_action or request.path }}" class="{{ 'col-span-4' if filters_below else 'col-span-3' }}"
               role="search" data-submit="showLoading" data-loading="Searching...">
             {# A new search keeps everything else in view: filters, sort, view
                and household members (16.0), as filtering keeps the search #}
@@ -52,202 +59,10 @@
             </div>
         </form>
 
-        <!-- Filter toggle: the funnel, how many filters are on, the arrow -->
-        <button data-click="toggleFilters" id="filter-toggle"
-                type="button" aria-label="Filters" aria-expanded="false" aria-controls="filter-panel"
-                class="col-span-1 px-2 py-2.5 flex items-center justify-center gap-3 bg-secondary-bg border border-rule-strong rounded-lg
-                       text-content-primary hover:bg-primary-hover group">
-            {# The count sits on the funnel's corner, so icon, count and arrow
-               fit a phone's quarter width #}
-            <span class="relative">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                <span id="filter-count-badge" class="hidden absolute -top-2 -right-3 min-w-[1.1rem] px-1 bg-accent text-on-accent text-[10px] leading-4 text-center rounded-pill"></span>
-            </span>
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 class="h-5 w-5 transform transition-transform duration-200 group-hover:text-accent"
-                 id="filterArrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-        </button>
+        {% if not filters_below %}{% include '_filter_toggle.html' %}{% endif %}
     </div>
 
-    <!-- Filter panel: drops down from the row, over the grid. Taller than a
-         phone screen, it scrolls inside. -->
-    <div class="absolute left-0 right-0 top-full mt-2 bg-secondary-bg rounded-lg card
-                max-h-[70vh] overflow-y-auto hidden" id="filter-panel">
-            {# Filters apply to the page you're on (library, shared library or
-               search results), keeping its search term, member and sort. #}
-            <form id="filter-form" method="GET" action="{{ request.path }}" class="p-4 space-y-4">
-                {% for key in request.args %}
-                {% if key in ('search_term', 'member', 'sort_by', 'sort_order', 'view') %}
-                {% for value in request.args.getlist(key) %}
-                <input type="hidden" name="{{ key }}" value="{{ value }}">
-                {% endfor %}
-                {% endif %}
-                {% endfor %}
-
-                <!-- Filter Groups Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <!-- Genre Filter -->
-                    <div class="space-y-2">
-                        <label for="genre" class="block text-sm font-medium text-content-secondary">Genre</label>
-                        <select name="genre" id="genre"
-                                data-change="filtersChanged"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                            <option value="">All Genres</option>
-                            {% for genre in filter_options.genres %}
-                            <option value="{{ genre }}" {% if request.args.get('genre')==genre %}selected{% endif %}>
-                                {{ genre }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    {% if filter_options.formats %}
-                    <!-- Format Filter (Movies, Vinyls) -->
-                    <div class="space-y-2">
-                        <label for="format" class="block text-sm font-medium text-content-secondary">Format</label>
-                        <select name="format" id="format"
-                                data-change="filtersChanged"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                            <option value="">All Formats</option>
-                            {% for f in filter_options.formats %}
-                            <option value="{{ f }}" {% if request.args.get('format') == f %}selected{% endif %}>{{ f|format_label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    {% endif %}
-
-                    {% if filter_options.kinds %}
-                    <!-- Kind Filter (Movies & TV, 15.1): only once the shelf has both -->
-                    <div class="space-y-2">
-                        <label for="kind" class="block text-sm font-medium text-content-secondary">Kind</label>
-                        <select name="kind" id="kind"
-                                data-change="filtersChanged"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                            <option value="">Movies and TV</option>
-                            {% for k in filter_options.kinds %}
-                            <option value="{{ k }}" {% if request.args.get('kind') == k %}selected{% endif %}>{{ 'Movies' if k == 'movie' else 'TV' }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    {% endif %}
-
-                    <!-- Status Filter -->
-                    <div class="space-y-2">
-                        <label for="read_status" class="block text-sm font-medium text-content-secondary">{{ m.status_label if m else 'Read Status' }}</label>
-                        <select name="read_status" id="read_status"
-                                data-change="filtersChanged"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                            <option value="">All Statuses</option>
-                            {% for status in filter_options.read_statuses %}
-                            <option value="{{ status }}" {% if request.args.get('read_status')==status %}selected{% endif %}>
-                                {{ STATUS_LABELS.get(status, status) }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- Rating Filter -->
-                    <div class="space-y-2">
-                        <label for="rating" class="block text-sm font-medium text-content-secondary">Minimum Rating</label>
-                        <select name="rating" id="rating"
-                                data-change="filtersChanged"
-                                class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                                       focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                            <option value="">All Ratings</option>
-                            {% for rating in range(1, 6) %}
-                            <option value="{{ rating }}" {% if request.args.get('rating')|int == rating %}selected{% endif %}>
-                                {{ "★" * rating }} and up
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Show (8B.3): what's on the shelf by default; unshelved (read,
-                     watched, listened to but never had) and removed (had it, it
-                     left) only when asked for, and badged on the cards -->
-                {% set show = show_choice(request.args) %}
-                <div class="space-y-2 md:w-1/2 lg:w-1/4">
-                    <label for="show" class="block text-sm font-medium text-content-secondary">Show</label>
-                    <select name="show" id="show"
-                            data-change="filtersChanged"
-                            class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
-                                   focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                        {% for value, label in SHOW_CHOICES %}
-                        <option value="{{ value }}" {% if show == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                {# From Goodreads (ROADMAP 14b): books your Goodreads imports matched or
-                   added, owned or not. Books only, and not on a friend's shelf (it is
-                   always your own imports, utils/grid_query.from_goodreads). #}
-                {% if not m and not friend %}
-                <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">
-                    <input type="checkbox" name="from" value="goodreads" id="from_goodreads"
-                           data-change="filtersChanged"
-                           {% if request.args.get('from') == 'goodreads' %}checked{% endif %}
-                           class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
-                    From Goodreads
-                    <span class="text-content-secondary">(combine with Show: Everything to include unshelved books)</span>
-                </label>
-                {# One Goodreads shelf (14c), from the Collections page's card: untick to drop it #}
-                {% if request.args.get('gr_shelf') %}
-                <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">
-                    <input type="checkbox" name="gr_shelf" value="{{ request.args.get('gr_shelf') }}" id="gr_shelf"
-                           data-change="filtersChanged" checked
-                           class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
-                    On the Goodreads shelf "{{ request.args.get('gr_shelf') }}"
-                </label>
-                {% endif %}
-                {% endif %}
-
-                <!-- Tags Section -->
-                {% if filter_options.tags %}
-                <div class="space-y-2">
-                    <label class="block text-sm font-medium text-content-secondary">Tags</label>
-                    <div class="max-h-32 overflow-y-auto p-3 bg-primary-bg rounded-lg border border-gray-600">
-                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                            {% for tag in filter_options.tags %}
-                            <label class="inline-flex items-center space-x-2 cursor-pointer hover:text-accent transition-colors">
-                                <input type="checkbox"
-                                       name="tags[]"
-                                       value="{{ tag }}"
-                                       data-change="filtersChanged"
-                                       {% if tag in request.args.getlist('tags[]') %}checked{% endif %}
-                                       class="form-checkbox text-accent rounded border-rule-strong
-                                              focus:ring-accent focus:ring-offset-0 cursor-pointer">
-                                <span class="text-content-primary text-sm">{{ tag }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Filter Actions -->
-                <div class="flex justify-end gap-3 pt-2 border-t border-gray-700">
-                    <button type="button"
-                            data-click="clearFilters"
-                            class="px-4 py-2 text-content-primary bg-primary-bg hover:bg-primary-hover rounded-lg font-medium btn btn-outline">
-                        Clear Filters
-                    </button>
-                    <button type="submit" id="apply-filters"
-                            data-click="showLoading" data-loading="Applying filters..."
-                            class="px-6 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg font-medium btn">
-                        Apply Filters
-                    </button>
-                </div>
-            </form>
-    </div>
+    {% if not filters_below %}{% include '_filter_panel.html' %}{% endif %}
   </div>
 
     {# Searched or filtered: the placeholder can't carry the count, so the matches are counted here #}

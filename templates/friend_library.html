@@ -8,17 +8,20 @@
 {% block body_class %}bg-primary text-content-primary{% endblock %}
 
 {% block content %}
+    {# The tabs, search and view bar are one catalog cabinet in the Shelf
+       style, so the friend's links go above the tabs (shelf_header's call) #}
+    {% set cabinet = true %}
     {% from '_shelves.html' import shelf_header %}
-    {{ shelf_header('book', 'friend', friend.username) }}
-
+    {% call shelf_header('book', 'friend', friend.username) %}
     <div class="page-frame">
-        <p class="mb-4 text-sm text-content-secondary">
+        <p class="cabinet-caption mb-4 text-sm text-content-secondary">
             <a href="{{ url_for('user.profile', username=friend.username) }}" class="text-accent hover:text-accent-hover underline">{{ friend.username }}'s profile</a>
             ·
             <a href="{{ url_for('wishlist.view_user_wishlist', username=friend.username) }}" class="text-accent hover:text-accent-hover underline">wishlist</a>
             · filters and sorts use {{ friend.username }}'s statuses and ratings
         </p>
     </div>
+    {% endcall %}
 
     {% set whose = friend.username ~ "'s" %}
     {% with search_action=request.path %}{% include '_search_sort_filter.html' %}{% endwith %}

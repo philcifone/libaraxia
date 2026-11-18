@@ -16,6 +16,24 @@ def _iso(day):
     deprecated since Python 3.12, so convert explicitly."""
     return day.isoformat() if day else None
 
+
+def finish_offer(sessions):
+    """Just marked Read / Watched / Listened (?finished=1): the session form
+    to open, with today as the finished date, so the item counts toward
+    this year's goal with one tap (ROADMAP 12.3). Since 2026-11-18 that's
+    on the item page itself (Phil: the status no longer sends you to the
+    review page); the review page still honours ?finished=1. An open
+    session (started, not finished) is the one to finish; None when a
+    session already finished today."""
+    today = date.today().isoformat()
+    if any(s['date_completed'] == today for s in sessions):
+        return None
+    open_session = next((s for s in sessions if s['date_started'] and not s['date_completed']), None)
+    if open_session:
+        return {'mode': 'edit', 'session_id': open_session['session_id'],
+                'started': open_session['date_started'], 'completed': today}
+    return {'mode': 'add', 'session_id': '', 'started': '', 'completed': today}
+
 @read_blueprint.route('/rate_review/<int:book_id>', methods=['GET', 'POST'])
 @login_required
 def rate_review(book_id):
@@ -132,20 +150,7 @@ def rate_review(book_id):
     '''
     sessions = conn.execute(sessions_query, (current_user.id, book_id)).fetchall()
 
-    # Just marked Read / Watched / Listened (?finished=1, from the status
-    # menu): open the session form with today as the finished date, so the
-    # book counts toward this year's goal with one tap (ROADMAP 12.3). An
-    # open session (started, not finished) is the one to finish; nothing is
-    # offered when a session already finished today.
-    prefill = None
-    if request.args.get('finished'):
-        today = date.today().isoformat()
-        if not any(s['date_completed'] == today for s in sessions):
-            open_session = next((s for s in sessions if s['date_started'] and not s['date_completed']), None)
-            prefill = ({'mode': 'edit', 'session_id': open_session['session_id'],
-                        'started': open_session['date_started'], 'completed': today}
-                       if open_session else
-                       {'mode': 'add', 'session_id': '', 'started': '', 'completed': today})
+    prefill = finish_offer(sessions) if request.args.get('finished') else None
 
 
     # Convert book data to the format you use (e.g., book[1])

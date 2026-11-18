@@ -342,11 +342,15 @@ def test_strangers_see_nothing(client, db, people):
 
 # --- watch status, reviews, feed --------------------------------------------
 
-def test_watched_status_goes_to_review(client, db, people):
+def test_watched_status_stays_on_the_item(client, db, people):
+    # Not the review page any more (Phil, 2026-11-18): back where you were,
+    # on the History, offering today as the finished date
     video = add_video(db, people['alice'])
     login(client, 'alice')
-    r = client.post('/collections/collections/status/add', data={'id': video, 'status': 'watched'})
-    assert r.status_code == 302 and f'/read/rate_review/{video}' in r.headers['Location']
+    r = client.post('/collections/collections/status/add', data={'id': video, 'status': 'watched'},
+                    headers={'Referer': f'http://localhost/videos/{video}'})
+    assert r.status_code == 302 and 'rate_review' not in r.headers['Location']
+    assert r.headers['Location'].endswith(f'/videos/{video}?finished=1#item-history')
     assert scalar(db, 'SELECT status FROM collections WHERE book_id = ?', video) == 'watched'
 
 

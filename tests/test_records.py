@@ -218,7 +218,7 @@ def test_listen_statuses(client, db, people):
                 headers={'Referer': '/records/'})
     assert scalar(db, 'SELECT COUNT(*) FROM collections') == 0
     r = client.post('/collections/collections/status/add', data={'id': record, 'status': 'listened'})
-    assert r.status_code == 302 and f'/read/rate_review/{record}' in r.headers['Location']
+    assert r.status_code == 302 and 'rate_review' not in r.headers['Location']     # stays on the item
     assert scalar(db, 'SELECT status FROM collections WHERE book_id = ?', record) == 'listened'
 
 

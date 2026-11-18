@@ -281,6 +281,9 @@ def create_app():
     app.add_template_global(condition_grades.sleeve_grades, 'sleeve_grade_list')
     app.add_template_global(money.currency, 'value_currency')
     app.add_template_filter(money.show, 'money')
+    # A library date stamp, "NOV 13 2026" (the paper cards, Shelf style)
+    from utils import catalog_card
+    app.add_template_filter(catalog_card.stamp_date, 'stamp_date')
     from utils import valuation
     app.add_template_global(lambda: valuation.discogs_enabled() or valuation.ebay_enabled(),
                             'value_sources_ready')

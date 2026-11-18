@@ -293,7 +293,9 @@ function idFromHref(href) {
         const btn = $('bulk-select-btn');
         if (!btn) return;
         btn.setAttribute('aria-pressed', String(selecting));
-        btn.querySelector('[data-bulk-label]').textContent = selecting ? 'Done' : 'Select';
+        // Its idle word is the template's: Select, or Batch in the Shelf cabinet
+        const label = btn.querySelector('[data-bulk-label]');
+        label.textContent = selecting ? 'Done' : (label.dataset.idle || 'Select');
         btn.setAttribute('aria-label', selecting ? 'Done selecting' : 'Select');
     }
 
@@ -1083,7 +1085,8 @@ function idFromHref(href) {
         bulkChange: goBack,
         bulkCancel: closeSheet,
         bulkUndo: undoEdit,
-        bulkDismiss: el => el.closest('[data-bulk-banner]')?.remove(),
+        // The whole notice, its frame too (in the Shelf cabinet the frame is a band of wood)
+        bulkDismiss: el => (el.closest('[data-bulk-result]') ?? el.closest('[data-bulk-banner]'))?.remove(),
     });
 
     document.addEventListener('DOMContentLoaded', () => {

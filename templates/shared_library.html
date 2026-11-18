@@ -7,6 +7,8 @@
     <!-- Floating Add Button -->
     {% with fab_items=[('Library', url_for('books.add_book')), ('Wishlist', url_for('wishlist.add_to_wishlist', type='book'))] %}{% include '_add_fab.html' %}{% endwith %}
 
+    {# The tabs, search and view bar are one catalog cabinet in the Shelf style #}
+    {% set cabinet = true %}
     {% from '_shelves.html' import shelf_header %}
     {% call shelf_header('book', 'shared', heading_books=heading_books) %}{% include '_household_members.html' %}{% endcall %}
 

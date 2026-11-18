@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 from flask import abort, current_app, Blueprint, request, redirect, url_for, flash, render_template, g, jsonify, session
 from utils.database import get_db
@@ -23,6 +24,16 @@ def _back(fallback=None):
     if anchor in ITEM_ANCHORS:
         url = url.split('#')[0] + '#' + anchor
     return redirect(url)
+
+def _back_finished():
+    """_back() for an item just marked done: the same page with ?finished=1,
+    at its History (#item-history), where the item page offers today as
+    the finished date."""
+    url = (request.referrer or url_for('base.index')).split('#')[0]
+    parts = urlsplit(url)
+    query = [(k, v) for k, v in parse_qsl(parts.query) if k != 'finished'] + [('finished', '1')]
+    return redirect(urlunsplit(parts._replace(query=urlencode(query), fragment='item-history')))
+
 
 # The Collections page's tabs (?type=), in order: Books, Movies, Music
 TABS = (media.BOOK, media.VIDEO, media.RECORD)
@@ -316,9 +327,11 @@ def add_to_status_collection():
         conn.commit()
         flash('Collection updated successfully!', 'success')
         
-        if status == media.DONE_STATUS[media_type]:   # 'read' / 'watched'
-            # finished=1: the review page offers today as the finished date (12.3)
-            return redirect(url_for('read.rate_review', book_id=book_id, finished=1))
+        if status == media.DONE_STATUS[media_type]:   # 'read' / 'watched' / 'listened'
+            # Back to the item page (it used to go to the review page; Phil,
+            # 2026-11-18), on its History with the session form open and
+            # today as the finished date (finished=1, read.finish_offer)
+            return _back_finished()
             
     except Exception as e:
         current_app.logger.exception('Error updating collection')

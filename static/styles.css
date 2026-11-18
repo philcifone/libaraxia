@@ -565,11 +565,22 @@
         --ink: 43 33 24;            /* #2b2118 */
         --ink-2: 72 56 41;          /* #483829 */
         --muted: 98 80 62;          /* #62503e */
-        --faint: 118 100 80;        /* #766450 */
+        --faint: 108 90 70;         /* #6c5a46: 4.8:1 on --page (was #766450) */
+        /* The page itself (body), darker and browner than the paper, near
+           the bookcases' back panel (Phil, 2026-11-18); fields and tiles
+           keep --paper. Text in the accent takes each accent's darker shade
+           in light: 5:1 or more on this page for every accent (the plain
+           light green was 3.5:1 here). Dark mode keeps both as they were. */
+        --page: 232 218 190;        /* #e8dabe */
+        --accent-text: var(--accent-hover);
+        --accent-text-hover: var(--accent);
     }
     @media (prefers-color-scheme: dark) {
         :root[data-style="shelf"]:not([data-mode="light"]) {
             --paper: 31 24 19;          /* #1f1813 */
+            --page: 31 24 19;
+            --accent-text: var(--accent);
+            --accent-text-hover: var(--accent-hover);
             --surface: 45 35 28;        /* #2d231c */
             --fill: 64 50 39;           /* #403227 */
             --rule: 82 64 50;           /* #524032 */
@@ -583,6 +594,9 @@
     }
     :root[data-style="shelf"][data-mode="dark"] {
         --paper: 31 24 19;
+        --page: 31 24 19;
+        --accent-text: var(--accent);
+        --accent-text-hover: var(--accent-hover);
         --surface: 45 35 28;
         --fill: 64 50 39;
         --rule: 82 64 50;
@@ -1136,6 +1150,16 @@
        hidden whatever display its classes give it */
     [data-tabs] [role="tabpanel"][hidden],
     [data-tabs] [role="tablist"][hidden] {
+        display: none !important;
+    }
+    /* ...except on the Shelf style's book card (the item page's reading
+       info, "Paper cards"): a card shows the review, the reads and the tags
+       at once, so no tabs. Here in the layer: an !important outside it
+       would lose to the one above. */
+    :root[data-style="shelf"] .book-card [data-tabs] > [role="tabpanel"][hidden] {
+        display: block !important;
+    }
+    :root[data-style="shelf"] .book-card [data-tabs] > [role="tablist"] {
         display: none !important;
     }
     .tab-active,
@@ -2135,6 +2159,9 @@ html:has(.item3d[open]) { overflow: hidden; }
     color: rgb(var(--heading-ink));
 }
 
+/* The page: --page (the Shelf palette), darker than the paper in light */
+:root[data-style="shelf"] body { background-color: rgb(var(--page)); }
+
 /* Sidebar drawer: paper with a wooden edge. No shadow: the closed drawer
    is only translated off-screen, so a shadow would show along the left edge. */
 :root[data-style="shelf"] #sidebar {
@@ -2197,6 +2224,11 @@ html:has(.item3d[open]) { overflow: hidden; }
     --muted: 98 80 62;
     --faint: 118 100 80;
     --heading-ink: 43 33 24;    /* typed, so the headings are in the ink too */
+    /* An unpicked chip's recess. :root works it out from the page's --paper,
+       and a var() resolves where it's declared, so in dark mode it reached
+       the card already walnut-dark (a black chip, ink on it). Restated here,
+       from the card's own --fill, as Shelf light has it. */
+    --tab-recess: rgb(var(--fill));
     --accent: var(--acc-l, 121 116 14);
     --accent-hover: var(--acc-l-hover, 95 91 11);
     --accent-text: var(--accent);
@@ -2286,6 +2318,61 @@ html:has(.item3d[open]) { overflow: hidden; }
     color: rgb(var(--faint));
 }
 :root[data-style="shelf"] .catalog-card h1 { font-size: 1.5rem; line-height: 1.25; }
+
+/* -- The item's catalog card (_catalog_card.html, utils/catalog_card.py) --
+   The same card stock, laid out as a main-entry card: the call number in
+   the margin left of the red line, the first typed line (the heading)
+   above the red rule, the paragraphs at the second indention with their
+   run-on lines back at the first. In this style it stands in for the facts
+   badge; everywhere else it's hidden. Card-sized (a 5 in. card is about
+   34rem on a screen), not stretched across the column. */
+.entry-card { display: none; }
+:root[data-style="shelf"] .item-facts { display: none; }
+:root[data-style="shelf"] .catalog-card.entry-card {
+    --pad-x: 1rem;
+    --line: 1.5rem;                         /* one typed line */
+    --top-rule: calc(.7rem + var(--line));  /* under the first line */
+    --call-w: 3.75rem;                      /* the call number's column */
+    --margin: calc(var(--pad-x) + var(--call-w));
+    --indent: 2.5ch;                        /* one indention (a typewriter's few spaces) */
+    display: block;
+    width: 100%;
+    max-width: 34rem;
+    padding: .7rem var(--pad-x) 3rem;
+    font-size: .875rem;
+    line-height: var(--line);
+}
+@media (min-width: 640px) {
+    :root[data-style="shelf"] .catalog-card.entry-card { --pad-x: 1.25rem; --call-w: 4.25rem; font-size: .9375rem; }
+}
+:root[data-style="shelf"] .entry-card .entry-grid {
+    display: grid;
+    grid-template-columns: var(--call-w) minmax(0, 1fr);
+}
+:root[data-style="shelf"] .entry-card .entry-call { font-weight: 700; letter-spacing: .04em; }
+:root[data-style="shelf"] .entry-card .entry-body { padding-left: .5rem; overflow-wrap: anywhere; }
+/* The heading on the top line; then each paragraph's first line at the
+   second indention; a title entry's paragraph hangs the other way */
+:root[data-style="shelf"] .entry-card .entry-para { text-indent: var(--indent); }
+:root[data-style="shelf"] .entry-card .entry-hanging { padding-left: var(--indent); text-indent: calc(-1 * var(--indent)); }
+:root[data-style="shelf"] .entry-card .entry-note { color: rgb(var(--muted)); font-style: italic; }
+:root[data-style="shelf"] .entry-card .entry-tracings { margin-top: var(--line); text-indent: calc(2 * var(--indent)); }
+/* The accession number, stamped in the bottom corner */
+:root[data-style="shelf"] .entry-card .entry-accession {
+    position: absolute;
+    right: var(--pad-x);
+    bottom: .9rem;
+    font-size: .75rem;
+    letter-spacing: .08em;
+    color: rgb(var(--faint));
+}
+:root[data-style="shelf"] .entry-card .entry-accession::before { content: 'Acc. no. '; }
+/* On a phone the card is too wide to stand beside the cover: the cover
+   stands alone, centred, and the card runs full width under it */
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .item-cover:has(~ .entry-card) { grid-column: span 2; justify-self: center; width: 9rem; }
+    :root[data-style="shelf"] .catalog-card.entry-card { grid-column: span 2; justify-self: center; }
+}
 
 /* -- The library card -- */
 :root[data-style="shelf"] .library-card {
@@ -2416,6 +2503,553 @@ html:has(.item3d[open]) { overflow: hidden; }
 @media (max-width: 639px) {
     :root[data-style="shelf"] .library-card { --date-col: 6.5rem; }
 }
+
+/* -- The book card (the item page's reading info, #your-info) --
+   Three pieces of paper, one above the other (second pass, Phil
+   2026-11-18): the book card (the library's name, your heading, the status
+   boxes, the ledger) standing in its kraft pocket, the pocket's top over
+   the card's foot, holding the collections and tags; then the review on a
+   notebook card of its own below. The section draws nothing itself (its stock
+   and pocket pseudo-elements are off); each piece is drawn by its own
+   boxes, bands with no gap between them, so the section's drop shadow
+   follows the three shapes. The section's pieces are put in this order
+   with display: contents on the two wrappers (the left column and the
+   tabs; the Review / History / Tags tabs don't apply on paper: all three
+   panels show, an override in @layer components beside the rule that
+   hides them). */
+.ledger, .ledger-heading, .review-pencil { display: none; }
+:root[data-style="shelf"] .library-card.book-card {
+    --row: 2rem;
+    --date-col: 7.5rem;
+    --pad: 1.5rem;
+    --notebook: 253 251 245;
+    max-width: 52rem;
+    margin-inline: auto;
+    padding: 0;
+}
+:root[data-style="shelf"] .library-card.book-card::before,
+:root[data-style="shelf"] .library-card.book-card::after { content: none; }
+:root[data-style="shelf"] .book-card > .grid { display: flex; flex-direction: column; gap: 0; }
+:root[data-style="shelf"] .book-card > .grid > div:first-child,
+:root[data-style="shelf"] .book-card [data-tabs] { display: contents; }
+:root[data-style="shelf"] .book-card > h2 { order: 0; }
+:root[data-style="shelf"] .book-card [data-item-status] { order: 1; }
+:root[data-style="shelf"] .book-card #item-history { order: 2; }
+:root[data-style="shelf"] .book-card [data-item-collections] { order: 3; }
+:root[data-style="shelf"] .book-card > .grid > div:first-child > div:not([data-item-collections]) { order: 4; }
+:root[data-style="shelf"] .book-card #item-tags { order: 5; }
+:root[data-style="shelf"] .book-card #item-review { order: 6; }
+
+/* The book card: the heading, the status boxes and the ledger */
+:root[data-style="shelf"] .book-card > h2,
+:root[data-style="shelf"] .book-card [data-item-status],
+:root[data-style="shelf"] .book-card #item-history {
+    margin: 0;
+    padding: 0 var(--pad);
+    background: var(--grain), rgb(var(--stock));
+}
+:root[data-style="shelf"] .book-card > h2 {
+    padding-top: 2.4rem;
+    padding-bottom: 1rem;
+    border-radius: 4px 4px 0 0;
+    font-size: 1.125rem;
+}
+:root[data-style="shelf"] .book-card [data-item-status] { padding-bottom: 1.5rem; }
+:root[data-style="shelf"] .book-card #item-history { padding-bottom: calc(1.5rem + 2.25rem); }   /* the pocket covers 2.25rem */
+:root[data-style="shelf"] .book-card :is(.history-head, [data-sessions], .history-empty) { display: none; }
+:root[data-style="shelf"] .book-card :is(.ledger-heading) { display: block; }
+
+/* Printed: the labels small, in red capitals */
+:root[data-style="shelf"] .book-card [data-item-status] .chip,
+:root[data-style="shelf"] .book-card .label {
+    font-family: inherit;
+    font-size: .625rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgb(var(--print-red));
+    border-bottom: 0;
+}
+
+/* The status boxes: printed on the card, the current one ticked */
+:root[data-style="shelf"] .book-card [data-item-status] .chip,
+:root[data-style="shelf"] .book-card [data-item-status] .chip[aria-pressed="true"],
+:root[data-style="shelf"] .book-card [data-item-status] .chip:hover {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .3rem .4rem .3rem 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+}
+:root[data-style="shelf"] .book-card [data-item-status] .chip::before {
+    content: '';
+    flex-shrink: 0;
+    width: 1.05rem;
+    height: 1.05rem;
+    border: 1.5px solid rgb(var(--print-red) / .8);
+    background: no-repeat 40% 10% / 150%;
+}
+:root[data-style="shelf"] .book-card [data-item-status] .chip:hover::before { background-color: rgb(var(--print-red) / .08); }
+/* The tick: a quick pen stroke, overshooting the box */
+:root[data-style="shelf"] .book-card [data-item-status] .chip[aria-pressed="true"]::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M3.5 10.5 Q6 13 7.5 16.5 Q11 7 18.5 1.5' fill='none' stroke='rgb(86,62,148)' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' opacity='.9'/%3E%3C/svg%3E");
+}
+:root[data-style="shelf"] .book-card [data-item-status] .chip[aria-pressed="true"] { color: rgb(var(--ink)); }
+:root[data-style="shelf"] .book-card :is(button, a):focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+
+/* The ledger: Date | Reader's name, ruled like the Friends card. One line
+   each: the stamp in the Date column, then the name and what happened,
+   edit and delete at the end of the read's last line; a blank line last,
+   with "+ Add" in its Date column. */
+:root[data-style="shelf"] .book-card .ledger {
+    display: block;
+    position: relative;
+    padding-top: 1.5rem;
+    border-top: 2px solid rgb(var(--print-red) / .7);
+    background-image:
+        linear-gradient(to right, transparent calc(var(--date-col) - 5px),
+            rgb(var(--print-red) / .7) calc(var(--date-col) - 5px) calc(var(--date-col) - 4px),
+            transparent calc(var(--date-col) - 4px) calc(var(--date-col) - 2px),
+            rgb(var(--print-red) / .7) calc(var(--date-col) - 2px) calc(var(--date-col) - 1px), transparent 0),
+        repeating-linear-gradient(to bottom, transparent 0 calc(var(--row) - 1px),
+            rgb(var(--print-blue) / .45) calc(var(--row) - 1px) var(--row));
+    background-clip: border-box, content-box;
+    background-origin: border-box, content-box;
+}
+:root[data-style="shelf"] .book-card .ledger::before,
+:root[data-style="shelf"] .book-card .ledger::after {
+    position: absolute;
+    top: .35rem;
+    font-size: .625rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgb(var(--print-red));
+}
+:root[data-style="shelf"] .book-card .ledger::before { content: 'Date'; left: 0; }
+:root[data-style="shelf"] .book-card .ledger::after { content: "Reader's name"; left: calc(var(--date-col) + .75rem); }
+:root[data-style="shelf"] .book-card .ledger > li {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    height: var(--row);
+    padding-left: calc(var(--date-col) + .75rem);
+    white-space: nowrap;
+}
+:root[data-style="shelf"] .book-card .ledger .ledger-date {
+    position: absolute;
+    left: 0;
+    width: calc(var(--date-col) - .5rem);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: rgb(var(--stamp) / .85);
+    transform: rotate(-2deg);
+    text-shadow: .5px 0 0 rgb(var(--stamp) / .35);
+}
+:root[data-style="shelf"] .book-card .ledger > li:nth-child(2n) .ledger-date { transform: rotate(1.5deg) translateX(3px); }
+:root[data-style="shelf"] .book-card .ledger .borrower { display: inline; font-size: 1rem; }
+:root[data-style="shelf"] .book-card .ledger .ledger-what { font-size: .875rem; color: rgb(var(--ink-2)); }
+:root[data-style="shelf"] .book-card .ledger .ledger-actions { display: flex; gap: .15rem; margin-left: auto; }
+:root[data-style="shelf"] .book-card .ledger .ledger-actions button {
+    padding: .25rem;
+    color: rgb(var(--muted));
+}
+:root[data-style="shelf"] .book-card .ledger .ledger-actions button:hover { color: rgb(var(--accent-text)); }
+:root[data-style="shelf"] .book-card .ledger .ledger-actions button[data-click="deleteSession"]:hover { color: rgb(var(--print-red)); }
+:root[data-style="shelf"] .book-card .ledger > .ledger-add { padding-left: 0; }
+:root[data-style="shelf"] .book-card .ledger > .ledger-add button {
+    font-size: .8125rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: rgb(var(--accent-text));
+}
+:root[data-style="shelf"] .book-card .ledger > .ledger-add button:hover { text-decoration: underline; }
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .library-card.book-card { --date-col: 6.5rem; --pad: 1rem; }
+    :root[data-style="shelf"] .book-card .ledger > li { gap: .4rem; }
+}
+
+/* The review: its own card under the pocket, a page from a notebook (blue
+   rules, a red margin). The pencil after the last word opens
+   the review page; the button the other styles use is hidden. */
+:root[data-style="shelf"] .book-card #item-review {
+    position: relative;
+    z-index: 0;
+    margin: 1.5rem .75rem 0;
+    padding: var(--row) var(--pad) var(--row) calc(var(--pad) + 2.25rem);
+    border-radius: 3px;
+    line-height: var(--row);
+    background:
+        linear-gradient(to right, transparent calc(var(--pad) + 1.4rem), rgb(var(--print-red) / .55) calc(var(--pad) + 1.4rem) calc(var(--pad) + 1.4rem + 1.5px), transparent 0),
+        repeating-linear-gradient(to bottom, transparent 0 calc(var(--row) - 1px), rgb(var(--print-blue) / .4) calc(var(--row) - 1px) var(--row)),
+        rgb(var(--notebook));
+    box-shadow: 0 1px 3px rgb(0 0 0 / .2);
+}
+:root[data-style="shelf"] .book-card #item-review > * { margin-top: 0; line-height: var(--row); }
+:root[data-style="shelf"] .book-card #item-review :is(p, #your-review) { line-height: var(--row); font-size: 1rem; }
+:root[data-style="shelf"] .book-card #item-review .text-xl { font-size: 1.125rem; }
+:root[data-style="shelf"] .book-card #item-review .text-yellow-400 { color: rgb(var(--stamp) / .9); }
+:root[data-style="shelf"] .book-card #item-review [data-review-button] { display: none; }
+/* A notebook page shows the whole review: no Read more clamp (initReadMore
+   then finds nothing cut off and keeps its toggle hidden) */
+:root[data-style="shelf"] .book-card #your-review { max-height: none; }
+:root[data-style="shelf"] .book-card .review-pencil {
+    display: inline-block;
+    vertical-align: -.1em;
+    margin-left: .2rem;
+    padding: .1rem;
+    color: rgb(var(--muted));
+}
+:root[data-style="shelf"] .book-card .review-pencil:hover { color: rgb(var(--accent-text)); }
+
+/* The pocket: kraft card across the book card's foot, its top edge (with
+   the thumb notch) over the card; the collections and tags in it */
+:root[data-style="shelf"] .book-card [data-item-collections],
+:root[data-style="shelf"] .book-card #item-tags,
+:root[data-style="shelf"] .book-card > .grid > div:first-child > div:not([data-item-collections]) {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    padding: 0 var(--pad) 1.25rem;
+    background: linear-gradient(to bottom, rgb(255 255 255 / .18), transparent 6px), var(--grain), rgb(var(--kraft));
+    background-size: 100% 0, auto, auto;
+    color: rgb(var(--ink));
+}
+:root[data-style="shelf"] .book-card [data-item-collections] {
+    margin-top: -2.25rem;
+    padding-top: 2.5rem;
+    border-radius: 2px 2px 0 0;
+    background-size: auto;
+    -webkit-mask: radial-gradient(circle 16px at 50% 0, transparent 15px, #000 16px);
+            mask: radial-gradient(circle 16px at 50% 0, transparent 15px, #000 16px);
+    filter: drop-shadow(0 -1px 2px rgb(0 0 0 / .25));
+}
+:root[data-style="shelf"] .book-card #item-tags { padding-bottom: 1.5rem; border-radius: 0 0 4px 4px; }
+/* On kraft the printed red doesn't read: the pocket's labels in ink */
+:root[data-style="shelf"] .book-card [data-item-collections] .label { color: rgb(var(--ink)); }
+:root[data-style="shelf"] .book-card [data-item-collections] .italic { color: rgb(var(--ink-2)); }
+
+
+/* ---- Catalog cabinet (Phil, 2026-11-18; Shelf only) ----
+   The shelf pages' controls as the front of a card-catalogue cabinet, after
+   Phil's photos of two oak ones, kept plain (second pass): the shelves' own
+   wood and nothing else (no grain), drawn as a box like the small
+   bookcases, with its lit top face and shaded right side going back at 45
+   degrees. The Books / Movies / Music tabs are drawers: the name typed on a
+   cream card in a brass label holder (an even brass rim, slightly rounded,
+   no screws) with a brass cup pull under it; the open tab is the drawer
+   pulled out. The search box is a long label holder, Filters a drawer
+   (pulled out while its panel is open), and the view bar's selects and
+   buttons are label holders too, typed words instead of icons
+   (.cab-text / .cab-icon). Every cream card has a faint shadow inside its
+   rim, under the brass.
+
+   The pieces come from different includes (the view bar is inside
+   _book_grid.html), so nothing wraps them: each is marked .cabinet-part
+   (the shelf pages set `cabinet`), and each part's boxes are bands of the
+   cabinet, no gap between them:
+     .cabinet-top > .card            the tabs (with the frame's top rail and the top face)
+     .search-form-container > *      the search row, the matches line, the filter pills
+     .cabinet-slip > .slip-band      a notice between rows, a typed slip
+     .view-bar.cabinet-base          the bottom row, with the plinth
+   Each band draws its own slice of the right side (::before): the same
+   parallelogram on every band, so the slices meet as one face. --bt / --bb
+   are the band's top and bottom border (the rail, the plinth), which the
+   slice spans too. With no grid, the last part is .cabinet-end and its
+   last band takes the plinth.
+
+   No box-shadow focus ring on the cream fields (the inset shadow is one):
+   they get an outline in the accent instead. */
+.cab-text { display: none; }
+:root[data-style="shelf"] .cabinet-part {
+    --run: 10px;                /* the box's depth: the top and right faces */
+    --stile: 8px;               /* the frame's sides */
+    --brass: 181 146 76;        /* #b5924c */
+    --brass-hi: 226 196 128;    /* the lit edge */
+    --brass-lo: 120 90 38;      /* shade */
+    --label-card: 250 244 228;  /* the cream card in a holder */
+    --card-ink: 43 33 24;
+    --card-muted: 98 80 62;
+    --holder-rim: linear-gradient(160deg, rgb(var(--brass-hi)), rgb(var(--brass)) 45%, rgb(var(--brass-lo))) border-box;
+    --holder-card: linear-gradient(rgb(var(--label-card)), rgb(var(--label-card))) padding-box;
+    --holder-shadow: inset 0 1px 3px rgb(60 40 20 / .35), inset 0 0 1px rgb(60 40 20 / .3), 0 1px 1px rgb(0 0 0 / .3);
+    --drawer-face: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 -2px 0 rgb(0 0 0 / .25), 0 1px 2px rgb(0 0 0 / .4);
+    position: relative;
+    padding-bottom: 0;
+}
+/* On a desktop the cabinet is a small piece of furniture, centred: about
+   half the shelf's width (Phil, 2026-11-18), never so narrow the bottom
+   row wraps. --cab-w is the cabinet's width; the parts in their own
+   .page-frame (tabs, search, slips) add the frame's 2rem gutters, and the
+   view bar (inside the grid's frame) centres itself in the shelf. */
+@media (min-width: 1024px) {
+    :root[data-style="shelf"] { --cab-w: max(42rem, calc((min(100vw, 80rem) - 4rem) / 2)); }
+    :root[data-style="shelf"] .page-frame.cabinet-part { max-width: calc(var(--cab-w) + 4rem); }
+    :root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base {
+        margin-left: calc((100% - var(--cab-w)) / 2);
+        margin-right: calc((100% - var(--cab-w)) / 2 + var(--run));
+    }
+}
+/* The line over the cabinet (a friend's shelf: their profile, wishlist),
+   centred over it like the heading */
+:root[data-style="shelf"] .cabinet-caption { text-align: center; }
+:root[data-style="shelf"] .cabinet-part .cab-text { display: inline; }
+:root[data-style="shelf"] .cabinet-part .cab-icon { display: none; }
+
+/* -- The bands -- */
+:root[data-style="shelf"] :is(.cabinet-top > .card, .search-form-container.cabinet-part > *,
+                              .cabinet-slip > .slip-band, .view-bar.cabinet-base) {
+    --bt: 0px;
+    --bb: 0px;
+    position: relative;
+    margin-top: 0;
+    margin-right: var(--run);
+    padding: .5rem;
+    background: rgb(var(--shelf-front));
+    border: 0 solid rgb(var(--shelf-front));
+    border-width: var(--bt) var(--stile) var(--bb);
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+/* The right side: this band's slice of it */
+:root[data-style="shelf"] :is(.cabinet-top > .card, .search-form-container.cabinet-part > *,
+                              .cabinet-slip > .slip-band, .view-bar.cabinet-base)::before {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    left: calc(100% + var(--stile));
+    top: calc(-1 * (var(--bt) + var(--run)));
+    width: var(--run);
+    /* 1px over the next band's slice, so no hairline shows where they meet */
+    height: calc(100% + var(--bt) + var(--bb) + var(--run) + 1px);
+    background: rgb(var(--case-side, var(--shelf-side)));
+    clip-path: polygon(0 var(--run), 100% 0, 100% calc(100% - var(--run)), 0 100%);
+}
+/* The top: the frame's top rail, room above for the top face, the face */
+:root[data-style="shelf"] .cabinet-top > .card {
+    --bt: var(--stile);
+    margin-top: var(--run);
+}
+:root[data-style="shelf"] .cabinet-top > .card::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    left: calc(-1 * var(--stile));
+    top: calc(-1 * (var(--bt) + var(--run)));
+    width: calc(100% + 2 * var(--stile) + var(--run));
+    height: var(--run);
+    background: linear-gradient(to top, rgb(0 0 0 / var(--lip-shade)), transparent), rgb(var(--case-top, var(--shelf-top)));
+    clip-path: polygon(0 100%, var(--run) 0, 100% 0, calc(100% - var(--run)) 100%);
+}
+/* The foot: the frame's bottom rail, on the view bar, or on the last band
+   when there's no grid. The front's own wood, no shadow (Phil, 2026-11-18:
+   a darker plinth mitred into the stile read as a trapezoid). Its slice of
+   the side ends flush with it (no 1px overlap: nothing below to meet). */
+:root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base,
+:root[data-style="shelf"] .cabinet-end.search-form-container:not(:has(> #active-filters-display:not(.hidden))) > :nth-last-child(2),
+:root[data-style="shelf"] .cabinet-end.search-form-container > #active-filters-display:not(.hidden),
+:root[data-style="shelf"] .cabinet-end.cabinet-slip > .slip-band {
+    --bb: var(--stile);
+}
+:root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base::before,
+:root[data-style="shelf"] .cabinet-end.search-form-container:not(:has(> #active-filters-display:not(.hidden))) > :nth-last-child(2)::before,
+:root[data-style="shelf"] .cabinet-end.search-form-container > #active-filters-display:not(.hidden)::before,
+:root[data-style="shelf"] .cabinet-end.cabinet-slip > .slip-band::before {
+    height: calc(100% + var(--bt) + var(--bb) + var(--run));
+}
+:root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base { margin-bottom: 2.25rem; }
+:root[data-style="shelf"] .cabinet-slip { margin-bottom: 0; }
+:root[data-style="shelf"] .cabinet-end { margin-bottom: 1.5rem; }
+/* The matches line and the filter pills: typed on the wood, in cream */
+:root[data-style="shelf"] .search-form-container.cabinet-part > :not(.relative) { padding-top: 0; color: rgb(var(--shelf-label)); }
+:root[data-style="shelf"] .search-form-container.cabinet-part > :not(.relative) :is(p, span) { color: rgb(var(--shelf-label)); }
+
+/* -- The label holders: an even brass rim, the cream card inside --
+   (:where, so the id in the list doesn't outrank the rules below) */
+:root[data-style="shelf"] :where(.cabinet-top .tab > span, .cabinet-part #search_term, .cabinet-part #filter-toggle,
+                              .view-bar.cabinet-base select, .view-bar.cabinet-base > div[role="group"],
+                              .view-bar.cabinet-base > #bulk-select-btn) {
+    border: 3px solid transparent;
+    border-radius: 5px;
+    background: var(--holder-card), var(--holder-rim);
+    box-shadow: var(--holder-shadow);
+    color: rgb(var(--card-ink));
+    font-family: "Courier Prime", "Courier New", monospace;
+}
+/* The Shelf form-field rule ("Form fields", below) outranks the above with
+   the id in its list: the cabinet's fields take the rim back by id */
+:root[data-style="shelf"] :is(.cabinet-part #search_term, .cabinet-part #filter-toggle,
+                              .view-bar.cabinet-base #sort_by, .view-bar.cabinet-base #sort_order) {
+    border-color: transparent;
+    box-shadow: var(--holder-shadow);
+}
+:root[data-style="shelf"] .cabinet-part :is(#search_term, select, button, a):focus-visible,
+:root[data-style="shelf"] .cabinet-part :is(#search_term, select):focus {
+    outline: 2px solid rgb(var(--acc-l, 121 116 14));
+    outline-offset: 2px;
+    box-shadow: var(--holder-shadow);
+}
+
+/* -- The drawers (the tabs, and Filters) -- */
+:root[data-style="shelf"] .cabinet-top nav { gap: .5rem; }
+:root[data-style="shelf"] .cabinet-top .tab {
+    background: rgb(var(--shelf-front));
+    border: 0;
+    border-radius: 2px;
+    box-shadow: var(--drawer-face);
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+:root[data-style="shelf"] .cabinet-top .tab:hover {
+    background: color-mix(in srgb, rgb(var(--shelf-front)), white 6%);
+}
+:root[data-style="shelf"] .cabinet-top .tab {
+    flex-direction: column;
+    gap: .45rem;
+    padding: .7rem .25rem .55rem;
+    font-weight: 400;
+}
+:root[data-style="shelf"] .cabinet-top .tab > span {
+    display: block;
+    min-width: 72%;
+    padding: .15rem .5rem;
+    font-size: .75rem;
+    letter-spacing: .02em;
+}
+@media (min-width: 640px) {
+    :root[data-style="shelf"] .cabinet-top .tab > span { font-size: .9375rem; min-width: 55%; }
+}
+/* The cup pull: a half-round of brass under the holder */
+:root[data-style="shelf"] .cabinet-top .tab::after {
+    content: '';
+    width: 28px;
+    height: 11px;
+    border-radius: 0 0 14px 14px;
+    background: linear-gradient(to bottom, rgb(var(--brass-lo)), rgb(var(--brass-hi)) 55%, rgb(var(--brass)));
+    box-shadow: 0 2px 2px rgb(0 0 0 / .4);
+}
+/* The open tab: its drawer pulled out, standing proud, lit along its top,
+   a shadow under it */
+:root[data-style="shelf"] .cabinet-top .tab-active {
+    background: color-mix(in srgb, rgb(var(--shelf-front)), white 10%);
+    box-shadow: inset 0 2px 0 rgb(255 255 255 / .22), inset 0 -2px 0 rgb(0 0 0 / .25), 0 5px 8px rgb(0 0 0 / .5);
+    transform: translateY(-2px);
+}
+:root[data-style="shelf"] .cabinet-top .tab-active > span {
+    color: rgb(var(--acc-l, 121 116 14));
+    font-weight: 700;
+}
+/* A blank catalog card standing up out of the open drawer (Phil,
+   2026-11-18): plain cream, no writing, its foot hidden behind the drawer's
+   top edge. It slides up as the drawer opens. */
+:root[data-style="shelf"] .cabinet-top .tab-active { position: relative; }
+:root[data-style="shelf"] .cabinet-top .tab-active::before {
+    content: '';
+    position: absolute;
+    left: 7%;                   /* a little narrower than the drawer */
+    right: 7%;
+    bottom: 100%;
+    height: 7px;
+    border-radius: 1px 1px 0 0;
+    background: rgb(var(--label-card));
+    box-shadow: inset 0 -2px 2px -1px rgb(60 40 20 / .3), 0 -1px 1px rgb(0 0 0 / .15);
+    animation: card-rise .25s ease-out .08s backwards;
+}
+@keyframes card-rise {
+    from { transform: translateY(100%); clip-path: inset(0 0 100% 0); }
+    to   { transform: none; clip-path: inset(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    :root[data-style="shelf"] .cabinet-top .tab-active::before { animation: none; }
+}
+/* Filters: a plain label-holder button like Grid | List and Batch (Phil,
+   2026-11-18: no drawer), in the accent while its panel is open; the
+   count badge on its corner */
+:root[data-style="shelf"] .cabinet-part #filter-toggle { padding: .3rem .7rem; font-size: .875rem; }
+:root[data-style="shelf"] .cabinet-part #filter-toggle:hover { background: var(--holder-card), var(--holder-rim); filter: brightness(.97); }
+:root[data-style="shelf"] .cabinet-part #filter-toggle[aria-expanded="true"] {
+    background: linear-gradient(rgb(var(--acc-l, 121 116 14)), rgb(var(--acc-l, 121 116 14))) padding-box, var(--holder-rim);
+    color: rgb(252 248 240);
+}
+
+/* -- The search box -- */
+:root[data-style="shelf"] .cabinet-part #search_term { border-width: 3px; }
+:root[data-style="shelf"] .cabinet-part #search_term::placeholder { color: rgb(var(--card-muted)); }
+:root[data-style="shelf"] .cabinet-part button[aria-label="Search"] { color: rgb(var(--brass-lo)); right: 1rem; }
+/* Courier is wide: on a phone "Search your 145 books" only fits a size
+   down. The typed text keeps 16px, so iOS doesn't zoom into the box. */
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .cabinet-part #search_term { padding-left: .6rem; padding-right: 2rem; }
+    :root[data-style="shelf"] .cabinet-part #search_term::placeholder { font-size: .8125rem; }
+    :root[data-style="shelf"] .cabinet-part button[aria-label="Search"] { right: .75rem; }
+}
+
+/* -- The bottom row: sort, then Grid | List, Batch and Filters. On a phone
+   it's an even grid of quarters (Phil, 2026-11-18): the two sort menus a
+   half each, then Grid | List a half and Batch and Filters a quarter each
+   (Filters a half on a friend's shelf, which has no Batch). The filter
+   panel is absolutely placed, so it takes no cell. -- */
+:root[data-style="shelf"] .view-bar.cabinet-base { flex-wrap: wrap; row-gap: .5rem; }
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .view-bar.cabinet-base {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .5rem;
+    }
+    :root[data-style="shelf"] .view-bar.cabinet-base > #sort-form { grid-column: 1 / -1; gap: .5rem; }
+    :root[data-style="shelf"] .view-bar.cabinet-base > #sort-form > select { flex: 1 1 0; }
+    :root[data-style="shelf"] .view-bar.cabinet-base > div[role="group"] { grid-column: span 2; }
+    :root[data-style="shelf"] .view-bar.cabinet-base > div[role="group"] > button { flex: 1 1 0; }
+    :root[data-style="shelf"] .view-bar.cabinet-base > :is(#bulk-select-btn, #filter-toggle) { justify-content: center; padding-inline: .25rem; }
+    :root[data-style="shelf"] .view-bar.cabinet-base:not(:has(> #bulk-select-btn)) > #filter-toggle { grid-column: span 2; }
+}
+:root[data-style="shelf"] .view-bar.cabinet-base label { color: rgb(var(--shelf-label)); }
+:root[data-style="shelf"] .view-bar.cabinet-base select {
+    appearance: none;
+    padding: .3rem 1.9rem .3rem .6rem;
+    /* the arrow, then the holder */
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 8l5 5 5-5' fill='none' stroke='rgb(43,33,24)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right .5rem center / 14px padding-box,
+        var(--holder-card), var(--holder-rim);
+}
+:root[data-style="shelf"] .view-bar.cabinet-base > div[role="group"] { overflow: hidden; }
+:root[data-style="shelf"] .view-bar.cabinet-base > div[role="group"] > button {
+    padding: .3rem .7rem;
+    background: transparent;
+    color: rgb(var(--card-ink));
+    font-family: inherit;
+    font-size: .875rem;
+}
+:root[data-style="shelf"] .view-bar.cabinet-base > div[role="group"] > button + button { border-left: 2px solid rgb(var(--brass)); }
+:root[data-style="shelf"] .view-bar.cabinet-base :is(.view-toggle-btn, #bulk-select-btn)[aria-pressed="true"] {
+    background: rgb(var(--acc-l, 121 116 14));
+    color: rgb(252 248 240);
+}
+:root[data-style="shelf"] .view-bar.cabinet-base > div[role="group"] > button:not([aria-pressed="true"]):hover { background: rgb(var(--brass) / .18); }
+:root[data-style="shelf"] .view-bar.cabinet-base > #bulk-select-btn { padding: .3rem .7rem; font-size: .875rem; }
+:root[data-style="shelf"] .view-bar.cabinet-base > #bulk-select-btn[aria-pressed="true"] { background: var(--holder-rim); background-color: rgb(var(--acc-l, 121 116 14)); }
+:root[data-style="shelf"] .view-bar.cabinet-base [data-bulk-label] { display: inline; }
+
+/* -- Slips between the rows: a typed note on card, tucked in the cabinet -- */
+:root[data-style="shelf"] .cabinet-slip > .slip-band > * {
+    background: rgb(var(--label-card));
+    color: rgb(var(--card-ink));
+    font-family: "Courier Prime", "Courier New", monospace;
+    border: 0;
+    border-radius: 2px;
+    box-shadow: var(--holder-shadow);
+    padding: .5rem .75rem;
+    margin: 0;
+}
+:root[data-style="shelf"] .cabinet-slip :is(.text-content-primary, .text-content-secondary) { color: rgb(var(--card-ink)); }
+:root[data-style="shelf"] .cabinet-slip a { color: rgb(var(--acc-l, 121 116 14)); }
+
 
 /* ---- Shelf: small bookcases (ROADMAP 14c) ----
    Each page's heading card, and the cards marked .case-card (feed,

@@ -1,0 +1,27 @@
+{# The filter button (toggleFilters in script.js; #filter-toggle, #filterArrow).
+   In the search row beside the box (_search_sort_filter.html), or, in the
+   Shelf style's catalog cabinet over a grid, at the end of the view bar
+   (_view_bar.html, Phil 2026-11-18). Wherever it is, _filter_panel.html
+   goes in the same row, so the panel drops down from it. #}
+        <!-- Filter toggle: the funnel, how many filters are on, the arrow -->
+        <button data-click="toggleFilters" id="filter-toggle"
+                type="button" aria-label="Filters" aria-expanded="false" aria-controls="filter-panel"
+                class="col-span-1 px-2 py-2.5 flex items-center justify-center gap-3 bg-secondary-bg border border-rule-strong rounded-lg
+                       text-content-primary hover:bg-primary-hover group">
+            {# The count sits on the funnel's corner, so icon, count and arrow
+               fit a phone's quarter width #}
+            {# cab-text / cab-icon: the Shelf cabinet types the word on a label
+               card instead of the icons (styles.css "Catalog cabinet") #}
+            <span class="relative">
+                <span class="cab-text">Filters</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="cab-icon h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span id="filter-count-badge" class="hidden absolute -top-2 -right-3 min-w-[1.1rem] px-1 bg-accent text-on-accent text-[10px] leading-4 text-center rounded-pill"></span>
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 class="cab-icon h-5 w-5 transform transition-transform duration-200 group-hover:text-accent"
+                 id="filterArrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>

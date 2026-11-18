@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces
+from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces, catalog_card
 from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -682,6 +682,10 @@ def render_item_page(conn, book):
 
     # Get the latest session for quick display
     latest_session = reading_sessions[-1] if reading_sessions else None
+    # Just marked done (?finished=1, collections._back_finished): the
+    # session form opens with today as the finished date
+    from blueprints.read import finish_offer
+    session_prefill = finish_offer(reading_sessions) if request.args.get('finished') else None
 
     collection_status = conn.execute("""
         SELECT status
@@ -786,6 +790,7 @@ def render_item_page(conn, book):
         read_data=read_data,
         latest_session=latest_session,
         reading_sessions=reading_sessions,
+        session_prefill=session_prefill,
         collection_status=collection_status,
         custom_collections=custom_collections,
         wishlist_entry=wishlist_entry,
@@ -797,6 +802,7 @@ def render_item_page(conn, book):
         can_manage=can_manage,
         m=media.item_labels(book),
         runtime=media.format_runtime(book['runtime_minutes']),
+        catalog=catalog_card.entry(book),
     )
 
 @books_blueprint.route("/remove/<int:id>", methods=["POST"])
