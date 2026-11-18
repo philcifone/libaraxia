@@ -1637,9 +1637,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 
 /* House: form controls get the same 2px ink outline as cards (no shadow).
        Scoped to the style and specific enough to beat the templates'
-       `border border-rule-strong` utilities. */
+       `border border-rule-strong` utilities. Not in Cyberpunk, whose thin
+       lines are the 1px default above (the #filter-toggle in here makes
+       this rule hard to outrank, so it is left out instead). */
 
-:root:not([data-style="classic"]):not([data-style="shelf"]) :is(
+:root:not([data-style="classic"]):not([data-style="shelf"]):not([data-style="cyberpunk"]) :is(
         input[type="text"], input[type="email"], input[type="password"], input[type="search"],
         input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
         select, textarea,
@@ -2536,6 +2538,23 @@ img.book-cover-img:not([data-loaded]) {
 
 :root[data-style="shelf"] .cabinet-slip :is(.chip, .text-content-secondary) {
   color: rgb(var(--card-ink));
+}
+
+:root[data-style="cyberpunk"] :is(.page-heading, .btn-outline, .chip,.chip) {
+  --cp-diag-tl: linear-gradient(to bottom right, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+  --cp-diag-tr: linear-gradient(to bottom left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+  --cp-diag-br: linear-gradient(to top left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+}
+
+:root[data-style="cyberpunk"] :is(.chip,.chip):not(.avatar, .fab) {
+  --cp-c: var(--cp-cut-xs);
+  --cp-edge: transparent;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cp-c)), calc(100% - var(--cp-c)) 100%, 0 100%);
+  background-image: var(--cp-diag-br);
+  background-size: var(--cp-c) var(--cp-c);
+  background-position: bottom right;
+  background-repeat: no-repeat;
+  background-origin: border-box;
 }
 
 .chip:hover {
@@ -10893,6 +10912,229 @@ html[data-gr-bar="on"] body {
 :root[data-style="cyberpunk"] :is(h2, h3).font-display {
   text-transform: uppercase;
   letter-spacing: .06em;
+}
+
+/* ---- Cyberpunk shapes (phase 2): the reference's HUD panels ----
+   Two kinds of corner, both drawn with gradients, so they take the accent:
+   - Filled corners (cards): the box stays square and a solid triangle
+     fills two corners. Drawn on an overlay (::after) so a cover or a row of
+     tabs flush with the corner can't hide it. Nothing is clipped, so menus
+     that hang out of a card and focus rings inside it are untouched.
+   - Cut corners (header bars, buttons, chips, avatars): clip-path cuts
+     the corner off, and since that also cuts the border there, the
+     diagonal edge is a background layer laid just inside the cut. These
+     have nothing that sticks out of them; focus is drawn inside (an inset
+     ring), as an outline would be clipped too.
+   The cut-corner layers, for a corner square of side --cp-c in colour
+   --cp-edge: "to <the inside>" puts the 50% line exactly on the cut, and
+   the colour runs from just over it to 1px inside (the outer half is
+   clipped away). */
+
+:root[data-style="cyberpunk"] {
+  --cp-flag: 14px;
+  /* the filled corner triangles on cards */
+  --cp-cut: 16px;
+  /* header bars */
+  --cp-cut-sm: 9px;
+  /* buttons */
+  --cp-cut-xs: 6px;
+  /* chips, badges, avatars */
+}
+
+/* Declared on the elements, not :root: a custom property resolves the
+   var()s inside it where it is declared, so on :root --cp-edge would be
+   read once, before any element sets it. */
+
+:root[data-style="cyberpunk"] :is(.page-heading, .btn-outline, .chip, .rounded-pill) {
+  --cp-diag-tl: linear-gradient(to bottom right, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+  --cp-diag-tr: linear-gradient(to bottom left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+  --cp-diag-br: linear-gradient(to top left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+}
+
+/* Cards: thin accent outline, solid triangles top-left and bottom-right */
+
+:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky) {
+  position: relative;
+}
+
+:root[data-style="cyberpunk"] :is(.card, .card-link)::after {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--bw-card));
+  /* over the border, to the outer corner */
+  pointer-events: none;
+  background:
+        linear-gradient(to bottom right, rgb(var(--accent)) calc(50% - .5px), transparent calc(50% + .5px))
+            top left / var(--cp-flag) var(--cp-flag) no-repeat,
+        linear-gradient(to top left, rgb(var(--accent)) calc(50% - .5px), transparent calc(50% + .5px))
+            bottom right / var(--cp-flag) var(--cp-flag) no-repeat;
+}
+
+/* A card in a card is a section: hairline, no triangles */
+
+:root[data-style="cyberpunk"] .card .card::after {
+  content: none;
+}
+
+/* Clickable cards light up instead of moving */
+
+:root[data-style="cyberpunk"] .card-link {
+  transition: border-color .15s ease;
+}
+
+:root[data-style="cyberpunk"] :is(.card-link:hover, .card-link:focus-visible) {
+  border-color: rgb(var(--accent));
+}
+
+:root[data-style="cyberpunk"] :is(.card-link:hover, .card-link:focus-visible)::after {
+  --cp-flag: 22px;
+}
+
+/* The member chips are pills of text: the triangles would cover it */
+
+:root[data-style="cyberpunk"] .member-chip::after {
+  content: none;
+}
+
+/* Header bars (page headings): the reference's title bar. Top-right cut,
+   two small blocks on the top edge at the left, no triangles. */
+
+:root[data-style="cyberpunk"] .page-heading {
+  --cp-edge: var(--card-edge);
+  clip-path: polygon(0 0, calc(100% - var(--cp-cut)) 0, 100% var(--cp-cut), 100% 100%, 0 100%);
+  background-image:
+        var(--cp-diag-tr),
+        linear-gradient(rgb(var(--accent)), rgb(var(--accent))),
+        linear-gradient(rgb(var(--accent)), rgb(var(--accent)));
+  background-size: var(--cp-cut) var(--cp-cut), 7px 4px, 7px 4px;
+  background-position: top right, 7px 5px, 17px 5px;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+}
+
+:root[data-style="cyberpunk"] .page-heading::after {
+  content: none;
+}
+
+/* Buttons: cut top-left and bottom-right, a slanted box. Filled ones are
+   their colour to the edge (no outline); outlined ones draw the cuts'
+   edges in their outline colour. */
+
+:root[data-style="cyberpunk"] :is(.btn, .fab) {
+  --cp-c: var(--cp-cut-sm);
+  clip-path: polygon(var(--cp-c) 0, 100% 0, 100% calc(100% - var(--cp-c)), calc(100% - var(--cp-c)) 100%, 0 100%, 0 var(--cp-c));
+  border-color: transparent;
+}
+
+:root[data-style="cyberpunk"] .fab {
+  --cp-c: 14px;
+}
+
+:root[data-style="cyberpunk"] .btn-outline {
+  --cp-edge: var(--outline-edge);
+  border-color: var(--outline-edge);
+  background-image: var(--cp-diag-tl), var(--cp-diag-br);
+  background-size: var(--cp-c) var(--cp-c);
+  background-position: top left, bottom right;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+}
+
+/* Danger outlines (border-red-*) keep their red on the cuts too */
+
+:root[data-style="cyberpunk"] .btn-outline[class*="border-red"] {
+  --cp-edge: rgb(var(--red));
+  border-color: rgb(var(--red));
+}
+
+:root[data-style="cyberpunk"] :is(.btn, .fab):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgb(var(--ink));
+}
+
+/* Chips and badges: a small cut bottom-right. The edge line is for the
+   outlined chips; a filled badge has no outline to continue. (The add
+   button and its menu are rounded-pill too, but they are buttons.) */
+
+:root[data-style="cyberpunk"] :is(.chip, .rounded-pill):not(.avatar, .fab) {
+  --cp-c: var(--cp-cut-xs);
+  --cp-edge: transparent;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cp-c)), calc(100% - var(--cp-c)) 100%, 0 100%);
+  background-image: var(--cp-diag-br);
+  background-size: var(--cp-c) var(--cp-c);
+  background-position: bottom right;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+}
+
+/* as specific as the rule above, so it wins by coming later */
+
+:root[data-style="cyberpunk"] .chip:not(.fab) {
+  --cp-edge: rgb(var(--rule-strong));
+}
+
+:root[data-style="cyberpunk"] .chip[aria-pressed="true"] {
+  --cp-edge: rgb(var(--accent));
+}
+
+:root[data-style="cyberpunk"] .chip:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgb(var(--ink));
+}
+
+/* Avatars: square with the bottom-right corner cut */
+
+:root[data-style="cyberpunk"] .avatar {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 25%), calc(100% - 25%) 100%, 0 100%);
+}
+
+/* Form fields: thin lines, not the 2px ink of Negative Earth; the accent
+   when focused */
+
+:root[data-style="cyberpunk"] :is(
+    input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+    input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
+    select, textarea, #filter-toggle) {
+  border-width: 1px;
+  border-color: rgb(var(--rule-strong));
+}
+
+:root[data-style="cyberpunk"] :is(input, select, textarea, #filter-toggle):is(:hover, :focus-visible) {
+  border-color: rgb(var(--accent));
+}
+
+:root[data-style="cyberpunk"] :is(input, select, textarea):focus-visible {
+  outline-offset: 1px;
+}
+
+:root[data-style="cyberpunk"] input[type="checkbox"],
+:root[data-style="cyberpunk"] input[type="radio"] {
+  accent-color: rgb(var(--accent));
+}
+
+/* Tabs: inactive in the dim grey, the active one in the accent */
+
+:root[data-style="cyberpunk"] .tab + .tab {
+  border-left-color: rgb(var(--cp-dim));
+}
+
+:root[data-style="cyberpunk"] :is(.tab, .search-method-btn):not(.tab-active, [aria-selected="true"], [data-active="true"]) {
+  color: rgb(var(--muted));
+}
+
+/* No cover: the reference's hatched block, the title over it */
+
+:root[data-style="cyberpunk"] .no-cover {
+  background-image: repeating-linear-gradient(-45deg, rgb(var(--cp-dim) / .55) 0 1px, transparent 1px 7px);
+  border-color: rgb(var(--cp-dim));
+  border-left-color: rgb(var(--accent));
+}
+
+/* Labels (PUBLISHER, ISBN, form labels): their underline is the
+   reference's rail, with a small block at its end */
+
+:root[data-style="cyberpunk"] .label {
+  background: linear-gradient(rgb(var(--accent)), rgb(var(--accent))) right bottom / 5px 3px no-repeat;
 }
 
 :root[data-style="outrun"] .hover\:text-accent:hover {

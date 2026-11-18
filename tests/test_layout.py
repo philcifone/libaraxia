@@ -685,7 +685,7 @@ def test_shelf_style_reaches_every_cover_grid():
     assert "container.classList.toggle('grid', !list)" in js
     assert 'cover-stand' in pathlib.Path('templates/book_detail.html').read_text()
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':root:not([data-style="classic"]):not([data-style="shelf"]) :is(' in css
+    assert ':root:not([data-style="classic"]):not([data-style="shelf"]):not([data-style="cyberpunk"]) :is(' in css
     assert '#book-container.grid' not in css
 
 
@@ -1527,3 +1527,23 @@ def test_book_box_shows_pages():
     # rather than one (Phil, 2026-11-17)
     assert '@media (min-resolution: 3dppx)' in css
     assert '--leaf: calc(2px / 3); --leaf-line: calc(1px / 3);' in css
+
+
+def test_cyberpunk_cards_are_never_clipped():
+    """Cyberpunk's HUD shapes (phase 2): cards get filled corners drawn on
+    an overlay, never clip-path, which would cut off menus hanging out of a
+    card (the filter panel) and focus rings inside it. Only boxes with
+    nothing sticking out are cut: header bars, buttons, chips, avatars."""
+    css = pathlib.Path('static/styles.css').read_text()
+    section = css[css.index('/* ---- Cyberpunk shapes (phase 2)'):]
+    rules = re.findall(r'([^{}]+)\{([^}]*)\}', section)
+    clipped = [sel.strip() for sel, body in rules if 'clip-path' in body]
+    assert clipped, 'expected cut corners somewhere'
+    for sel in clipped:
+        assert not re.search(r'\.card(-link)?\b', sel), sel
+    # The cut edges' gradients read --cp-edge, so they must be declared on
+    # the elements that set it, not on :root (where it isn't set yet)
+    root = re.search(r':root\[data-style="cyberpunk"\] \{([^}]*)\}', section).group(1)
+    assert '--cp-diag' not in root
+    # Positioned cards stay positioned; the overlay only makes static ones relative
+    assert ':is(.card, .card-link):not(.absolute, .fixed, .sticky) { position: relative; }' in section
