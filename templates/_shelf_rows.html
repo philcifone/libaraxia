@@ -72,7 +72,7 @@
         {% if shelf.delete_url %}
         <form action="{{ shelf.delete_url }}" method="POST" class="reveal"
               data-confirm="{{ 'Delete the collection "' ~ shelf.label ~ '"? What is in it stays in your library.' }}"
-              data-confirm-ok="Delete collection">
+              data-confirm-ok="Yes, delete collection">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <button type="submit" aria-label="Delete collection {{ shelf.label }}"
                     class="text-red-500 hover:text-red-400 p-2 transition-colors">

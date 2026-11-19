@@ -40,6 +40,11 @@ LIBRARY_HEADER = [
     # money in VALUE_CURRENCY, for your own items only (a household member's
     # prices are theirs).
     'Condition', 'Sleeve Condition', 'Price Paid', 'Value', 'Value Source', 'Value Checked',
+    # Loans (16.0d): the open loan of your own and your household's items
+    # (who has it); every loan, returned ones too, is in the ZIP's loans.csv.
+    'Lent To', 'Lent On', 'Due Back',
+    # Audiobooks (16.0e): the narrator; the length is Runtime (min)
+    'Narrator',
 ]
 
 
@@ -65,9 +70,14 @@ def library_rows(conn, user_id):
                b.removed_at, b.removed_note,
                b.media_type, b.format, b.barcode, b.catalog_number, b.runtime_minutes,
                b.video_kind, b.season,
-               b.condition, b.sleeve_condition, b.price_paid_cents, b.value_cents,
+               b.condition, b.sleeve_condition, b.price_paid_cents, b.value_cents, b.narrator,
                b.value_source, b.value_note, b.value_checked_at,
                c.status, c.created_at AS status_added,
+               (SELECT COALESCE(lu.username, l.borrower_name) FROM loans l
+                  LEFT JOIN users lu ON lu.id = l.borrower_id
+                 WHERE l.book_id = b.id AND l.returned_at IS NULL) AS lent_to,
+               (SELECT l.lent_at FROM loans l WHERE l.book_id = b.id AND l.returned_at IS NULL) AS lent_on,
+               (SELECT l.due_at FROM loans l WHERE l.book_id = b.id AND l.returned_at IS NULL) AS lent_due,
                (SELECT MIN(date_started) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS started,
                (SELECT MAX(date_completed) FROM reading_sessions WHERE book_id = b.id AND user_id = :u) AS completed,
                (SELECT COUNT(*) FROM reading_sessions
@@ -109,6 +119,10 @@ def library_rows(conn, user_id):
         r['runtime_minutes'] or '', kind_of(r) or '', r['season'] or '',
         r['condition'] or '', r['sleeve_condition'] or '',
         *(_money_columns(r) if r['added_by'] == user_id else ('', '', '', '')),
+        # Loans are the shelf's people's: blank on others' items
+        *((r['lent_to'] or '', r['lent_on'] or '', r['lent_due'] or '')
+          if section(r)[0] < 2 else ('', '', '')),
+        r['narrator'] or '',
     ] for r in rows]
 
 
@@ -170,6 +184,24 @@ def data_zip(conn, user_id):
             ['Username', 'Email', 'Bio', 'Exported At'],
             [[user['username'], user['email'], user['bio'],
               datetime.now().isoformat(timespec='seconds')]] if user else []),
+        # Loans (16.0d): every loan of an item you own or that you lent
+        # ("Lent"), and every loan to you ("Borrowed"), returned ones too
+        'loans.csv': _csv(
+            ['Direction', 'Book ID', 'Title', 'Author', 'Owner', 'Lent By', 'Borrower',
+             'Lent On', 'Due Back', 'Returned On', 'Note'] + TYPE_COLUMNS,
+            conn.execute('''
+                SELECT CASE WHEN l.borrower_id = :u THEN 'Borrowed' ELSE 'Lent' END,
+                       b.id, b.title, b.author, COALESCE(o.username, ''),
+                       COALESCE(lb.username, ''), COALESCE(bu.username, l.borrower_name),
+                       l.lent_at, COALESCE(l.due_at, ''), COALESCE(l.returned_at, ''),
+                       COALESCE(l.note, ''), b.media_type, COALESCE(b.format, '')
+                FROM loans l JOIN books b ON b.id = l.book_id
+                LEFT JOIN users o ON o.id = b.added_by
+                LEFT JOIN users lb ON lb.id = l.lent_by
+                LEFT JOIN users bu ON bu.id = l.borrower_id
+                WHERE b.added_by = :u OR l.lent_by = :u OR l.borrower_id = :u
+                ORDER BY l.lent_at, l.id
+            ''', {'u': user_id}).fetchall()),
         # One row per year with a goal (ROADMAP 12.3)
         'reading_goals.csv': _csv(
             ['Year', 'Goal'],

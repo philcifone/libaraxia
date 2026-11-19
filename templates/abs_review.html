@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import crumbs, page_heading %}
+{#- The Audiobookshelf import's review (ROADMAP 16.0e, docs/AUDIOBOOKSHELF-SPEC.md
+    section 8): every synced item in its box, with its choice. One plain form,
+    no script: a select per item and an "All in this box" select per box;
+    Save choices shows what they'd write, Import writes them. The plan is
+    utils/abs_import.py. Import backs up your library first; undo is under
+    Settings, Recent bulk edits. Expects plan, boxes, choices, hours, abs_link. -#}
+
+{% block title %}Review Audiobookshelf import{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{# Boxes that start closed: long, and mostly left alone #}
+{% set CLOSED = ('not_started', 'skipped_before') %}
+
+{% macro book_label(book) -%}
+    {%- if book.owner and book.owner != current_user.username -%}{{ book.owner }}'s copy
+    {%- elif book.owned -%}your copy
+    {%- else -%}yours, unshelved{%- endif -%}
+    {%- if book.format %} ({{ book.format|lower }}){% endif -%}
+{%- endmacro %}
+
+{% macro buttons() -%}
+<div class="flex flex-wrap items-center gap-3">
+    <button type="submit" formaction="{{ url_for('abs.apply') }}" data-abs-import
+            class="btn rounded-lg bg-accent hover:bg-accent-hover text-on-accent px-5 py-2 font-bold">Import</button>
+    <button type="submit" formaction="{{ url_for('abs.choose') }}"
+            class="btn rounded-lg bg-primary hover:bg-primary-hover text-content-primary border border-rule-strong px-4 py-2">Save choices</button>
+    <a href="{{ url_for('user.settings', _anchor='audiobookshelf') }}" class="bulk-link">Back to Settings</a>
+</div>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-frame-narrow pt-20 pb-16 space-y-6" data-abs-review>
+    {{ crumbs([('Settings', url_for('user.settings', _anchor='audiobookshelf'))], 'Audiobookshelf Import', class='') }}
+    {{ page_heading('library', 'Import from Audiobookshelf', class='') }}
+
+    <form method="POST" action="{{ url_for('abs.choose') }}" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="fingerprint" value="{{ plan.fingerprint }}">
+
+        <section class="bg-secondary rounded-xl card p-5 space-y-3">
+            {% set shown = plan.rows|length - plan.count('imported') %}
+            <p class="text-content-primary"><strong>{{ shown }} item{{ '' if shown == 1 else 's' }} to look at</strong>{% if plan.count('imported') %}, and {{ plan.count('imported') }} imported before with nothing new{% endif %}.
+                {{ plan.will_write }} would be written as chosen now. Nothing is saved until you press Import (your library is backed up first, and it can be undone); nothing becomes owned.</p>
+            {{ buttons() }}
+        </section>
+
+        {% for key, box in boxes.items() if not box.hidden %}
+        {% set rows = plan.box_rows(key) %}
+        {% if rows %}
+        <section class="bg-secondary rounded-xl card p-5" data-box="{{ key }}" aria-labelledby="abs-box-{{ key }}">
+            <details {% if key not in CLOSED %}open{% endif %}>
+                <summary class="cursor-pointer">
+                    <h2 id="abs-box-{{ key }}" class="inline text-xl font-display text-content-primary">{{ box.title }}
+                        <span class="text-content-secondary">({{ rows|length }})</span></h2>
+                </summary>
+                <p class="text-sm text-content-secondary mt-1">{{ box.text }}</p>
+                {% if box.choices %}
+                <label class="flex flex-wrap items-center gap-2 mt-3 text-sm text-content-secondary">All in this box:
+                    <select name="box_{{ key }}" class="bulk-field w-auto">
+                        <option value="">As chosen below</option>
+                        {% for c in [box.default] + box.choices if c %}<option value="{{ c }}">{{ choices[c] }}</option>{% endfor %}
+                    </select>
+                </label>
+                {% endif %}
+                <ul class="mt-2 divide-y divide-rule">
+                    {% for row in rows %}
+                    {% set d = row.data %}{% set item = d.item %}
+                    <li class="abs-row" data-abs-item="{{ row.item_id }}">
+                        <div class="gr-main">
+                            <p class="gr-title">
+                                <span class="font-semibold text-content-primary">{{ item.title or '(no title)' }}</span>
+                                {% if item.author %}<span class="text-content-secondary"> · {{ item.author }}</span>{% endif %}
+                            </p>
+                            <p class="gr-details">
+                                {{ d.format }}
+                                {%- if item.narrator and d.format == 'Audiobook' %} · read by {{ item.narrator }}{% endif %}
+                                {%- if item.duration and d.format == 'Audiobook' %} · {{ hours(item.duration) }}{% endif %}
+                                {%- if d.finished %} · finished{% if d.finished_on %} {{ d.finished_on|human_date }}{% endif %}
+                                {%- elif d.progress %} · {{ (d.progress * 100)|round|int }} %
+                                    {%- if key == 'listening_again' %}{% if d.again_started_on %}, started again {{ d.again_started_on|human_date }}{% endif %}
+                                    {%- elif d.started_on %}, started {{ d.started_on|human_date }}{% endif %}
+                                {%- endif %}
+                                {%- if abs_link(row.item_id) %} · <a href="{{ abs_link(row.item_id) }}" class="text-accent underline" rel="noopener" target="_blank">on Audiobookshelf</a>{% endif %}
+                            </p>
+                            {% if row.book %}
+                            <p class="gr-details">{{ 'Matches' if key == 'match' else 'Imported to' }} <a href="{{ url_for('books.show_book', id=row.book.id) }}" class="text-accent underline">{{ row.book.title }}</a>, {{ book_label(row.book) }}</p>
+                            {% endif %}
+                            {% if row.adds %}<p class="gr-adds" data-abs-adds>adds: {{ row.adds|join(', ') }}</p>{% endif %}
+                        </div>
+                        {% if row.choices %}
+                        <select name="choice_{{ row.item_id }}" class="bulk-field gr-choice" aria-label="What to do with {{ item.title }}">
+                            {% for c in row.choices %}
+                            <option value="{{ c }}"{% if c == row.choice %} selected{% endif %}>{{ choices[c] }}</option>
+                            {% endfor %}
+                        </select>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </details>
+        </section>
+        {% endif %}
+        {% endfor %}
+
+        <section class="bg-secondary rounded-xl card p-5">{{ buttons() }}</section>
+    </form>
+
+    <form method="POST" action="{{ url_for('abs.discard') }}" data-confirm="Discard this review? Nothing has been imported from it.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="bulk-link">Discard this review</button>
+    </form>
+</div>
+{% endblock %}

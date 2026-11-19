@@ -84,7 +84,7 @@
                                         data-url="{{ url_for('faces.crop', placeholder_id=p.id) }}" data-return="medium-{{ group.medium }}"
                                         class="text-sm underline text-content-secondary hover:text-content-primary">Crop</button>
                                 <form action="{{ url_for('faces.delete', placeholder_id=p.id) }}" method="POST"
-                                      data-confirm="{{ 'Delete ' ~ p.name ~ '? Items that use it show the plain look there again.' }}" data-confirm-ok="Delete">
+                                      data-confirm="{{ 'Delete ' ~ p.name ~ '? Items that use it show the plain look there again.' }}" data-confirm-ok="Yes, delete">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Delete</button>
                                 </form>
@@ -121,7 +121,7 @@
                     <div class="flex gap-3 items-center">
                         <button type="submit" class="{{ button }}">Save set</button>
                         <button type="submit" formaction="{{ url_for('faces.delete_set', set_id=s.row.id) }}"
-                                data-confirm="{{ 'Delete the set ' ~ s.row.name ~ '? Items it filled in keep their faces.' }}" data-confirm-ok="Delete"
+                                data-confirm="{{ 'Delete the set ' ~ s.row.name ~ '? Items it filled in keep their faces.' }}" data-confirm-ok="Yes, delete"
                                 class="text-sm underline text-content-secondary hover:text-content-primary">Delete set</button>
                     </div>
                 </form>

@@ -32,8 +32,9 @@ SCOPES = ('mine', 'household')
 VIEWS = {f'{kind}:{scope}': (kind, scope) for kind in (media.BOOK, media.VIDEO, media.RECORD)
          for scope in SCOPES}
 
-# What the Books search box looks in (as well as the viewer's tags)
-BOOK_SEARCH_COLUMNS = ['title', 'subtitle', 'author', 'publisher', 'isbn', 'publish_year']
+# What the Books search box looks in (as well as the viewer's tags); an
+# audiobook's narrator too (16.0e), so "Ray Porter" finds what he read
+BOOK_SEARCH_COLUMNS = ['title', 'subtitle', 'author', 'publisher', 'isbn', 'publish_year', 'narrator']
 
 
 def term_match(term, data_user):
@@ -42,28 +43,40 @@ def term_match(term, data_user):
     return search.match(term, BOOK_SEARCH_COLUMNS, viewer_id=data_user)
 
 
-def from_goodreads(args, viewer_id):
-    """SQL fragment and params for ?from=goodreads (ROADMAP 14b): books an
-    import of the viewer's matched or wrote, not undone; ?gr_shelf= narrows
-    it to one Goodreads shelf (14c). Always the viewer's
-    own provenance, never the shelf owner's, so a friend's grid can't show
-    what their import touched."""
+def from_imports(args, viewer_id):
+    """SQL fragment and params for the From filter: ?from=goodreads (ROADMAP
+    14b), books a Goodreads import of the viewer's matched or wrote, not
+    undone, and ?gr_shelf= narrows it to one Goodreads shelf (14c);
+    ?from=audiobookshelf (16.0e), books the viewer's Audiobookshelf import
+    created or added listening to (undo drops the links). Both ticked is
+    either. Always the viewer's own provenance, never the shelf owner's, so
+    a friend's grid can't show what their imports touched."""
+    sources = set(args.getlist('from'))
     shelf = (args.get('gr_shelf') or '').strip().lower()
-    if (args.get('from') != 'goodreads' and not shelf) or viewer_id is None:
+    if viewer_id is None:
         return '', []
-    sql = (' AND EXISTS (SELECT 1 FROM goodreads_rows gr JOIN goodreads_imports gi ON gi.id = gr.import_id'
-           ' WHERE gr.book_id = b.id AND gi.user_id = ? AND gi.undone_at IS NULL')
-    params = [viewer_id]
-    if shelf:
-        # ?gr_shelf=audiobook (14c, the Collections page's Goodreads shelves
-        # card): one shelf of the row's comma-joined list. instr, not LIKE,
-        # so a "_" in a shelf name is not a wildcard.
-        sql += " AND instr(',' || gr.shelves || ',', ',' || ? || ',') > 0"
-        params.append(shelf)
-    return sql + ')', params
+    parts, params = [], []
+    if 'goodreads' in sources or shelf:
+        sql = ('EXISTS (SELECT 1 FROM goodreads_rows gr JOIN goodreads_imports gi ON gi.id = gr.import_id'
+               ' WHERE gr.book_id = b.id AND gi.user_id = ? AND gi.undone_at IS NULL')
+        params.append(viewer_id)
+        if shelf:
+            # ?gr_shelf=audiobook (14c, the Collections page's Goodreads shelves
+            # card): one shelf of the row's comma-joined list. instr, not LIKE,
+            # so a "_" in a shelf name is not a wildcard.
+            sql += " AND instr(',' || gr.shelves || ',', ',' || ? || ',') > 0"
+            params.append(shelf)
+        parts.append(sql + ')')
+    if 'audiobookshelf' in sources:
+        parts.append("EXISTS (SELECT 1 FROM abs_links al WHERE al.book_id = b.id AND al.user_id = ?"
+                     " AND al.outcome IN ('created', 'attached'))")
+        params.append(viewer_id)
+    if not parts:
+        return '', []
+    return ' AND (' + ' OR '.join(parts) + ')', params
 
 
-def books_query(owner_ids, args, data_user, viewer_id=None):
+def books_query(owner_ids, args, data_user, viewer_id=None, lent_ok=True):
     """(SQL, params) for the Books grid: books on the shelves of `owner_ids`,
     narrowed by the search and filters in `args` (the query string).
 
@@ -72,14 +85,15 @@ def books_query(owner_ids, args, data_user, viewer_id=None):
     rating and tag filters and the search's tag matching use (the entries in
     view: you on your own and the household's shelves, the friend on theirs).
     `viewer_id` is who is looking (From Goodreads is always theirs); it
-    defaults to `data_user`.
+    defaults to `data_user`. `lent_ok=False` on a friend's shelf, where
+    Show: Lent out isn't offered (loans are the shelf's people's).
     """
     marks = ','.join('?' * len(owner_ids))
     query = f'SELECT b.* FROM library_books b WHERE b.added_by IN ({marks})'
     params = list(owner_ids)
 
     # Only what's on the shelf unless Show asks for not-owned or removed ones
-    query += shelf_filter(args)
+    query += shelf_filter(args, lent_ok=lent_ok)
 
     term = (args.get('search_term') or '').strip()
     if term:
@@ -106,8 +120,8 @@ def books_query(owner_ids, args, data_user, viewer_id=None):
         query += (" AND EXISTS (SELECT 1 FROM book_tags t WHERE t.book_id = b.id"
                   f" AND t.user_id = ? AND t.tag_name IN ({tag_marks}))")
         params += [data_user, *tags]
-    gr_sql, gr_params = from_goodreads(args, data_user if viewer_id is None else viewer_id)
-    return query + gr_sql, params + gr_params
+    from_sql, from_params = from_imports(args, data_user if viewer_id is None else viewer_id)
+    return query + from_sql, params + from_params
 
 
 def _args(args):

@@ -108,24 +108,39 @@
                             data-change="filtersChanged"
                             class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                    focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                        {% for value, label in SHOW_CHOICES %}
+                        {# Lent out (16.0d) is the shelf's people's: not on a friend's grid #}
+                        {% for value, label in SHOW_CHOICES if value != 'lent' or not (friend or tab == 'friend') %}
                         <option value="{{ value }}" {% if show == value %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                {# From Goodreads (ROADMAP 14b): books your Goodreads imports matched or
-                   added, owned or not. Books only, and not on a friend's shelf (it is
-                   always your own imports, utils/grid_query.from_goodreads). #}
+                {# From (ROADMAP 14b, 16.0e): books your Goodreads or Audiobookshelf
+                   imports matched or added, owned or not; both ticked is either.
+                   Books only, and not on a friend's shelf (it is always your own
+                   imports, utils/grid_query.from_imports). Audiobookshelf only on a
+                   site with a server. #}
                 {% if not m and not friend %}
-                <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">
-                    <input type="checkbox" name="from" value="goodreads" id="from_goodreads"
-                           data-change="filtersChanged"
-                           {% if request.args.get('from') == 'goodreads' %}checked{% endif %}
-                           class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
-                    From Goodreads
+                {% set sources = request.args.getlist('from') %}
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-content-primary">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="from" value="goodreads" id="from_goodreads"
+                               data-change="filtersChanged"
+                               {% if 'goodreads' in sources %}checked{% endif %}
+                               class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
+                        From Goodreads
+                    </label>
+                    {% if abs_enabled() %}
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="from" value="audiobookshelf" id="from_audiobookshelf"
+                               data-change="filtersChanged"
+                               {% if 'audiobookshelf' in sources %}checked{% endif %}
+                               class="form-checkbox text-accent rounded border-rule-strong focus:ring-accent focus:ring-offset-0 cursor-pointer">
+                        From Audiobookshelf
+                    </label>
+                    {% endif %}
                     <span class="text-content-secondary">(combine with Show: Everything to include unshelved books)</span>
-                </label>
+                </div>
                 {# One Goodreads shelf (14c), from the Collections page's card: untick to drop it #}
                 {% if request.args.get('gr_shelf') %}
                 <label class="inline-flex items-center gap-2 cursor-pointer text-sm text-content-primary">

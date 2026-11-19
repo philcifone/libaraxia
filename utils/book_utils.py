@@ -814,6 +814,7 @@ def save_best_cover(urls: Iterable[str]) -> Optional[str]:
 # listened to but never had; `removed_at` is a copy you had that left.
 SHOW_CHOICES = (
     ('', 'On the shelf'),
+    ('lent', 'Lent out'),          # 16.0d: an open loan; own and household grids only
     ('not_owned', 'Unshelved'),
     ('removed', 'Removed'),
     ('all', 'Everything'),
@@ -847,11 +848,20 @@ def on_shelf(alias='b'):
     return f"{alias}.owned = 1 AND {alias}.removed_at IS NULL"
 
 
-def shelf_filter(args, alias='b'):
+def shelf_filter(args, alias='b', lent_ok=True):
     """SQL fragment (' AND ...') for a library page's Show choice; `args` is
     request.args (or any mapping). The default is what's on the shelf, so
-    nothing you don't own shows up unless you ask for it."""
+    nothing you don't own shows up unless you ask for it.
+
+    Lent out (16.0d) is items with an open loan, whatever their shelf state
+    (a loan doesn't follow it). Loans are for the shelf's people only, so a
+    friend's grid passes `lent_ok=False` and gets the default instead."""
     choice = show_choice(args)
+    if choice == 'lent':
+        if not lent_ok:
+            return f" AND {on_shelf(alias)}"
+        return (f" AND EXISTS (SELECT 1 FROM loans l WHERE l.book_id = {alias}.id"
+                f" AND l.returned_at IS NULL)")
     if choice == 'not_owned':
         return f" AND {alias}.owned = 0"
     if choice == 'removed':
@@ -904,15 +914,19 @@ def viewer_marks(conn, viewer_id, book_ids):
             for r in rows if r['status'] or r['rating']}
 
 
-def card_json(conn, viewer_id, books):
+def card_json(conn, viewer_id, books, looker_id=None):
     """Grid items as JSON for infinite scroll (script.js createBookCard),
     with what list view shows: year, format, and the viewer's status
-    (as its label) and rating."""
+    (as its label) and rating. `viewer_id` is whose marks those are (the
+    friend on their shelf); `looker_id` is who is looking (default
+    `viewer_id`), for the Lent badge, which only the shelf's people see."""
     from utils import media
     from utils.image_utils import upload_exists
     from utils.photos import box_faces
+    from utils.loans import lent_map
     marks = viewer_marks(conn, viewer_id, [b['id'] for b in books])
     faces = box_faces(conn, books)
+    lent = lent_map(conn, looker_id or viewer_id, [b['id'] for b in books])
     out = []
     for b in books:
         mark = marks.get(b['id'], {})
@@ -925,6 +939,7 @@ def card_json(conn, viewer_id, books):
             'cover_image_url': b['cover_image_url'] if upload_exists(b['cover_image_url']) else None,
             'removed': b['removed_at'] is not None,
             'not_owned': not b['owned'],
+            'lent_to': lent.get(b['id']),         # the Lent badge (16.0d)
             'format': media.shown_format(b),      # none for an unshelved movie or album
             # Videos (15.1): 'tv' or None (a movie), and a TV set's season text;
             # `by` ("directed by", "created by") and `season_short` ("S2") are

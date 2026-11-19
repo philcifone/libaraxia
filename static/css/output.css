@@ -2814,6 +2814,10 @@ summary.chip::-webkit-details-marker {
   left: 0px;
 }
 
+.left-1\/2 {
+  left: 50%;
+}
+
 .left-2 {
   left: 0.5rem;
 }
@@ -3405,6 +3409,11 @@ summary.chip::-webkit-details-marker {
 
 .basis-full {
   flex-basis: 100%;
+}
+
+.-translate-x-1\/2 {
+  --tw-translate-x: -50%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
 .-translate-x-full {
@@ -4396,6 +4405,10 @@ summary.chip::-webkit-details-marker {
 
 .underline {
   text-decoration-line: underline;
+}
+
+.underline-offset-2 {
+  text-underline-offset: 2px;
 }
 
 .placeholder-gray-400::-moz-placeholder {
@@ -10559,6 +10572,29 @@ form:has(#not_owned:checked) .when-owned {
   display: none;
 }
 
+/* An audiobook's narrator and length (16.0e): shown while Format is
+   Audiobook, by CSS. Hidden fields still submit; the routes keep them only
+   for an audiobook (blueprints/books.py _audio_fields). */
+
+form .when-audiobook {
+  display: none;
+}
+
+form:has(#format option[value="Audiobook"]:checked) .when-audiobook {
+  display: block;
+}
+
+/* Lend panel (16.0d): the name field only for "Someone else", by CSS, no
+   script. With no household or friends that is the only choice, so it shows. */
+
+.lend-form .when-other {
+  display: none;
+}
+
+.lend-form:has(#lend_borrower option[value="other"]:checked) .when-other {
+  display: block;
+}
+
 /* The genre picker */
 
 .bulk-list {
@@ -10864,6 +10900,32 @@ html[data-gr-bar="on"] body {
   }
 }
 
+/* Audiobookshelf import review (16.0e, templates/abs_review.html): the
+   Goodreads row's parts without its tick or cover; one plain form */
+
+.abs-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .35rem .75rem;
+  align-items: start;
+  padding: .6rem .25rem;
+}
+
+.abs-row .gr-main, .abs-row .gr-choice {
+  grid-column: auto;
+}
+
+@media (max-width: 639px) {
+  .abs-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .abs-row .gr-choice {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 /* ---- Corners for the crop tool and bulk edit (ROADMAP 14c) ----
    Both were drawn square in every style. They take the style's own radius
    tokens, like the cards beside them: rounded in OG and Shelf, square in
@@ -10973,9 +11035,12 @@ html[data-gr-bar="on"] body {
   --cp-diag-br: linear-gradient(to top left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
 }
 
-/* Cards: thin accent outline, solid triangles top-left and bottom-right */
+/* Cards: thin accent outline, solid triangles top-left and bottom-right.
+   Never a <dialog>: a modal dialog sits in the top layer and centres in the
+   viewport only while it's position: fixed; made relative it computes to
+   absolute and opens at the top of the page instead (the confirm dialog). */
 
-:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky) {
+:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky, dialog) {
   position: relative;
 }
 

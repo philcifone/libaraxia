@@ -49,6 +49,7 @@
                 </h1>
                 {# No "by" line without a creator (Phil, 2026-11-15) #}
                 {% if book['author'] %}<p class="text-xl text-content-secondary italic" data-byline>{{ m.by }} {{ book['author'] }}</p>{% endif %}
+                {% if book['narrator'] and book['format'] == 'Audiobook' %}<p class="text-base text-content-secondary italic" data-narrator>Narrated by {{ book['narrator'] }}</p>{% endif %}
             </div>
             {% if format_icon %}
             <span class="shrink-0 text-accent" role="img"
@@ -124,9 +125,11 @@
                             ] %}
                             {% else %}
                             {# 8B.2: a plain book has no stored format; an audiobook's
-                               page count is its print edition's #}
+                               page count is its print edition's. 16.0e: an audiobook's
+                               narrator and length (runtime_minutes). #}
                             {% set details = [
                                 ('Format', book['format'] or 'Book'),
+                                ('Length', runtime if book['format'] == 'Audiobook' else false),
                                 ('Publisher', book['publisher']),
                                 ('Publication Year', book['publish_year']),
                                 ('Print Pages' if book['format'] == 'Audiobook' else 'Page Count', (book['page_count']|string + ' pages') if book['page_count'] else none),
@@ -136,8 +139,10 @@
                             {% endif %}
                             {# A code (ISBN, barcode, catalogue number) is one long word:
                                on a phone it takes the badge's full width rather than
-                               break mid-number in a half column #}
-                            {% for item in details if item[0] != 'Format' or item[1] %}
+                               break mid-number in a half column. A value of false is a row
+                               that doesn't apply (a narrator on a printed book): left out,
+                               where an empty one says "Not set". #}
+                            {% for item in details if (item[0] != 'Format' or item[1]) and item[1] is not sameas false %}
                             <div class="space-y-1 {{ 'col-span-2 lg:col-span-1' if item[0] in ('ISBN', m.code, 'Cat. No.', 'Catalogue Number') }}">
                                 <span class="label text-sm pb-1">{{ item[0] }}</span>
                                 {# An empty field keeps its label, so you can see what's missing,
@@ -333,6 +338,118 @@
                     {# No pointer to Edit -> tools here (Phil, 2026-11-15: where they
                        live is obvious, the line was clutter) #}
                     {% endif %}
+
+                    {# Loans (16.0d, docs/LENDING-SPEC.md): the shelf's people (owner,
+                       household) and admins see and manage every loan; a borrower
+                       sees only their own; anyone else sees nothing. Plain forms
+                       that come back to #loans. #}
+                    {% if loan_manage or loan_history %}
+                    <section id="loans" class="space-y-3" aria-label="Loans">
+                        {% if open_loan %}
+                        <div class="bg-primary rounded-lg p-4 text-sm text-content-primary {{ 'border-2 border-accent' if loan_overdue else 'border border-card' }}" data-loan-open>
+                            {% if loan_manage %}
+                            <strong>Lent to {{ open_loan.borrower }}</strong> since {{ open_loan.lent_at|human_date }}
+                            {%- if open_loan.due_at %}, {{ 'overdue since' if loan_overdue else 'due' }} {{ open_loan.due_at|human_date }}{% endif %}.
+                            {% if open_loan.lender and open_loan.lent_by != book['added_by'] %}<span class="text-content-secondary">Lent by {{ open_loan.lender }}.</span>{% endif %}
+                            {% else %}
+                            <strong>Borrowed from {{ open_loan.lender or open_loan.owner or 'its owner' }}</strong> since {{ open_loan.lent_at|human_date }}
+                            {%- if open_loan.due_at %}, {{ 'overdue since' if loan_overdue else 'due' }} {{ open_loan.due_at|human_date }}{% endif %}.
+                            {% endif %}
+                            {% if open_loan.note %}<span class="block text-content-secondary mt-1">{{ open_loan.note }}</span>{% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if loan_manage and open_loan %}
+                        <form action="{{ url_for('loans.mark_returned', loan_id=open_loan.id) }}" method="POST"
+                              class="flex flex-wrap items-end gap-3">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div>
+                                <label for="loan_returned_at" class="block text-xs text-content-secondary mb-1">Returned on</label>
+                                <input type="date" id="loan_returned_at" name="returned_at" value="{{ today }}"
+                                       min="{{ open_loan.lent_at }}" max="{{ today }}" required
+                                       class="bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                            <button type="submit"
+                                    class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-accent text-on-accent text-sm rounded-lg hover:bg-accent-hover btn">
+                                Mark returned
+                            </button>
+                        </form>
+                        {% elif can_lend_now %}
+                        <button type="button" data-click="toggleHidden" data-target="lend-panel"
+                                class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary text-sm rounded-lg hover:bg-primary-hover btn btn-outline">
+                            Lend this {{ m.noun }}
+                        </button>
+                        <form id="lend-panel" action="{{ url_for('loans.lend', book_id=book['id']) }}" method="POST"
+                              class="lend-form hidden p-4 bg-primary border border-card rounded-lg space-y-3">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <p class="text-sm text-content-primary">A note of who has it; it stays on your {{ m.shelf }}. Mark it returned when it comes back.</p>
+                            <div>
+                                <label for="lend_borrower" class="block text-xs text-content-secondary mb-1">Who has it?</label>
+                                <select id="lend_borrower" name="borrower"
+                                        class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                    {% set household = borrower_choices|selectattr('household')|list %}
+                                    {% set friends = borrower_choices|rejectattr('household')|list %}
+                                    {% if household %}<optgroup label="Household">{% for c in household %}<option value="{{ c.id }}">{{ c.username }}</option>{% endfor %}</optgroup>{% endif %}
+                                    {% if friends %}<optgroup label="Friends">{% for c in friends %}<option value="{{ c.id }}">{{ c.username }}</option>{% endfor %}</optgroup>{% endif %}
+                                    <option value="other">Someone else</option>
+                                </select>
+                            </div>
+                            <div class="when-other">
+                                <label for="lend_borrower_name" class="block text-xs text-content-secondary mb-1">Their name</label>
+                                <input type="text" id="lend_borrower_name" name="borrower_name" maxlength="100" placeholder="e.g. Uncle Ray"
+                                       class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="lend_lent_at" class="block text-xs text-content-secondary mb-1">Lent on</label>
+                                    <input type="date" id="lend_lent_at" name="lent_at" value="{{ today }}" max="{{ today }}" required
+                                           class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                                <div>
+                                    <label for="lend_due_at" class="block text-xs text-content-secondary mb-1">Due back (optional)</label>
+                                    <input type="date" id="lend_due_at" name="due_at"
+                                           class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="lend_note" class="block text-xs text-content-secondary mb-1">Note (optional)</label>
+                                <input type="text" id="lend_note" name="note" maxlength="500"
+                                       class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                            <button type="submit" class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
+                                Lend
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if loan_history %}
+                        <details class="loan-history text-sm" data-loan-history>
+                            <summary class="cursor-pointer text-content-secondary">Loans ({{ loan_history|length }})</summary>
+                            <ul class="mt-2 space-y-2">
+                                {% for loan in loan_history %}
+                                <li class="flex items-start justify-between gap-3 border-t border-card pt-2">
+                                    <div>
+                                        <span class="text-content-primary">{{ loan.borrower }}</span>
+                                        <span class="text-content-secondary">· {{ loan.lent_at|human_date }} →
+                                            {% if loan.returned_at %}{{ loan.returned_at|human_date }}{% else %}<em>still out</em>{% endif %}
+                                            {%- if loan.due_at and not loan.returned_at %} (due {{ loan.due_at|human_date }}){% endif %}
+                                            {%- if loan_manage and loan.lender and loan.lent_by != book['added_by'] %} · lent by {{ loan.lender }}{% endif %}</span>
+                                        {% if loan.note %}<span class="block text-content-secondary">{{ loan.note }}</span>{% endif %}
+                                    </div>
+                                    {% if loan_manage %}
+                                    <form action="{{ url_for('loans.delete', loan_id=loan.id) }}" method="POST"
+                                          data-confirm="Delete this loan record? Use Mark returned when it comes back; delete is for mistakes.">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="text-xs text-content-secondary hover:text-content-primary underline">Delete</button>
+                                    </form>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                        {% endif %}
+                    </section>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -418,6 +535,18 @@
                     {% if goodreads_notes %}
                     <div class="space-y-1 text-sm text-content-secondary">
                         {% for note in goodreads_notes %}<p>{{ note }}</p>{% endfor %}
+                    </div>
+                    {% endif %}
+                    {# Audiobookshelf (16.0e): the import's note, and your progress
+                       there now, filled after load by book_detail.js from
+                       /abs/progress so the page never waits on the server; stays
+                       hidden if it doesn't answer. Your own link only. #}
+                    {% if abs_note %}
+                    <div class="space-y-1 text-sm text-content-secondary" data-abs-note>
+                        <p>{{ abs_note }}</p>
+                        {% if abs_progress_url %}
+                        <p data-abs-progress data-url="{{ abs_progress_url }}" data-sync-url="{{ url_for('user.settings', _anchor='audiobookshelf') }}" hidden></p>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>

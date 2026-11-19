@@ -83,6 +83,26 @@
             {% endfor %}
         </select>
     </div>
+    {# An audiobook's narrator and length (16.0e), shown while Format is
+       Audiobook (styles.css .when-audiobook). Length is stored in minutes
+       (runtime_minutes), entered as hours and minutes. #}
+    {% set audio_h, audio_m = length_parts(values.runtime_minutes if values.format == 'Audiobook' else none) %}
+    <div class="when-audiobook space-y-4">
+        {{ field('narrator', 'Narrator', values.narrator if values.format == 'Audiobook' else '', hint='optional', attrs='maxlength="300"') }}
+        <fieldset class="space-y-2">
+            <legend class="block text-sm font-medium text-content-secondary">Length <span class="text-xs italic">(optional)</span></legend>
+            <div class="grid grid-cols-2 gap-4">
+                <label class="flex items-center gap-2 text-sm text-content-secondary">
+                    <input type="number" id="length_hours" name="length_hours" value="{{ audio_h }}" min="0" max="999" step="1"
+                           class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent"> h
+                </label>
+                <label class="flex items-center gap-2 text-sm text-content-secondary">
+                    <input type="number" id="length_minutes" name="length_minutes" value="{{ audio_m }}" min="0" max="59" step="1"
+                           class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent"> min
+                </label>
+            </div>
+        </fieldset>
+    </div>
     {% else %}
     {# No format for an unshelved movie or album (media.shown_format): hidden
        while Add's "Not on my shelf" is ticked (styles.css .when-owned), and

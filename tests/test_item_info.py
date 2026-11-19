@@ -123,3 +123,43 @@ def test_a_plain_book_has_the_open_book_icon_like_movies_and_music(client, db, p
     db.commit()
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
     assert 'aria-label="Audiobook"' in page and '<path d="M12 7v14"/>' not in page
+
+
+# --- Audiobooks and ebooks (16.0e step 1) -----------------------------------
+
+def test_audiobook_narrator_and_length(client, db, people):
+    """Add an audiobook with a narrator and length; the item page shows them;
+    switching it to a printed book clears both."""
+    login(client, 'alice')
+    form = {'submit_book': '1', 'title': 'Project Hail Mary', 'author': 'Andy Weir', 'format': 'Audiobook',
+            'not_owned': '1', 'narrator': 'Ray Porter', 'length_hours': '16', 'length_minutes': '10'}
+    client.post('/books/add', data=form)
+    row = db.execute("SELECT * FROM books WHERE title = 'Project Hail Mary'").fetchone()
+    assert (row['format'], row['narrator'], row['runtime_minutes'], row['owned']) == ('Audiobook', 'Ray Porter', 970, 0)
+    page = client.get(f"/books/book/{row['id']}").get_data(as_text=True)
+    assert 'data-narrator' in page and 'Narrated by Ray Porter' in page and '16 h 10 min' in page
+
+    client.post(f"/books/edit/{row['id']}", data={**form, 'format': 'Book'})
+    row = db.execute('SELECT * FROM books WHERE id = ?', (row['id'],)).fetchone()
+    assert (row['format'], row['narrator'], row['runtime_minutes']) == (None, None, None)
+    assert 'data-narrator' not in client.get(f"/books/book/{row['id']}").get_data(as_text=True)
+    # The narrator is found by the Books search (and exported)
+    db.execute("UPDATE books SET format = 'Audiobook', narrator = 'Ray Porter' WHERE id = ?", (row['id'],))
+    db.commit()
+    found = client.get('/base/index?search_term=porter&show=not_owned', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
+    assert [b['title'] for b in found['books']] == ['Project Hail Mary']
+    from utils.export import library_csv
+    assert library_csv(db, people['alice']).splitlines()[1].endswith(',Ray Porter')
+
+
+def test_ebook_format(client, db, people):
+    from utils import media
+    login(client, 'alice')
+    client.post('/books/add', data={'submit_book': '1', 'title': 'Snow Crash', 'author': 'Neal Stephenson',
+                                    'format': 'Ebook', 'not_owned': '1', 'narrator': 'ignored'})
+    row = db.execute("SELECT * FROM books WHERE title = 'Snow Crash'").fetchone()
+    assert (row['format'], row['narrator'], row['owned']) == ('Ebook', None, 0)
+    assert media.is_digital(row) and media.is_digital('Audiobook') and not media.is_digital(None)
+    assert media.book_format('Ebook') == 'Ebook' and media.book_format('Book') is None
+    assert (media.audio_length('1', '30'), media.audio_length('', '90'), media.audio_length('x', '-3')) == (90, 90, None)
+    assert media.length_parts(970) == (16, 10) and media.length_parts(None) == ('', '')

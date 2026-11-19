@@ -74,7 +74,7 @@
             <p class="text-sm text-content-secondary">For mistakes only: erases the {{ noun }} and your status, review and history for it. If it just left the house, use <em>Remove from shelf</em> on its page instead.</p>
             <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST"
                   data-confirm="{{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.") }}"
-                  data-confirm-ok="Delete">
+                  data-confirm-ok="Yes, delete">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit"
                         class="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-on-accent text-sm rounded-lg hover:bg-red-700 btn">

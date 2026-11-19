@@ -57,7 +57,7 @@ registerActions({
 
     // data-session-id, data-book-id; comes back to this page afterwards
     deleteSession: async el => {
-        if (!await confirmDialog('Delete this reading session?', { ok: 'Delete' })) return;
+        if (!await confirmDialog('Delete this reading session?', { ok: 'Yes, delete' })) return;
         postForm('/read/delete_reading_session/' + encodeURIComponent(el.dataset.sessionId), {
             book_id: el.dataset.bookId,
             redirect_to: 'book_detail',
@@ -310,3 +310,41 @@ window.addEventListener('resize', () => {
     cancelAnimationFrame(fitTitleFrame);
     fitTitleFrame = requestAnimationFrame(fitTitle);
 });
+
+
+// Audiobookshelf (ROADMAP 16.0e): your progress there on an item you
+// imported, asked for after the page has loaded (GET /abs/progress), so a
+// slow or sleeping server never holds the page up. Silent on any failure.
+// Built with textContent and DOM nodes, never innerHTML.
+function fillAbsProgress() {
+    const line = document.querySelector('[data-abs-progress]');
+    if (!line) return;
+    fetch(line.dataset.url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+            if (!data || !data.success) return;
+            line.textContent = data.text;
+            if (data.unsynced) {
+                line.append(' ');
+                const sync = document.createElement('a');
+                sync.href = line.dataset.syncUrl;
+                sync.className = 'text-accent underline';
+                sync.textContent = 'Sync to record it';
+                line.append(sync);
+            }
+            if (data.link) {
+                line.append(' · ');
+                const open = document.createElement('a');
+                open.href = data.link;
+                open.target = '_blank';
+                open.rel = 'noopener';
+                open.className = 'text-accent underline';
+                open.textContent = 'Open in Audiobookshelf';
+                line.append(open);
+            }
+            line.hidden = false;
+        })
+        .catch(() => {});
+}
+
+fillAbsProgress();

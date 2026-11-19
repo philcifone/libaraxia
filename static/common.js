@@ -159,7 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
 //
 //   <form data-confirm="Delete this?">        ask (styled dialog) before submitting
 //   <button data-confirm="Sure?">             ask before the click acts
-//     optional data-confirm-ok="Delete" (button label) and
+//     optional data-confirm-ok="Yes, delete" (button label; a dangerous one
+//     otherwise says "Yes, <its danger word>", yesLabel) and
 //     data-confirm-danger="true|false" (red button; guessed from the wording)
 //   <button data-click="saveBio">             calls the registered saveBio
 //   <input data-change="uploadAvatar">        ... on change
@@ -286,7 +287,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // focus on Cancel; pass {danger: false} or {ok: 'Label'} to override.
 const DANGER_WORDS = /\b(delete|remove|leave|stop|erase|cannot be undone)\b/i;
 
-function confirmDialog(message, { ok = 'OK', danger = DANGER_WORDS.test(message) } = {}) {
+// A dangerous confirm's button says what it does ("Yes, delete"), never a
+// bare OK: from the message's first danger word, or "Yes, continue".
+function yesLabel(message) {
+    const word = (DANGER_WORDS.exec(message) || [])[1];
+    return word && !/undone/i.test(word) ? `Yes, ${word.toLowerCase()}` : 'Yes, continue';
+}
+
+function confirmDialog(message, { ok, danger = DANGER_WORDS.test(message) } = {}) {
+    ok = ok || (danger ? yesLabel(message) : 'OK');
     let dialog = document.getElementById('confirm-dialog');
     if (!dialog) {
         dialog = document.createElement('dialog');

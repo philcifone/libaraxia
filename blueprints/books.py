@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces, catalog_card
+from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces, catalog_card, loans
 from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -31,6 +31,15 @@ from utils.reviews import then_review_values
 from utils.search import by_arg, next_page, page_arg
 
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
+
+
+def _audio_fields(form, book_format):
+    """(narrator, length in minutes) from a book form (16.0e): kept only for
+    an audiobook, so switching a book away from Audiobook clears them."""
+    if book_format != media.AUDIOBOOK:
+        return None, None
+    narrator = (form.get('narrator') or '').strip()[:300] or None
+    return narrator, media.audio_length(form.get('length_hours'), form.get('length_minutes'))
 
 
 @books_blueprint.route("/thumbnail")
@@ -106,11 +115,13 @@ def add_book():
 
         # "I don't own this" (8B.3): kept off the shelf, there for its review
         owned = not request.form.get("not_owned")
+        book_format = media.book_format(request.form.get("format"))
+        narrator, length = _audio_fields(request.form, book_format)
         cursor = conn.execute("""
             INSERT INTO books (title, author, publisher, publish_year, isbn,
                              page_count, cover_image_url, description, subtitle, genre, added_by, owned,
-                             format)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             format, narrator, runtime_minutes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             request.form["title"],
             request.form["author"],
@@ -124,7 +135,8 @@ def add_book():
             request.form.get("genre", ""),
             current_user.id,
             1 if owned else 0,
-            media.book_format(request.form.get("format")),   # Book (NULL) or Audiobook
+            book_format,                # Book (NULL), Audiobook or Ebook
+            narrator, length,
         ))
         copy_fields.save(conn, cursor.lastrowid, copy)
         # The placeholder set picked on the form (16.0c)
@@ -525,13 +537,15 @@ def edit_book(id):
             current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
             page_count = 0
 
+        book_format = media.book_format(request.form.get("format"))
+        narrator, length = _audio_fields(request.form, book_format)
         # The ISBN is saved too: until Phase 8.5 the form showed it but the
         # UPDATE left it out, so corrections were silently dropped.
         conn.execute("""
             UPDATE books
             SET title = ?, author = ?, publisher = ?, publish_year = ?, isbn = ?,
                 page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?,
-                format = ?
+                format = ?, narrator = ?, runtime_minutes = ?
             WHERE id = ?
         """, (
             request.form["title"],
@@ -544,7 +558,7 @@ def edit_book(id):
             request.form.get("description", ""),
             request.form.get("subtitle", ""),
             request.form.get("genre", ""),
-            media.book_format(request.form.get("format")),
+            book_format, narrator, length,
             id
         ))
         copy_fields.save(conn, id, copy)
@@ -754,9 +768,17 @@ def render_item_page(conn, book):
 
     # What your Goodreads imports did to this book (ROADMAP 14b): yours only
     goodreads_notes = []
+    abs_note = abs_progress_url = None
     if media.media_type_of(book) == media.BOOK:
         from utils.goodreads_plan import provenance
         goodreads_notes = provenance(conn, current_user.id, id)
+        # Audiobookshelf (16.0e): the import's note and the live progress
+        # line, for your own link only
+        from utils import abs_import, audiobookshelf
+        if audiobookshelf.enabled():
+            abs_note = abs_import.provenance(conn, current_user.id, id)
+            if abs_note and audiobookshelf.account(conn, current_user.id):
+                abs_progress_url = url_for('abs.progress', book_id=id)
 
     # More photos (ROADMAP 16.0a): anyone who can see the item sees them,
     # like the cover. The gallery opens on the cover, then back, spine, rest.
@@ -776,9 +798,23 @@ def render_item_page(conn, book):
         (('Sleeve: ' if sleeve else ('Record: ' if kind == media.RECORD else '')) + condition.label(kind, code, sleeve))
         for code, sleeve in grades if code)
 
+    # Loans (16.0d): the shelf's people (owner, household) and admins see and
+    # manage every loan; a borrower sees only their own; anyone else nothing.
+    loan_manage = loans.can_lend(conn, current_user, book)
+    loan_history = loans.history(conn, current_user, book)
+    open_loan = next((l for l in loan_history if not l['returned_at']), None)
+    can_lend_now = loan_manage and open_loan is None and loans.lendable(conn, book)
+
     return render_template(
         "book_detail.html",
         book=book,
+        loan_manage=loan_manage,
+        loan_history=loan_history,
+        open_loan=open_loan,
+        loan_overdue=loans.is_overdue(open_loan),
+        can_lend_now=can_lend_now,
+        borrower_choices=loans.borrower_choices(conn, current_user.id) if can_lend_now else [],
+        today=loans.today(),
         item_photos=item_photos,
         item3d=item3d.model(book, item_photos, faces.placeholder_urls(conn, book, item_photos)),
         condition_text=condition_text,
@@ -787,6 +823,7 @@ def render_item_page(conn, book):
         photo_slides=photo_slides,
         extra_photos=len(photo_slides) - (1 if cover_url else 0),
         goodreads_notes=goodreads_notes,
+        abs_note=abs_note, abs_progress_url=abs_progress_url,
         read_data=read_data,
         latest_session=latest_session,
         reading_sessions=reading_sessions,

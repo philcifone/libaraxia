@@ -4815,6 +4815,17 @@ form:has(input[name="video_kind"][value="tv"]:checked) .when-movie { display: no
    format (media.shown_format) */
 form:has(#not_owned:checked) .when-owned { display: none; }
 
+/* An audiobook's narrator and length (16.0e): shown while Format is
+   Audiobook, by CSS. Hidden fields still submit; the routes keep them only
+   for an audiobook (blueprints/books.py _audio_fields). */
+form .when-audiobook { display: none; }
+form:has(#format option[value="Audiobook"]:checked) .when-audiobook { display: block; }
+
+/* Lend panel (16.0d): the name field only for "Someone else", by CSS, no
+   script. With no household or friends that is the only choice, so it shows. */
+.lend-form .when-other { display: none; }
+.lend-form:has(#lend_borrower option[value="other"]:checked) .when-other { display: block; }
+
 /* The genre picker */
 .bulk-list {
     max-height: min(16rem, 40dvh); overflow-y: auto; overscroll-behavior: contain;
@@ -4895,6 +4906,18 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
     .gr-choice { grid-column: 2; width: 100%; min-width: 0; }
 }
 
+/* Audiobookshelf import review (16.0e, templates/abs_review.html): the
+   Goodreads row's parts without its tick or cover; one plain form */
+.abs-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .75rem;
+    align-items: start; padding: .6rem .25rem;
+}
+.abs-row .gr-main, .abs-row .gr-choice { grid-column: auto; }
+@media (max-width: 639px) {
+    .abs-row { grid-template-columns: minmax(0, 1fr); }
+    .abs-row .gr-choice { width: 100%; min-width: 0; }
+}
+
 /* ---- Corners for the crop tool and bulk edit (ROADMAP 14c) ----
    Both were drawn square in every style. They take the style's own radius
    tokens, like the cards beside them: rounded in OG and Shelf, square in
@@ -4964,8 +4987,11 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
     --cp-diag-br: linear-gradient(to top left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
 }
 
-/* Cards: thin accent outline, solid triangles top-left and bottom-right */
-:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky) { position: relative; }
+/* Cards: thin accent outline, solid triangles top-left and bottom-right.
+   Never a <dialog>: a modal dialog sits in the top layer and centres in the
+   viewport only while it's position: fixed; made relative it computes to
+   absolute and opens at the top of the page instead (the confirm dialog). */
+:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky, dialog) { position: relative; }
 :root[data-style="cyberpunk"] :is(.card, .card-link)::after {
     content: "";
     position: absolute;

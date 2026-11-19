@@ -468,7 +468,7 @@ def test_options_for_each_section(conn, people, who):
     books = bulk.options(conn, alice, 'book')
     assert [s['value'] for s in books['statuses']] == [*media.STATUSES['book'], 'untracked']
     assert books['statuses'][-1]['label'] == 'Unread'
-    assert [f['value'] for f in books['formats']] == ['Book', 'Audiobook']
+    assert [f['value'] for f in books['formats']] == ['Book', 'Audiobook', 'Ebook']
     assert [s['name'] for s in books['shelves']] == ['Jazz'] and books['tags'] == [{'value': 'kitchen', 'count': 1}]
     movies = bulk.options(conn, alice, 'video')
     assert movies['statuses'][-1]['label'] == 'Unwatched'

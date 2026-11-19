@@ -68,6 +68,42 @@ def custom_shelves(conn, user_id, media_type):
     } for r in rows]
 
 
+def lent_shelf(conn, user_id, media_type):
+    """The Collections page's Lent out row (16.0d) for one section: what is
+    lent from your or your household's shelf, each cover captioned with who
+    has it, linked to the grid's Show: Lent out (the household's grid when
+    you share one, so a member's loans are in it too). None when nothing is
+    lent."""
+    from models import get_library_members
+    from utils import loans
+    rows = loans.lent_out(conn, user_id, media_type)
+    if not rows:
+        return None
+    scope = 'shared' if len(get_library_members(user_id, conn)) > 1 else 'mine'
+    return {
+        'label': 'Lent out', 'count': len(rows), 'lent': True,
+        'url': url_for(media.SHELF_ENDPOINTS[media_type][scope], show='lent'),
+        'covers': [{'cover_image_url': r['cover_image_url'], 'title': r['title'], 'by': r['borrower']}
+                   for r in rows[:COVERS_PER_ROW]],
+    }
+
+
+def borrowed_shelf(conn, user_id):
+    """Your profile's Borrowed row (16.0d): what you have borrowed and not
+    returned, any type, each cover captioned with who lent it; linked to the
+    Borrowed page. None when there is nothing."""
+    from utils import loans
+    rows = loans.borrowed_by(conn, user_id)
+    if not rows:
+        return None
+    return {
+        'label': 'Borrowed', 'count': len(rows),
+        'url': url_for('loans.borrowed'),
+        'covers': [{'cover_image_url': r['cover_image_url'], 'title': r['title'],
+                    'by': r['lender'] or r['owner']} for r in rows[:COVERS_PER_ROW]],
+    }
+
+
 def section_counts(conn, user_id):
     """{media_type: number of statuses + custom shelf items} for the tabs."""
     counts = {t: 0 for t in media.MEDIA_TYPES}

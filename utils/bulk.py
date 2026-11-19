@@ -862,11 +862,15 @@ def _ids(ids):
 
 
 def _action(key):
+    # The importers journal here so their undo is a bulk undo: Goodreads
+    # (ROADMAP 14b) and Audiobookshelf (16.0e). Imported late: they import
+    # this module.
     if key == 'goodreads':
-        # The Goodreads import journals here so its undo is a bulk undo
-        # (ROADMAP 14b). Imported late: goodreads_plan imports this module.
         from utils.goodreads_plan import ACTION
         return ACTION
+    if key == 'audiobookshelf':
+        from utils.abs_import import _make_action
+        return _make_action()
     if key not in ACTIONS:
         raise BulkError('That bulk action is not available.')
     return ACTIONS[key]

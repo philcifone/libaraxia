@@ -54,6 +54,7 @@ from utils import image_utils
 KINDS = {
     'manual':         'Backed up by hand',
     'goodreads':      'Before a Goodreads import',
+    'audiobookshelf': 'Before an Audiobookshelf import',
 }
 MAX_MANUAL = 10        # per user; the oldest must be deleted to make another
 KEEP_AUTOMATIC = 5     # per user, newest kept
@@ -64,7 +65,11 @@ FORMAT = 1
 # before children). Children of these are handled with them.
 USER_TABLES = ['user_collections', 'bulk_edits', 'goodreads_imports',
                'collections', 'read_data', 'reading_sessions', 'wishlist',
-               'book_tags', 'reading_goals', 'dismissed_activities']
+               'book_tags', 'reading_goals', 'dismissed_activities',
+               # What each Audiobookshelf item became (16.0e), after the
+               # sessions it points at. Never abs_accounts: the key isn't
+               # yours to carry around in a file.
+               'abs_links']
 CHILDREN = {
     'collection_books': ('collection_id', 'user_collections', 'collection_id'),
     'bulk_edit_items':  ('edit_id', 'bulk_edits', 'id'),
@@ -75,7 +80,9 @@ AFTER = {'user_collections': 'collection_books', 'bulk_edits': 'bulk_edit_items'
          'goodreads_imports': 'goodreads_rows'}
 # Columns that point at a book: a row whose book is gone can't come back,
 # except where the key is SET NULL (goodreads_rows keeps its line)
-BOOK_NULLABLE = {'goodreads_rows'}
+BOOK_NULLABLE = {'goodreads_rows', 'abs_links'}
+# Tables whose session_id is SET NULL: nulled when that session didn't come back
+SESSION_NULLABLE = {'abs_links'}
 
 
 class PersonalBackupError(Exception):
@@ -255,10 +262,15 @@ def _insert(conn, table, saved, live_books):
     cols = [c[1] for c in live if c[1] in have]
     idx = [saved['columns'].index(c) for c in cols]
     book_i = cols.index('book_id') if 'book_id' in cols else None
+    session_i = cols.index('session_id') if table in SESSION_NULLABLE and 'session_id' in cols else None
+    live_sessions = ({r[0] for r in conn.execute('SELECT session_id FROM reading_sessions')}
+                     if session_i is not None else set())
     sql = f'INSERT INTO {table} ({", ".join(cols)}) VALUES ({", ".join("?" * len(cols))})'
     skipped = 0
     for row in saved['rows']:
         values = [row[i] for i in idx]
+        if session_i is not None and values[session_i] not in live_sessions:
+            values[session_i] = None
         if book_i is not None and values[book_i] is not None and values[book_i] not in live_books:
             if table in BOOK_NULLABLE:
                 values[book_i] = None
@@ -333,6 +345,8 @@ def restore(conn, user_id, name):
         # 4. Your rows, parents before children
         live_books = {r[0] for r in conn.execute('SELECT id FROM books')}
         for t in USER_TABLES:
+            if t not in tables:
+                continue        # a table newer than the backup: it had no rows then
             result['skipped'] += _insert(conn, t, tables[t], live_books)
             if t in AFTER:
                 result['skipped'] += _insert(conn, AFTER[t], tables[AFTER[t]], live_books)

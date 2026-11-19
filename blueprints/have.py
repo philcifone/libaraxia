@@ -25,7 +25,7 @@ def check():
     links = have.add_links(result['kind'], result['value'], q) if missed else []
     return render_template('have.html', q=q, result=result, add_links=links,
                            online=missed and have.worth_asking(result),
-                           verdict_label=have.verdict_label)
+                           verdict_label=lambda row: have.verdict_label(row, current_user.id))
 
 
 @have_blueprint.route('/local', methods=['GET'])
@@ -45,7 +45,7 @@ def local():
         'author': row['author'],
         'media_type': row['media_type'],
         'verdict': row['verdict'],
-        'label': have.verdict_label(row),
+        'label': have.verdict_label(row, current_user.id),
         'url': url_for(media.item_endpoint(media.media_type_of(row), 'show'), id=row['id']),
     } for row in result['matches']]
     return jsonify({'success': True, 'best': result['best'], 'matches': matches})

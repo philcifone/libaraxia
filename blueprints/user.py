@@ -114,6 +114,8 @@ def profile(username):
             if rows:
                 profile_shelves.append((shelves.SECTION_NAMES[media_type], rows))
         wishlist_shelves = shelves.wishlist_shelves(conn, user['id'], username=link_user)
+    # Borrowed (16.0d): your own profile only; friends visiting don't see it
+    borrowed_shelf = shelves.borrowed_shelf(conn, user['id']) if is_own_profile else None
 
     # Check if this user is in current user's shared library
     in_shared_library = shares_library_with(current_user.id, user['id']) if not is_own_profile else False
@@ -159,6 +161,7 @@ def profile(username):
         friends=friends,
         profile_shelves=profile_shelves,
         wishlist_shelves=wishlist_shelves,
+        borrowed_shelf=borrowed_shelf,
         in_shared_library=in_shared_library,
         household=household,
         recent_reviews=recent_reviews,
@@ -178,9 +181,11 @@ def settings():
     if current_user.is_admin:
         from blueprints.admin import settings_context
         admin = settings_context(conn)
+    from blueprints.audiobookshelf import settings_context as abs_context
     return render_template(
         'settings.html',
         user=me,
+        abs=abs_context(conn, current_user.id),      # None unless AUDIOBOOKSHELF_URL is set (16.0e)
         account_removal=removal_context(conn, current_user.id, viewer_is_admin=False),
         bulk_history=bulk.recent(conn, current_user),
         library_backups=personal_backups.list_backups(current_user.id),

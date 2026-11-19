@@ -129,10 +129,11 @@
                 {{ tile('Average rating', (a.avg_rating ~ ' ★') if a.avg_rating else '–', a.reviews ~ ' review' ~ ('' if a.reviews == 1 else 's')) }}
             </dl>
             {% if a.time %}
-            <p class="mb-8 bg-primary rounded-lg p-3 sm:p-4 text-content-primary">
+            {# 'listen' is audiobooks' hours (16.0e), after the pages read #}
+            <p class="mb-8 bg-primary rounded-lg p-3 sm:p-4 text-content-primary" data-time-spent>
                 <span class="text-sm text-content-secondary">Time spent:</span>
                 {% for kind, amount in a.time -%}
-                <span class="whitespace-nowrap"><strong>{{ '{:,}'.format(amount) }}</strong> {{ 'pages read' if kind == 'book' else 'hours ' ~ labels[kind].verb_past }}</span>{{ ' · ' if not loop.last }}
+                <span class="whitespace-nowrap"><strong>{{ '{:,}'.format(amount) }}</strong> {{ 'pages read' if kind == 'book' else 'hours listened' if kind == 'listen' else 'hours ' ~ labels[kind].verb_past }}</span>{{ ' · ' if not loop.last }}
                 {%- endfor %}
             </p>
             {% endif %}
@@ -226,6 +227,21 @@
                 {{- '{:,}'.format(n) }} {{ w.noun if n == 1 else w.plural }}{{ ' and ' if loop.first }}{% endfor -%}
             {%- endmacro %}
             <p class="text-sm text-content-secondary mb-4" data-kind-split>On the shelf: {{ kinds('owned') }}. {{ done_label }}: {{ kinds('done') }}.</p>
+            {% endif %}
+            {% if s.audio %}
+            {# Audiobooks (16.0e): inside Books, since an audiobook is a book you
+               read; already counted above, this adds the hours #}
+            {% set au = s.audio %}
+            <h3 class="mt-6 mb-3 text-lg font-display text-content-primary" data-audiobook-stats>Audiobooks</h3>
+            <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                {{ tile('Audiobooks listened', '{:,}'.format(au.done), (au.done_this_year ~ ' this year') if au.done_this_year else None) }}
+                {{ tile('Hours listened', '{:,}'.format(au.hours), (('{:,}'.format(au.hours_this_year)) ~ ' this year') if au.hours_this_year else None) }}
+                {{ tile('Listening now', au.listening) }}
+                {% if au.longest %}{{ tile('Longest listen', au.longest.hours ~ ' h', au.longest.title) }}{% endif %}
+            </dl>
+            {% if au.no_length %}
+            <p class="text-sm text-content-secondary mb-4">Hours from {{ au.done - au.no_length }} of {{ au.done }} ({{ au.no_length }} {{ 'has' if au.no_length == 1 else 'have' }} no length).</p>
+            {% endif %}
             {% endif %}
             {% if s.longest or s.top_shelf_genre %}
             <dl class="grid md:grid-cols-2 gap-3 sm:gap-4 mb-8">

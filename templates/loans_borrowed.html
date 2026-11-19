@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% from '_covers.html' import cover_img %}
+{% from '_icons.html' import crumbs %}
+{# What you have borrowed and not returned (ROADMAP 16.0d, loans.borrowed):
+   opened from your profile's Borrowed row. Each item links to its page,
+   which says the same and keeps the loan's history. #}
+
+{% block title %}Borrowed - libaraxia{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% block content %}
+    <main class="page-frame-narrow pt-20 pb-24">
+        {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Borrowed') }}
+        <h1 class="text-3xl font-display text-content-primary text-center mb-6">Borrowed</h1>
+
+        {% if rows %}
+        <ul class="space-y-4">
+            {% for r in rows %}
+            {% set page = item_url(r) %}
+            {% set overdue = r.due_at and r.due_at < today %}
+            <li class="bg-secondary rounded-lg p-4 card flex gap-4 min-w-0" data-borrowed-item>
+                <a href="{{ page }}" class="shrink-0 self-start" aria-label="{{ r.title }}">
+                    {% if r.cover_image_url|upload_exists %}
+                    {{ cover_img(r.cover_image_url, '', 'w-20 max-h-32 object-contain rounded shadow-sm', lazy=True) }}
+                    {% else %}
+                    {% with title=r.title, size='sm', box='h-28 w-auto aspect-[2/3] rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% endif %}
+                </a>
+                <div class="flex-1 min-w-0">
+                    <a href="{{ page }}" class="block text-lg font-semibold text-content-primary hover:text-accent line-clamp-2">{{ r.title }}</a>
+                    {% if r.author %}<p class="text-sm text-content-secondary truncate">{{ r.author }}</p>{% endif %}
+                    <p class="mt-1 text-sm text-content-primary">
+                        From {{ r.lender or r.owner or 'its owner' }} since {{ r.lent_at|human_date }}
+                        {%- if r.due_at %}, {% if overdue %}<strong>overdue since {{ r.due_at|human_date }}</strong>{% else %}due {{ r.due_at|human_date }}{% endif %}{% endif %}.
+                    </p>
+                    {% if r.note %}<p class="text-sm text-content-secondary mt-1">{{ r.note }}</p>{% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-content-secondary text-center italic py-8">Nothing borrowed right now.</p>
+        {% endif %}
+    </main>
+{% endblock %}

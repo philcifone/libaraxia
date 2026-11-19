@@ -8,6 +8,8 @@ import re
 from html.parser import HTMLParser
 from unittest import mock
 
+import pytest
+
 from conftest import add_book, login, scalar
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -1280,7 +1282,8 @@ def test_case_headings_stand_outside_the_bookcase(client, db, people):
     assert 'border-bottom-width: 0;' in case[:case.index('}')]
     assert '<div class="shelf-row mt-4"></div>' in pathlib.Path('templates/collections.html').read_text()
     src = pathlib.Path('templates/user.html').read_text()
-    assert src.count('class="case-wrap ') == 2 and 'shelf-case-heading' not in src
+    # Collections, Wishlist and Borrowed (16.0d)
+    assert src.count('class="case-wrap ') == 3 and 'shelf-case-heading' not in src
 
 
 def test_have_matches_are_small_bookcases(client, db, people):
@@ -1546,7 +1549,7 @@ def test_cyberpunk_cards_are_never_clipped():
     root = re.search(r':root\[data-style="cyberpunk"\] \{([^}]*)\}', section).group(1)
     assert '--cp-diag' not in root
     # Positioned cards stay positioned; the overlay only makes static ones relative
-    assert ':is(.card, .card-link):not(.absolute, .fixed, .sticky) { position: relative; }' in section
+    assert ':is(.card, .card-link):not(.absolute, .fixed, .sticky, dialog) { position: relative; }' in section
 
 
 def test_cyberpunk_boot_screen_once_per_login(client, people):
@@ -1651,3 +1654,63 @@ def test_the_closed_sidebar_takes_no_tab_stops(client, people):
     assert re.search(r'<div id="sidebar"\s+class="[^"]*"\s+inert>', page)
     js = pathlib.Path('static/sidebar.js').read_text()
     assert 'sidebar.inert = !open;' in js and 'hamburger.focus()' in js
+
+
+def _subject(selector):
+    """The last compound of a CSS selector (what the rule styles), splitting
+    on combinators outside parentheses."""
+    depth, last = 0, 0
+    for i, ch in enumerate(selector):
+        depth += ch == '('
+        depth -= ch == ')'
+        if depth == 0 and ch in ' >+~':
+            last = i + 1
+    return selector[last:]
+
+
+def test_card_position_rules_leave_dialogs_fixed():
+    """The confirm dialog is a .card. A modal <dialog> centres in the viewport
+    only while it's position: fixed; a style that makes every .card relative
+    (Cyberpunk's HUD corners) opened it at the top of the page instead."""
+    css = (ROOT / 'static' / 'styles.css').read_text()
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    checked = 0
+    for selectors, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
+        if not re.search(r'(^|;|\s)position:\s*(relative|absolute|static)', body):
+            continue
+        for selector in re.split(r',(?![^()]*\))', selectors):
+            subject = _subject(selector.strip())
+            # Rules on every card: the subject starts with .card or :is(.card
+            # (not a pseudo-element, not a card scoped inside something)
+            if '::' in subject or not re.match(r'(:is\()?\.card(?![-\w])', subject):
+                continue
+            checked += 1
+            assert re.search(r':not\([^)]*\bdialog\b', subject) or subject.startswith('.card.'), \
+                f'{selector.strip()} also moves the confirm <dialog>'
+    assert checked                      # the Cyberpunk rule is still there to check
+
+
+def test_dangerous_confirms_say_yes_and_what_they_do():
+    """The confirm dialog's button never reads a bare OK for something
+    dangerous (Phil, 2026-11-19): "Yes, delete", "Yes, leave". Runs
+    common.js's yesLabel under node; skipped without it."""
+    import json
+    import shutil
+    import subprocess
+    node = shutil.which('node')
+    if node is None:
+        pytest.skip('node is not installed')
+    js = (ROOT / 'static' / 'common.js').read_text()
+    source = re.search(r'const DANGER_WORDS = .*?\n', js).group(0) + \
+        re.search(r'function yesLabel\(message\) \{.*?\n\}\n', js, re.S).group(0)
+    messages = ['Delete this loan record?', 'Leave the household? You can be invited back.',
+                "Remove this user's avatar?", 'This cannot be undone.', 'Sure?']
+    out = subprocess.run([node, '-e', source + f'console.log(JSON.stringify({json.dumps(messages)}.map(yesLabel)))'],
+                         capture_output=True, text=True, timeout=30, check=True)
+    assert json.loads(out.stdout) == ['Yes, delete', 'Yes, leave', 'Yes, remove', 'Yes, continue', 'Yes, continue']
+    # The default is used for dangerous confirms, and no page asks for a bare verb
+    assert 'ok = ok || (danger ? yesLabel(message)' in js
+    pages = '\n'.join(p.read_text() for p in (ROOT / 'templates').rglob('*.html'))
+    scripts = '\n'.join(p.read_text() for p in (ROOT / 'static').glob('*.js'))
+    assert not re.search(r'data-confirm-ok="(OK|Delete|Remove)"', pages)
+    assert not re.search(r"ok: '(OK|Delete|Remove)'", scripts)

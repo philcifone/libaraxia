@@ -310,9 +310,12 @@ def notifications_page():
             n.created_at,
             u.username as from_username,
             u.avatar_url as from_avatar_url,
-            n.is_read
+            n.is_read,
+            b.id AS book_id,          -- the item it's about, linked (16.0d)
+            b.media_type AS book_media_type
         FROM notifications n
         LEFT JOIN users u ON n.from_user_id = u.id
+        LEFT JOIN books b ON b.id = n.related_book_id
         WHERE n.user_id = ?
         AND n.type != 'friend_request'
         ORDER BY n.created_at DESC

@@ -24,7 +24,7 @@ blueprints/faces.py.
 from flask import url_for
 
 from utils import image_utils, photos
-from utils.media import BOOK, VIDEO, RECORD, AUDIOBOOK, media_type_of
+from utils.media import BOOK, VIDEO, RECORD, is_digital, media_type_of
 
 KINDS = photos.EDGES        # the faces a placeholder can stand in for
 
@@ -56,10 +56,10 @@ def kind_label(medium, kind):
 
 
 def medium_for(media_type, fmt=None):
-    """The medium whose placeholders an item may use; None for an audiobook,
-    which has no box."""
+    """The medium whose placeholders an item may use; None for an audiobook
+    or ebook, which has no box."""
     if media_type == BOOK:
-        return None if fmt == AUDIOBOOK else 'book'
+        return None if is_digital(fmt) else 'book'
     if media_type == VIDEO:
         return 'vhs' if fmt == 'VHS' else 'dvd'
     if media_type == RECORD:

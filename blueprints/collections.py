@@ -84,7 +84,9 @@ def view_collections():
                            media_type=media_type,
                            m=media.media_labels(media_type),
                            tabs=[(t, shelves.SECTION_NAMES[t], counts.get(t, 0)) for t in TABS],
-                           status_shelves=shelves.status_shelves(conn, current_user.id, media_type),
+                           # Lent out (16.0d) reads as one more shelf after the statuses
+                           status_shelves=shelves.status_shelves(conn, current_user.id, media_type)
+                           + [s for s in [shelves.lent_shelf(conn, current_user.id, media_type)] if s],
                            custom_shelves=custom)
 
 def _per_user():

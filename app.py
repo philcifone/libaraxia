@@ -33,6 +33,8 @@ from blueprints.bulk import bulk_blueprint
 from blueprints.photos import photos_blueprint
 from blueprints.values import values_blueprint
 from blueprints.faces import faces_blueprint
+from blueprints.loans import loans_blueprint
+from blueprints.audiobookshelf import abs_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
@@ -202,6 +204,11 @@ def create_app():
         app.logger.info("Database: %s", db_path)
     else:
         app.logger.warning("Database %s does not exist yet; run `python3 manage.py migrate`", db_path)
+
+    # Audiobookshelf (16.0e): a bad URL, or plain HTTP to a public host
+    from utils import audiobookshelf
+    for warning in audiobookshelf.config_warnings():
+        app.logger.warning(warning)
     
     # Register Blueprints
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
@@ -224,6 +231,8 @@ def create_app():
     app.register_blueprint(photos_blueprint, url_prefix='/photos')
     app.register_blueprint(values_blueprint, url_prefix='/values')
     app.register_blueprint(faces_blueprint, url_prefix='/faces')
+    app.register_blueprint(loans_blueprint, url_prefix='/loans')
+    app.register_blueprint(abs_blueprint, url_prefix='/abs')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media
@@ -271,6 +280,10 @@ def create_app():
         return url_for(endpoint, username=username) if scope == 'friend' else url_for(endpoint)
     app.add_template_global(shelf_url, 'shelf_url')
     app.add_template_global(media.SECTION_NAMES, 'SECTION_NAMES')
+    app.add_template_global(media.length_parts, 'length_parts')    # an audiobook's length on the form (16.0e)
+    # The Books filter's From Audiobookshelf box shows only on a site with a server
+    from utils import audiobookshelf
+    app.add_template_global(audiobookshelf.enabled, 'abs_enabled')
     app.add_template_global(media.SECTION_WORDS, 'SECTION_WORDS')
     app.add_template_filter(media.season_short, 'season_short')
 
@@ -284,6 +297,9 @@ def create_app():
     # A library date stamp, "NOV 13 2026" (the paper cards, Shelf style)
     from utils import catalog_card
     app.add_template_filter(catalog_card.stamp_date, 'stamp_date')
+    # Loans (16.0d): "3 Mar 2026"
+    from utils.loans import human_date
+    app.add_template_filter(human_date, 'human_date')
     from utils import valuation
     app.add_template_global(lambda: valuation.discogs_enabled() or valuation.ebay_enabled(),
                             'value_sources_ready')
@@ -305,6 +321,16 @@ def create_app():
         from utils.photos import box_faces as faces_for
         return faces_for(get_db(), rows) if rows else {}
     app.add_template_global(box_faces, 'box_faces')
+
+    # The grids' Lent badge (16.0d, utils/loans.lent_map): {book_id: borrower}
+    # for the open loans on the viewer's or their household's shelf only, so
+    # a friend's grid never shows one
+    def lent_map(rows):
+        from utils.loans import lent_map as lent_for
+        if not rows or not _current_user.is_authenticated:
+            return {}
+        return lent_for(get_db(), _current_user.id, [row['id'] for row in rows])
+    app.add_template_global(lent_map, 'lent_map')
 
     # The placeholder sets an add form offers for a media type (16.0c,
     # utils/faces.sets_for_type): [(body label, [set rows])]

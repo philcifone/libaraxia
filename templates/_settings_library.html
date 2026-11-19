@@ -1,6 +1,6 @@
 {# Settings -> Library (ROADMAP 14c, moved from the profile): export, Goodreads
-   import, fetch covers, recent bulk edits, library backups. Expects
-   bulk_history, library_backups, backups_max. #}
+   import, fetch covers, Audiobookshelf, recent bulk edits, library backups.
+   Expects bulk_history, library_backups, backups_max, abs. #}
 <!-- Export/Import Buttons -->
 <div class="flex justify-center gap-4 flex-wrap">
     <a href="{{ url_for('user.export_library') }}"
@@ -53,6 +53,56 @@
         {% endif %}
         <button type="submit" class="px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">Fetch Values</button>
     </form>
+</section>
+{% endif %}
+
+{# Audiobookshelf (16.0e, docs/AUDIOBOOKSHELF-SPEC.md): only when the site has
+   a server (AUDIOBOOKSHELF_URL). Your own API key, pasted once, stored
+   encrypted; the field is write-only (the key is never sent back). #}
+{% if abs %}
+<section id="audiobookshelf" class="bg-secondary rounded-xl p-6 card" data-abs-card>
+    <h2 class="text-2xl font-display text-content-primary mb-1">Audiobookshelf</h2>
+    {% set acct = abs.account %}
+    {% macro key_form(label) -%}
+    <form method="POST" action="{{ url_for('abs.connect') }}" class="space-y-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="abs_token" class="block text-sm font-medium text-content-secondary">API key</label>
+        <input type="password" id="abs_token" name="abs_token" required autocomplete="off" spellcheck="false"
+               class="w-full bg-primary-bg border border-rule-strong rounded-lg px-4 py-2.5 text-content-primary focus:ring-2 focus:ring-accent">
+        <button type="submit" class="px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">{{ label }}</button>
+    </form>
+    {%- endmacro %}
+    {% if acct and abs.readable %}
+    <p class="text-content-primary mb-1" data-abs-connected>Connected as <strong>{{ acct.abs_username }}</strong> since {{ acct.connected_at|human_date }}.</p>
+    <p class="text-sm text-content-secondary mb-4">{% if acct.last_sync_at %}Last synced {{ acct.last_sync_at|human_date }}.{% else %}Not synced yet.{% endif %} Libaraxia only reads from Audiobookshelf; it never changes anything there.</p>
+    {# Sync (16.0e step 4): fetch, then review; nothing is written before Import #}
+    <form method="POST" action="{{ url_for('abs.sync') }}" class="space-y-3 mb-4" data-abs-sync>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <p class="text-sm text-content-secondary">Sync brings in what you've started there (finished or in progress) for you to review before anything is saved. Everything comes in unshelved: listening to a book doesn't mean you own it.</p>
+        <label class="flex items-start gap-2 text-content-primary"><input type="checkbox" name="include_unstarted" value="1" class="form-checkbox text-accent shrink-0 mt-1"> Also books I haven't started (skipped unless you choose otherwise)</label>
+        <div class="flex flex-wrap gap-3 items-center">
+            <button type="submit" class="px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">Sync</button>
+            {% if abs.staged %}<a href="{{ url_for('abs.review') }}" class="text-accent underline" data-abs-review-link>Back to the last sync's review</a>{% endif %}
+        </div>
+    </form>
+    <div class="flex flex-wrap gap-3 items-start">
+        <form method="POST" action="{{ url_for('abs.disconnect') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="px-6 py-3 bg-primary hover:bg-primary-hover text-content-primary border border-rule-strong rounded-lg btn"
+                    data-confirm="Disconnect from Audiobookshelf? Your key is forgotten; what you imported stays.">Disconnect</button>
+        </form>
+    </div>
+    <details class="mt-4">
+        <summary class="cursor-pointer text-sm text-content-secondary hover:text-accent">Use a different key</summary>
+        <div class="mt-3">{{ key_form('Replace Key') }}</div>
+    </details>
+    {% elif acct %}
+    <p class="text-content-primary mb-4" data-abs-reconnect><strong>Reconnect needed.</strong> Your saved key can't be read any more (the site's secret key changed). Paste it again; nothing you imported is affected.</p>
+    {{ key_form('Reconnect') }}
+    {% else %}
+    <p class="text-sm text-content-secondary mb-4">Bring in the audiobooks and ebooks you've started on this site's Audiobookshelf server, with when you started and finished them. Create an API key in Audiobookshelf (Settings, API Keys) and paste it here. It is stored encrypted and only used to read your listening.</p>
+    {{ key_form('Connect') }}
+    {% endif %}
 </section>
 {% endif %}
 

@@ -156,6 +156,8 @@ CREATE TABLE books (
     value_note TEXT,
     value_checked_at TIMESTAMP,
     discogs_release_id INTEGER,
+    -- An audiobook's narrator (migration 043); its length is runtime_minutes.
+    narrator TEXT,
     FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_books_added_by ON books(added_by);
@@ -235,6 +237,31 @@ CREATE TABLE item_faces (
 );
 CREATE INDEX idx_item_faces_placeholder ON item_faces(placeholder_id);
 
+-- Loans (migration 042, ROADMAP 16.0d, docs/LENDING-SPEC.md): who has a
+-- physical copy. lent_by = who handed it over (owner or household member);
+-- borrower_id = a user in the lender's circle, or NULL for someone not on
+-- the site; borrower_name always filled (typed, or the user's name when
+-- lent). A record, not a lock: it doesn't follow the item's shelf state.
+CREATE TABLE loans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    lent_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    borrower_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    borrower_name TEXT NOT NULL,
+    lent_at DATE NOT NULL,
+    due_at DATE,
+    returned_at DATE,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (length(trim(borrower_name)) > 0),
+    CHECK (due_at IS NULL OR due_at >= lent_at),
+    CHECK (returned_at IS NULL OR returned_at >= lent_at)
+);
+CREATE UNIQUE INDEX idx_loans_one_open ON loans(book_id) WHERE returned_at IS NULL;
+CREATE INDEX idx_loans_book ON loans(book_id);
+CREATE INDEX idx_loans_borrower ON loans(borrower_id) WHERE borrower_id IS NOT NULL;
+CREATE INDEX idx_loans_lent_by ON loans(lent_by);
+
 -- Per-user status: reading, watching or listening (statuses table).
 CREATE TABLE collections (
     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -312,6 +339,47 @@ CREATE TABLE goodreads_rows (
 );
 CREATE INDEX idx_goodreads_rows_book ON goodreads_rows(book_id);
 CREATE INDEX idx_goodreads_rows_gid ON goodreads_rows(goodreads_id);
+
+-- The Audiobookshelf connection (migration 044, ROADMAP 16.0e).
+-- A user's ABS API key, encrypted (utils/audiobookshelf.py seal(): Fernet
+-- under a key derived from SECRET_KEY), and who it belongs to on ABS. Not a
+-- users column: SELECT * FROM users feeds current_user everywhere.
+CREATE TABLE abs_accounts (
+    user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    token_enc    TEXT NOT NULL,
+    abs_user_id  TEXT NOT NULL,
+    abs_username TEXT NOT NULL,
+    connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_sync_at TIMESTAMP
+);
+
+-- What the last Sync fetched, waiting for review (one set per user, swept
+-- after 24 h), as goodreads_staging is for a CSV.
+CREATE TABLE abs_staging (
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    abs_item_id TEXT NOT NULL,
+    data        TEXT NOT NULL,          -- JSON: trimmed metadata + progress
+    choice      TEXT,                   -- NULL: the box's default
+    staged_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, abs_item_id)
+);
+
+-- What each ABS item became: re-runs create nothing twice, the item page's
+-- note, and the live progress line. book_id SET NULL like goodreads_rows:
+-- a deleted book leaves the memory ("imported before, since deleted").
+CREATE TABLE abs_links (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    abs_item_id TEXT NOT NULL,
+    book_id     INTEGER REFERENCES books(id) ON DELETE SET NULL,
+    outcome     TEXT NOT NULL CHECK (outcome IN ('created', 'attached', 'skipped')),
+    asin        TEXT,
+    session_id  INTEGER REFERENCES reading_sessions(session_id) ON DELETE SET NULL,
+    finished_at TIMESTAMP,              -- ABS finishedAt last recorded
+    linked_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, abs_item_id)
+);
+CREATE INDEX idx_abs_links_book ON abs_links(book_id);
 
 -- Rating and review.
 CREATE TABLE read_data (
@@ -606,4 +674,7 @@ INSERT INTO schema_migrations (name) VALUES
     ('038_item_value.sql'),
     ('039_value_jobs.sql'),
     ('040_photo_kinds.sql'),
-    ('041_faces.sql');
+    ('041_faces.sql'),
+    ('042_loans.sql'),
+    ('043_audiobook_fields.sql'),
+    ('044_audiobookshelf.sql');

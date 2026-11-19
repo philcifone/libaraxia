@@ -114,7 +114,7 @@ def wind_back_to_023(conn):
                                                      '031_bulk_edits.sql', '034_video_kind.sql',
                                                      '036_item_photos.sql', '037_condition_grades.sql',
                                                      '038_item_value.sql', '040_photo_kinds.sql',
-                                                     '041_faces.sql');
+                                                     '041_faces.sql', '043_audiobook_fields.sql');
     """)
 
 
@@ -189,6 +189,10 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
         DROP TABLE goodreads_rows;     -- added by 032
         DROP TABLE goodreads_imports;
         DROP TABLE goodreads_staging;
+        DROP TABLE loans;              -- added by 042
+        DROP TABLE abs_links;          -- added by 044
+        DROP TABLE abs_staging;
+        DROP TABLE abs_accounts;
         -- videos, added by 023
         DROP VIEW library_videos;
         DROP INDEX idx_books_media_type;
@@ -498,6 +502,7 @@ UNDO_036_TO_038 = """
     DROP TABLE item_photos;
     DROP TABLE photo_kinds;
     DROP TABLE condition_grades;
+    ALTER TABLE books DROP COLUMN narrator;           -- 043 comes back after them
     ALTER TABLE books DROP COLUMN discogs_release_id;
     ALTER TABLE books DROP COLUMN value_checked_at;
     ALTER TABLE books DROP COLUMN value_note;
@@ -508,7 +513,8 @@ UNDO_036_TO_038 = """
     ALTER TABLE books DROP COLUMN condition;
     DELETE FROM schema_migrations
      WHERE name IN ('036_item_photos.sql', '037_condition_grades.sql', '038_item_value.sql',
-                    '040_photo_kinds.sql', '041_faces.sql');   -- 040 rebuilds item_photos, so it goes with 036; 041 adds to it
+                    '040_photo_kinds.sql', '041_faces.sql',    -- 040 rebuilds item_photos, so it goes with 036; 041 adds to it
+                    '043_audiobook_fields.sql');               -- books.narrator, after 038's columns
 """
 
 
