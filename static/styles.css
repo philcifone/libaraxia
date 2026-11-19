@@ -4987,8 +4987,11 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
     --cp-diag-br: linear-gradient(to top left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
 }
 
-/* Cards: thin accent outline, solid triangles top-left and bottom-right */
-:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky) { position: relative; }
+/* Cards: thin accent outline, solid triangles top-left and bottom-right.
+   Never a <dialog>: a modal dialog sits in the top layer and centres in the
+   viewport only while it's position: fixed; made relative it computes to
+   absolute and opens at the top of the page instead (the confirm dialog). */
+:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky, dialog) { position: relative; }
 :root[data-style="cyberpunk"] :is(.card, .card-link)::after {
     content: "";
     position: absolute;
