@@ -102,7 +102,7 @@ Moved up from 17.1 (Phil, 2026-11-18; originally 15.2). Record who has a physica
 - [x] 2. Item page: banner, Lend, Mark returned, history; `can_view_book` for borrowers; the notification.
 - [x] 3. Grid badge, Show: Lent out, the Collections row, the profile's Borrowed row.
 - [x] 4. Do I have this?, exports.
-- [ ] 5. Docs, screenshots.
+- [x] 5. Docs, screenshots (item page, grids and Collections in every style; the 16.0 walk covers the rest).
 
 ### 16.0e Audiobookshelf connection 🟠
 Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf server: an import of finished and in-progress audiobooks (unowned Audiobook books with a status and a session, after a review, undoable) and a live progress line on imported items.

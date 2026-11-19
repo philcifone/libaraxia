@@ -50,7 +50,8 @@ A user's **circle** is themselves, their household and their friends (`models.ci
 | Shared (household) library | household members | `get_library_members` |
 | Profile, stats, reviews, wishlist, friend's library, feed | the user and their friends | `get_friendship_status` / `is_friends_with` |
 | Reviews section: friends' reviews | friends only (`models.friend_ids`), never household-only members | `utils/reviews.py` |
-| Book detail; attaching your data (status, review, tag, collection, wishlist) to a book id | admins, or someone in your circle owns it or has data on it; 404 otherwise | `models.can_view_book` |
+| Book detail; attaching your data (status, review, tag, collection, wishlist) to a book id | admins, or someone in your circle owns it or has data on it, or it was lent to you; 404 otherwise | `models.can_view_book` |
+| Loans: lend, mark returned, delete; see them (banner, history, Lent badge, Show: Lent out, Lent out row) | the item's owner, their household, admins; a borrower sees only their own loan | `utils/loans.py` |
 | Another user's wishlist note on a book page | your circle | `books.show_book` |
 | Edit, remove/restore, delete, transfer a book; bulk genre/format/owned/remove | owner or admin | `books.py`, `utils/bulk.py` |
 | Join / leave a household | invite from the owner to a friend; anyone can leave, owner leaving hands over to the longest member | `utils/households.py` |
