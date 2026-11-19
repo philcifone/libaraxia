@@ -2393,6 +2393,27 @@ img.book-cover-img:not([data-loaded]) {
   color: rgb(var(--card-ink));
 }
 
+:root[data-style="cyberpunk"] :is(.flash-message > .tab:not(.flash-body), .flash-body > span:first-child)::before {
+  color: rgb(var(--cp-f));
+  content: "> SYS ";
+  content: "> SYS " / "";
+}
+
+:root[data-style="cyberpunk"] .flash-success :is(.tab:not(.flash-body), .flash-body > span:first-child)::before {
+  content: "> OK ";
+  content: "> OK " / "";
+}
+
+:root[data-style="cyberpunk"] .flash-error :is(.tab:not(.flash-body), .flash-body > span:first-child)::before {
+  content: "> ERR ";
+  content: "> ERR " / "";
+}
+
+:root[data-style="cyberpunk"] .flash-warning :is(.tab:not(.flash-body), .flash-body > span:first-child)::before {
+  content: "> WARN ";
+  content: "> WARN " / "";
+}
+
 .tab:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(var(--paper) / var(--tw-bg-opacity, 1));
@@ -11340,9 +11361,10 @@ html[data-gr-bar="on"] body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 max(1rem, 50vw - 17ch);
+  padding: 0 max(1rem, 50vw - 20ch);
+  /* a 40-character column, centred */
   background: rgb(var(--paper));
-  font: 400 clamp(1.05rem, 4.2vw, 1.6rem) / 1.5 var(--font-body);
+  font: 400 clamp(.95rem, 3.9vw, 1.6rem) / 1.5 var(--font-body);
   color: rgb(var(--ink-2));
   white-space: pre;
   cursor: default;
@@ -11416,6 +11438,263 @@ html[data-gr-bar="on"] body {
   to {
     opacity: 0;
     visibility: hidden;
+  }
+}
+
+/* ---- Cyberpunk polish (pass 2, Phil 2026-11-18) ---- */
+
+/* Selected text in the accent; thin square scrollbars; a block caret in
+   text fields where the browser has one (Chrome; others keep the line). */
+
+:root[data-style="cyberpunk"] ::-moz-selection {
+  background: rgb(var(--accent));
+  color: rgb(var(--on-accent));
+}
+
+:root[data-style="cyberpunk"] ::selection {
+  background: rgb(var(--accent));
+  color: rgb(var(--on-accent));
+}
+
+:root[data-style="cyberpunk"],
+:root[data-style="cyberpunk"] * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--accent) / .6) rgb(var(--paper));
+}
+
+:root[data-style="cyberpunk"] :is(input, textarea) {
+  caret-color: rgb(var(--accent));
+  caret-shape: block;
+}
+
+/* Status lights: a small square LED before a status, in its colour. On the
+   item page's status chips the chosen one is lit and the rest are dark
+   (outline only); in list view a status is always lit. */
+
+:root[data-style="cyberpunk"] :is([data-item-status] .chip, .book-status[data-status]) {
+  --cp-led: var(--cp-dim);
+}
+
+:root[data-style="cyberpunk"] :is([data-item-status] .chip:is([value="read"], [value="watched"], [value="listened"]),
+                                  .book-status:is([data-status="read"], [data-status="watched"], [data-status="listened"])) {
+  --cp-led: var(--accent);
+}
+
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[value^="want"], .book-status[data-status^="want"]) {
+  --cp-led: var(--yellow);
+}
+
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[value="currently reading"], .book-status[data-status="currently reading"]) {
+  --cp-led: var(--cp-alert);
+}
+
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[value="did not finish"], .book-status[data-status="did not finish"]) {
+  --cp-led: var(--red);
+}
+
+:root[data-style="cyberpunk"] :is([data-item-status] .chip, .book-status[data-status])::before {
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: .5rem;
+  height: .5rem;
+  margin-right: .45rem;
+  border: 1px solid rgb(var(--cp-led));
+  background: rgb(var(--cp-led) / .15);
+}
+
+/* Lit. On the pressed (accent-filled) chip a dark ring keeps an
+   accent-coloured light visible. */
+
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[aria-pressed="true"], .book-status[data-status])::before {
+  background: rgb(var(--cp-led));
+}
+
+:root[data-style="cyberpunk"] [data-item-status] .chip[aria-pressed="true"]::before {
+  border-color: rgb(var(--paper) / .8);
+}
+
+/* Covers lock on: on hover (a mouse, never a tap) or keyboard focus, four
+   corner brackets snap in over the cover, like a targeting reticle. */
+
+:root[data-style="cyberpunk"] .book-link .book-cover::after {
+  --cp-b: rgb(var(--accent));
+  --cp-l: 16px;
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: 11;
+  /* over the Unshelved / Removed badges */
+  pointer-events: none;
+  background:
+        linear-gradient(var(--cp-b), var(--cp-b)) top left / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) top left / 2px var(--cp-l),
+        linear-gradient(var(--cp-b), var(--cp-b)) top right / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) top right / 2px var(--cp-l),
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom left / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom left / 2px var(--cp-l),
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom right / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom right / 2px var(--cp-l);
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.15);
+  transition: opacity .1s ease, transform .2s steps(4, end);
+}
+
+@media (hover: hover) {
+  :root[data-style="cyberpunk"] .book-link:hover .book-cover::after {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+:root[data-style="cyberpunk"] .book-link:focus-visible .book-cover::after {
+  opacity: 1;
+  transform: none;
+}
+
+/* Bulk select: a selected item stays locked on */
+
+:root[data-style="cyberpunk"] [data-select="on"] .book-item[aria-selected="true"] .book-cover::after {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-style="cyberpunk"] .book-link .book-cover::after {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Flash messages as terminal lines: dark, a 1px line and a hatched edge in
+   the message's colour, and a prefix (> OK, > ERR, > WARN, > SYS). The
+   prefix is decoration ("/ ''": screen readers skip it); the role="status"
+   and the words say what happened. */
+
+:root[data-style="cyberpunk"] .flash-message {
+  --cp-f: var(--blue);
+  background:
+        repeating-linear-gradient(-45deg, rgb(var(--cp-f)) 0 2px, transparent 2px 5px) left top / 6px 100% no-repeat,
+        rgb(var(--surface));
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--cp-f));
+  box-shadow: none;
+  padding-left: calc(1rem + 6px);
+}
+
+:root[data-style="cyberpunk"] .flash-success {
+  --cp-f: var(--accent);
+}
+
+:root[data-style="cyberpunk"] .flash-error   {
+  --cp-f: var(--red);
+}
+
+:root[data-style="cyberpunk"] .flash-warning {
+  --cp-f: var(--yellow);
+}
+
+:root[data-style="cyberpunk"] :is(.flash-message > .flex-1:not(.flash-body), .flash-body > span:first-child)::before {
+  color: rgb(var(--cp-f));
+  content: "> SYS ";
+  content: "> SYS " / "";
+}
+
+:root[data-style="cyberpunk"] .flash-success :is(.flex-1:not(.flash-body), .flash-body > span:first-child)::before {
+  content: "> OK ";
+  content: "> OK " / "";
+}
+
+:root[data-style="cyberpunk"] .flash-error :is(.flex-1:not(.flash-body), .flash-body > span:first-child)::before {
+  content: "> ERR ";
+  content: "> ERR " / "";
+}
+
+:root[data-style="cyberpunk"] .flash-warning :is(.flex-1:not(.flash-body), .flash-body > span:first-child)::before {
+  content: "> WARN ";
+  content: "> WARN " / "";
+}
+
+/* Empty states (_empty_state.html): NO SIGNAL over a hatched band */
+
+:root[data-style="cyberpunk"] .empty-state {
+  background-image: repeating-linear-gradient(-45deg, rgb(var(--cp-dim) / .8) 0 1px, transparent 1px 6px);
+  background-size: 100% 10px;
+  background-position: top;
+  background-repeat: no-repeat;
+}
+
+:root[data-style="cyberpunk"] .empty-state::before {
+  display: block;
+  margin-bottom: .5rem;
+  font-family: var(--font-display);
+  font-size: .8rem;
+  letter-spacing: .25em;
+  color: rgb(var(--cp-alert));
+  content: "NO SIGNAL";
+  content: "NO SIGNAL" / "";
+}
+
+/* ---- Cyberpunk glitch (cyberpunk.js) ----
+   A 450 ms stutter: the element jumps a few pixels, is sliced (clip-path)
+   and splits into the alert colour and blue (drop-shadows follow the
+   glyphs or the cover's edge). Hard steps, no easing. The script puts it
+   on the page title as the page loads, then on one cover or heading every
+   30 s; never with reduced motion (the script doesn't run then). */
+
+:root[data-style="cyberpunk"] .cp-glitch {
+  animation: cp-glitch 450ms steps(1, end);
+}
+
+:root[data-style="cyberpunk"] :is(.site-title, .page-title).cp-glitch {
+  display: inline-block;
+}
+
+@keyframes cp-glitch {
+  0%   {
+    transform: translate(-3px, 0);
+    filter: drop-shadow(-3px 0 rgb(var(--cp-alert))) drop-shadow(3px 0 rgb(var(--blue)));
+    clip-path: inset(12% 0 58% 0);
+  }
+
+  12%  {
+    transform: translate(3px, 1px);
+    clip-path: inset(55% 0 12% 0);
+  }
+
+  24%  {
+    transform: translate(-1px, -1px);
+    filter: drop-shadow(2px 0 rgb(var(--cp-alert))) drop-shadow(-2px 0 rgb(var(--blue)));
+    clip-path: none;
+  }
+
+  38%  {
+    transform: translate(2px, 0);
+    clip-path: inset(30% 0 38% 0);
+  }
+
+  50%  {
+    transform: none;
+    filter: drop-shadow(-1px 0 rgb(var(--cp-alert))) drop-shadow(1px 0 rgb(var(--blue)));
+    clip-path: none;
+  }
+
+  64%  {
+    transform: translate(-2px, 0);
+    clip-path: inset(70% 0 4% 0);
+  }
+
+  76%  {
+    transform: none;
+    filter: none;
+    clip-path: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-style="cyberpunk"] .cp-glitch {
+    animation: none;
   }
 }
 

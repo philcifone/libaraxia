@@ -935,6 +935,7 @@ def card_json(conn, viewer_id, books):
             'season_short': media.season_short(b['season']) if b['video_kind'] == media.TV else None,
             'year': b['publish_year'],
             'status': media.STATUS_LABELS.get(status, status) if status else None,
+            'status_key': status or None,     # data-status: the Cyberpunk status light
             'rating': mark.get('rating'),
             # The Shelf style's box faces: top and side photos (photos.box_faces)
             'faces': faces.get(b['id'], ''),

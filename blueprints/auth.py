@@ -128,6 +128,8 @@ def login():
                 login_user(user_obj, remember=remember)
                 # Which of their 3D books stand on the Shelves heading this visit (base.index)
                 session['heading_seed'] = random.randrange(2 ** 31)
+                # The Cyberpunk boot screen's counts, sent with the next full page (app.boot_stats)
+                session['boot_stats'] = True
                 flash(f"Welcome, {user_obj.username}!", 'success')
 
                 # Check for unread notifications and display them

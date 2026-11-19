@@ -1575,3 +1575,64 @@ def test_cyberpunk_boot_screen_once_per_login(client, people):
     # Signed out (the sign-in page): no mark, so no boot
     client.post('/auth/logout')
     assert 'login-mark' not in client.get('/auth/login').get_data(as_text=True)
+
+
+def test_cyberpunk_boot_readouts_on_the_first_page_after_login_only(client, db, people):
+    """The boot screen's readouts (pass 2, Phil 2026-11-18): the first full
+    page after a login in Cyberpunk carries the user's counts; later pages
+    don't (no query), and neither does another style, which leaves them for
+    the first Cyberpunk page instead. Shelf counts skip removed and
+    never-owned rows."""
+    alice, carol = people['alice'], people['carol']
+    add_book(db, alice, title='Dune')
+    removed = add_book(db, alice, title='Gone')
+    unowned = add_book(db, alice, title='Borrowed')
+    db.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP WHERE id = ?", (removed,))
+    db.execute("UPDATE books SET owned = 0 WHERE id = ?", (unowned,))
+    db.execute("INSERT INTO user_collections (user_id, name) VALUES (?, 'Favourites')", (alice,))
+    db.execute("UPDATE users SET theme_style = 'house' WHERE id = ?", (alice,))
+    db.commit()
+    login(client, 'alice')
+    assert 'boot-stats' not in client.get('/collections/collections').get_data(as_text=True)
+    db.execute("UPDATE users SET theme_style = 'cyberpunk' WHERE id = ?", (alice,))
+    db.commit()
+    page = client.get('/collections/collections').get_data(as_text=True)
+    head = page[:page.index('</head>')]
+    friends = scalar(db, 'SELECT COUNT(*) FROM friendships WHERE user_id_1 = ? OR user_id_2 = ?', alice, alice)
+    assert friends >= 1                                         # carol, from the seed
+    meta = re.search(r'<meta name="boot-stats"[^>]*>', head).group(0)
+    assert 'data-user="alice"' in meta
+    assert 'data-items="1"' in meta and 'data-lists="1"' in meta and f'data-friends="{friends}"' in meta
+    assert head.index('name="boot-stats"') < head.index('cyberpunk.js')
+    # Once: the next page has none
+    assert 'boot-stats' not in client.get('/collections/collections').get_data(as_text=True)
+    js = pathlib.Path('static/cyberpunk.js').read_text()
+    assert "meta[name=\"boot-stats\"]" in js and "'OK'" in js       # falls back to OK
+
+
+def test_cyberpunk_glitch_is_timed_not_on_hover_or_tap(client):
+    """The glitch (pass 2, Phil 2026-11-18): once on the page title as the
+    page loads, then one cover or heading every 30 s, on a timer, so it is
+    the same on a phone; no hover or tap triggers, skipped in a hidden tab,
+    none with reduced motion."""
+    js = pathlib.Path('static/cyberpunk.js').read_text()
+    glitch = js[js.index('function glitch('):]
+    assert 'const EVERY = 30000;' in glitch and 'setInterval(random, EVERY)' in glitch
+    assert 'document.hidden' in glitch
+    assert not re.search(r"addEventListener\('(mouse|pointer|touch|click)", glitch)
+    css = pathlib.Path('static/styles.css').read_text()
+    rules = css[css.index('/* ---- Cyberpunk glitch'):]
+    assert ':root[data-style="cyberpunk"] .cp-glitch {' in rules
+    assert '@media (prefers-reduced-motion: reduce)' in rules
+    # The cover brackets are hover-only on a mouse (never a tap) or keyboard focus
+    polish = css[css.index('/* ---- Cyberpunk polish'):]
+    assert '@media (hover: hover)' in polish and '.book-link:focus-visible .book-cover::after' in polish
+
+
+def test_login_messages_wait_for_the_cyberpunk_boot_screen():
+    """The login's flashes (Welcome, unread notifications) close after 5 s,
+    as long as the boot screen lasts: their clock starts when it's gone."""
+    common = pathlib.Path('static/common.js').read_text()
+    dismiss = common[common.index('function scheduleFlashDismiss'):]
+    assert 'dataset.boot' in dismiss and "'cyberpunk:booted'" in dismiss
+    assert "new Event('cyberpunk:booted')" in pathlib.Path('static/cyberpunk.js').read_text()

@@ -1,4 +1,4 @@
-from flask import Flask, redirect, request, url_for
+from flask import Flask, redirect, request, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import LoginManager, current_user as _current_user
 from flask_wtf.csrf import CSRFProtect, CSRFError
@@ -321,6 +321,20 @@ def create_app():
             return 0
         return unread_counts(get_db(), _current_user.id)['count']
     app.add_template_global(notification_count, 'notification_count')
+
+    # The Cyberpunk boot screen's counts (utils/stats.boot_counts): asked by
+    # base.html only in that style, and only once per login: login sets the
+    # flag, the first full page takes it. A later page, a fetch or another
+    # style never pays for it. None when there's nothing to send; the screen
+    # then says OK instead of numbers.
+    def boot_stats():
+        if not getattr(_current_user, 'is_authenticated', False):
+            return None
+        if _current_user.theme_style != 'cyberpunk' or not session.pop('boot_stats', None):
+            return None
+        from utils.stats import boot_counts
+        return boot_counts(get_db(), _current_user.id)
+    app.add_template_global(boot_stats, 'boot_stats')
 
     # Register Error Handlers
     app.register_error_handler(401, unauthorized)

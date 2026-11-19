@@ -33,6 +33,9 @@
        at login (auth.py); cyberpunk.js boots once per new mark. Not deferred:
        the screen is up before the first paint. #}
     {% if current_user.is_authenticated and session.get('heading_seed') %}<meta name="login-mark" content="{{ session['heading_seed'] }}">{% endif %}
+    {# Its readouts (who, shelf, collections, friends), on the first page after login only (app.boot_stats) #}
+    {% set boot = boot_stats() if theme_style == 'cyberpunk' else none %}
+    {% if boot %}<meta name="boot-stats" data-user="{{ current_user.username }}" data-items="{{ boot['items'] }}" data-lists="{{ boot['lists'] }}" data-friends="{{ boot['friends'] }}">{% endif %}
     <script src="{{ url_for('static', filename='cyberpunk.js') }}"></script>
     {% block head %}{% endblock %}
 </head>

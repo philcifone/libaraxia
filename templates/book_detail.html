@@ -84,7 +84,7 @@
                                cover first, when there are more photos; else the zoom #}
                             <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
                                     aria-label="Show the cover bigger">
-                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
+                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'detail-cover w-full rounded-lg shadow-lg') }}
                             </button>
                         {% else %}
                             {# An album's placeholder is square, as on the grid (Phil, 2026-11-14) #}

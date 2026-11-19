@@ -437,7 +437,7 @@ class InfiniteScroll {
                     </div>
                     <div class="book-meta">
                         <span class="book-year">${this.escapeHtml(book.year || '')}</span>
-                        <span class="book-status">${this.escapeHtml(book.status || '')}</span>
+                        <span class="book-status"${book.status_key ? ` data-status="${this.escapeHtml(book.status_key)}"` : ''}>${this.escapeHtml(book.status || '')}</span>
                         <span class="book-rating">${stars}</span>
                     </div>
                 </a>
