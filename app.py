@@ -332,6 +332,19 @@ def create_app():
         return lent_for(get_db(), _current_user.id, [row['id'] for row in rows])
     app.add_template_global(lent_map, 'lent_map')
 
+    # The Audiobookshelf progress ring on a cover (Phil, 2026-11-19;
+    # utils/abs_import.rings): the viewer's own progress on a book id, 0 to
+    # 1, or None. One query per request, kept on g.
+    def abs_ring(book_id):
+        from flask import g
+        from utils import abs_import
+        if not _current_user.is_authenticated or not audiobookshelf.enabled():
+            return None
+        if 'abs_rings' not in g:
+            g.abs_rings = abs_import.rings(get_db(), _current_user.id)
+        return g.abs_rings.get(book_id)
+    app.add_template_global(abs_ring, 'abs_ring')
+
     # The placeholder sets an add form offers for a media type (16.0c,
     # utils/faces.sets_for_type): [(body label, [set rows])]
     def face_sets_for(media_type):

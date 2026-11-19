@@ -85,11 +85,11 @@
                                cover first, when there are more photos; else the zoom #}
                             <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
                                     aria-label="Show the cover bigger">
-                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'detail-cover w-full rounded-lg shadow-lg') }}
+                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'detail-cover w-full rounded-lg shadow-lg', ring=abs_ring(book['id'])) }}
                             </button>
                         {% else %}
                             {# An album's placeholder is square, as on the grid (Phil, 2026-11-14) #}
-                            {% with title=book['title'], author=book['author'], size='lg', box='w-full ' ~ ('aspect-square' if m.type == 'record' else 'aspect-[2/3]') ~ ' rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
+                            {% with title=book['title'], author=book['author'], size='lg', box='w-full ' ~ ('aspect-square' if m.type == 'record' else 'aspect-[2/3]') ~ ' rounded-lg', ring=abs_ring(book['id']) %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                     </div>
                     {# More photos (16.0a): only when there's a back, spine or gallery #}

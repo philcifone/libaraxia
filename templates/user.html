@@ -367,9 +367,9 @@
                         <!-- Book Cover -->
                         <a href="{{ url_for('books.show_book', id=review.book_id) }}" class="flex-shrink-0" aria-label="{{ review.title }}">
                             {% if review.cover_image_url|upload_exists %}
-                            {{ cover_img(review.cover_image_url, review.title, 'h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow') }}
+                            {{ cover_img(review.cover_image_url, review.title, 'h-32 w-auto object-contain rounded-md shadow-sm hover:shadow-md transition-shadow', ring=abs_ring(review.book_id)) }}
                             {% else %}
-                            {% with title=review.title, size='sm', box='h-32 w-auto aspect-[2/3] rounded-md' %}{% include '_no_cover.html' %}{% endwith %}
+                            {% with title=review.title, size='sm', box='h-32 w-auto aspect-[2/3] rounded-md', ring=abs_ring(review.book_id) %}{% include '_no_cover.html' %}{% endwith %}
                             {% endif %}
                         </a>
 

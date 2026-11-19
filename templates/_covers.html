@@ -20,7 +20,24 @@
    lazy:      loading="lazy" (rows and lists, not the first screen)
    author:    data-author, for the grid: common.js redraws a cover whose file
               fails to load as the placeholder, titled with alt and this #}
-{% macro cover_img(path, alt='', img_class='', box_class='', lazy=False, author=none) -%}
+{#   ring:      Audiobookshelf progress, 0 to 1 (abs_ring(book.id)): the
+              progress ring on the cover's top-right corner; none: no ring #}
+{% macro cover_img(path, alt='', img_class='', box_class='', lazy=False, author=none, ring=none) -%}
 <span class="cover-box{{ ' ' ~ box_class if box_class }}"><img src="{{ url_for('static', filename=path) }}" alt="{{ alt }}"
-     {%- if author is not none %} data-author="{{ author }}"{% endif %}{% if lazy %} loading="lazy"{% endif %} class="{{ img_class }}"><span class="cover-sheen" aria-hidden="true"></span></span>
+     {%- if author is not none %} data-author="{{ author }}"{% endif %}{% if lazy %} loading="lazy"{% endif %} class="{{ img_class }}"><span class="cover-sheen" aria-hidden="true"></span>{{ progress_ring(ring) }}</span>
+{%- endmacro %}
+
+{# The Audiobookshelf progress ring (Phil, 2026-11-19): a thin accent arc
+   from 12 o'clock, clockwise (75 % reaches 9 o'clock), on a small disc in
+   the cover's top-right corner, for an item in progress there. Your own
+   progress only (abs_ring). pathLength="100" makes the dash the percentage
+   itself; the CSS turns it to start at 12 (styles.css .abs-ring). A sliver
+   still shows as a dot. The words are on the item page, so it's hidden
+   from screen readers; the title is a hover hint. JS twin:
+   progressRingHtml() in common.js; keep the two in step. #}
+{% macro progress_ring(share) -%}
+{%- if share -%}
+{%- set pct = [1, [100, (share * 100)|round|int]|min]|max -%}
+<svg class="abs-ring" viewBox="0 0 36 36" aria-hidden="true" data-abs-ring="{{ pct }}"><title>{{ pct }} % in Audiobookshelf</title><circle class="abs-ring-disc" cx="18" cy="18" r="18"/><circle class="abs-ring-arc" cx="18" cy="18" r="11" pathLength="100" stroke-dasharray="{{ pct }} 100"/></svg>
+{%- endif -%}
 {%- endmacro %}

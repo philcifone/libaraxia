@@ -351,6 +351,8 @@ def connect(conn, user_id, token, secret):
 
 def disconnect(conn, user_id):
     """Forget the key and the waiting review. What was imported stays, and
-    so do the links (a later reconnect picks them up). Caller commits."""
+    so do the links (a later reconnect picks them up); their progress goes,
+    since nothing would keep it current (the covers' rings). Caller commits."""
     conn.execute('DELETE FROM abs_staging WHERE user_id = ?', (user_id,))
+    conn.execute('UPDATE abs_links SET progress = NULL WHERE user_id = ?', (user_id,))
     conn.execute('DELETE FROM abs_accounts WHERE user_id = ?', (user_id,))

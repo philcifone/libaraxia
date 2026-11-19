@@ -37,9 +37,9 @@
                     <a href="{{ url_for('read.rate_review', book_id=r.id, from='reviews') }}"
                        class="flex items-center gap-4 bg-secondary rounded-lg p-3 card card-link">
                         {% if r.cover_image_url|upload_exists %}
-                        {{ cover_img(r.cover_image_url, '', 'w-12 max-h-20 object-contain rounded', 'shrink-0', lazy=True) }}
+                        {{ cover_img(r.cover_image_url, '', 'w-12 max-h-20 object-contain rounded', 'shrink-0', lazy=True, ring=abs_ring(r.id)) }}
                         {% else %}
-                        {% with title=r.title, size='sm', box='h-16 w-auto aspect-[2/3] shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                        {% with title=r.title, size='sm', box='h-16 w-auto aspect-[2/3] shrink-0 rounded', ring=abs_ring(r.id) %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                         <span class="flex-1 min-w-0">
                             <span class="block text-content-primary font-semibold truncate">{{ r.title }}</span>

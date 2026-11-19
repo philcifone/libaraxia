@@ -927,6 +927,9 @@ def card_json(conn, viewer_id, books, looker_id=None):
     marks = viewer_marks(conn, viewer_id, [b['id'] for b in books])
     faces = box_faces(conn, books)
     lent = lent_map(conn, looker_id or viewer_id, [b['id'] for b in books])
+    # The Audiobookshelf ring: the looker's own progress, never the shelf owner's
+    from utils import abs_import, audiobookshelf
+    rings = abs_import.rings(conn, looker_id or viewer_id) if audiobookshelf.enabled() else {}
     out = []
     for b in books:
         mark = marks.get(b['id'], {})
@@ -940,6 +943,7 @@ def card_json(conn, viewer_id, books, looker_id=None):
             'removed': b['removed_at'] is not None,
             'not_owned': not b['owned'],
             'lent_to': lent.get(b['id']),         # the Lent badge (16.0d)
+            'abs_progress': rings.get(b['id']),   # the progress ring (0 to 1, or none)
             'format': media.shown_format(b),      # none for an unshelved movie or album
             # Videos (15.1): 'tv' or None (a movie), and a TV set's season text;
             # `by` ("directed by", "created by") and `season_short` ("S2") are

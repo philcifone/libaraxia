@@ -4,7 +4,7 @@ profile's wishlist all draw them with `_shelf_rows.html`, from the dicts
 built here:
 
     {'label': 'Want to Watch', 'url': '/collections/status/want to watch',
-     'count': 12, 'covers': [{'cover_image_url': ..., 'title': ...}, ...]}
+     'count': 12, 'covers': [{'id': ..., 'cover_image_url': ..., 'title': ...}, ...]}
 
 Every query is for one user and one media type. Status shelves include
 not-owned items on purpose (a status is about reading, not owning); the
@@ -41,7 +41,7 @@ def status_shelves(conn, user_id, media_type, username=None, keep_empty=True):
                            **({'username': username} if username else {})),
             'count': count,
             'covers': _covers(conn, '''
-                SELECT b.cover_image_url, b.title FROM collections c JOIN books b ON b.id = c.book_id
+                SELECT b.id, b.cover_image_url, b.title FROM collections c JOIN books b ON b.id = c.book_id
                 WHERE c.user_id = ? AND c.status = ? AND b.media_type = ?
                 ORDER BY c.updated_at DESC, c.collection_id DESC
             ''', (user_id, status, media_type)) if count else [],
@@ -62,7 +62,7 @@ def custom_shelves(conn, user_id, media_type):
         'id': r['collection_id'], 'name': r['name'], 'label': r['name'], 'count': r['n'],
         'url': url_for('collections.view_custom_collection', collection_id=r['collection_id']),
         'covers': _covers(conn, '''
-            SELECT b.cover_image_url, b.title FROM collection_books cb JOIN books b ON b.id = cb.book_id
+            SELECT b.id, b.cover_image_url, b.title FROM collection_books cb JOIN books b ON b.id = cb.book_id
             WHERE cb.collection_id = ? ORDER BY cb.added_at DESC
         ''', (r['collection_id'],)) if r['n'] else [],
     } for r in rows]
@@ -83,7 +83,7 @@ def lent_shelf(conn, user_id, media_type):
     return {
         'label': 'Lent out', 'count': len(rows), 'lent': True,
         'url': url_for(media.SHELF_ENDPOINTS[media_type][scope], show='lent'),
-        'covers': [{'cover_image_url': r['cover_image_url'], 'title': r['title'], 'by': r['borrower']}
+        'covers': [{'id': r['book_id'], 'cover_image_url': r['cover_image_url'], 'title': r['title'], 'by': r['borrower']}
                    for r in rows[:COVERS_PER_ROW]],
     }
 
@@ -99,7 +99,7 @@ def borrowed_shelf(conn, user_id):
     return {
         'label': 'Borrowed', 'count': len(rows),
         'url': url_for('loans.borrowed'),
-        'covers': [{'cover_image_url': r['cover_image_url'], 'title': r['title'],
+        'covers': [{'id': r['book_id'], 'cover_image_url': r['cover_image_url'], 'title': r['title'],
                     'by': r['lender'] or r['owner']} for r in rows[:COVERS_PER_ROW]],
     }
 

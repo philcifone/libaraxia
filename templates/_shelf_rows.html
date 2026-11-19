@@ -48,10 +48,10 @@
                     {% set labelled = c.stars or c.by %}
                     {% if labelled %}<figure class="shelf-figure flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
                     {% if c.cover_image_url|upload_exists %}
-                    {{ cover_img(c.cover_image_url, c.title, cover_h ~ ' w-auto max-w-[8rem] rounded shadow-sm', 'shrink-0', lazy=True) }}
+                    {{ cover_img(c.cover_image_url, c.title, cover_h ~ ' w-auto max-w-[8rem] rounded shadow-sm', 'shrink-0', lazy=True, ring=abs_ring(c.id)) }}
                     {% else %}
                     {# A cover's shape at the row's height (2:3), titled, whatever the row #}
-                    {% with title=c.title, size='sm', box=cover_h ~ ' w-auto aspect-[2/3] shrink-0 rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=c.title, size='sm', box=cover_h ~ ' w-auto aspect-[2/3] shrink-0 rounded', ring=abs_ring(c.id) %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                     {% if labelled %}
                     <figcaption class="text-xs leading-tight text-center w-full">
