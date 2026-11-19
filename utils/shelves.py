@@ -41,7 +41,7 @@ def status_shelves(conn, user_id, media_type, username=None, keep_empty=True):
                            **({'username': username} if username else {})),
             'count': count,
             'covers': _covers(conn, '''
-                SELECT b.id, b.cover_image_url, b.title FROM collections c JOIN books b ON b.id = c.book_id
+                SELECT b.id, b.cover_image_url, b.title, b.media_type, b.format, b.owned FROM collections c JOIN books b ON b.id = c.book_id
                 WHERE c.user_id = ? AND c.status = ? AND b.media_type = ?
                 ORDER BY c.updated_at DESC, c.collection_id DESC
             ''', (user_id, status, media_type)) if count else [],
@@ -62,7 +62,7 @@ def custom_shelves(conn, user_id, media_type):
         'id': r['collection_id'], 'name': r['name'], 'label': r['name'], 'count': r['n'],
         'url': url_for('collections.view_custom_collection', collection_id=r['collection_id']),
         'covers': _covers(conn, '''
-            SELECT b.id, b.cover_image_url, b.title FROM collection_books cb JOIN books b ON b.id = cb.book_id
+            SELECT b.id, b.cover_image_url, b.title, b.media_type, b.format, b.owned FROM collection_books cb JOIN books b ON b.id = cb.book_id
             WHERE cb.collection_id = ? ORDER BY cb.added_at DESC
         ''', (r['collection_id'],)) if r['n'] else [],
     } for r in rows]
@@ -83,7 +83,8 @@ def lent_shelf(conn, user_id, media_type):
     return {
         'label': 'Lent out', 'count': len(rows), 'lent': True,
         'url': url_for(media.SHELF_ENDPOINTS[media_type][scope], show='lent'),
-        'covers': [{'id': r['book_id'], 'cover_image_url': r['cover_image_url'], 'title': r['title'], 'by': r['borrower']}
+        'covers': [{'id': r['book_id'], 'cover_image_url': r['cover_image_url'], 'title': r['title'],
+                    'media_type': r['media_type'], 'format': r['format'], 'owned': r['owned'], 'by': r['borrower']}
                    for r in rows[:COVERS_PER_ROW]],
     }
 
@@ -100,6 +101,7 @@ def borrowed_shelf(conn, user_id):
         'label': 'Borrowed', 'count': len(rows),
         'url': url_for('loans.borrowed'),
         'covers': [{'id': r['book_id'], 'cover_image_url': r['cover_image_url'], 'title': r['title'],
+                    'media_type': r['media_type'], 'format': r['format'], 'owned': r['owned'],
                     'by': r['lender'] or r['owner']} for r in rows[:COVERS_PER_ROW]],
     }
 
@@ -135,7 +137,7 @@ def wishlist_shelves(conn, user_id, username=None):
             'label': SECTION_NAMES[media_type],
             'url': url, 'count': count,
             'covers': _covers(conn, '''
-                SELECT b.cover_image_url, b.title FROM wishlist w JOIN books b ON b.id = w.book_id
+                SELECT b.id, b.cover_image_url, b.title, b.media_type, b.format, b.owned FROM wishlist w JOIN books b ON b.id = w.book_id
                 WHERE w.user_id = ? AND b.media_type = ? ORDER BY w.added_at DESC
             ''', (user_id, media_type)),
         })

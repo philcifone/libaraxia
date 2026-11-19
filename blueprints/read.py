@@ -125,7 +125,7 @@ def rate_review(book_id):
 
     # Fetch book details and existing read data
     book_query = '''
-        SELECT id, title, author, cover_image_url, media_type, video_kind FROM books WHERE id = ?
+        SELECT id, title, author, cover_image_url, media_type, video_kind, format, owned FROM books WHERE id = ?
     '''
     book = conn.execute(book_query, (book_id,)).fetchone()
 

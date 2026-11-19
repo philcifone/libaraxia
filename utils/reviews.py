@@ -124,6 +124,7 @@ def shelves(conn, user_id, media_type):
             'count': _count(conn, user_id, media_type, which),
             'covers': [{
                 'id': r['id'], 'cover_image_url': r['cover_image_url'], 'title': r['title'],
+                'media_type': r['media_type'], 'format': r['format'],
                 'rating': r['rating'] if which != 'unreviewed' else None,
                 'stars': which != 'unreviewed',
                 'by': r['username'] if which == 'friends' else None,

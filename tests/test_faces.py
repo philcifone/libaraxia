@@ -125,10 +125,9 @@ def test_faces_resolve_photo_then_choice(client, db, people, static_root):
     login(client, 'bob')
     vhs = add_item(db, bob, 'video', 'VHS', real_cover(static_root, 'v.jpg', (400, 720)))
 
-    def stand():
+    def stand():            # the item page's cover box (cover_img item=)
         page = client.get(f'/videos/{vhs}').get_data(as_text=True)
-        tag = page[page.index('class="cover-stand'):]
-        return tag[:tag.index('>')]
+        return re.search(r'class="cover-stand.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)', page, re.S).group(1)
     # A cover only, nothing picked: the plain look
     assert '/static/uploads/faces/' not in stand()
     # The owner picks the clamshell set: its top and side on the flat box
@@ -181,8 +180,8 @@ def test_choosing_is_for_the_owner_and_must_fit(client, db, people, static_root)
     # shown on the edit page as the choice, and on the Movies grid's box
     edit = client.get(f'/videos/edit/{dvd}').get_data(as_text=True)
     assert f'<option value="{clear}" selected' in edit
-    card = re.search(r'<div class="book-item group" data-format="DVD"[^>]*>',
-                     client.get('/videos/').get_data(as_text=True)).group(0)
+    card = re.search(r'<div class="book-item group" data-format="DVD">.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)',
+                     client.get('/videos/').get_data(as_text=True), re.S).group(1)
     assert '--face-top: url(' in card
     # back to the plain look
     client.post(f'/faces/item/{dvd}/choose', data={'kind': 'top', 'placeholder_id': ''})
@@ -278,13 +277,12 @@ def test_a_cd_spine_placeholder_makes_a_jewel_case(client, db, people, static_ro
     assert 'item3d-paper' not in box and '--dr: 0.083;' in box and box.count(url) == 2
     # and the spine is on the flat box's right side, on the grid and the
     # item page (Phil, 2026-11-16, as a VHS); a spine photo beats it
-    card = re.search(r'<div class="book-item group" data-format="CD"[^>]*>',
-                     client.get('/records/').get_data(as_text=True)).group(0)
+    card = re.search(r'<div class="book-item group" data-format="CD">.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)',
+                     client.get('/records/').get_data(as_text=True), re.S).group(1)
     assert f'--face-side: url(&#34;{url}&#34;)' in card
     upload(client, cd, 'spine', jpeg_bytes((40, 480)))
     page = client.get(f'/records/{cd}').get_data(as_text=True)
-    stand = page[page.index('class="cover-stand'):]
-    stand = stand[:stand.index('>')]
+    stand = re.search(r'class="cover-stand.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)', page, re.S).group(1)
     assert '--face-side: url(&#34;/static/uploads/photos/' in stand
 
 

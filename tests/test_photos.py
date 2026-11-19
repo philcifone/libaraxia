@@ -320,24 +320,25 @@ def test_3d_shapes_for_music_and_movies(client, db, people, static_root):
     assert re.search(r'item3d-bottom">\s*<img src="/static/uploads/photos/', box)
 
     # The item page's flat cover box wears the top and right side photos on
-    # its faces (Phil, 2026-11-15; every type since 16.0c, below)
+    # its faces (Phil, 2026-11-15; every type since 16.0c, below): on the
+    # box itself (cover_img item=, layout walk step 1)
     page = client.get(f'/videos/{vhs}').get_data(as_text=True)
-    stand = page[page.index('class="cover-stand'):]
-    stand = stand[:stand.index('>')]
+    stand = re.search(r'class="cover-stand.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)', page, re.S).group(1)
+    assert 'data-media="video" data-format="VHS"' in stand
     assert '--face-top: url(' in stand and '--face-side: url(' in stand
     dvd_page = client.get(f'/videos/{dvd}').get_data(as_text=True)
     assert '--face-' not in dvd_page
     # and so does its card on the Movies grid; the DVD's doesn't
     grid = client.get('/videos/').get_data(as_text=True)
-    card = re.search(r'<div class="book-item group" data-format="VHS"[^>]*>', grid).group(0)
+    card = re.search(r'<div class="book-item group" data-format="VHS">.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)', grid, re.S).group(1)
     assert '--face-top: url(' in card and '--face-side: url(' in card
-    assert 'style=' not in re.search(r'<div class="book-item group" data-format="DVD"[^>]*>', grid).group(0)
+    assert 'style=' not in re.search(r'<div class="book-item group" data-format="DVD">.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)', grid, re.S).group(1)
     assert 'data-angle="270"' in box
     # Every type since 16.0c: the DVD's top photo goes on its box too, the
     # side stays plain; and on the next page's cards (infinite scroll)
     upload(client, dvd, 'top', jpeg_bytes((400, 40)))
-    card = re.search(r'<div class="book-item group" data-format="DVD"[^>]*>',
-                     client.get('/videos/').get_data(as_text=True)).group(0)
+    card = re.search(r'<div class="book-item group" data-format="DVD">.*?(<(?:span|div) class="(?:cover-box|no-cover)[^>]*>)',
+                     client.get('/videos/').get_data(as_text=True), re.S).group(1)
     assert '--face-top: url(' in card and '--face-side' not in card
     from utils.book_utils import card_json
     with client.application.test_request_context():

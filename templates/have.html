@@ -111,9 +111,9 @@
                        a 6rem-tall album squeezed it (Phil, 2026-11-13). #}
                     {% set square = row.media_type == 'record' %}
                     {% if row.cover_image_url|upload_exists %}
-                    {{ cover_img(row.cover_image_url, '', ('h-24 w-24 object-cover' if square else 'h-24 w-auto max-w-[5rem]') ~ ' rounded shadow-sm', 'case-cover self-start shrink-0', lazy=True, ring=abs_ring(row.id)) }}
+                    {{ cover_img(row.cover_image_url, '', ('h-24 w-24 object-cover' if square else 'h-24 w-auto max-w-[5rem]') ~ ' rounded shadow-sm', 'case-cover self-start shrink-0', lazy=True, item=row) }}
                     {% else %}
-                    {% with title=row.title, size='sm', box='case-cover h-24 self-start shrink-0 rounded ' ~ ('w-24' if square else 'w-auto aspect-[2/3]'), ring=abs_ring(row.id) %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=row.title, size='sm', box='case-cover h-24 self-start shrink-0 rounded ' ~ ('w-24' if square else 'w-auto aspect-[2/3]'), item=row %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                     <div class="min-w-0 flex-1">
                         <p class="font-semibold text-content-primary">{{ row.title }}</p>

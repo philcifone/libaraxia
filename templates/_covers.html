@@ -11,7 +11,7 @@
    pictures stay flat.
 
      {% from '_covers.html' import cover_img %}
-     {{ cover_img(book.cover_image_url, book.title, 'w-full rounded-lg', lazy=True) }}
+     {{ cover_img(book.cover_image_url, book.title, 'w-full rounded-lg', lazy=True, item=book) }}
 
    path:      the uploads path as stored (books.cover_image_url)
    alt:       alt text ('' where the title is printed beside it)
@@ -19,12 +19,26 @@
    box_class: classes for the box (flex placement: shrink-0, self-start)
    lazy:      loading="lazy" (rows and lists, not the first screen)
    author:    data-author, for the grid: common.js redraws a cover whose file
-              fails to load as the placeholder, titled with alt and this #}
-{#   ring:      Audiobookshelf progress, 0 to 1 (abs_ring(book.id)): the
-              progress ring on the cover's top-right corner; none: no ring #}
-{% macro cover_img(path, alt='', img_class='', box_class='', lazy=False, author=none, ring=none) -%}
-<span class="cover-box{{ ' ' ~ box_class if box_class }}"><img src="{{ url_for('static', filename=path) }}" alt="{{ alt }}"
-     {%- if author is not none %} data-author="{{ author }}"{% endif %}{% if lazy %} loading="lazy"{% endif %} class="{{ img_class }}"><span class="cover-sheen" aria-hidden="true"></span>{{ progress_ring(ring) }}</span>
+              fails to load as the placeholder, titled with alt and this
+   item:      the item's row (its book id as `book_id` or `id`, and its
+              media_type and format): the box becomes that item's box in
+              Shelf (a book's pages, a vinyl sleeve's card edge, a DVD's
+              depth, its top and side photos; app.py cover_box) and gets
+              the viewer's Audiobookshelf progress ring. Every display
+              page passes it (tests/test_layout.py checks). #}
+{% macro cover_img(path, alt='', img_class='', box_class='', lazy=False, author=none, item=none) -%}
+{%- set box = cover_box(item) -%}
+<span class="cover-box{{ ' ' ~ box_class if box_class }}"{{ box_attrs(box) }}><img src="{{ url_for('static', filename=path) }}" alt="{{ alt }}"
+     {%- if author is not none %} data-author="{{ author }}"{% endif %}{% if lazy %} loading="lazy"{% endif %} class="{{ img_class }}"><span class="cover-sheen" aria-hidden="true"></span>{{ progress_ring(box.ring) }}</span>
+{%- endmacro %}
+
+{# The box's attributes from cover_box(item): data-media and data-format,
+   which the Shelf rules key on, and the faces' photos (--face-top,
+   --face-side) as its style. Nothing for no item. JS twin: boxAttrsHtml()
+   in common.js. #}
+{% macro box_attrs(box) -%}
+{%- if box.media %} data-media="{{ box.media }}" data-format="{{ box.format }}"{% endif %}
+{%- if box.faces %} style="{{ box.faces }}"{% endif %}
 {%- endmacro %}
 
 {# The Audiobookshelf progress ring (Phil, 2026-11-19): a thin accent arc

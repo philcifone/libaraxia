@@ -410,11 +410,13 @@ class InfiniteScroll {
             : '';
 
 
-        const coverImage = book.cover_image_url   // cover-box: as _book_grid.html
+        // cover-box: as _book_grid.html; the item's box (type, format, faces) and ring
+        const box = { ring: book.abs_progress, media: book.media_type, format: book.format, faces: book.faces };
+        const coverImage = book.cover_image_url
             ? coverBoxHtml(book.cover_image_url, book.title,
                 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200',
-                { author: book.author || '', ring: book.abs_progress })
-            : noCoverHtml(book.title, book.author, { ring: book.abs_progress });
+                { author: book.author || '', ...box })
+            : noCoverHtml(book.title, book.author, box);
 
         // List view's columns: year, your status, your rating (card_json)
         const rating = Number(book.rating) || 0;
@@ -423,7 +425,7 @@ class InfiniteScroll {
             : '';
 
         return `
-            <div class="book-item group" data-format="${escapeHtml(book.format || '')}"${book.faces ? ` style="${escapeHtml(book.faces)}"` : ''}>
+            <div class="book-item group" data-format="${escapeHtml(book.format || '')}">
                 <a href="/books/book/${encodeURIComponent(book.id)}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">

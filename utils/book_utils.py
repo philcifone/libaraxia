@@ -944,6 +944,7 @@ def card_json(conn, viewer_id, books, looker_id=None):
             'not_owned': not b['owned'],
             'lent_to': lent.get(b['id']),         # the Lent badge (16.0d)
             'abs_progress': rings.get(b['id']),   # the progress ring (0 to 1, or none)
+            'media_type': media.media_type_of(b), # the cover's box (common.js boxAttrsHtml)
             'format': media.shown_format(b),      # none for an unshelved movie or album
             # Videos (15.1): 'tv' or None (a movie), and a TV set's season text;
             # `by` ("directed by", "created by") and `season_short` ("S2") are

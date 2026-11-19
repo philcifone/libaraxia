@@ -2019,57 +2019,21 @@ html:has(.item3d[open]) { overflow: hidden; }
    so the two meet at the far corner. No outlines (Phil: the shading is
    enough; the video-store rack keeps its black line). Both faces sit under
    the badges and the label. They are pages for a book, the case's edge for
-   movies and music (--box-top, --box-side), and thinner for a record.
+   movies and music, and thinner for a record or a DVD.
    The picture needs a box of its own size for that, so the image is wrapped
    in .cover-box (display: contents everywhere but here); a coverless item's
-   .no-cover is the box itself, shaped like the item. */
+   .no-cover is the box itself, shaped like the item. The faces, colours and
+   the depth by type are the box's own, the same on every page ("Shelf:
+   every cover is a box" below); the grid only sets how deep its boxes are:
+   a book's or a VHS's (--box-depth), an album's or a DVD's (--box-thin).
+   The shadow a box casts (--box-shadow) is set there too. */
 :root[data-style="shelf"] .shelf-grid.grid {
     --box-depth: 7px;
-    --box-top: 228 224 214;         /* the top of the pages, in shade */
-    --box-side: 198 193 182;        /* the fore-edge, darker */
-    /* Paper is a touch warm, not grey: red up, blue down a few points from
-       the old neutral, here and in the dark and default values below
-       (Phil, 2026-11-17) */
+    --box-thin: 4px;
 }
-:root[data-style="shelf"] .shelf-grid.grid:is([data-media="video"], [data-media="record"]) {
-    --box-top: 218 219 222;
-    --box-side: 184 186 191;
-}
-/* By lamplight on walnut the faces are in shade: at their daylight values
-   they were brighter than most covers and read as a white outline. */
-:root[data-style="shelf"][data-mode="dark"] .shelf-grid.grid {
-    --box-top: 180 174 162;
-    --box-side: 148 142 132;
-}
-:root[data-style="shelf"][data-mode="dark"] .shelf-grid.grid:is([data-media="video"], [data-media="record"]) {
-    --box-top: 168 170 175;
-    --box-side: 136 139 146;
-}
-@media (prefers-color-scheme: dark) {
-    :root[data-style="shelf"]:not([data-mode="light"]) .shelf-grid.grid {
-        --box-top: 180 174 162;
-        --box-side: 148 142 132;
-    }
-    :root[data-style="shelf"]:not([data-mode="light"]) .shelf-grid.grid:is([data-media="video"], [data-media="record"]) {
-        --box-top: 168 170 175;
-        --box-side: 136 139 146;
-    }
-}
-/* The shadow a box casts (--box-shadow) is the one every Shelf cover uses,
-   set once in "Shelf: every cover is a box" below. */
-:root[data-style="shelf"] .shelf-grid.grid[data-media="record"] { --box-depth: 4px; }
-/* A DVD case is under half a VHS clamshell's depth: as thin as an album
-   (Phil, 2026-11-15; the item page's .cover-stand does the same) */
-:root[data-style="shelf"] .shelf-grid.grid[data-media="video"] .book-item[data-format="DVD"] { --box-depth: 4px; }
 @media (max-width: 767px) {
-    :root[data-style="shelf"] .shelf-grid.grid { --box-depth: 5px; }
-    :root[data-style="shelf"] .shelf-grid.grid[data-media="record"],
-    :root[data-style="shelf"] .shelf-grid.grid[data-media="video"] .book-item[data-format="DVD"] { --box-depth: 3px; }
+    :root[data-style="shelf"] .shelf-grid.grid { --box-depth: 5px; --box-thin: 3px; }
 }
-/* A vinyl sleeve is card: 1px, a hint of an edge, at every width (Phil,
-   2026-11-16); its colour is in "vinyl sleeve" below. Every record that isn't a CD or a cassette, as
-   utils/faces.medium_for has it; the item page's .cover-stand matches. */
-:root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .book-item:not([data-format="CD"], [data-format="Cassette"]) { --box-depth: 1px; }
 :root[data-style="shelf"] .shelf-grid.grid .book-cover {
     display: flex;
     align-items: flex-end;          /* stands on the shelf */
@@ -2164,29 +2128,8 @@ html:has(.item3d[open]) { overflow: hidden; }
     :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .no-cover-title { -webkit-line-clamp: 4; }
     :root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .no-cover-long .no-cover-author { display: none; }
 }
-:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::before,
-:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::after {
-    content: "";
-    position: absolute;
-    pointer-events: none;
-    transform-origin: 0 100%;       /* bottom-left: the edge on the front */
-}
-:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::before {   /* right side */
-    top: 0;
-    left: 100%;
-    width: var(--box-depth);
-    height: 100%;
-    background: rgb(var(--box-side));
-    transform: skewY(-45deg);
-}
-:root[data-style="shelf"] .shelf-grid.grid :is(.cover-box, .no-cover)::after {    /* top */
-    bottom: 100%;
-    left: 0;
-    width: 100%;
-    height: var(--box-depth);
-    background: rgb(var(--box-top));
-    transform: skewX(-45deg);
-}
+/* The faces themselves are drawn by "Shelf: every cover is a box" below,
+   the same rules as everywhere else. */
 /* No hover animation (Phil). Keyboard focus gets a ring round the cover,
    since there's no label to show which item it's on. */
 :root[data-style="shelf"] .shelf-grid.grid .book-link:focus-visible { outline: none; }
@@ -3545,9 +3488,12 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) { --tab-recess: rg
    Pictures in form previews (add / edit) and admin pages aren't wrapped,
    so they stay flat. */
 :root[data-style="shelf"] {
-    --box-depth: 5px;
-    --box-top: 228 224 214;
-    --box-side: 198 193 182;
+    --box-depth: 5px;               /* a book's or a VHS's; a page may set its own */
+    --box-thin: 3px;                /* an album's or a DVD's */
+    --box-top: 228 224 214;         /* the top of the pages, in shade */
+    --box-side: 198 193 182;        /* the fore-edge, darker */
+    /* Paper is a touch warm, not grey: red up, blue down a few points from
+       the old neutral, here and in the dark values below (Phil, 2026-11-17) */
     /* How dark the shadow a box casts is (the shadow itself is set on
        the box, below, since it depends on the box's own depth) */
     --box-shade: .32;
@@ -3560,6 +3506,38 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) { --tab-recess: rg
     :root[data-style="shelf"]:not([data-mode="light"]) {
         --box-top: 180 174 162;
         --box-side: 148 142 132;
+    }
+}
+/* By type, on the box itself (layout walk step 1, docs/LAYOUT-WALK-SPEC.md
+   section 2): cover_img(item=) and _no_cover.html put the item's
+   data-media and data-format on its box, so a cover is the same box on the
+   grid, the item page and every list. The page sets the depths (above; the
+   grid, .cover-stand); the box takes the one for its type. An album, and a
+   DVD case (under half a VHS clamshell's 35mm: Phil, 2026-11-15), is thin. */
+:root[data-style="shelf"] :is(.cover-box, .no-cover):is([data-media="record"], [data-media="video"][data-format="DVD"]) {
+    --box-depth: var(--box-thin);
+}
+/* A vinyl sleeve is card: 1px, a hint of an edge, everywhere (Phil,
+   2026-11-16); its colour is in "vinyl sleeve" below. Every record that
+   isn't a CD or a cassette, as utils/faces.medium_for has it. */
+:root[data-style="shelf"] :is(.cover-box, .no-cover)[data-media="record"]:not([data-format="CD"], [data-format="Cassette"]) {
+    --box-depth: 1px;
+}
+/* Movies and music are in plastic cases: grey edges, not pages. By
+   lamplight on walnut the faces are in shade: at their daylight values
+   they were brighter than most covers and read as a white outline. */
+:root[data-style="shelf"] :is(.cover-box, .no-cover):is([data-media="video"], [data-media="record"]) {
+    --box-top: 218 219 222;
+    --box-side: 184 186 191;
+}
+:root[data-style="shelf"][data-mode="dark"] :is(.cover-box, .no-cover):is([data-media="video"], [data-media="record"]) {
+    --box-top: 168 170 175;
+    --box-side: 136 139 146;
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-style="shelf"]:not([data-mode="light"]) :is(.cover-box, .no-cover):is([data-media="video"], [data-media="record"]) {
+        --box-top: 168 170 175;
+        --box-side: 136 139 146;
     }
 }
 :root[data-style="shelf"] .cover-box {
@@ -3848,44 +3826,38 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) { --tab-recess: rg
 and to the right for its faces */
 :root[data-style="shelf"] .cover-stand {
     --box-depth: 9px;
+    --box-thin: 5px;
     padding: var(--box-depth) var(--box-depth) 0 0;
 }
 /* Box faces (Phil, 2026-11-15; a VHS first, every type since 16.0c): an
    item's top and right side photos, when it has them (--face-top,
-   --face-side: utils/photos.box_faces, set inline on the item page's
-   .cover-stand and on each library grid card), on the flat cover box's
-   faces, skewed with them; the photos run the way the 3D view puts them
-   (the top photo's top edge at the back, the side photo's left edge at the
-   front). Each keeps the face's light: the top a little shaded, the side
-   more. Only a face with a photo changes ([style*="--face-top"]), so a
-   face without one stays plain, and the video-store rack's rental
-   cases keep their own look. */
-:root[data-style="shelf"] .cover-stand[style*="--face-top"] .cover-box::after,
-:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid .book-item[style*="--face-top"] .cover-box::after {
+   --face-side: utils/photos.box_faces, set inline on the box by cover_img
+   item=), on the flat cover box's faces, skewed with them, wherever the
+   box is; the photos run the way the 3D view puts them (the top photo's
+   top edge at the back, the side photo's left edge at the front). Each
+   keeps the face's light: the top a little shaded, the side more. Only a
+   face with a photo changes ([style*="--face-top"]), so a face without
+   one stays plain. The video-store rack's rental cases keep their own
+   look (their rules carry the grid's id, so they outweigh these). */
+:root[data-style="shelf"] :is(.cover-box, .no-cover)[style*="--face-top"]::after {
     background: linear-gradient(rgb(0 0 0 / .08), rgb(0 0 0 / .08)),
                 var(--face-top, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-top));
 }
-:root[data-style="shelf"] .cover-stand[style*="--face-side"] .cover-box::before,
-:root[data-style="shelf"]:not([data-rack="store"]) #book-container.shelf-grid.grid .book-item[style*="--face-side"] .cover-box::before {
+:root[data-style="shelf"] :is(.cover-box, .no-cover)[style*="--face-side"]::before {
     background: linear-gradient(rgb(0 0 0 / .22), rgb(0 0 0 / .22)),
                 var(--face-side, none) 0 0 / 100% 100% no-repeat, rgb(var(--box-side));
 }
 
-/* An album is a thin sleeve: as on the grid (4px to a book's 7px), about
-   half a book's depth (Phil, 2026-11-14) */
-:root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }
-/* ...and a vinyl sleeve is card, 1px, as on the grid (Phil, 2026-11-16) */
-:root[data-style="shelf"] .cover-stand[data-media="record"]:not([data-format="CD"], [data-format="Cassette"]) { --box-depth: 1px; }
 
 /* vinyl sleeve: the thin box's top and side are card in the cover's edge
    colour (--edge, common.js paintVinylEdge), a shade darker for the side
    in shadow; the plain grey where the canvas can't read the cover, also a
    shade darker, so a 1px edge still shows (Phil, 2026-11-16). A top or
-   side photo wins ("Box faces" below), so those faces are left out here. */
-:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="record"] .book-item, .cover-stand[data-media="record"]):not([data-format="CD"], [data-format="Cassette"]):not([style*="--face-side"]) .cover-box::before {
+   side photo wins ("Box faces" above), so those faces are left out here. */
+:root[data-style="shelf"] .cover-box[data-media="record"]:not([data-format="CD"], [data-format="Cassette"]):not([style*="--face-side"])::before {
     background: color-mix(in srgb, rgb(var(--edge, var(--box-side))) 70%, black);
 }
-:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="record"] .book-item, .cover-stand[data-media="record"]):not([data-format="CD"], [data-format="Cassette"]):not([style*="--face-top"]) .cover-box::after {
+:root[data-style="shelf"] .cover-box[data-media="record"]:not([data-format="CD"], [data-format="Cassette"]):not([style*="--face-top"])::after {
     background: color-mix(in srgb, rgb(var(--edge, var(--box-top))) 82%, black);
 }
 /* book pages: a book's flat box shows its pages, the fine lines of the 3D
@@ -3905,37 +3877,20 @@ and to the right for its faces */
 @media (min-resolution: 3dppx) {
     :root[data-style="shelf"] { --leaf: calc(2px / 3); --leaf-line: calc(1px / 3); }
 }
-:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {
+:root[data-style="shelf"] :is(.cover-box, .no-cover)[data-media="book"]:not([style*="--face-side"])::before {
     background: repeating-linear-gradient(90deg,
         rgb(var(--box-side)) 0 var(--leaf),
         color-mix(in srgb, rgb(var(--box-side)) 84%, black) var(--leaf) calc(var(--leaf) + var(--leaf-line)));
 }
-:root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, .cover-stand[data-media="book"]):not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {
+:root[data-style="shelf"] :is(.cover-box, .no-cover)[data-media="book"]:not([style*="--face-top"])::after {
     background: repeating-linear-gradient(0deg,
         rgb(var(--box-top)) 0 var(--leaf),
         color-mix(in srgb, rgb(var(--box-top)) 88%, black) var(--leaf) calc(var(--leaf) + var(--leaf-line)));
 }
-/* A DVD case is under half a VHS clamshell's depth (14mm to 35mm): the
-   same thin box as an album (Phil, 2026-11-15) */
-:root[data-style="shelf"] .cover-stand[data-media="video"][data-format="DVD"] { --box-depth: 5px; }
-:root[data-style="shelf"] .cover-stand:is([data-media="video"], [data-media="record"]) {
-    --box-top: 218 219 222;
-    --box-side: 184 186 191;
-}
-:root[data-style="shelf"][data-mode="dark"] .cover-stand:is([data-media="video"], [data-media="record"]) {
-    --box-top: 168 170 175;
-    --box-side: 136 139 146;
-}
-@media (prefers-color-scheme: dark) {
-    :root[data-style="shelf"]:not([data-mode="light"]) .cover-stand:is([data-media="video"], [data-media="record"]) {
-        --box-top: 168 170 175;
-        --box-side: 136 139 146;
-    }
-}
 :root[data-style="shelf"] .cover-stand .cover-box > img { max-width: 100%; height: auto; }
 
 /* Feed and notifications covers: a little deeper than a row's */
-:root[data-style="shelf"] .case-card { --box-depth: 6px; }
+:root[data-style="shelf"] .case-card { --box-depth: 6px; --box-thin: 4px; }
 
 /* A case card's cover stands on the case's ledge (.case-cover: Do I Have
    This? matches; 16.0, Phil: "lower the book box to sit on the

@@ -95,7 +95,7 @@ To be filled in by the walk: every page at 390 px and 1280 px, in all five style
 
 ## 9. Steps (one commit each)
 
-1. Cover boxes: `cover_img(item=)`, `_no_cover` and `coverBoxHtml`, the CSS moved to the box, every call site, the faces map on the list pages; the test.
+1. Cover boxes: `cover_img(item=)`, `_no_cover` and `coverBoxHtml`, the CSS moved to the box, every call site, the faces map on the list pages; the test. Done 2026-11-19: `app.py cover_box` (the book id is `book_id` when a row has one; faces read once per page by `box_faces` and kept on `g`, else per cover), the lists' queries gained `format` and `owned`, a page sets `--box-depth` and `--box-thin` and the box takes its own. Kept on the grid's `.book-item`: `data-format`, for the record sizes (layout, not the box).
 2. Tab rows: the `tab_row` macro, every page moved to it, the one-band cabinet, `aria-selected`; the test.
 3. Reviews pages: headings, the sideways scroll, the empty line, the captions.
 4. Rate & review: the phone layout.

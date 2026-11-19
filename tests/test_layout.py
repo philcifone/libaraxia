@@ -735,7 +735,7 @@ def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
     # One cover component (16.0): the macro and its JS twin make the box, and
     # the grid (server-rendered and infinite scroll) goes through them
     assert '<span class="cover-box' in pathlib.Path('templates/_covers.html').read_text()
-    assert '<span class="cover-box"><img' in pathlib.Path('static/common.js').read_text()
+    assert '<span class="cover-box"${boxAttrsHtml({ media, format, faces })}><img' in pathlib.Path('static/common.js').read_text()
     assert 'cover_img(' in pathlib.Path('templates/_book_grid.html').read_text()
     assert 'coverBoxHtml(' in pathlib.Path('static/script.js').read_text()
     # The egg: Movies only
@@ -1014,7 +1014,8 @@ def test_dead_cover_links_get_the_placeholder_everywhere(client, db, people, sta
 
 def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     """The Shelf style draws the item page's cover as a 3D box (14c): the
-    image sits in .cover-box and the stand says which kind of item it is."""
+    image sits in .cover-box, which says which kind of item it is (layout
+    walk step 1: the box, not the stand)."""
     import os
     from conftest import add_book, login
     os.makedirs(static_root / 'uploads', exist_ok=True)
@@ -1022,10 +1023,10 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     book = add_book(db, people['alice'], cover='uploads/c.jpg')
     login(client, 'alice')
     html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'class="cover-stand w-full max-w-[300px]" data-media="book"' in html
+    assert 'class="cover-stand w-full max-w-[300px]">' in html
     # An ID badge at every width: the facts beside the cover, two columns on a phone
     assert 'grid-cols-[7rem_minmax(0,1fr)]' in html and 'class="item-facts ' in html
-    assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
+    assert '<span class="cover-box" data-media="book" data-format=""><img src="/static/uploads/c.jpg"' in html
 
 
 def test_item_page_cover_opens_bigger(client, db, people, static_root):
@@ -1369,73 +1370,23 @@ def test_add_page_keeps_a_draft_and_crop_blocks_zoom():
 
 
 def test_record_item_box_is_thinner():
-    """An album's box on the item page is about half a book's depth, as on
-    the grid (Phil, 2026-11-14)."""
+    """An album's box is about half a book's depth, on the item page as on
+    the grid (Phil, 2026-11-14): each page sets a thin depth beside the
+    book's, and a record's box takes it (layout walk step 1)."""
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }' in css
-    # a vinyl sleeve is card: 1px on the item page and the grid, in its
-    # cover's edge colour a shade darker; CDs and cassettes keep the
-    # record depth (Phil, 2026-11-16)
-    vinyl = ':not([data-format="CD"], [data-format="Cassette"]) { --box-depth: 1px; }'
-    assert ':root[data-style="shelf"] .cover-stand[data-media="record"]' + vinyl in css
-    assert ':root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .book-item' + vinyl in css
+    assert ':root[data-style="shelf"] .cover-stand {\n    --box-depth: 9px;\n    --box-thin: 5px;' in css
+    assert ':root[data-style="shelf"] .shelf-grid.grid {\n    --box-depth: 7px;\n    --box-thin: 4px;\n}' in css
+    assert (':root[data-style="shelf"] :is(.cover-box, .no-cover):is([data-media="record"], '
+            '[data-media="video"][data-format="DVD"]) {\n    --box-depth: var(--box-thin);') in css
+    # a vinyl sleeve is card: 1px everywhere, in its cover's edge colour a
+    # shade darker; CDs and cassettes keep the record depth (Phil, 2026-11-16)
+    assert (':root[data-style="shelf"] :is(.cover-box, .no-cover)[data-media="record"]'
+            ':not([data-format="CD"], [data-format="Cassette"]) {\n    --box-depth: 1px;') in css
     assert 'color-mix(in srgb, rgb(var(--edge, var(--box-side))) 70%, black)' in css
     common = pathlib.Path('static/common.js').read_text()
     assert "addEventListener('load', event => paintVinylEdge(event.target), true)" in common
-
-
-def test_empty_detail_fields_say_not_set(client, db, people):
-    """An empty field on an item page keeps its label and says "Not set" in
-    a marked, muted line: it used to print Python's None ("None pages")."""
-    book = add_book(db, people['alice'])
-    login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    facts = page.split('item-facts', 1)[1].split('</div>\n                </div>', 1)[0]
-    # publisher, year, page count, ISBN and genre are all empty on this book
-    assert facts.count('data-unset') == 5
-    assert 'None' not in facts
-    db.execute("UPDATE books SET page_count = 320, publisher = 'Scribner' WHERE id = ?", (book,))
-    db.commit()
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert page.count('data-unset') == 3 and '320 pages' in page
-
-
-def test_box_shadow_stays_off_the_shelf():
-    """A Shelf cover's shadow falls on the wall to its right and never
-    below its base (Phil, 2026-11-14: a shadow under it made it float):
-    the offset is up, and the blur is no more than offset plus spread."""
-    css = pathlib.Path('static/styles.css').read_text()
-    assert '--box-shadow: calc(var(--box-depth) + 6px) -4px 8px -4px rgb(0 0 0 / var(--box-shade));' in css
-    assert 'box-contact' not in css and 'box-cast' not in css
-
-
-def test_og_walnut_palette(client, db, people):
-    """OG can take Shelf's parchment and walnut (Phil, 2026-11-15): a saved
-    users.palette on <html data-palette>, a picker shown in OG only, and
-    CSS that matches OG alone."""
-    login(client, 'alice')
-    assert 'data-palette="theme"' in client.get('/base/index').get_data(as_text=True)
-    assert client.post('/user/update_theme', json={'palette': 'mahogany'}).status_code == 400
-    assert client.post('/user/update_theme', json={'style': 'classic', 'palette': 'walnut'}).status_code == 200
-    assert scalar(db, 'SELECT palette FROM users WHERE id = ?', people['alice']) == 'walnut'
-    page = client.get('/user/settings').get_data(as_text=True)
-    assert 'data-palette="walnut"' in page and 'data-kind="palette"' in page
-    css = pathlib.Path('static/styles.css').read_text()
-    assert ':root[data-style="classic"][data-palette="walnut"] {' in css
-    assert ':root[data-style="classic"][data-palette="walnut"][data-mode="dark"] {' in css
-    assert ':root:not([data-style="classic"]) [data-palette-picker] { display: none; }' in css
-
-
-def test_no_byline_without_a_creator(client, db, people):
-    """No bare "by" under the title when an item has no author, director or
-    artist (Phil, 2026-11-15)."""
-    book = add_book(db, people['alice'], 'Anonymous Work', '')
-    login(client, 'alice')
-    assert 'data-byline' not in client.get(f'/books/book/{book}').get_data(as_text=True)
-    db.execute("UPDATE books SET author = 'Someone' WHERE id = ?", (book,))
-    db.commit()
-    assert 'data-byline' in client.get(f'/books/book/{book}').get_data(as_text=True)
-
+    assert ("const VINYL_COVER = '.cover-box[data-media=\"record\"]"
+            ":not([data-format=\"CD\"], [data-format=\"Cassette\"]) > img';") in common
 
 def test_item_page_has_no_pointer_to_the_tools(client, db, people):
     """The "Mark it unshelved, transfer it or delete it ... under Edit"
@@ -1446,16 +1397,22 @@ def test_item_page_has_no_pointer_to_the_tools(client, db, people):
 
 
 def test_dvd_box_is_thinner_than_vhs(client, db, people):
-    """The item page's Shelf box knows the format, and a DVD case is thinner
-    than a VHS clamshell (Phil, 2026-11-15)."""
-    css = pathlib.Path('static/styles.css').read_text()
-    assert ':root[data-style="shelf"] .cover-stand[data-media="video"][data-format="DVD"] { --box-depth: 5px; }' in css
-    tpl = pathlib.Path('templates/book_detail.html').read_text()
-    assert 'data-format="{{ book[\'format\'] or \'\' }}"' in tpl
-    # and on the grid, server-drawn and script-drawn cards alike
-    assert '.shelf-grid.grid[data-media="video"] .book-item[data-format="DVD"] { --box-depth: 4px; }' in css
-    assert 'class="book-item group" data-format="{{ book|item_format or \'\' }}"' in pathlib.Path('templates/_book_grid.html').read_text()
-    assert 'class="book-item group" data-format="${escapeHtml(book.format || \'\')}"' in pathlib.Path('static/script.js').read_text()
+    """A DVD case is thinner than a VHS clamshell (Phil, 2026-11-15): its
+    box knows the format, on the item page and the grid, server-drawn and
+    script-drawn cards alike (the thin-depth rule: test above)."""
+    dvd = add_book(db, people['alice'], title='Heat')
+    db.execute("UPDATE books SET media_type = 'video', format = 'DVD' WHERE id = ?", (dvd,))
+    db.commit()
+    login(client, 'alice')
+    box = '<span class="cover-box" data-media="video" data-format="DVD">'
+    nobox = 'class="no-cover no-cover-md w-full h-full" data-media="video" data-format="DVD"'
+    assert nobox in client.get('/videos/').get_data(as_text=True)
+    assert 'data-media="video" data-format="DVD"' in client.get(f'/videos/{dvd}').get_data(as_text=True)
+    common = pathlib.Path('static/common.js').read_text()
+    assert ' data-media="${escapeHtml(media)}" data-format="${escapeHtml(format || \'\')}"' in common
+    script = pathlib.Path('static/script.js').read_text()
+    assert 'media: book.media_type, format: book.format, faces: book.faces' in script
+    assert box.startswith('<span class="cover-box"')
 
 
 def test_headings_have_no_subtitles_and_one_height(client, db, people):
@@ -1516,15 +1473,14 @@ def test_wishlist_covers_show_the_format(client, db, people):
 
 
 def test_book_box_shows_pages():
-    """A book's flat box, on the grid and the item page, has lined pages
-    on its top and side unless a photo or placeholder fills that face; audiobooks
-    and unowned books too (Phil, 2026-11-16)."""
+    """A book's flat box, wherever it is shown, has lined pages on its top
+    and side unless a photo or placeholder fills that face; audiobooks and
+    unowned books too (Phil, 2026-11-16)."""
     css = pathlib.Path('static/styles.css').read_text()
-    who = (':root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, '
-           '.cover-stand[data-media="book"])')
+    who = ':root[data-style="shelf"] :is(.cover-box, .no-cover)[data-media="book"]'
     assert 'Audiobook"]):not([style*="--face-' not in css
-    assert who + ':not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {' in css
-    assert who + ':not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {' in css
+    assert who + ':not([style*="--face-side"])::before {' in css
+    assert who + ':not([style*="--face-top"])::after {' in css
     assert 'repeating-linear-gradient(90deg,\n        rgb(var(--box-side)) 0 var(--leaf)' in css
     # finer leaves on a 2x or 3x screen, so a 5px box shows several lines
     # rather than one (Phil, 2026-11-17)
@@ -1714,3 +1670,186 @@ def test_dangerous_confirms_say_yes_and_what_they_do():
     scripts = '\n'.join(p.read_text() for p in (ROOT / 'static').glob('*.js'))
     assert not re.search(r'data-confirm-ok="(OK|Delete|Remove)"', pages)
     assert not re.search(r"ok: '(OK|Delete|Remove)'", scripts)
+
+
+def test_empty_detail_fields_say_not_set(client, db, people):
+    """An empty field on an item page keeps its label and says "Not set" in
+    a marked, muted line: it used to print Python's None ("None pages")."""
+    book = add_book(db, people['alice'])
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    facts = page.split('item-facts', 1)[1].split('</div>\n                </div>', 1)[0]
+    # publisher, year, page count, ISBN and genre are all empty on this book
+    assert facts.count('data-unset') == 5
+    assert 'None' not in facts
+    db.execute("UPDATE books SET page_count = 320, publisher = 'Scribner' WHERE id = ?", (book,))
+    db.commit()
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert page.count('data-unset') == 3 and '320 pages' in page
+
+
+def test_box_shadow_stays_off_the_shelf():
+    """A Shelf cover's shadow falls on the wall to its right and never
+    below its base (Phil, 2026-11-14: a shadow under it made it float):
+    the offset is up, and the blur is no more than offset plus spread."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '--box-shadow: calc(var(--box-depth) + 6px) -4px 8px -4px rgb(0 0 0 / var(--box-shade));' in css
+    assert 'box-contact' not in css and 'box-cast' not in css
+
+
+def test_og_walnut_palette(client, db, people):
+    """OG can take Shelf's parchment and walnut (Phil, 2026-11-15): a saved
+    users.palette on <html data-palette>, a picker shown in OG only, and
+    CSS that matches OG alone."""
+    login(client, 'alice')
+    assert 'data-palette="theme"' in client.get('/base/index').get_data(as_text=True)
+    assert client.post('/user/update_theme', json={'palette': 'mahogany'}).status_code == 400
+    assert client.post('/user/update_theme', json={'style': 'classic', 'palette': 'walnut'}).status_code == 200
+    assert scalar(db, 'SELECT palette FROM users WHERE id = ?', people['alice']) == 'walnut'
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-palette="walnut"' in page and 'data-kind="palette"' in page
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root[data-style="classic"][data-palette="walnut"] {' in css
+    assert ':root[data-style="classic"][data-palette="walnut"][data-mode="dark"] {' in css
+    assert ':root:not([data-style="classic"]) [data-palette-picker] { display: none; }' in css
+
+
+def test_no_byline_without_a_creator(client, db, people):
+    """No bare "by" under the title when an item has no author, director or
+    artist (Phil, 2026-11-15)."""
+    book = add_book(db, people['alice'], 'Anonymous Work', '')
+    login(client, 'alice')
+    assert 'data-byline' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    db.execute("UPDATE books SET author = 'Someone' WHERE id = ?", (book,))
+    db.commit()
+    assert 'data-byline' in client.get(f'/books/book/{book}').get_data(as_text=True)
+
+
+# ---- One cover box everywhere (layout walk step 1, docs/LAYOUT-WALK-SPEC.md section 2)
+
+def test_every_cover_call_passes_its_item():
+    """Phil, 2026-11-19: the feed's covers were the plain grey box while the
+    grid's were each item's own (a book's pages, a vinyl sleeve, a DVD's
+    depth, its photos). The box now takes its item, so every cover_img call
+    and every _no_cover.html include in templates/ passes item= (item=none
+    where a placeholder is not the item's box: the rack's printed label). A
+    new list that forgets it fails here."""
+    calls = 0
+    for path in sorted((ROOT / 'templates').glob('*.html')):
+        if path.name in ('_covers.html', '_no_cover.html'):
+            continue
+        text = path.read_text()
+        for call in re.findall(r'cover_img\((?:[^()]|\([^()]*\))*\)', text):
+            calls += 1
+            assert 'item=' in call, f'{path.name}: {call}'
+        for include in re.findall(r'{% with ((?:(?!%}).)*)%}\s*{% include \'_no_cover.html\' %}', text):
+            calls += 1
+            assert 'item=' in include, f'{path.name}: {include}'
+        # an include outside a {% with %} can't pass it
+        assert text.count("{% include '_no_cover.html' %}") == len(
+            re.findall(r'%}\s*{% include \'_no_cover.html\' %}', text)), path.name
+    assert calls >= 20
+
+
+def _rules(css):
+    """(selector, body) of every plain rule, @media blocks included."""
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    return re.findall(r'([^{}@;]+)\{([^{}]*)\}', css)
+
+
+def test_per_type_box_rules_are_on_the_box():
+    """The Shelf box's per-type rules (depth, plastic colours, a book's
+    pages, the vinyl edge, the faces' photos) key on the box's own
+    data-media / data-format / style, never on a wrapper (the grid's
+    .book-item, the item page's .cover-stand), so the grid, the item page
+    and the lists can't drift apart again. The video-store rack's cases
+    are the exception: they're the rack's own look, on the grid only."""
+    css = (ROOT / 'static/styles.css').read_text()
+    checked = 0
+    for selector, body in _rules(css):
+        selector = ' '.join(selector.split())
+        if not re.search(r'data-media|data-format|--face-', selector) or 'data-rack="store"' in selector:
+            continue
+        boxy = re.search(r'--box-(depth|thin|top|side)\s*:', body) or (
+            re.search(r'(cover-box|no-cover)[^,]*::(before|after)', selector) and 'background' in body)
+        if not boxy:
+            continue
+        checked += 1
+        for wrapper in ('.shelf-grid', '.cover-stand', '.book-item'):
+            assert wrapper not in selector, selector
+    assert checked >= 8
+
+
+def test_lists_draw_each_items_box(client, db, people):
+    """Rendered, not just written: on the feed, Reviews, Collections, the
+    profile, Do I Have This?, the rate page and Borrowed, every cover box
+    and placeholder carries its item's type and format, the vinyl's and
+    the book's alike."""
+    alice, carol = people['alice'], people['carol']
+    book = add_book(db, alice, title='Dune')
+    lp = add_book(db, alice, title='Blue Train')
+    db.execute("UPDATE books SET media_type = 'record', format = 'LP' WHERE id = ?", (lp,))
+    for item in (book, lp):
+        db.execute('INSERT INTO read_data (user_id, book_id, rating, comment) VALUES (?, ?, 4, ?)',
+                   (alice, item, 'Good'))
+        db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, item))
+    db.execute('INSERT INTO loans (book_id, lent_by, borrower_id, borrower_name, lent_at) '
+               "VALUES (?, ?, ?, 'carol', date('now'))", (lp, alice, carol))
+    db.commit()
+    pages = {'alice': ['/feed/activity', '/reviews/', '/reviews/?type=record', '/collections/collections',
+                       '/user/alice', '/have/?q=Dune', f'/read/rate_review/{book}'],
+             'carol': ['/loans/borrowed', '/feed/activity']}
+    for who, urls in pages.items():
+        login(client, who)
+        for url in urls:
+            html = client.get(url).get_data(as_text=True)
+            boxes = re.findall(r'<(?:span|div) class="(?:cover-box|no-cover)[ "][^>]*>', html)
+            assert boxes, url
+            for tag in boxes:
+                assert re.search(r'data-media="(book|video|record)" data-format="[^"]*"', tag), (url, tag)
+            if url in ('/reviews/?type=record', '/loans/borrowed'):
+                assert 'data-media="record" data-format="LP"' in html, url
+
+
+def test_cover_box_takes_the_book_id_over_a_rows_own(app, db, people):
+    """A feed, review or loan row's `id` is its own; `book_id` is the book's,
+    so that's the one the faces and the ring are looked up by."""
+    book = add_book(db, people['alice'])
+    db.execute("UPDATE books SET media_type = 'video', format = 'VHS', owned = 0 WHERE id = ?", (book,))
+    db.commit()
+    with app.test_request_context():
+        cover_box = app.jinja_env.globals['cover_box']
+        row = {'id': 9999, 'book_id': book, 'media_type': 'video', 'format': 'VHS', 'owned': 1}
+        assert cover_box(row) == {'media': 'video', 'format': 'VHS', 'faces': '', 'ring': None}
+        # an unshelved movie has no copy, so no format (as on the grid)
+        assert cover_box(dict(row, owned=0))['format'] == ''
+        assert cover_box(None) == {}
+
+
+def test_box_attrs_match_their_js_twin(app):
+    """_covers.html box_attrs and common.js boxAttrsHtml give a box the same
+    attributes, so a grid card added by infinite scroll is the same box as
+    one the server drew."""
+    import json
+    import shutil
+    import subprocess
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('node not installed')
+    cases = [{'media': 'record', 'format': 'LP', 'faces': ''},
+             {'media': 'video', 'format': '', 'faces': '--face-top: url("/static/uploads/t.jpg"); '},
+             {'media': 'book', 'format': 'Audiobook', 'faces': ''},
+             {}]
+    with app.test_request_context():
+        macro = app.jinja_env.get_template('_covers.html').module.box_attrs
+        server = [str(macro(c)) for c in cases]
+    src = (ROOT / 'static/common.js').read_text()
+    escape = re.search(r'function escapeHtml\(text\) \{.*?\n\}', src, re.S).group(0)
+    fn = re.search(r'function boxAttrsHtml\(.*?\n\}', src, re.S).group(0)
+    out = subprocess.run([node, '-e', escape + '\n' + fn + f'\nconsole.log(JSON.stringify({json.dumps(cases)}.map(boxAttrsHtml)))'],
+                         capture_output=True, text=True, check=True).stdout
+    # the same attributes once read (Jinja writes a quote as &#34;, escapeHtml as &quot;)
+    import html
+    assert [html.unescape(a) for a in json.loads(out)] == [html.unescape(a) for a in server]
+    assert all('url("' not in a for a in json.loads(out) + server)     # never a raw quote in style="..."
+    assert server[0] == ' data-media="record" data-format="LP"' and server[3] == ''
