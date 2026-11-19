@@ -16,26 +16,27 @@
         {{ crumbs([(m.section, url_for(m.home)), (book.title, item_url(book))], 'Review', class='mb-8', grid=m.type) }}
         {% endif %}
 
-        <!-- Book Header -->
-        <div class="text-center mb-12">
-            <h1 class="font-display text-3xl md:text-4xl mb-2">{{ book.title }}</h1>
-            {% if book.author %}<p class="text-content-secondary italic text-lg">{{ m.by }} {{ book.author }}</p>{% endif %}
-        </div>
+        {# review-layout (styles.css): on a phone a small cover beside the
+           title and author, the form (review-main) under both, so the stars are on the
+           first screen; from md the title over two columns, cover and form
+           (layout walk 16.0, step 4) #}
+        <div class="review-layout">
+            <div class="review-head">
+                <h1 class="font-display text-2xl md:text-4xl mb-1 md:mb-2">{{ book.title }}</h1>
+                {% if book.author %}<p class="text-content-secondary italic md:text-lg">{{ m.by }} {{ book.author }}</p>{% endif %}
+            </div>
 
-        <!-- Content Grid -->
-        <div class="grid md:grid-cols-[300px,1fr] gap-8">
-            <!-- Book Cover -->
-            <div class="w-full max-w-[300px] mx-auto">
+            <div class="review-cover">
                 {% if book.cover_image_url|upload_exists %}
-                    {{ cover_img(book['cover_image_url'], m.Noun ~ ' cover', 'w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]', item=book) }}
+                    {{ cover_img(book['cover_image_url'], m.Noun ~ ' cover', 'w-full h-auto rounded-lg shadow-lg', item=book) }}
                 {% else %}
                     {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg', item=book %}{% include '_no_cover.html' %}{% endwith %}
                 {% endif %}
             </div>
 
             <!-- Review Form -->
-            <div class="bg-secondary-bg rounded-lg p-6 md:p-8 card">
-                <h2 class="font-display text-2xl mb-8 text-center">Rate & Review</h2>
+            <div class="review-main bg-secondary-bg rounded-lg p-4 sm:p-6 md:p-8 card">
+                <h2 class="font-display text-2xl mb-6 md:mb-8 text-center">Rate & Review</h2>
 
                 <form method="post" class="space-y-8" id="review-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -107,9 +108,12 @@
                         {% if sessions %}
                         <div class="space-y-3" id="reading-sessions-list">
                             {% for session in sessions %}
-                            <div class="flex items-center justify-between text-sm py-2 border-b border-gray-700 last:border-b-0" id="session-{{ session.session_id }}">
+                            {# Wraps on a phone: the count on its line, the dates and buttons
+                               under it (the row was 442 px wide at 390). The Started: /
+                               Completed: words are for screen readers there; the arrow says it. #}
+                            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm py-2 border-b border-rule last:border-b-0" id="session-{{ session.session_id }}">
                                 <div class="flex items-center gap-3">
-                                    <span class="text-accent font-medium">
+                                    <span class="text-accent font-medium whitespace-nowrap">
                                         {% if loop.index == 1 %}First time {{ m.verb_past }}
                                         {% elif loop.index == 2 %}Second time {{ m.verb_past }}
                                         {% elif loop.index == 3 %}Third time {{ m.verb_past }}
@@ -117,15 +121,15 @@
                                         {% endif %}
                                     </span>
                                 </div>
-                                <div class="flex items-center gap-4">
-                                    <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-4 ml-auto">
+                                    <div class="flex items-center gap-2 whitespace-nowrap">
                                         {% if session.date_started %}
-                                            <span class="text-content-secondary text-xs">Started:</span>
+                                            <span class="sr-only sm:not-sr-only text-content-secondary text-xs">Started:</span>
                                             <span class="text-content-primary">{{ session.date_started }}</span>
-                                            <span class="mx-1 text-content-secondary">→</span>
+                                            <span class="mx-1 text-content-secondary" aria-hidden="true">→</span>
                                         {% endif %}
                                         {% if session.date_completed %}
-                                            <span class="text-content-secondary text-xs">Completed:</span>
+                                            <span class="sr-only sm:not-sr-only text-content-secondary text-xs">Completed:</span>
                                             <span class="text-content-primary">{{ session.date_completed }}</span>
                                         {% elif session.date_started %}
                                             <span class="text-yellow-500 italic">{{ m.in_progress }}</span>
@@ -166,6 +170,7 @@
                         <label class="block text-sm font-medium text-content-secondary">Rating</label>
                         <div class="flex flex-col items-center gap-2">
                             <div class="rating-group relative flex justify-center items-center" id="rating-container">
+                                {# each star a 44 px tap target (w-11 h-11) #}
                                 {% for i in range(1, 6) %}
                                 <div class="relative">
                                     <input type="radio" 
@@ -175,7 +180,7 @@
                                         class="hidden"
                                         {{ 'checked' if read_data and read_data.rating == i }}>
                                     <label for="star{{ i }}" 
-                                        class="rating-star cursor-pointer text-3xl text-gray-400 px-1 hover:scale-110 transition-all duration-150"
+                                        class="rating-star cursor-pointer text-3xl text-gray-400 w-11 h-11 flex items-center justify-center hover:scale-110 transition-all duration-150"
                                         data-rating="{{ i }}"
                                         title="{{ i }} star{% if i != 1 %}s{% endif %}">★</label>
                                 </div>

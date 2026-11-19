@@ -1687,6 +1687,31 @@ html:has(.item3d[open]) { overflow: hidden; }
 /* Darker than the zoom's: the item is the only thing to look at */
 .item3d::backdrop { background: rgb(var(--black) / .8); }
 
+/* ---------- Rate & review (templates/rate_review.html) ----------
+   One grid, two layouts (layout walk 16.0, step 4). Phone: a small cover
+   (6rem, as the review list's cards) beside the title and author, the form
+   under both, so the stars are on the first screen; the cover used to fill
+   it. From md: the title across the top, then the 300px cover and the form. */
+.review-layout {
+    display: grid;
+    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-areas: "cover head" "main main";
+    align-items: center;
+    gap: 1.5rem 1rem;
+}
+.review-head  { grid-area: head; min-width: 0; }
+.review-cover { grid-area: cover; }
+.review-main  { grid-area: main; min-width: 0; }
+@media (min-width: 768px) {
+    .review-layout {
+        grid-template-columns: 300px minmax(0, 1fr);
+        grid-template-areas: "head head" "cover main";
+        align-items: start;
+        gap: 2rem;
+    }
+    .review-head { text-align: center; margin-bottom: 1rem; }
+}
+
 /* ---------- Star rating (templates/rate_review.html) ---------- */
 .rating-group { isolation: isolate; }
 .rating-star { position: relative; z-index: 1; }
