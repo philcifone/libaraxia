@@ -43,6 +43,8 @@ LIBRARY_HEADER = [
     # Loans (16.0d): the open loan of your own and your household's items
     # (who has it); every loan, returned ones too, is in the ZIP's loans.csv.
     'Lent To', 'Lent On', 'Due Back',
+    # Audiobooks (16.0e): the narrator; the length is Runtime (min)
+    'Narrator',
 ]
 
 
@@ -68,7 +70,7 @@ def library_rows(conn, user_id):
                b.removed_at, b.removed_note,
                b.media_type, b.format, b.barcode, b.catalog_number, b.runtime_minutes,
                b.video_kind, b.season,
-               b.condition, b.sleeve_condition, b.price_paid_cents, b.value_cents,
+               b.condition, b.sleeve_condition, b.price_paid_cents, b.value_cents, b.narrator,
                b.value_source, b.value_note, b.value_checked_at,
                c.status, c.created_at AS status_added,
                (SELECT COALESCE(lu.username, l.borrower_name) FROM loans l
@@ -120,6 +122,7 @@ def library_rows(conn, user_id):
         # Loans are the shelf's people's: blank on others' items
         *((r['lent_to'] or '', r['lent_on'] or '', r['lent_due'] or '')
           if section(r)[0] < 2 else ('', '', '')),
+        r['narrator'] or '',
     ] for r in rows]
 
 

@@ -189,8 +189,8 @@ These hold for any audiobook or ebook, typed in by hand or imported.
   these checks don't each list both formats.
 - **Pages:** an ebook keeps its page count and counts in pages read (it was
   read); an audiobook's stays out, as today.
-- **Narrator:** on Add and Edit when the format is Audiobook (a `.when-audio`
-  field shown by CSS `form:has(...)`, as Movies & TV's Season is, no script);
+- **Narrator:** on Add and Edit when the format is Audiobook (a
+  field shown by CSS `form:has(...)`, `.when-audiobook`, as Movies & TV's Season is, no script);
   on the item page under the author ("Narrated by Ray Porter"); in the grid
   search's columns; in the library CSV and data exports (a column at the end).
 - **Length:** an "Hours and minutes" field for an audiobook on Add and Edit,

@@ -108,7 +108,7 @@ Moved up from 17.1 (Phil, 2026-11-18; originally 15.2). Record who has a physica
 Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf server: an import of finished and in-progress audiobooks (unowned Audiobook books with a status and a session, after a review, undoable) and a live progress line on imported items.
 **Spec: [docs/AUDIOBOOKSHELF-SPEC.md](docs/AUDIOBOOKSHELF-SPEC.md)** (approved 2026-11-18; the API was probed on Phil's server). Decided: one server for the site (`AUDIOBOOKSHELF_URL`, the LAN address), each user's own API key in Settings, encrypted at rest; review, then apply; started books by default (an option for the rest); ebooks too (a new `Ebook` format); a narrator and a length for audiobooks, and hours listened in Stats; podcasts and books at 0 % stay out; nothing from ABS is owned unless the catalogue already says so. Same branch, after 16.0d.
 - [x] 1. Migration 043; the Ebook format, narrator and length on the forms and item page.
-- [ ] 1b. An Audiobooks block in the Books stats (hours listened).
+- [x] 1b. An Audiobooks block in the Books stats (hours listened).
 - [ ] 2. The client and key encryption.
 - [ ] 3. Settings card: connect, disconnect.
 - [ ] 4. Sync and the review page.

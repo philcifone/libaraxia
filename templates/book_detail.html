@@ -49,6 +49,7 @@
                 </h1>
                 {# No "by" line without a creator (Phil, 2026-11-15) #}
                 {% if book['author'] %}<p class="text-xl text-content-secondary italic" data-byline>{{ m.by }} {{ book['author'] }}</p>{% endif %}
+                {% if book['narrator'] and book['format'] == 'Audiobook' %}<p class="text-base text-content-secondary italic" data-narrator>Narrated by {{ book['narrator'] }}</p>{% endif %}
             </div>
             {% if format_icon %}
             <span class="shrink-0 text-accent" role="img"
@@ -128,7 +129,6 @@
                                narrator and length (runtime_minutes). #}
                             {% set details = [
                                 ('Format', book['format'] or 'Book'),
-                                ('Narrator', book['narrator'] if book['format'] == 'Audiobook' else false),
                                 ('Length', runtime if book['format'] == 'Audiobook' else false),
                                 ('Publisher', book['publisher']),
                                 ('Publication Year', book['publish_year']),

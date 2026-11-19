@@ -32,8 +32,9 @@ SCOPES = ('mine', 'household')
 VIEWS = {f'{kind}:{scope}': (kind, scope) for kind in (media.BOOK, media.VIDEO, media.RECORD)
          for scope in SCOPES}
 
-# What the Books search box looks in (as well as the viewer's tags)
-BOOK_SEARCH_COLUMNS = ['title', 'subtitle', 'author', 'publisher', 'isbn', 'publish_year']
+# What the Books search box looks in (as well as the viewer's tags); an
+# audiobook's narrator too (16.0e), so "Ray Porter" finds what he read
+BOOK_SEARCH_COLUMNS = ['title', 'subtitle', 'author', 'publisher', 'isbn', 'publish_year', 'narrator']
 
 
 def term_match(term, data_user):

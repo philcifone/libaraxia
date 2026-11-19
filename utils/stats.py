@@ -155,6 +155,53 @@ def type_stats(conn, user_id, kind, today=None):
         s['has_tv'] = bool(split[media.TV]['owned'] or split[media.TV]['done'])
     s['rated'] = sum(spread.values())
     s['by_month'] = by_month(conn, user_id, kind, today)
+    if kind == BOOK:
+        s['audio'] = audiobook_stats(conn, user_id, today)
+    return s
+
+
+def audiobook_stats(conn, user_id, today=None):
+    """The Books tab's Audiobooks block (16.0e, docs/AUDIOBOOKSHELF-SPEC.md
+    section 7), or None with no finished or in-progress audiobook.
+
+    An audiobook is a book you read: it already counts in Read, the goal and
+    reviews. This only adds what a page count can't say: hours listened
+    (each finished audiobook's length once, as a movie's hours count once),
+    this year's by the finished session's date, what you're listening to,
+    and the longest listen. One with no length counts in the listened
+    number but not the hours; `no_length` says how many."""
+    today = today or datetime.now()
+    p = {'u': user_id, 'fmt': media.AUDIOBOOK, 'done': media.DONE_STATUS[BOOK],
+         'now': 'currently reading', 'year': str(today.year)}
+    audio = '''SELECT b.* FROM collections c JOIN books b ON b.id = c.book_id
+               WHERE c.user_id = :u AND c.status = :status
+                 AND b.media_type = 'book' AND b.format = :fmt'''
+    finished_this_year = '''SELECT DISTINCT b.id, b.runtime_minutes FROM reading_sessions rs
+               JOIN books b ON b.id = rs.book_id
+               WHERE rs.user_id = :u AND b.media_type = 'book' AND b.format = :fmt
+                 AND strftime('%Y', rs.date_completed) = :year'''
+    s = dict(conn.execute(f'''
+        SELECT
+            (SELECT COUNT(*) FROM ({audio.replace(':status', ':done')})) AS done,
+            (SELECT COUNT(*) FROM ({audio.replace(':status', ':now')})) AS listening,
+            (SELECT COALESCE(SUM(NULLIF(runtime_minutes, 0)), 0)
+               FROM ({audio.replace(':status', ':done')})) AS minutes,
+            (SELECT COUNT(*) FROM ({audio.replace(':status', ':done')})
+              WHERE COALESCE(runtime_minutes, 0) = 0) AS no_length,
+            (SELECT COUNT(*) FROM ({finished_this_year})) AS done_this_year,
+            (SELECT COALESCE(SUM(NULLIF(runtime_minutes, 0)), 0) FROM ({finished_this_year})) AS minutes_this_year
+    ''', p).fetchone())
+    if not (s['done'] or s['listening']):
+        return None
+    s['hours'] = _hours(s.pop('minutes'))
+    s['hours_this_year'] = _hours(s.pop('minutes_this_year'))
+    longest = conn.execute(f'''
+        SELECT title, runtime_minutes FROM ({audio.replace(':status', ':done')})
+        WHERE runtime_minutes > 0 ORDER BY runtime_minutes DESC, title LIMIT 1
+    ''', p).fetchone()
+    # In hours, as the tile beside it: "16 h 10 min" wraps in a stat tile
+    s['longest'] = ({'title': longest['title'], 'hours': _hours(longest['runtime_minutes'])}
+                    if longest else None)
     return s
 
 
@@ -283,6 +330,12 @@ def all_stats(conn, user_id, per_type, today=None):
         # Pages read for books, hours for movies and music: not one unit
         'time': [(k, v['size_done']) for k, v in per_type.items() if v['size_done']],
     }
+    # Hours listened to audiobooks (16.0e), right after the pages read
+    # ('listen' is worded "hours listened" by the template)
+    listened = ((per_type.get(BOOK) or {}).get('audio') or {}).get('hours')
+    if listened:
+        at = 1 if s['time'] and s['time'][0][0] == BOOK else 0
+        s['time'].insert(at, ('listen', listened))
     p = {'u': user_id}
     s['avg_rating'] = conn.execute(
         'SELECT ROUND(AVG(rating), 1) FROM read_data WHERE user_id = :u AND rating IS NOT NULL', p).fetchone()[0]

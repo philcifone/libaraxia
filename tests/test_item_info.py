@@ -138,12 +138,19 @@ def test_audiobook_narrator_and_length(client, db, people):
     row = db.execute("SELECT * FROM books WHERE title = 'Project Hail Mary'").fetchone()
     assert (row['format'], row['narrator'], row['runtime_minutes'], row['owned']) == ('Audiobook', 'Ray Porter', 970, 0)
     page = client.get(f"/books/book/{row['id']}").get_data(as_text=True)
-    assert 'Ray Porter' in page and '16 h 10 min' in page
+    assert 'data-narrator' in page and 'Narrated by Ray Porter' in page and '16 h 10 min' in page
 
     client.post(f"/books/edit/{row['id']}", data={**form, 'format': 'Book'})
     row = db.execute('SELECT * FROM books WHERE id = ?', (row['id'],)).fetchone()
     assert (row['format'], row['narrator'], row['runtime_minutes']) == (None, None, None)
-    assert 'Narrator' not in client.get(f"/books/book/{row['id']}").get_data(as_text=True)
+    assert 'data-narrator' not in client.get(f"/books/book/{row['id']}").get_data(as_text=True)
+    # The narrator is found by the Books search (and exported)
+    db.execute("UPDATE books SET format = 'Audiobook', narrator = 'Ray Porter' WHERE id = ?", (row['id'],))
+    db.commit()
+    found = client.get('/base/index?search_term=porter&show=not_owned', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
+    assert [b['title'] for b in found['books']] == ['Project Hail Mary']
+    from utils.export import library_csv
+    assert library_csv(db, people['alice']).splitlines()[1].endswith(',Ray Porter')
 
 
 def test_ebook_format(client, db, people):
