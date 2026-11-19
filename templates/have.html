@@ -98,27 +98,25 @@
             <p class="mt-1 text-sm {{ '' if owned else 'text-content-secondary' }}">{{ top[1] }}{% if result.matches|length > 1 %} {{ result.matches|length }} matches below.{% endif %}</p>
         </div>
 
-        <ul class="space-y-3">
+        {# Each match is the feed's card (activity_feed.html, layout walk 16.0
+           step 6; it was a small bookcase in Shelf): the cover left, the
+           title, the creator, the verdict in the accent for yours and the
+           household's, what you did with it. The whole card is one link. #}
+        <ul class="space-y-4">
             {% for row in result.matches %}
             {% set lm = labels_for(row) %}
-            {# Each match is a small bookcase in Shelf (case-card), its cover
-               standing on the ledge (case-cover); a card elsewhere. flow-root:
-               the case's top-face margin adds to the list's gap, not into it #}
-            <li class="flow-root">
-                <a href="{{ item_url(row) }}" class="case-card flex gap-6 bg-secondary rounded-xl card card-link p-3 sm:p-4">
-                    {# An album is square (h-24 w-24, cropped to fill); a book or
-                       movie keeps its own shape up to 5rem wide. The 5rem cap on
-                       a 6rem-tall album squeezed it (Phil, 2026-11-13). #}
-                    {% set square = row.media_type == 'record' %}
+            <li>
+                <a href="{{ item_url(row) }}" class="feed-card bg-secondary rounded-lg p-4 card card-link flex gap-4 min-w-0">
                     {% if row.cover_image_url|upload_exists %}
-                    {{ cover_img(row.cover_image_url, '', ('h-24 w-24 object-cover' if square else 'h-24 w-auto max-w-[5rem]') ~ ' rounded shadow-sm', 'case-cover self-start shrink-0', lazy=True, item=row) }}
+                    {{ cover_img(row.cover_image_url, '', 'w-20 max-h-32 object-contain rounded shadow-sm', 'shrink-0 self-start', lazy=True, item=row) }}
                     {% else %}
-                    {% with title=row.title, size='sm', box='case-cover h-24 self-start shrink-0 rounded ' ~ ('w-24' if square else 'w-auto aspect-[2/3]'), item=row %}{% include '_no_cover.html' %}{% endwith %}
+                    {# an album's placeholder is square, as its sleeve (Phil, 2026-11-13) #}
+                    {% with title=row.title, size='sm', box=('h-20 w-20' if row.media_type == 'record' else 'h-28 w-auto aspect-[2/3]') ~ ' shrink-0 self-start rounded', item=row %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
-                    <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-content-primary">{{ row.title }}</p>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-lg font-semibold text-content-primary line-clamp-2">{{ row.title }}</p>
                         {% if row.author %}<p class="text-sm text-content-secondary truncate">{{ lm.by }} {{ row.author }}</p>{% endif %}
-                        <p class="mt-2 text-sm font-semibold {{ 'text-accent' if row.verdict in ('yours', 'household') else 'text-content-primary' }}">
+                        <p class="mt-1 text-sm font-semibold {{ 'text-accent' if row.verdict in ('yours', 'household') else 'text-content-primary' }}">
                             {{- verdict_label(row) -}}
                             <span class="font-normal text-content-secondary"> &middot; {{ lm.Noun }}{% if row|item_format %}, {{ (row|item_format)|format_label }}{% endif %}</span>
                         </p>
@@ -126,7 +124,7 @@
                         {% if row.status %}{% set _ = mine.append(lm.status_labels[row.status]) %}{% endif %}
                         {% if row.times_done and row.times_done > 1 %}{% set _ = mine.append(row.times_done ~ ' times') %}{% endif %}
                         {% if row.rating %}{% set _ = mine.append('rated ' ~ row.rating ~ '/5') %}{% endif %}
-                        {% if mine %}<p class="text-sm text-content-secondary">You: {{ mine|join(', ') }}</p>{% endif %}
+                        {% if mine %}<p class="mt-1 text-sm text-content-secondary">You: {{ mine|join(', ') }}</p>{% endif %}
                     </div>
                 </a>
             </li>

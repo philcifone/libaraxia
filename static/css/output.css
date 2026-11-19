@@ -3072,10 +3072,6 @@ summary.chip::-webkit-details-marker {
   display: table;
 }
 
-.flow-root {
-  display: flow-root;
-}
-
 .\!grid {
   display: grid !important;
 }
@@ -3130,6 +3126,10 @@ summary.chip::-webkit-details-marker {
 
 .h-2 {
   height: 0.5rem;
+}
+
+.h-20 {
+  height: 5rem;
 }
 
 .h-24 {
@@ -3362,10 +3362,6 @@ summary.chip::-webkit-details-marker {
 
 .max-w-\[3rem\] {
   max-width: 3rem;
-}
-
-.max-w-\[5rem\] {
-  max-width: 5rem;
 }
 
 .max-w-\[8rem\] {
@@ -6212,7 +6208,7 @@ html:has(.item3d[open]) {
    sixth half way, gone at the end). Declared on each case, not on :root,
    so its var()s are that case's own (the grid's deeper shade and blur). */
 
-:root[data-style="shelf"] :is(.shelf-grid.grid, .page-heading, .case-card, .shelf-case) {
+:root[data-style="shelf"] :is(.shelf-grid.grid, .page-heading, .shelf-case) {
   --case-fall: rgb(0 0 0 / calc(var(--case-shade) * .5)) 0,
                  rgb(0 0 0 / calc(var(--case-shade) * .31)) calc(var(--case-blur) * .25),
                  rgb(0 0 0 / calc(var(--case-shade) * .16)) calc(var(--case-blur) * .5),
@@ -7730,15 +7726,15 @@ html:has(.item3d[open]) {
 }
 
 /* ---- Shelf: small bookcases (ROADMAP 14c) ----
-   Each page's heading card, and the cards marked .case-card (feed,
-   notifications, the item page's details and reviews), are set in a small
-   bookcase like the grid's: a wooden frame round the back wall (no frame
+   Each page's heading card is set in a small bookcase like the grid's
+   (the feed, notifications, the item page's cards and Do I Have This?
+   were too, and went back to paper cards; the last, 16.0 step 6): a wooden frame round the back wall (no frame
    along the bottom: the ledge is the bottom), a ledge across the bottom,
    shade inside, and the case's outside top and right faces going back at
    45 degrees in wood, as on the grid. The heading's text and icon are
    untouched. */
 
-:root[data-style="shelf"] :is(.page-heading, .case-card) {
+:root[data-style="shelf"] .page-heading {
   --frame: 8px;
   /* The ledge as on the grid (follow-up, Phil 2026-11-12: "more depth"):
        a top face seen from above, darker at the back, and a front edge with
@@ -7749,8 +7745,7 @@ html:has(.item3d[open]) {
   /* Depth as on the grid: the case is as deep as its ledge, so the
        outside faces (--case-run) and the inside of the left panel
        (--side-w) are as wide as the top face is tall, and every one of
-       them goes back at 45 degrees. The var()s are resolved where used,
-       so .case-card's taller ledge carries them along. */
+       them goes back at 45 degrees. */
   --case-run: var(--ledge-top);
   --side-w: var(--case-run);
   --side-angle: 45deg;
@@ -7809,9 +7804,6 @@ html:has(.item3d[open]) {
         100% 0;
   background-repeat: no-repeat;
   box-shadow: var(--sh-lg);
-}
-
-:root[data-style="shelf"] .page-heading {
   padding-bottom: calc(.75rem + var(--ledge-h));
 }
 
@@ -8002,43 +7994,17 @@ html:has(.item3d[open]) {
   filter: drop-shadow(var(--lit-shadow-x) var(--lit-shadow-y) var(--lit-shadow-blur) var(--lit-shadow));
 }
 
-/* Activity feed and notification cards, and the item page's details and
-   review cards (.case-card, 14c follow-up): each
-   card is a small bookcase too; the corner buttons and the like / comment
-   row stay inside it, above the ledge (pb-16 leaves room). Their covers
-   are boxes like every other (below). */
-
-:root[data-style="shelf"] .case-card {
-  --ledge-top: 12px;
-  --ledge-front: 10px;
-}
-
-/* In a stacked list (feed, notifications) the case rule's margin replaced
-   space-y-6's: put the gap back, plus room for the top face */
-
-:root[data-style="shelf"] .space-y-6 > .case-card + .case-card,
-:root[data-style="shelf"] .space-y-6 > * + .case-card {
-  margin-top: calc(1.5rem + var(--case-run));
-}
-
-/* Room for the ledge; the feed's cards already keep 4rem (pb-16) for the
-   like / comment row in their bottom corner */
-
-:root[data-style="shelf"] .case-card:not(.pb-16) {
-  padding-bottom: calc(1.5rem + var(--ledge-h));
-}
-
 /* The case's outside: top face (lit) and right face (in shade) */
 
-:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::before,
-:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::after {
+:root[data-style="shelf"] :is(.page-heading, .shelf-case)::before,
+:root[data-style="shelf"] :is(.page-heading, .shelf-case)::after {
   content: "";
   position: absolute;
   pointer-events: none;
   top: calc(-1 * (var(--frame) + var(--case-run)));
 }
 
-:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::before {
+:root[data-style="shelf"] :is(.page-heading, .shelf-case)::before {
   /* top */
   left: calc(-1 * var(--frame));
   width: calc(100% + 2 * var(--frame) + var(--case-run));
@@ -8047,7 +8013,7 @@ html:has(.item3d[open]) {
   clip-path: polygon(0 100%, var(--case-run) 0, 100% 0, calc(100% - var(--case-run)) 100%);
 }
 
-:root[data-style="shelf"] :is(.page-heading, .case-card, .shelf-case)::after {
+:root[data-style="shelf"] :is(.page-heading, .shelf-case)::after {
   /* right side */
   left: calc(100% + var(--frame));
   width: var(--case-run);
@@ -8783,32 +8749,6 @@ and to the right for its faces */
 :root[data-style="shelf"] .cover-stand .cover-box > img {
   max-width: 100%;
   height: auto;
-}
-
-/* Feed and notifications covers: a little deeper than a row's */
-
-:root[data-style="shelf"] .case-card {
-  --box-depth: 6px;
-  --box-thin: 4px;
-}
-
-/* A case card's cover stands on the case's ledge (.case-cover: Do I Have
-   This? matches; 16.0, Phil: "lower the book box to sit on the
-   shelf"): at the foot of the card, pulled down through the card's bottom
-   padding (1.5rem in Shelf, above) so its base stands a little into the
-   ledge's top face, as the grid's books do. The text beside it keeps the
-   padding, so the feed's like row sits clear above the ledge. */
-
-:root[data-style="shelf"] .case-card .case-cover {
-  align-self: end;
-  margin-bottom: calc(-1.5rem - var(--ledge-top) / 2);
-}
-
-/* A case that is a link stays put on hover, as the grid's covers do (Phil:
-   no hover animation on the bookcases) */
-
-:root[data-style="shelf"] .case-card.card-link:is(:hover, :focus-visible) {
-  transform: none;
 }
 
 /* Wishlists (yours and a friend's, _wishlist_card.html): each section is

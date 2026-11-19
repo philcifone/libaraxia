@@ -57,7 +57,8 @@ def test_spine_is_inside_the_box():
 def test_item_page_cover_is_a_box_without_a_bookcase():
     """The details card is the bookcase; the cover in it is a free box
     (its own bookcase was tried and dropped, Phil 2026-11-12)."""
-    assert ':is(.page-heading, .case-card)' in CSS and '.cover-stand, .case-card' not in CSS
+    assert ':root[data-style="shelf"] .page-heading {\n    --frame: 8px;' in CSS and '.cover-stand, .case-card' not in CSS
+    assert 'case-card' not in CSS                  # no small-bookcase cards left (16.0 step 6)
     stand = CSS[CSS.index(':root[data-style="shelf"] .cover-stand {\n    --box-depth'):]
     assert 'padding: var(--box-depth) var(--box-depth) 0 0' in stand[:stand.index('}')]
     detail = (ROOT / 'templates/book_detail.html').read_text()

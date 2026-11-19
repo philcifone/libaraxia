@@ -1287,28 +1287,29 @@ def test_case_headings_stand_outside_the_bookcase(client, db, people):
     assert src.count('class="case-wrap ') == 3 and 'shelf-case-heading' not in src
 
 
-def test_have_matches_are_small_bookcases(client, db, people):
-    """16.0 step 7: Do I Have This? matches are case cards in Shelf, the
-    cover standing on the ledge through the shared .case-cover hook (the
-    feed's too)."""
+def test_have_matches_are_feed_cards(client, db, people):
+    """Layout walk 16.0 step 6 (Phil): Do I Have This? matches are the
+    feed's card (they were small bookcases in Shelf), the whole card one
+    link, the cover a box for its item."""
     add_book(db, people['alice'], title='Dune', cover='uploads/x.jpg')
     login(client, 'alice')
     page = client.get('/have/?q=dune').get_data(as_text=True)
-    assert 'class="case-card flex gap-6 ' in page and 'case-cover' in page   # gap-6: room for the box's side
+    assert 'case-card' not in page and 'case-cover' not in page
+    match = re.search(r'<a href="/books/book/\d+" class="feed-card [^"]*card-link[^"]*">(.*?)</a>', page, re.S)
+    assert match and 'data-media="book"' in match.group(1) and 'Dune' in match.group(1)
 
 
 def test_have_album_covers_are_square(client, db, people):
-    """An album's cover in Do I Have This? is a square box, not squeezed
-    into a book's 5rem-wide slot (Phil, 2026-11-13)."""
+    """An album's cover in Do I Have This? is square, not squeezed into a
+    book's slot (Phil, 2026-11-13): the picture keeps its own shape
+    (object-contain), the placeholder is w-20 h-20."""
     from test_records import add_record
-    album = add_record(db, people['alice'], title='Mule', artist='Orville Peck')
-    db.execute("UPDATE books SET cover_image_url = 'uploads/x.jpg' WHERE id = ?", (album,)); db.commit()
+    add_record(db, people['alice'], title='Mule', artist='Orville Peck')
     login(client, 'alice')
     page = client.get('/have/?q=mule').get_data(as_text=True)
-    match = page[page.index('class="case-card flex gap-6 '):]
+    match = page[page.index('class="feed-card '):]
     match = match[:match.index('</a>')]
-    assert 'max-w-[5rem]' not in match
-    assert re.search(r'class="[^"]*\bh-24\b[^"]*\bw-24\b', match)   # the picture, or the square placeholder
+    assert re.search(r'class="no-cover [^"]*\bh-20 w-20\b', match)
 
 
 def test_infinite_scroll_finds_the_grid_by_data_not_layout_classes():
