@@ -21,8 +21,8 @@ function showStats(section) {
     });
     section.querySelectorAll('[data-stats-view]').forEach(button => {
         const on = button.dataset.statsView === view;
-        button.classList.toggle('active', on);
-        button.setAttribute('aria-selected', on ? 'true' : 'false');
+        button.classList.toggle('tab-active', on);
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
     section.querySelectorAll('[data-stats-kind]').forEach(button => {
         const on = button.dataset.statsKind === kind;

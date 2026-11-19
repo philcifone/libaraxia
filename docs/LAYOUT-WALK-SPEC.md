@@ -56,7 +56,7 @@ ARCHITECTURE.md and the style-tweaks spec's table get the same change.
 
 **Headings (item 3).** Your reviews, Friends' reviews and Finished, not reviewed yet print a plain `<h1>`. They get `page_heading('star', heading)` (the framed heading in Shelf), the crumbs above, then the cabinet. Find something to review gets the same.
 
-**The test.** `tests/test_layout.py`: no template outside `_shelves.html` has a `class="tab` element, so a new hand-built tab row fails (the item page's tabs and Stats' type switch are allow-listed: they stay as they are, section 10).
+**The test.** `tests/test_layout.py`: no template outside `_shelves.html` has a `class="tab` element, so a new hand-built tab row fails (the item page's tabs are allow-listed: they stay as they are, section 10).
 
 ## 4. Reviews pages and rate & review (item 4)
 
@@ -96,7 +96,7 @@ To be filled in by the walk: every page at 390 px and 1280 px, in all five style
 ## 9. Steps (one commit each)
 
 1. Cover boxes: `cover_img(item=)`, `_no_cover` and `coverBoxHtml`, the CSS moved to the box, every call site, the faces map on the list pages; the test. Done 2026-11-19: `app.py cover_box` (the book id is `book_id` when a row has one; faces read once per page by `box_faces` and kept on `g`, else per cover), the lists' queries gained `format` and `owned`, a page sets `--box-depth` and `--box-thin` and the box takes its own. Kept on the grid's `.book-item`: `data-format`, for the record sizes (layout, not the box).
-2. Tab rows: the `tab_row` macro, every page moved to it, the one-band cabinet, `aria-selected`; the test. Done 2026-11-19: also Admin -> Placeholders; tabs are `(key, label[, count])`, links when `urls` is given; `initTabs` finds the tablist inside `[data-tab-row]` and shows the row; the wishlist's filter is a `.cabinet-band`; on a phone drawers shrink, a count goes under its name and a long name wraps (the four-drawer wishlist); `sidebar.js` reloads on a Shelf switch only where the view bar is a cabinet part, not on every tab row. Open: the wishlist filter's placeholder is cut at 390 px.
+2. Tab rows: the `tab_row` macro, every page moved to it, the one-band cabinet, `aria-selected`; the test. Done 2026-11-19: also Admin -> Placeholders; tabs are `(key, label[, count])`, links when `urls` is given; `initTabs` finds the tablist inside `[data-tab-row]` and shows the row; the wishlist's filter is a `.cabinet-band`; on a phone drawers shrink, a count goes under its name and a long name wraps (the four-drawer wishlist); `sidebar.js` reloads on a Shelf switch only where the view bar is a cabinet part, not on every tab row. Open: the wishlist filter's placeholder is cut at 390 px. Later the same day, Stats (section 10): `tab_row` gained `action` / `data` (toggle buttons for user.js, `aria-pressed`) and `lower` (a second row of drawers as a band); the drawer rules key on `.cabinet-drawers`, on every tab_row, instead of `.cabinet-top`.
 3. Reviews pages: headings, the sideways scroll, the empty line, the captions. Done 2026-11-19: the sideways scroll wasn't the grid cell. The stars' screen-reader text ("Rated 4 of 5", `sr-only`, absolutely placed) had no positioned ancestor inside the row, so it was placed outside the scroller and not clipped by it; the caption's `<figure>` is now `relative`. The empty line takes `.shelf-case-note`. Captions are printed in cream on the ledge's front, which deepens to one or two lines on a captioned row (it redeclares `--ledge-h`, worked out where it's declared; a test checks). The list pages and Review a ... get `page_heading('star', ...)` between the crumbs and the drawers.
 4. Rate & review: the phone layout. Done 2026-11-19: one grid with named areas (`styles.css .review-layout`): a 6rem cover beside the title on a phone, the form under both; from md the title across the top, then the cover and the form, as before. Stars are 44 px targets. Also found: a reading session's row made the page 442 px wide at 390; it wraps now, the Started: / Completed: words for screen readers on a phone. Submit and Cancel together: step 5.
 5. Cancel buttons and their tests.
@@ -105,6 +105,6 @@ To be filled in by the walk: every page at 390 px and 1280 px, in all five style
 
 ## 10. Decided (Phil, 2026-11-19)
 
-1. **Which tab rows get drawers:** Reviews and its children, Profile, Wishlist, Collections, and Settings and Admin too. The item page's tabs and Stats' All / Books / Movies switch stay as they are.
+1. **Which tab rows get drawers:** Reviews and its children, Profile, Wishlist, Collections, and Settings and Admin too. The item page's tabs stay as they are. Stats too (changed later the same day): both its switches, lifted out of the numbers' card into one cabinet, the type's drawers on top and Overview | Insights under them.
 2. **The cabinet's width:** centred and narrower on a desktop, like the Shelves page; full width on a phone, matching the other cards.
 3. **Cancel on Add:** back where you came from (the shelf, the wishlist, Reviews), since an add doesn't always start from a shelf.

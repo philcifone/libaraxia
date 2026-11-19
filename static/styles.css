@@ -1240,7 +1240,6 @@
         display: none !important;
     }
     .tab-active,
-    .tab-button.active,
     [data-tabs] .tab[aria-selected="true"] {
         color: rgb(var(--accent-text));
         border-bottom-color: rgb(var(--accent));
@@ -2850,6 +2849,8 @@ html:has(.item3d[open]) { overflow: hidden; }
    (the shelf pages set `cabinet`), and each part's boxes are bands of the
    cabinet, no gap between them:
      .cabinet-top > .card            the tabs (with the frame's top rail and the top face)
+     .cabinet-part > .cabinet-band   a band under it: the wishlist's filter, Stats'
+                                     second row of drawers
      .search-form-container > *      the search row, the matches line, the filter pills
      .cabinet-slip > .slip-band      a notice between rows, a typed slip
      .view-bar.cabinet-base          the bottom row, with the plinth
@@ -2858,6 +2859,11 @@ html:has(.item3d[open]) { overflow: hidden; }
    are the band's top and bottom border (the rail, the plinth), which the
    slice spans too. With no grid, the last part is .cabinet-end and its
    last band takes the plinth.
+
+   A part with drawers in it (every tab_row, _shelves.html) is
+   .cabinet-drawers: the drawer rules key on that, not on the top, so a
+   lower band can hold a second row (Stats: the type, then Overview |
+   Insights).
 
    No box-shadow focus ring on the cream fields (the inset shadow is one):
    they get an outline in the accent instead. */
@@ -2981,7 +2987,7 @@ html:has(.item3d[open]) { overflow: hidden; }
 
 /* -- The label holders: an even brass rim, the cream card inside --
    (:where, so the id in the list doesn't outrank the rules below) */
-:root[data-style="shelf"] :where(.cabinet-top .tab > span, .cabinet-part #search_term, .cabinet-part #filter-toggle, .cabinet-band input[type="search"],
+:root[data-style="shelf"] :where(.cabinet-drawers .tab > span, .cabinet-part #search_term, .cabinet-part #filter-toggle, .cabinet-band input[type="search"],
                               .view-bar.cabinet-base select, .view-bar.cabinet-base > div[role="group"],
                               .view-bar.cabinet-base > #bulk-select-btn) {
     border: 3px solid transparent;
@@ -3006,24 +3012,24 @@ html:has(.item3d[open]) { overflow: hidden; }
 }
 
 /* -- The drawers (the tabs, and Filters) -- */
-:root[data-style="shelf"] .cabinet-top :is(nav, [role="tablist"]) { gap: .5rem; }
-:root[data-style="shelf"] .cabinet-top .tab {
+:root[data-style="shelf"] .cabinet-drawers :is(nav, [role="tablist"], [role="group"]) { gap: .5rem; }
+:root[data-style="shelf"] .cabinet-drawers .tab {
     background: rgb(var(--shelf-front));
     border: 0;
     border-radius: 2px;
     box-shadow: var(--drawer-face);
     transition: transform .12s ease, box-shadow .12s ease;
 }
-:root[data-style="shelf"] .cabinet-top .tab:hover {
+:root[data-style="shelf"] .cabinet-drawers .tab:hover {
     background: color-mix(in srgb, rgb(var(--shelf-front)), white 6%);
 }
-:root[data-style="shelf"] .cabinet-top .tab {
+:root[data-style="shelf"] .cabinet-drawers .tab {
     flex-direction: column;
     gap: .45rem;
     padding: .7rem .25rem .55rem;
     font-weight: 400;
 }
-:root[data-style="shelf"] .cabinet-top .tab > span {
+:root[data-style="shelf"] .cabinet-drawers .tab > span {
     display: block;
     min-width: 72%;
     padding: .15rem .5rem;
@@ -3031,24 +3037,24 @@ html:has(.item3d[open]) { overflow: hidden; }
     letter-spacing: .02em;
 }
 @media (min-width: 640px) {
-    :root[data-style="shelf"] .cabinet-top .tab > span { font-size: .9375rem; min-width: 55%; }
+    :root[data-style="shelf"] .cabinet-drawers .tab > span { font-size: .9375rem; min-width: 55%; }
 }
 /* On a phone a drawer with a count ("Movies & TV (3)", Collections and the
    wishlist) didn't fit its share of the row and pushed the page 4px wide:
    the drawers may shrink, and the count goes under the name on the card */
 @media (max-width: 639px) {
-    :root[data-style="shelf"] .cabinet-top .tab { min-width: 0; }
-    :root[data-style="shelf"] .cabinet-top .tab > span > span { display: block; }
+    :root[data-style="shelf"] .cabinet-drawers .tab { min-width: 0; }
+    :root[data-style="shelf"] .cabinet-drawers .tab > span > span { display: block; }
     /* ...and with four drawers (the wishlist's All) "Movies & TV" breaks
        onto two lines rather than standing out of its drawer */
-    :root[data-style="shelf"] .cabinet-top .tab > span {
+    :root[data-style="shelf"] .cabinet-drawers .tab > span {
         max-width: calc(100% - .5rem);
         padding-inline: .3rem;
         white-space: normal;
     }
 }
 /* The cup pull: a half-round of brass under the holder */
-:root[data-style="shelf"] .cabinet-top .tab::after {
+:root[data-style="shelf"] .cabinet-drawers .tab::after {
     content: '';
     width: 28px;
     height: 11px;
@@ -3058,20 +3064,20 @@ html:has(.item3d[open]) { overflow: hidden; }
 }
 /* The open tab: its drawer pulled out, standing proud, lit along its top,
    a shadow under it */
-:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) {
+:root[data-style="shelf"] .cabinet-drawers :is(.tab-active, .tab[aria-selected="true"]) {
     background: color-mix(in srgb, rgb(var(--shelf-front)), white 10%);
     box-shadow: inset 0 2px 0 rgb(255 255 255 / .22), inset 0 -2px 0 rgb(0 0 0 / .25), 0 5px 8px rgb(0 0 0 / .5);
     transform: translateY(-2px);
 }
-:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) > span {
+:root[data-style="shelf"] .cabinet-drawers :is(.tab-active, .tab[aria-selected="true"]) > span {
     color: rgb(var(--acc-l, 121 116 14));
     font-weight: 700;
 }
 /* A blank catalog card standing up out of the open drawer (Phil,
    2026-11-18): plain cream, no writing, its foot hidden behind the drawer's
    top edge. It slides up as the drawer opens. */
-:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) { position: relative; }
-:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"])::before {
+:root[data-style="shelf"] .cabinet-drawers :is(.tab-active, .tab[aria-selected="true"]) { position: relative; }
+:root[data-style="shelf"] .cabinet-drawers :is(.tab-active, .tab[aria-selected="true"])::before {
     content: '';
     position: absolute;
     left: 7%;                   /* a little narrower than the drawer */
@@ -3088,7 +3094,7 @@ html:has(.item3d[open]) { overflow: hidden; }
     to   { transform: none; clip-path: inset(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-    :root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"])::before { animation: none; }
+    :root[data-style="shelf"] .cabinet-drawers :is(.tab-active, .tab[aria-selected="true"])::before { animation: none; }
 }
 /* Filters: a plain label-holder button like Grid | List and Batch (Phil,
    2026-11-18: no drawer), in the accent while its panel is open; the
@@ -3468,7 +3474,7 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) { --tab-recess: rg
 :is(.tab, .search-method-btn):hover {
     background-color: color-mix(in srgb, var(--tab-recess), rgb(var(--surface)) 50%);
 }
-:is(.tab-active, .tab-button.active, [data-tabs] .tab[aria-selected="true"],
+:is(.tab-active, [data-tabs] .tab[aria-selected="true"],
     .search-method-btn[data-active="true"]) {
     background-color: rgb(var(--surface));
     border-bottom-color: transparent;

@@ -1860,9 +1860,9 @@ def test_box_attrs_match_their_js_twin(app):
 def test_no_hand_built_tab_rows():
     """Every page-level tab row is _shelves.html tab_row (the cabinet's
     drawers in Shelf), so a new hand-built row fails here. The item page's
-    tabs and Stats' All / Books / Movies switch stay their own (Phil,
-    2026-11-19)."""
-    allowed = {'_shelves.html', 'book_detail.html', '_profile_stats.html'}
+    tabs stay their own (Phil, 2026-11-19); Stats' switches became drawers
+    the same day."""
+    allowed = {'_shelves.html', 'book_detail.html'}
     for path in sorted((ROOT / 'templates').rglob('*.html')):
         if path.name in allowed:
             continue
@@ -1888,18 +1888,44 @@ def test_every_tab_row_is_a_cabinet(client, db, people):
         html = client.get(url).get_data(as_text=True)
         rows = re.findall(r'<div class="tab-row [^"]*"', html)
         assert rows, url
-        assert all('cabinet-part cabinet-top cabinet-end' in r for r in rows), (url, rows)
+        assert all('cabinet-part cabinet-drawers cabinet-top cabinet-end' in r for r in rows), (url, rows)
     # Settings holds Admin's row too, inside its Admin panel
     assert client.get('/user/settings').get_data(as_text=True).count('class="tab-row') == 2
     shelf = client.get('/base/index').get_data(as_text=True)
-    assert re.search(r'<div class="tab-row page-frame [^"]*cabinet-part cabinet-top"', shelf)
+    assert re.search(r'<div class="tab-row page-frame [^"]*cabinet-part cabinet-drawers cabinet-top"', shelf)
     wish = client.get('/wishlist/view').get_data(as_text=True)
-    assert re.search(r'<div class="tab-row [^"]*cabinet-part cabinet-top"', wish)
+    assert re.search(r'<div class="tab-row [^"]*cabinet-part cabinet-drawers cabinet-top"', wish)
     assert '<div class="cabinet-part cabinet-end mb-8">\n            <div class="cabinet-band">' in wish
     # in-page tabs: their open drawer is the aria-selected one
     css = (ROOT / 'static/styles.css').read_text()
-    assert ':root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) {' in css
+    assert ':root[data-style="shelf"] .cabinet-drawers :is(.tab-active, .tab[aria-selected="true"]) {' in css
     assert ':root[data-style="shelf"] .cabinet-end.cabinet-top > .card,' in css
+
+
+def test_stats_switches_are_one_cabinet(client, db, people):
+    """Stats (Phil, 2026-11-19): the type's drawers on top, Overview |
+    Insights in a band under them, one cabinet, out of the numbers' card.
+    Toggle buttons for user.js (data-click, aria-pressed), not initTabs,
+    so they aren't hidden waiting for it. Books only: one row, both ends."""
+    from test_videos import add_video
+    alice = people['alice']
+    add_book(db, alice, 'Dune', 'Frank Herbert')
+    login(client, 'carol')
+    one = client.get('/user/alice').get_data(as_text=True)
+    one = one[one.index('data-stats '):]
+    assert re.findall(r'<div class="tab-row ([^"]*)"', one) == ['pb-6 cabinet-part cabinet-drawers cabinet-top cabinet-end']
+    add_video(db, alice)
+    stats = client.get('/user/alice').get_data(as_text=True)
+    stats = stats[stats.index('data-stats '):]
+    rows = re.findall(r'<div class="tab-row ([^"]*)"(.*?)>\s*<div class="([^"]*)">', stats)
+    assert [(r[0], r[1], r[2]) for r in rows] == [
+        ('pb-3 cabinet-part cabinet-drawers cabinet-top', '', 'bg-secondary rounded-xl overflow-hidden card'),
+        ('pb-6 cabinet-part cabinet-drawers cabinet-end', '', 'bg-secondary rounded-xl overflow-hidden card cabinet-band'),
+    ]
+    assert stats.index('data-stats-kind="all"') < stats.index('data-stats-view="overview"') < stats.index('data-stats-panel')
+    assert 'data-click="statsView" data-stats-view="overview" aria-pressed="true"' in stats
+    js = (ROOT / 'static/user.js').read_text()
+    assert "button.classList.toggle('tab-active', on);\n        button.setAttribute('aria-pressed'" in js
 
 
 def test_tab_row_is_hidden_until_the_script_runs():

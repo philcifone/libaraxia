@@ -20,18 +20,23 @@
 {# A page's row of tabs (layout walk step 2, docs/LAYOUT-WALK-SPEC.md
    section 3): the one place its markup lives. In Shelf it is the catalog
    cabinet's drawers (styles.css "Catalog cabinet"), on every page-level
-   tab row: the shelves, Reviews, Collections, Wishlist, the profile,
-   Settings, Admin. The item page's tabs and Stats' switch are their own
-   (tests/test_layout.py allows those two and no other hand-built row).
+   tab row: the shelves, Reviews, Collections, Wishlist, the profile and
+   its Stats, Settings, Admin. The item page's tabs are their own
+   (tests/test_layout.py allows those and no other hand-built row).
 
    tabs:   [(key, label)] or [(key, label, count)]: the count in brackets
    label:  the row's aria-label
-   urls:   {key: url}: link tabs, `active` the open one's key. Without it
-           they are in-page tabs for initTabs (common.js): buttons, each
-           opening the panel `panel ~ key` (its id `tab_id ~ key`); the
-           row is hidden until the script runs, as the panels all show
-           without it
+   urls:   {key: url}: link tabs, `active` the open one's key.
+   action: a data-click action (registerActions): toggle buttons, each
+           with data-<data>="key" and aria-pressed, `active` the one
+           pressed; the page's script switches them (Stats, user.js).
+           With neither, they are in-page tabs for initTabs (common.js):
+           buttons, each opening the panel `panel ~ key` (its id `tab_id ~
+           key`); the row is hidden until the script runs, as the panels
+           all show without it
    cabinet: Shelf draws the drawers (default); False: the plain tabs
+   lower:  a second row of drawers under another tab_row (end=False) in
+           the same cabinet: a band, not the top with its rail (Stats)
    end:    the cabinet ends with this row (its plinth); False when another
            band follows it (the shelf pages' search, the wishlist's filter)
    wrap:   its own .page-frame (the shelf pages); else in the page's frame
@@ -39,14 +44,23 @@
            Shelf, where its own margin does
    nav_class: the row's layout (a long row can be a grid on a phone) #}
 {% macro tab_row(tabs, label, active=none, urls=none, cabinet=True, end=True, wrap=False, class='pb-8',
-                 tab_id='tab-', panel='', nav_class='flex items-stretch') -%}
-<div class="tab-row{{ ' page-frame' if wrap }} {{ class }}{{ ' cabinet-part cabinet-top' if cabinet }}{{ ' cabinet-end' if cabinet and end }}"
-     {%- if urls is none %} data-tab-row hidden{% endif %}>
-    <div class="bg-secondary rounded-xl overflow-hidden card">
-        {% if urls is none %}
+                 tab_id='tab-', panel='', nav_class='flex items-stretch', action=none, data=none, lower=False) -%}
+{%- set in_page = urls is none and action is none -%}
+<div class="tab-row{{ ' page-frame' if wrap }} {{ class }}
+            {%- if cabinet %} cabinet-part cabinet-drawers{{ ' cabinet-top' if not lower }}{{ ' cabinet-end' if end }}{% endif %}"
+     {%- if in_page %} data-tab-row hidden{% endif %}>
+    <div class="bg-secondary rounded-xl overflow-hidden card{{ ' cabinet-band' if cabinet and lower }}">
+        {% if in_page %}
         <div class="{{ nav_class }}" role="tablist" aria-label="{{ label }}">
             {% for tab in tabs %}
             <button type="button" role="tab" id="{{ tab_id ~ tab[0] }}" aria-controls="{{ panel ~ tab[0] }}" aria-selected="false" class="tab">{{ _tab_text(tab) }}</button>
+            {% endfor %}
+        </div>
+        {% elif action %}
+        <div class="{{ nav_class }}" role="group" aria-label="{{ label }}">
+            {% for tab in tabs %}
+            <button type="button" data-click="{{ action }}" data-{{ data }}="{{ tab[0] }}" aria-pressed="{{ 'true' if tab[0] == active else 'false' }}"
+                    class="tab{{ ' tab-active' if tab[0] == active }}">{{ _tab_text(tab) }}</button>
             {% endfor %}
         </div>
         {% else %}
