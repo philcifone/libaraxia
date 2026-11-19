@@ -26,7 +26,7 @@ registerActions({
             showFlashMessage('error', 'Select at least one file to delete.');
             return;
         }
-        confirmSubmit(form, event, `Delete ${count} orphaned image file(s)? This cannot be undone.`, { ok: 'Delete' });
+        confirmSubmit(form, event, `Delete ${count} orphaned image file(s)? This cannot be undone.`, { ok: 'Yes, delete' });
     },
 });
 

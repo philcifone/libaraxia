@@ -72,7 +72,7 @@
                         data-url="{{ url_for('photos.crop', photo_id=photo['id']) }}"
                         class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Crop</button>
                 <form action="{{ url_for('photos.delete', photo_id=photo['id']) }}" method="POST"
-                      data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Delete">
+                      data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Yes, delete">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="px-4 py-2 text-sm rounded-lg btn btn-outline text-content-primary">Delete</button>
                 </form>
@@ -123,7 +123,7 @@
                         data-url="{{ url_for('photos.crop', photo_id=photo['id']) }}"
                         class="text-sm underline text-content-secondary hover:text-content-primary">Crop</button>
                 <form action="{{ url_for('photos.delete', photo_id=photo['id']) }}" method="POST"
-                      data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Delete">
+                      data-confirm="Delete this photo? It can't be undone." data-confirm-ok="Yes, delete">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Delete</button>
                 </form>

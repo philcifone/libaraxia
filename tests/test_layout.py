@@ -8,6 +8,8 @@ import re
 from html.parser import HTMLParser
 from unittest import mock
 
+import pytest
+
 from conftest import add_book, login, scalar
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -1686,3 +1688,29 @@ def test_card_position_rules_leave_dialogs_fixed():
             assert re.search(r':not\([^)]*\bdialog\b', subject) or subject.startswith('.card.'), \
                 f'{selector.strip()} also moves the confirm <dialog>'
     assert checked                      # the Cyberpunk rule is still there to check
+
+
+def test_dangerous_confirms_say_yes_and_what_they_do():
+    """The confirm dialog's button never reads a bare OK for something
+    dangerous (Phil, 2026-11-19): "Yes, delete", "Yes, leave". Runs
+    common.js's yesLabel under node; skipped without it."""
+    import json
+    import shutil
+    import subprocess
+    node = shutil.which('node')
+    if node is None:
+        pytest.skip('node is not installed')
+    js = (ROOT / 'static' / 'common.js').read_text()
+    source = re.search(r'const DANGER_WORDS = .*?\n', js).group(0) + \
+        re.search(r'function yesLabel\(message\) \{.*?\n\}\n', js, re.S).group(0)
+    messages = ['Delete this loan record?', 'Leave the household? You can be invited back.',
+                "Remove this user's avatar?", 'This cannot be undone.', 'Sure?']
+    out = subprocess.run([node, '-e', source + f'console.log(JSON.stringify({json.dumps(messages)}.map(yesLabel)))'],
+                         capture_output=True, text=True, timeout=30, check=True)
+    assert json.loads(out.stdout) == ['Yes, delete', 'Yes, leave', 'Yes, remove', 'Yes, continue', 'Yes, continue']
+    # The default is used for dangerous confirms, and no page asks for a bare verb
+    assert 'ok = ok || (danger ? yesLabel(message)' in js
+    pages = '\n'.join(p.read_text() for p in (ROOT / 'templates').rglob('*.html'))
+    scripts = '\n'.join(p.read_text() for p in (ROOT / 'static').glob('*.js'))
+    assert not re.search(r'data-confirm-ok="(OK|Delete|Remove)"', pages)
+    assert not re.search(r"ok: '(OK|Delete|Remove)'", scripts)
