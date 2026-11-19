@@ -1,3 +1,4 @@
+{% from '_shelves.html' import tab_row %}
 {# Settings -> Admin (admins only; was the Admin Settings page, moved as-is
    in ROADMAP 14c): site stats, then its own tabs Users, Households,
    Maintenance. Expects users, stats, libraries (admin.settings_context). #}
@@ -24,11 +25,7 @@
     {# Tabs (ROADMAP 14c): Users, Households, Maintenance; the tab in the URL
        hash, all panels stacked without JS (common.js, initTabs) #}
     <div data-tabs>
-        <div class="bg-secondary rounded-xl overflow-hidden card flex items-stretch mb-8" role="tablist" aria-label="Admin settings" hidden>
-            {% for key, label in [('users', 'Users'), ('households', 'Households'), ('maintenance', 'Maintenance')] %}
-            <button type="button" role="tab" id="tab-{{ key }}" aria-controls="{{ key }}" aria-selected="false" class="tab">{{ label }}</button>
-            {% endfor %}
-        </div>
+        {{ tab_row([('users', 'Users'), ('households', 'Households'), ('maintenance', 'Maintenance')], 'Admin settings') }}
 
         <div role="tabpanel" id="users" aria-labelledby="tab-users">
     <!-- Create/Edit User Panel -->

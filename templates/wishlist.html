@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_shelves.html' import tab_row %}
 {% from '_icons.html' import page_heading %}
 {# Your wishlist (wishlist.view_wishlist): books, movies and music you want,
    one section per type (`sections`: key, labels, rows), behind
@@ -23,27 +24,21 @@
         {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
            links, so they work without JS and the filter below still applies #}
         {% if total %}
-        <div class="bg-secondary rounded-xl overflow-hidden card mb-8">
-            <nav class="flex items-stretch" aria-label="Wishlist sections">
-                {% for key, label, count in tabs %}
-                <a href="{{ url_for('wishlist.view_wishlist', show=key) }}"
-                   class="tab {% if show == key %}tab-active{% endif %}" {% if show == key %}aria-current="page"{% endif %}>
-                    <span class="text-center">{{ label }} <span class="text-sm opacity-75">({{ count }})</span></span>
-                </a>
-                {% endfor %}
-            </nav>
-        </div>
-        {% endif %}
+        {% set urls = {} %}
+        {% for key, _label, _count in tabs %}{% set _ = urls.update({key: url_for('wishlist.view_wishlist', show=key)}) %}{% endfor %}
+        {{ tab_row(tabs, 'Wishlist sections', active=show, urls=urls, end=False, class='pb-4') }}
 
-        <!-- Filter over the cards (wishlist.js) -->
-        {% if total %}
-        <div class="-mt-4 mb-8">
+        {# Filter over the cards (wishlist.js): in Shelf the cabinet's search
+           band, under its drawers (.cabinet-band) #}
+        <div class="cabinet-part cabinet-end mb-8">
+            <div class="cabinet-band">
             <input type="search" id="wishlist-search" aria-label="Filter your wishlist"
                    placeholder="Filter by title, author, director or artist..."
                    class="w-full px-4 py-2.5 bg-secondary-bg border border-rule-strong rounded-lg
                           focus:ring-2 focus:ring-accent focus:border-transparent
                           placeholder-gray-400 text-content-primary transition-all">
             <div id="wishlist-search-count" class="text-center text-content-secondary text-sm mt-2 hidden"></div>
+            </div>
         </div>
         {% endif %}
 

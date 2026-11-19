@@ -1853,3 +1853,63 @@ def test_box_attrs_match_their_js_twin(app):
     assert [html.unescape(a) for a in json.loads(out)] == [html.unescape(a) for a in server]
     assert all('url("' not in a for a in json.loads(out) + server)     # never a raw quote in style="..."
     assert server[0] == ' data-media="record" data-format="LP"' and server[3] == ''
+
+
+# ---- The catalog cabinet on every tab row (layout walk step 2, spec section 3)
+
+def test_no_hand_built_tab_rows():
+    """Every page-level tab row is _shelves.html tab_row (the cabinet's
+    drawers in Shelf), so a new hand-built row fails here. The item page's
+    tabs and Stats' All / Books / Movies switch stay their own (Phil,
+    2026-11-19)."""
+    allowed = {'_shelves.html', 'book_detail.html', '_profile_stats.html'}
+    for path in sorted((ROOT / 'templates').rglob('*.html')):
+        if path.name in allowed:
+            continue
+        text = path.read_text()
+        assert not re.search(r'class="tab[ "]', text), path.name
+        assert 'role="tablist"' not in text and 'role="tab"' not in text, path.name
+
+
+def test_every_tab_row_is_a_cabinet(client, db, people):
+    """Rendered: the tab rows of Collections, the wishlist, Reviews and its
+    pages, the profile, Settings, Admin and Placeholders are cabinets (the
+    shelf pages' too, which go on into the search band). A row that ends the
+    cabinet has its plinth (cabinet-end); the wishlist's filter is the band
+    under its drawers."""
+    alice = people['alice']
+    book = add_book(db, alice, title='Dune')
+    db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (alice, add_book(db, alice, title='Want')))
+    db.commit()
+    login(client, 'alice')
+    ending = ['/collections/collections', '/reviews/', '/reviews/all/mine', '/reviews/all/friends', '/reviews/find',
+              '/user/carol', '/user/settings', '/faces/admin']
+    for url in ending:
+        html = client.get(url).get_data(as_text=True)
+        rows = re.findall(r'<div class="tab-row [^"]*"', html)
+        assert rows, url
+        assert all('cabinet-part cabinet-top cabinet-end' in r for r in rows), (url, rows)
+    # Settings holds Admin's row too, inside its Admin panel
+    assert client.get('/user/settings').get_data(as_text=True).count('class="tab-row') == 2
+    shelf = client.get('/base/index').get_data(as_text=True)
+    assert re.search(r'<div class="tab-row page-frame [^"]*cabinet-part cabinet-top"', shelf)
+    wish = client.get('/wishlist/view').get_data(as_text=True)
+    assert re.search(r'<div class="tab-row [^"]*cabinet-part cabinet-top"', wish)
+    assert '<div class="cabinet-part cabinet-end mb-8">\n            <div class="cabinet-band">' in wish
+    # in-page tabs: their open drawer is the aria-selected one
+    css = (ROOT / 'static/styles.css').read_text()
+    assert ':root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) {' in css
+    assert ':root[data-style="shelf"] .cabinet-end.cabinet-top > .card,' in css
+
+
+def test_tab_row_is_hidden_until_the_script_runs():
+    """In-page tabs only work with JS: without it every panel shows, so the
+    row (the whole cabinet, not just its buttons) stays hidden until
+    initTabs shows it. Switching style on Settings, now a cabinet too,
+    doesn't reload: only the shelf pages' server-laid view bar needs it."""
+    js = (ROOT / 'static/common.js').read_text()
+    assert ":scope > [data-tab-row] [role=\"tablist\"]" in js
+    assert "const row = list.closest('[data-tab-row]') ?? list;" in js and 'row.hidden = false;' in js
+    css = (ROOT / 'static/styles.css').read_text()
+    assert '[data-tabs] [data-tab-row][hidden] {' in css
+    assert "document.querySelector('.view-bar.cabinet-part')" in (ROOT / 'static/sidebar.js').read_text()

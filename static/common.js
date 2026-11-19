@@ -217,19 +217,22 @@ function runAction(element, attribute, event) {
 // Settings). Markup, all server-rendered:
 //
 //   <div data-tabs>
-//     <div role="tablist" aria-label="..." hidden>
+//     <div data-tab-row hidden> ... <div role="tablist" aria-label="...">
 //       <button type="button" role="tab" id="tab-x" aria-controls="x" class="tab">X</button> ...
-//     </div>
+//     </div> ... </div>
 //     <div role="tabpanel" id="x" aria-labelledby="tab-x"> ... </div> ...
 //   </div>
 //
+// The tab row is _shelves.html tab_row() (the catalog cabinet's drawers in
+// Shelf; a bare [role="tablist"] child, hidden itself, works too).
 // Without JS the tab bar stays hidden and every panel shows, stacked. The
 // open tab is the URL hash (#x); a hash naming something inside a panel
 // (#library-backups) opens that panel and scrolls to it, so old links still
 // land. Arrow keys, Home and End move between tabs (roving tabindex).
 function initTabs(root) {
-    const list = root.querySelector(':scope > [role="tablist"]');
+    const list = root.querySelector(':scope > [role="tablist"], :scope > [data-tab-row] [role="tablist"]');
     if (!list) return;
+    const row = list.closest('[data-tab-row]') ?? list;     // what stays hidden without JS
     const tabs = [...list.querySelectorAll('[role="tab"]')];
     const panels = tabs.map(tab => document.getElementById(tab.getAttribute('aria-controls')));
     if (!tabs.length || panels.includes(null)) return;
@@ -259,7 +262,7 @@ function initTabs(root) {
         return true;
     }
 
-    list.hidden = false;
+    row.hidden = false;
     if (!fromHash()) select(0);
     tabs.forEach((tab, i) => tab.addEventListener('click', () => select(i, { remember: true })));
     list.addEventListener('keydown', event => {

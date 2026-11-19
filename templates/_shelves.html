@@ -12,24 +12,64 @@
    username: the friend, for scope 'friend' #}
 {% from '_icons.html' import page_heading, crumbs %}
 
-{# wrap=False: just the card, for a page that already sets the width.
-   urls: {type: url} for a page that isn't a shelf (Reviews, ROADMAP 13);
-   without it the links come from shelf_url() and keep the scope. #}
-{# cabinet: the top of the shelf pages' catalog cabinet (Shelf style; see
-   styles.css "Catalog cabinet"); shelf_header passes it, Reviews doesn't. #}
-{% macro section_switch(section, scope=None, username=None, class='pb-4', wrap=True, urls=None, cabinet=False) -%}
-<div class="{{ 'page-frame' if wrap }} {{ class }}{{ ' cabinet-part cabinet-top' if cabinet }}">
+{# A tab's words: its label (the drawer's typed card in Shelf), and its count #}
+{% macro _tab_text(tab) -%}
+<span class="text-center">{{ tab[1] }}{% if tab|length > 2 and tab[2] is not none %} <span class="text-sm opacity-75">({{ tab[2] }})</span>{% endif %}</span>
+{%- endmacro %}
+
+{# A page's row of tabs (layout walk step 2, docs/LAYOUT-WALK-SPEC.md
+   section 3): the one place its markup lives. In Shelf it is the catalog
+   cabinet's drawers (styles.css "Catalog cabinet"), on every page-level
+   tab row: the shelves, Reviews, Collections, Wishlist, the profile,
+   Settings, Admin. The item page's tabs and Stats' switch are their own
+   (tests/test_layout.py allows those two and no other hand-built row).
+
+   tabs:   [(key, label)] or [(key, label, count)]: the count in brackets
+   label:  the row's aria-label
+   urls:   {key: url}: link tabs, `active` the open one's key. Without it
+           they are in-page tabs for initTabs (common.js): buttons, each
+           opening the panel `panel ~ key` (its id `tab_id ~ key`); the
+           row is hidden until the script runs, as the panels all show
+           without it
+   cabinet: Shelf draws the drawers (default); False: the plain tabs
+   end:    the cabinet ends with this row (its plinth); False when another
+           band follows it (the shelf pages' search, the wishlist's filter)
+   wrap:   its own .page-frame (the shelf pages); else in the page's frame
+   class:  the space under it, as padding: the cabinet takes it off in
+           Shelf, where its own margin does
+   nav_class: the row's layout (a long row can be a grid on a phone) #}
+{% macro tab_row(tabs, label, active=none, urls=none, cabinet=True, end=True, wrap=False, class='pb-8',
+                 tab_id='tab-', panel='', nav_class='flex items-stretch') -%}
+<div class="tab-row{{ ' page-frame' if wrap }} {{ class }}{{ ' cabinet-part cabinet-top' if cabinet }}{{ ' cabinet-end' if cabinet and end }}"
+     {%- if urls is none %} data-tab-row hidden{% endif %}>
     <div class="bg-secondary rounded-xl overflow-hidden card">
-        <nav class="flex items-stretch" aria-label="Section">
-            {% for key, label in SECTION_NAMES.items() %}
-            <a href="{{ urls[key] if urls else shelf_url(key, scope, username) }}" class="tab {% if section == key %}tab-active{% endif %}"
-               {% if section == key %}aria-current="page"{% endif %}>
-                <span class="text-center">{{ label }}</span>
-            </a>
+        {% if urls is none %}
+        <div class="{{ nav_class }}" role="tablist" aria-label="{{ label }}">
+            {% for tab in tabs %}
+            <button type="button" role="tab" id="{{ tab_id ~ tab[0] }}" aria-controls="{{ panel ~ tab[0] }}" aria-selected="false" class="tab">{{ _tab_text(tab) }}</button>
+            {% endfor %}
+        </div>
+        {% else %}
+        <nav class="{{ nav_class }}" aria-label="{{ label }}">
+            {% for tab in tabs %}
+            <a href="{{ urls[tab[0]] }}" class="tab{{ ' tab-active' if tab[0] == active }}"
+               {%- if tab[0] == active %} aria-current="page"{% endif %}>{{ _tab_text(tab) }}</a>
             {% endfor %}
         </nav>
+        {% endif %}
     </div>
 </div>
+{%- endmacro %}
+
+
+{# The Books | Movies | Music row. urls: {type: url} for a page that isn't
+   a shelf (Reviews, ROADMAP 13); without it the links come from
+   shelf_url() and keep the scope. end=False on the shelf pages, where the
+   search band follows. #}
+{% macro section_switch(section, scope=None, username=None, class='pb-4', wrap=True, urls=None, cabinet=True, end=True) -%}
+{%- set links = {} -%}
+{%- for key in SECTION_NAMES %}{% set _ = links.update({key: urls[key] if urls else shelf_url(key, scope, username)}) %}{% endfor -%}
+{{ tab_row(SECTION_NAMES.items()|list, 'Section', active=section, urls=links, cabinet=cabinet, end=end, wrap=wrap, class=class) }}
 {%- endmacro %}
 
 {# A friend's shelves have no scope tabs: you came from the Friends page,
@@ -62,5 +102,5 @@
 {# Called with {% call shelf_header(...) %}: what the call wraps goes right
    under the heading (the household's "Shared Library with ..." box) #}
 {% if caller %}{{ caller() }}{% endif %}
-{{ section_switch(section, scope, username, cabinet=True) }}
+{{ section_switch(section, scope, username, end=False) }}
 {%- endmacro %}

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_shelves.html' import tab_row %}
 {% from '_icons.html' import page_heading %}
 
 {% block title %}Settings{% endblock %}
@@ -18,11 +19,7 @@
         {% set tabs = [('library', 'Library'), ('account', 'Account')] %}
         {% if current_user.is_admin %}{% set tabs = tabs + [('admin', 'Admin')] %}{% endif %}
         <div data-tabs class="space-y-6">
-            <div class="bg-secondary rounded-xl overflow-hidden card flex items-stretch" role="tablist" aria-label="Settings" hidden>
-                {% for key, label in tabs %}
-                <button type="button" role="tab" id="tab-{{ key }}" aria-controls="{{ key }}" aria-selected="false" class="tab">{{ label }}</button>
-                {% endfor %}
-            </div>
+            {{ tab_row(tabs, 'Settings', class='') }}
 
             <div role="tabpanel" id="library" aria-labelledby="tab-library" class="space-y-6">
                 {% include '_settings_library.html' %}

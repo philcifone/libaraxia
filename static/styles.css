@@ -1225,7 +1225,8 @@
     /* Page tabs (common.js initTabs, ROADMAP 14c): a hidden panel stays
        hidden whatever display its classes give it */
     [data-tabs] [role="tabpanel"][hidden],
-    [data-tabs] [role="tablist"][hidden] {
+    [data-tabs] [role="tablist"][hidden],
+    [data-tabs] [data-tab-row][hidden] {
         display: none !important;
     }
     /* ...except on the Shelf style's book card (the item page's reading
@@ -2860,6 +2861,14 @@ html:has(.item3d[open]) { overflow: hidden; }
 @media (min-width: 1024px) {
     :root[data-style="shelf"] { --cab-w: max(42rem, calc((min(100vw, 80rem) - 4rem) / 2)); }
     :root[data-style="shelf"] .page-frame.cabinet-part { max-width: calc(var(--cab-w) + 4rem); }
+    /* A cabinet inside the page's frame (every tab row but the shelf
+       pages', and the wishlist's filter band under its drawers): the same
+       width, centred. On a phone it's as wide as the cards under it. */
+    :root[data-style="shelf"] .cabinet-part:not(.page-frame, .view-bar, .search-form-container) {
+        max-width: min(100%, var(--cab-w));
+        margin-left: auto;
+        margin-right: auto;
+    }
     :root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base {
         margin-left: calc((100% - var(--cab-w)) / 2);
         margin-right: calc((100% - var(--cab-w)) / 2 + var(--run));
@@ -2873,7 +2882,7 @@ html:has(.item3d[open]) { overflow: hidden; }
 
 /* -- The bands -- */
 :root[data-style="shelf"] :is(.cabinet-top > .card, .search-form-container.cabinet-part > *,
-                              .cabinet-slip > .slip-band, .view-bar.cabinet-base) {
+                              .cabinet-slip > .slip-band, .cabinet-part > .cabinet-band, .view-bar.cabinet-base) {
     --bt: 0px;
     --bb: 0px;
     position: relative;
@@ -2889,7 +2898,7 @@ html:has(.item3d[open]) { overflow: hidden; }
 }
 /* The right side: this band's slice of it */
 :root[data-style="shelf"] :is(.cabinet-top > .card, .search-form-container.cabinet-part > *,
-                              .cabinet-slip > .slip-band, .view-bar.cabinet-base)::before {
+                              .cabinet-slip > .slip-band, .cabinet-part > .cabinet-band, .view-bar.cabinet-base)::before {
     content: '';
     position: absolute;
     pointer-events: none;
@@ -2924,13 +2933,17 @@ html:has(.item3d[open]) { overflow: hidden; }
 :root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base,
 :root[data-style="shelf"] .cabinet-end.search-form-container:not(:has(> #active-filters-display:not(.hidden))) > :nth-last-child(2),
 :root[data-style="shelf"] .cabinet-end.search-form-container > #active-filters-display:not(.hidden),
-:root[data-style="shelf"] .cabinet-end.cabinet-slip > .slip-band {
+:root[data-style="shelf"] .cabinet-end.cabinet-slip > .slip-band,
+:root[data-style="shelf"] .cabinet-end.cabinet-top > .card,
+:root[data-style="shelf"] .cabinet-end > .cabinet-band:last-child {
     --bb: var(--stile);
 }
 :root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base::before,
 :root[data-style="shelf"] .cabinet-end.search-form-container:not(:has(> #active-filters-display:not(.hidden))) > :nth-last-child(2)::before,
 :root[data-style="shelf"] .cabinet-end.search-form-container > #active-filters-display:not(.hidden)::before,
-:root[data-style="shelf"] .cabinet-end.cabinet-slip > .slip-band::before {
+:root[data-style="shelf"] .cabinet-end.cabinet-slip > .slip-band::before,
+:root[data-style="shelf"] .cabinet-end.cabinet-top > .card::before,
+:root[data-style="shelf"] .cabinet-end > .cabinet-band:last-child::before {
     height: calc(100% + var(--bt) + var(--bb) + var(--run));
 }
 :root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base { margin-bottom: 2.25rem; }
@@ -2939,10 +2952,11 @@ html:has(.item3d[open]) { overflow: hidden; }
 /* The matches line and the filter pills: typed on the wood, in cream */
 :root[data-style="shelf"] .search-form-container.cabinet-part > :not(.relative) { padding-top: 0; color: rgb(var(--shelf-label)); }
 :root[data-style="shelf"] .search-form-container.cabinet-part > :not(.relative) :is(p, span) { color: rgb(var(--shelf-label)); }
+:root[data-style="shelf"] .cabinet-band > :not(input) { color: rgb(var(--shelf-label)); }
 
 /* -- The label holders: an even brass rim, the cream card inside --
    (:where, so the id in the list doesn't outrank the rules below) */
-:root[data-style="shelf"] :where(.cabinet-top .tab > span, .cabinet-part #search_term, .cabinet-part #filter-toggle,
+:root[data-style="shelf"] :where(.cabinet-top .tab > span, .cabinet-part #search_term, .cabinet-part #filter-toggle, .cabinet-band input[type="search"],
                               .view-bar.cabinet-base select, .view-bar.cabinet-base > div[role="group"],
                               .view-bar.cabinet-base > #bulk-select-btn) {
     border: 3px solid transparent;
@@ -2954,20 +2968,20 @@ html:has(.item3d[open]) { overflow: hidden; }
 }
 /* The Shelf form-field rule ("Form fields", below) outranks the above with
    the id in its list: the cabinet's fields take the rim back by id */
-:root[data-style="shelf"] :is(.cabinet-part #search_term, .cabinet-part #filter-toggle,
+:root[data-style="shelf"] :is(.cabinet-part #search_term, .cabinet-part #filter-toggle, .cabinet-part #wishlist-search,
                               .view-bar.cabinet-base #sort_by, .view-bar.cabinet-base #sort_order) {
     border-color: transparent;
     box-shadow: var(--holder-shadow);
 }
 :root[data-style="shelf"] .cabinet-part :is(#search_term, select, button, a):focus-visible,
-:root[data-style="shelf"] .cabinet-part :is(#search_term, select):focus {
+:root[data-style="shelf"] .cabinet-part :is(#search_term, #wishlist-search, select):focus {
     outline: 2px solid rgb(var(--acc-l, 121 116 14));
     outline-offset: 2px;
     box-shadow: var(--holder-shadow);
 }
 
 /* -- The drawers (the tabs, and Filters) -- */
-:root[data-style="shelf"] .cabinet-top nav { gap: .5rem; }
+:root[data-style="shelf"] .cabinet-top :is(nav, [role="tablist"]) { gap: .5rem; }
 :root[data-style="shelf"] .cabinet-top .tab {
     background: rgb(var(--shelf-front));
     border: 0;
@@ -2994,6 +3008,20 @@ html:has(.item3d[open]) { overflow: hidden; }
 @media (min-width: 640px) {
     :root[data-style="shelf"] .cabinet-top .tab > span { font-size: .9375rem; min-width: 55%; }
 }
+/* On a phone a drawer with a count ("Movies & TV (3)", Collections and the
+   wishlist) didn't fit its share of the row and pushed the page 4px wide:
+   the drawers may shrink, and the count goes under the name on the card */
+@media (max-width: 639px) {
+    :root[data-style="shelf"] .cabinet-top .tab { min-width: 0; }
+    :root[data-style="shelf"] .cabinet-top .tab > span > span { display: block; }
+    /* ...and with four drawers (the wishlist's All) "Movies & TV" breaks
+       onto two lines rather than standing out of its drawer */
+    :root[data-style="shelf"] .cabinet-top .tab > span {
+        max-width: calc(100% - .5rem);
+        padding-inline: .3rem;
+        white-space: normal;
+    }
+}
 /* The cup pull: a half-round of brass under the holder */
 :root[data-style="shelf"] .cabinet-top .tab::after {
     content: '';
@@ -3005,20 +3033,20 @@ html:has(.item3d[open]) { overflow: hidden; }
 }
 /* The open tab: its drawer pulled out, standing proud, lit along its top,
    a shadow under it */
-:root[data-style="shelf"] .cabinet-top .tab-active {
+:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) {
     background: color-mix(in srgb, rgb(var(--shelf-front)), white 10%);
     box-shadow: inset 0 2px 0 rgb(255 255 255 / .22), inset 0 -2px 0 rgb(0 0 0 / .25), 0 5px 8px rgb(0 0 0 / .5);
     transform: translateY(-2px);
 }
-:root[data-style="shelf"] .cabinet-top .tab-active > span {
+:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) > span {
     color: rgb(var(--acc-l, 121 116 14));
     font-weight: 700;
 }
 /* A blank catalog card standing up out of the open drawer (Phil,
    2026-11-18): plain cream, no writing, its foot hidden behind the drawer's
    top edge. It slides up as the drawer opens. */
-:root[data-style="shelf"] .cabinet-top .tab-active { position: relative; }
-:root[data-style="shelf"] .cabinet-top .tab-active::before {
+:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"]) { position: relative; }
+:root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"])::before {
     content: '';
     position: absolute;
     left: 7%;                   /* a little narrower than the drawer */
@@ -3035,7 +3063,7 @@ html:has(.item3d[open]) { overflow: hidden; }
     to   { transform: none; clip-path: inset(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-    :root[data-style="shelf"] .cabinet-top .tab-active::before { animation: none; }
+    :root[data-style="shelf"] .cabinet-top :is(.tab-active, .tab[aria-selected="true"])::before { animation: none; }
 }
 /* Filters: a plain label-holder button like Grid | List and Batch (Phil,
    2026-11-18: no drawer), in the accent while its panel is open; the
@@ -3048,14 +3076,15 @@ html:has(.item3d[open]) { overflow: hidden; }
 }
 
 /* -- The search box -- */
-:root[data-style="shelf"] .cabinet-part #search_term { border-width: 3px; }
-:root[data-style="shelf"] .cabinet-part #search_term::placeholder { color: rgb(var(--card-muted)); }
+:root[data-style="shelf"] .cabinet-part :is(#search_term, #wishlist-search) { border-width: 3px; }
+:root[data-style="shelf"] .cabinet-part :is(#search_term, #wishlist-search)::placeholder { color: rgb(var(--card-muted)); }
 :root[data-style="shelf"] .cabinet-part button[aria-label="Search"] { color: rgb(var(--brass-lo)); right: 1rem; }
 /* Courier is wide: on a phone "Search your 145 books" only fits a size
    down. The typed text keeps 16px, so iOS doesn't zoom into the box. */
 @media (max-width: 639px) {
     :root[data-style="shelf"] .cabinet-part #search_term { padding-left: .6rem; padding-right: 2rem; }
-    :root[data-style="shelf"] .cabinet-part #search_term::placeholder { font-size: .8125rem; }
+    :root[data-style="shelf"] .cabinet-part #wishlist-search { padding-left: .6rem; padding-right: .6rem; }
+    :root[data-style="shelf"] .cabinet-part :is(#search_term, #wishlist-search)::placeholder { font-size: .8125rem; }
     :root[data-style="shelf"] .cabinet-part button[aria-label="Search"] { right: .75rem; }
 }
 
