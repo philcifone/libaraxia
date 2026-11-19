@@ -61,6 +61,23 @@ def parse_date(value, label, required=False):
         raise LoanError(f'{label} is not a date.') from None
 
 
+def human_date(value):
+    """'2026-03-03' as '3 Mar 2026' (the `human_date` filter); '' for none,
+    and anything that isn't a date as it came."""
+    if not value:
+        return ''
+    try:
+        d = date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return value
+    return f"{d.day} {d.strftime('%b')} {d.year}"
+
+
+def is_overdue(loan):
+    """An open loan past its due date."""
+    return bool(loan and not loan['returned_at'] and loan['due_at'] and loan['due_at'] < today())
+
+
 # --- who may do what -------------------------------------------------------
 
 def shelf_people(conn, book):

@@ -210,3 +210,95 @@ def test_loans_outlive_the_borrower_and_lender_accounts(db, cast):
     db.commit()
     assert scalar(db, 'SELECT COUNT(*) FROM loans') == 0
     assert fk_violations(db) == []
+
+
+# --- routes and pages ------------------------------------------------------
+
+from tests.conftest import login  # noqa: E402
+
+
+def lend_form(**fields):
+    return {'borrower': 'other', 'borrower_name': '', 'lent_at': '', 'due_at': '', 'note': '', **fields}
+
+
+def test_lend_route_comes_back_to_the_loans_section(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    login(client, 'bob')
+    r = client.post(f'/loans/{dune}/lend', data=lend_form(borrower=str(cast['dave']), due_at='2099-01-01'))
+    assert r.status_code == 302 and r.headers['Location'].endswith(f'/books/book/{dune}#loans')
+    assert scalar(db, 'SELECT borrower_id FROM loans WHERE book_id = ?', dune) == cast['dave']
+
+    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    assert 'data-loan-open' in page and 'Lent to dave' in page and 'data-loan-history' in page
+    assert f'/loans/' in page and 'Mark returned' in page
+
+
+def test_a_refused_lend_flashes_and_writes_nothing(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    login(client, 'bob')
+    r = client.post(f'/loans/{dune}/lend', data=lend_form(borrower=str(cast['carol'])), follow_redirects=True)
+    assert r.status_code == 200 and 'household or friends' in r.get_data(as_text=True)
+    assert scalar(db, 'SELECT COUNT(*) FROM loans') == 0
+
+
+def test_loan_routes_are_post_only_and_404_for_strangers(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    login(client, 'erin')
+    assert client.get(f'/loans/{dune}/lend').status_code == 405
+    assert client.post(f'/loans/{dune}/lend', data=lend_form(borrower_name='Ray')).status_code == 404
+    assert client.post('/loans/9999/return').status_code == 404
+    assert scalar(db, 'SELECT COUNT(*) FROM loans') == 0
+
+
+def test_return_and_delete_routes(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    loan_id = loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray', lent_at='2026-01-01')
+    db.commit()
+    login(client, 'bob')
+    r = client.post(f'/loans/{loan_id}/return', data={'returned_at': '2026-02-01'})
+    assert r.headers['Location'].endswith('#loans')
+    assert scalar(db, 'SELECT returned_at FROM loans WHERE id = ?', loan_id) == '2026-02-01'
+    client.post(f'/loans/{loan_id}/delete')
+    assert scalar(db, 'SELECT COUNT(*) FROM loans') == 0
+
+
+def test_a_friend_of_the_owner_sees_nothing_about_loans(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray')
+    db.commit()
+    login(client, 'carol')
+    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    assert 'id="loans"' not in page and 'Ray' not in page
+
+
+def test_a_borrower_outside_the_owners_circle_sees_the_item(client, db, cast):
+    """bob lends alice's book to dave, his friend and not alice's."""
+    dune = add_book(db, cast['alice'], 'Dune')
+    login(client, 'dave')
+    assert client.get(f'/books/book/{dune}').status_code == 404
+    loans.lend(db, who(db, cast['bob']), book(db, dune), borrower_id=cast['dave'])
+    db.commit()
+    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    assert 'Borrowed from bob' in page and 'Mark returned' not in page and 'lend-panel' not in page
+
+    notes_page = client.get('/friends/notifications_page').get_data(as_text=True)
+    assert 'data-notification-item' in notes_page and f'/books/book/{dune}' in notes_page
+
+
+def test_lend_panel_offers_the_circle_and_someone_else(client, db, cast):
+    dune = add_book(db, cast['bob'], 'Dune')
+    login(client, 'bob')
+    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    assert 'id="lend-panel"' in page
+    assert f'<option value="{cast["alice"]}">alice</option>' in page
+    assert f'<option value="{cast["dave"]}">dave</option>' in page
+    assert f'value="{cast["carol"]}"' not in page and '<option value="other">' in page
+
+
+def test_a_video_comes_back_to_its_own_page(client, db, cast):
+    tape = add_book(db, cast['bob'], 'Alien')
+    db.execute("UPDATE books SET media_type = 'video', format = 'VHS' WHERE id = ?", (tape,))
+    db.commit()
+    login(client, 'bob')
+    r = client.post(f'/loans/{tape}/lend', data=lend_form(borrower_name='Ray'))
+    assert r.headers['Location'].endswith(f'/videos/{tape}#loans')

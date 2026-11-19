@@ -4815,6 +4815,11 @@ form:has(input[name="video_kind"][value="tv"]:checked) .when-movie { display: no
    format (media.shown_format) */
 form:has(#not_owned:checked) .when-owned { display: none; }
 
+/* Lend panel (16.0d): the name field only for "Someone else", by CSS, no
+   script. With no household or friends that is the only choice, so it shows. */
+.lend-form .when-other { display: none; }
+.lend-form:has(#lend_borrower option[value="other"]:checked) .when-other { display: block; }
+
 /* The genre picker */
 .bulk-list {
     max-height: min(16rem, 40dvh); overflow-y: auto; overscroll-behavior: contain;

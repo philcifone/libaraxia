@@ -21,7 +21,7 @@ from utils.book_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE
 )
-from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces, catalog_card
+from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces, catalog_card, loans
 from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
@@ -776,9 +776,23 @@ def render_item_page(conn, book):
         (('Sleeve: ' if sleeve else ('Record: ' if kind == media.RECORD else '')) + condition.label(kind, code, sleeve))
         for code, sleeve in grades if code)
 
+    # Loans (16.0d): the shelf's people (owner, household) and admins see and
+    # manage every loan; a borrower sees only their own; anyone else nothing.
+    loan_manage = loans.can_lend(conn, current_user, book)
+    loan_history = loans.history(conn, current_user, book)
+    open_loan = next((l for l in loan_history if not l['returned_at']), None)
+    can_lend_now = loan_manage and open_loan is None and loans.lendable(conn, book)
+
     return render_template(
         "book_detail.html",
         book=book,
+        loan_manage=loan_manage,
+        loan_history=loan_history,
+        open_loan=open_loan,
+        loan_overdue=loans.is_overdue(open_loan),
+        can_lend_now=can_lend_now,
+        borrower_choices=loans.borrower_choices(conn, current_user.id) if can_lend_now else [],
+        today=loans.today(),
         item_photos=item_photos,
         item3d=item3d.model(book, item_photos, faces.placeholder_urls(conn, book, item_photos)),
         condition_text=condition_text,

@@ -137,7 +137,13 @@
 
                     <!-- Notification Content -->
                     <div class="flex-1 min-w-0">
+                        {# The item it's about, when there is one (loans, likes; 16.0d) #}
+                        {% if notif.book_id %}
+                        <p class="text-sm"><a href="{{ item_url({'id': notif.book_id, 'media_type': notif.book_media_type}) }}"
+                              class="text-content-primary hover:text-accent underline-offset-2 hover:underline" data-notification-item>{{ notif.message }}</a></p>
+                        {% else %}
                         <p class="text-content-primary text-sm">{{ notif.message }}</p>
+                        {% endif %}
                         <p class="text-content-secondary text-xs mt-1">{{ notif.created_at }}</p>
                     </div>
 

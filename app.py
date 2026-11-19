@@ -33,6 +33,7 @@ from blueprints.bulk import bulk_blueprint
 from blueprints.photos import photos_blueprint
 from blueprints.values import values_blueprint
 from blueprints.faces import faces_blueprint
+from blueprints.loans import loans_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
@@ -224,6 +225,7 @@ def create_app():
     app.register_blueprint(photos_blueprint, url_prefix='/photos')
     app.register_blueprint(values_blueprint, url_prefix='/values')
     app.register_blueprint(faces_blueprint, url_prefix='/faces')
+    app.register_blueprint(loans_blueprint, url_prefix='/loans')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media
@@ -284,6 +286,9 @@ def create_app():
     # A library date stamp, "NOV 13 2026" (the paper cards, Shelf style)
     from utils import catalog_card
     app.add_template_filter(catalog_card.stamp_date, 'stamp_date')
+    # Loans (16.0d): "3 Mar 2026"
+    from utils.loans import human_date
+    app.add_template_filter(human_date, 'human_date')
     from utils import valuation
     app.add_template_global(lambda: valuation.discogs_enabled() or valuation.ebay_enabled(),
                             'value_sources_ready')

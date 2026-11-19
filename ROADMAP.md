@@ -99,7 +99,7 @@ From Phil, 2026-11-15. **Spec: [docs/FACES-SPEC.md](docs/FACES-SPEC.md).** Every
 Moved up from 17.1 (Phil, 2026-11-18; originally 15.2). Record who has a physical copy, for any type.
 **Spec: [docs/LENDING-SPEC.md](docs/LENDING-SPEC.md)** (approved 2026-11-18). Decided: the owner or any household member lends and marks returned; a borrower who's a user is in the lender's circle, anyone else is a typed name; loans show to the shelf's people and the borrower only; the borrower is notified on lending, the owner when someone else lends or returns their item; the Lent badge sits top centre (open to change). Branch `phase-16d-lending-abs`, shared with 16.0e, lending first.
 - [x] 1. `loans` table (migration 042), `utils/loans.py`.
-- [ ] 2. Item page: banner, Lend, Mark returned, history; `can_view_book` for borrowers; the notification.
+- [x] 2. Item page: banner, Lend, Mark returned, history; `can_view_book` for borrowers; the notification.
 - [ ] 3. Grid badge, Show: Lent out, the Collections row, the profile's Borrowed row.
 - [ ] 4. Do I have this?, exports.
 - [ ] 5. Docs, screenshots.

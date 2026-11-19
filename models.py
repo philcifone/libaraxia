@@ -260,6 +260,8 @@ def can_view_book(conn, user, book_id):
     reading status, reading session, tag, wishlist entry or custom-collection
     entry. The second clause keeps a book reachable from the feed and from
     the user's own history after it was given away or its owner deleted.
+    Also allowed: you are or were its borrower (16.0d), which covers a
+    household member lending the owner's copy to their own friend.
 
     Routes that let a user attach data to a book id must call this first, or
     attaching data would itself grant access.
@@ -278,8 +280,9 @@ def can_view_book(conn, user, book_id):
         UNION ALL SELECT 1 FROM collection_books cb
                   JOIN user_collections uc ON uc.collection_id = cb.collection_id
                   WHERE cb.book_id = ? AND uc.user_id IN ({marks})
+        UNION ALL SELECT 1 FROM loans            WHERE book_id = ? AND borrower_id = ?
         LIMIT 1
-    ''', [book_id, *ids] * 7).fetchone()
+    ''', [book_id, *ids] * 7 + [book_id, user.id]).fetchone()
     return row is not None
 
 
