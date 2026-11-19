@@ -537,6 +537,18 @@
                         {% for note in goodreads_notes %}<p>{{ note }}</p>{% endfor %}
                     </div>
                     {% endif %}
+                    {# Audiobookshelf (16.0e): the import's note, and your progress
+                       there now, filled after load by book_detail.js from
+                       /abs/progress so the page never waits on the server; stays
+                       hidden if it doesn't answer. Your own link only. #}
+                    {% if abs_note %}
+                    <div class="space-y-1 text-sm text-content-secondary" data-abs-note>
+                        <p>{{ abs_note }}</p>
+                        {% if abs_progress_url %}
+                        <p data-abs-progress data-url="{{ abs_progress_url }}" data-sync-url="{{ url_for('user.settings', _anchor='audiobookshelf') }}" hidden></p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Review, history and tags: tabs, as on the profile -->

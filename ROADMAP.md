@@ -113,7 +113,7 @@ Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf serv
 - [x] 3. Settings card: connect, disconnect.
 - [x] 4. Sync and the review page.
 - [x] 5. Apply, undo, covers.
-- [ ] 6. Live progress line, provenance note.
+- [x] 6. Live progress line, provenance note.
 - [ ] 7. Docs, a real sync on dev, screenshots.
 
 ### 16.0b Code review 🟠

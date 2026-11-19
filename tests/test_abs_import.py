@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from conftest import add_book, login
+from test_layout import unbalanced_tags
 from utils import abs_import
 from utils import audiobookshelf as abs_
 
@@ -164,6 +165,7 @@ def test_sync_route_to_review(client, db, people, abs_server):
     assert r.status_code == 302 and r.headers['Location'].endswith('/abs/review')
     page = client.get('/abs/review').get_data(as_text=True)
     assert 'data-abs-review' in page and 'Project Hail Mary' in page and 'read by Ray Porter' in page
+    assert unbalanced_tags(page) == []                          # test_every_page_loads can't reach it
     assert 'data-box="finished_new"' in page and 'name="choice_li_project_hail_mary"' in page
     assert '/audiobookshelf/item/li_project_hail_mary' in page
 
@@ -417,3 +419,67 @@ def test_backup_restore_brings_links_back(app, db, people, abs_server):
         db.commit()
         personal_backups.restore(db, alice, made['name'])
     assert db.execute('SELECT abs_item_id, outcome FROM abs_links').fetchall()[0][:] == ('li_kept', 'created')
+
+
+# --- the item page: provenance and the live line (step 6) ---------------------
+
+def test_progress_words():
+    now = MS + 2 * 86400000
+    line = abs_import.progress_line({'progress': 0.43, 'currentTime': 18000, 'duration': 36720,
+                                     'lastUpdate': MS, 'isFinished': False}, 'Audiobook', None, now)
+    assert line == {'text': 'Audiobookshelf: 43 %, 5 h 12 min left, last listened 2 days ago.', 'unsynced': False}
+    sliver = abs_import.progress_line({'progress': 0.001, 'lastUpdate': MS}, 'Audiobook', None, MS + 60 * 86400000)
+    assert sliver['text'] == 'Audiobookshelf: under 1 %, last listened on 14 Nov 2023.'
+    ebook = abs_import.progress_line({'ebookProgress': 0.25, 'lastUpdate': now}, 'Ebook', None, now)
+    assert ebook['text'] == 'Audiobookshelf: 25 %, last read today.'
+    done = abs_import.progress_line({'isFinished': True, 'finishedAt': MS}, 'Audiobook', {'finished_at': None}, now)
+    assert done == {'text': 'Finished in Audiobookshelf on 14 Nov 2023.', 'unsynced': True}
+    assert not abs_import.progress_line({'isFinished': True, 'finishedAt': MS}, 'Audiobook',
+                                        {'finished_at': MS}, now)['unsynced']
+
+
+def test_item_page_note_and_live_line(client, db, people, abs_server, monkeypatch):
+    from blueprints import audiobookshelf as abs_bp
+    alice = people['alice']
+    connect(db, alice)
+    abs_server([item('Heard')], [progress('li_heard', 0.5)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Heard')['id']
+    abs_bp._PROGRESS_CACHE.clear()
+    calls = []
+    monkeypatch.setattr(abs_, 'progress', lambda token, item_id, timeout=None: calls.append(item_id) or
+                        {'progress': 0.5, 'currentTime': 18000, 'duration': 36000, 'isFinished': False})
+
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'data-abs-note' in page and 'From your Audiobookshelf import' in page
+    assert f'data-url="/abs/progress/{book}"' in page
+    answer = client.get(f'/abs/progress/{book}').get_json()
+    assert answer['success'] and answer['text'] == 'Audiobookshelf: 50 %, 5 h 0 min left.'
+    assert answer['link'].endswith('/audiobookshelf/item/li_heard') and 'key' not in json.dumps(answer)
+    client.get(f'/abs/progress/{book}')
+    assert calls == ['li_heard']                                   # the second answer is cached
+
+    # bob (household) sees the book, never alice's link or progress
+    login(client, 'bob')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'data-abs-note' not in page and 'data-abs-progress' not in page
+    assert client.get(f'/abs/progress/{book}').status_code == 404
+
+
+def test_live_line_quiet_when_abs_is_down(client, db, people, abs_server, monkeypatch):
+    from blueprints import audiobookshelf as abs_bp
+    alice = people['alice']
+    connect(db, alice)
+    abs_server([item('Heard')], [progress('li_heard', 0.5)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    abs_bp._PROGRESS_CACHE.clear()
+
+    def down(*a, **k):
+        raise abs_.AbsError()
+    monkeypatch.setattr(abs_, 'progress', down)
+    login(client, 'alice')
+    r = client.get(f"/abs/progress/{book_row(db, 'Heard')['id']}")
+    assert r.status_code == 502 and r.get_json() == {'success': False, 'error': "Audiobookshelf didn't answer."}

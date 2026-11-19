@@ -768,9 +768,17 @@ def render_item_page(conn, book):
 
     # What your Goodreads imports did to this book (ROADMAP 14b): yours only
     goodreads_notes = []
+    abs_note = abs_progress_url = None
     if media.media_type_of(book) == media.BOOK:
         from utils.goodreads_plan import provenance
         goodreads_notes = provenance(conn, current_user.id, id)
+        # Audiobookshelf (16.0e): the import's note and the live progress
+        # line, for your own link only
+        from utils import abs_import, audiobookshelf
+        if audiobookshelf.enabled():
+            abs_note = abs_import.provenance(conn, current_user.id, id)
+            if abs_note and audiobookshelf.account(conn, current_user.id):
+                abs_progress_url = url_for('abs.progress', book_id=id)
 
     # More photos (ROADMAP 16.0a): anyone who can see the item sees them,
     # like the cover. The gallery opens on the cover, then back, spine, rest.
@@ -815,6 +823,7 @@ def render_item_page(conn, book):
         photo_slides=photo_slides,
         extra_photos=len(photo_slides) - (1 if cover_url else 0),
         goodreads_notes=goodreads_notes,
+        abs_note=abs_note, abs_progress_url=abs_progress_url,
         read_data=read_data,
         latest_session=latest_session,
         reading_sessions=reading_sessions,

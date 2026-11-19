@@ -80,7 +80,9 @@ def test_security_headers(client):
 # books.thumbnail needs a ?url= and 404s without one; tests/test_csp.py covers it.
 # videos.lookup needs ?barcode= or ?title=, records.lookup ?mbid=, records.pressings ?source=&id=; all answer 400 without (test_videos.py, test_records.py, test_search_pages.py cover them).
 SKIP = {'static', 'admin.backup_download', 'auth.verify_email', 'books.thumbnail', 'videos.lookup', 'records.lookup', 'videos.search',
-        'records.pressings'}
+        'records.pressings',
+        # 404 unless AUDIOBOOKSHELF_URL is set; tests/test_abs_import.py loads them
+        'abs.review', 'abs.progress'}
 
 
 def duplicate_ids(html):

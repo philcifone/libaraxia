@@ -785,3 +785,60 @@ def _make_action():
         describe=lambda p: 'Audiobookshelf import', summary=lambda p, n: 'Audiobookshelf import',
         key=lambda b: None, label=lambda k, p: '', same_text=lambda p: '',
         after_undo=_after_undo)
+
+
+# ------------------------------------------------------------------ the item page (step 6)
+
+def link_for(conn, user_id, book_id):
+    """Your abs_links row on a book (the latest, if more than one ABS item
+    points at it), or None. Only ever yours: nobody else sees anything."""
+    row = conn.execute('SELECT * FROM abs_links WHERE user_id = ? AND book_id = ? '
+                       "AND outcome IN ('created', 'attached') ORDER BY linked_at DESC, id DESC LIMIT 1",
+                       (user_id, book_id)).fetchone()
+    return dict(row) if row else None
+
+
+def provenance(conn, user_id, book_id):
+    """The item page's note beside the Goodreads one, or None."""
+    link = link_for(conn, user_id, book_id)
+    if not link:
+        return None
+    when = human_date(link['linked_at'])
+    if link['outcome'] == 'created':
+        return f'From your Audiobookshelf import, {when}.'
+    return f'Your Audiobookshelf listening was added here, {when}.'
+
+
+def _ago(ms, now_ms):
+    """'today', 'yesterday', '12 days ago', or past a month 'on 7 Mar 2026'."""
+    days = int((now_ms - ms) // 86400000)
+    if days <= 0:
+        return 'today'
+    if days == 1:
+        return 'yesterday'
+    return f'{days} days ago' if days <= 30 else f'on {human_date(_day(ms))}'
+
+
+def progress_line(prog, fmt, link, now_ms=None):
+    """The live line's words from ABS progress (or None: not started there):
+    "43 %, 5 h 12 min left, last listened 2 days ago", or "Finished on
+    5 Jan 2026" (with `unsynced` when the import hasn't recorded it yet)."""
+    import time
+    from utils.media import format_runtime
+    now_ms = now_ms or time.time() * 1000
+    if not prog:
+        return {'text': 'Not started in Audiobookshelf yet.', 'unsynced': False}
+    if prog.get('isFinished'):
+        day = _day(prog.get('finishedAt'))
+        text = f'Finished in Audiobookshelf on {human_date(day)}.' if day else 'Finished in Audiobookshelf.'
+        return {'text': text, 'unsynced': not (link and link.get('finished_at'))}
+    share = _progress_of(fmt, prog)
+    bits = ['under 1 %' if 0 < share < 0.005 else f'{round(share * 100)} %']
+    if fmt == AUDIOBOOK and prog.get('duration'):
+        left = max(0, (prog.get('duration') or 0) - (prog.get('currentTime') or 0))
+        if left >= 60:
+            bits.append(f'{format_runtime(round(left / 60))} left')
+    if prog.get('lastUpdate'):
+        verb = 'listened' if fmt == AUDIOBOOK else 'read'
+        bits.append(f'last {verb} {_ago(prog["lastUpdate"], now_ms)}')
+    return {'text': 'Audiobookshelf: ' + ', '.join(bits) + '.', 'unsynced': False}

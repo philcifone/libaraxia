@@ -28,6 +28,8 @@ os.environ['TRUSTED_PROXY_COUNT'] = '0'
 os.environ['DISCOGS_TOKEN'] = ''
 os.environ['TMDB_API_KEY'] = ''
 os.environ['MUSICBRAINZ_CONTACT'] = ''
+os.environ['AUDIOBOOKSHELF_URL'] = ''           # 16.0e: tests that need it set it themselves
+os.environ['AUDIOBOOKSHELF_PUBLIC_URL'] = ''
 os.environ['DATABASE_PATH'] = os.path.join(ROOT, 'tests', '.no-database-yet.db')
 
 PASSWORD = 'correct-horse-battery'

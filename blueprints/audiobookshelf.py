@@ -10,7 +10,7 @@ box ("All in this box"), saved with Save choices or Import.
 Every route is a 404 while AUDIOBOOKSHELF_URL isn't set, so the feature
 doesn't exist on a site without a server.
 """
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from utils import abs_import
@@ -193,3 +193,41 @@ def discard():
     abs_import.discard(get_db(), current_user)
     flash('Review discarded; nothing was imported.', 'success')
     return _back()
+
+
+# ------------------------------------------------------------------ the item page's live line
+
+# (user id, ABS item id) -> (monotonic time, answer): ABS is asked at most
+# once a minute per item, however often the page is opened
+_PROGRESS_CACHE = {}
+PROGRESS_SECONDS = 60
+
+
+@abs_blueprint.route('/progress/<int:book_id>')
+@login_required
+@limiter.limit('120 per hour')
+def progress(book_id):
+    """Your ABS progress on an item you imported, as JSON for the item
+    page (book_detail.js). A 404 unless the link is yours; quiet when ABS
+    doesn't answer (the page shows nothing)."""
+    import time
+    conn = get_db()
+    link = abs_import.link_for(conn, current_user.id, book_id)
+    token = abs_.token_for(conn, current_user.id, _secret()) if link else None
+    if not link or not token:
+        abort(404)
+    fmt = conn.execute('SELECT format FROM books WHERE id = ?', (book_id,)).fetchone()['format']
+    key = (current_user.id, link['abs_item_id'])
+    cached = _PROGRESS_CACHE.get(key)
+    if cached and time.monotonic() - cached[0] < PROGRESS_SECONDS:
+        return jsonify(cached[1])
+    try:
+        prog = abs_.progress(token, link['abs_item_id'])
+    except AbsError:
+        return jsonify({'success': False, 'error': "Audiobookshelf didn't answer."}), 502
+    answer = {'success': True, **abs_import.progress_line(prog, fmt, link),
+              'link': abs_.item_link(link['abs_item_id'])}
+    if len(_PROGRESS_CACHE) > 1000:
+        _PROGRESS_CACHE.clear()
+    _PROGRESS_CACHE[key] = (time.monotonic(), answer)
+    return jsonify(answer)
