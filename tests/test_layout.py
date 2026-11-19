@@ -1913,3 +1913,43 @@ def test_tab_row_is_hidden_until_the_script_runs():
     css = (ROOT / 'static/styles.css').read_text()
     assert '[data-tabs] [data-tab-row][hidden] {' in css
     assert "document.querySelector('.view-bar.cabinet-part')" in (ROOT / 'static/sidebar.js').read_text()
+
+
+def test_a_deeper_ledge_front_also_resets_the_ledge_height():
+    """--ledge-h is calc(--ledge-top + --ledge-front), and a custom
+    property's var() is worked out where it is declared. A rule that changes
+    --ledge-front without declaring --ledge-h again keeps the old height, so
+    the ledge doesn't grow (step 3's captioned rows: the captions vanished).
+    Setting it on the element that declares the height (the grid, the small
+    cases) is fine: there the height is worked out from the element's own
+    front. So each rule setting --ledge-front declares the height too, or
+    its element (the selector's last classes) is one that declares it."""
+    css = (ROOT / 'static' / 'styles.css').read_text()
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+
+    def last_classes(selector):
+        """Classes of the last compound in each of the selector's parts
+        (:is(a, b) counts as one compound)."""
+        out = set()
+        for part in re.split(r',(?![^(]*\))', selector):
+            last = re.sub(r'\(([^)]*)\)', lambda m: '(' + m.group(1).replace(' ', '') + ')',
+                          part.strip()).split()[-1]
+            out |= set(re.findall(r'\.[\w-]+', last))
+        return out
+
+    rules = [(sel.strip(), body) for sel, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css)]
+    owns_height = lambda body: re.search(r'--ledge(-h)?\s*:', body)
+    owners = set().union(*(last_classes(sel) for sel, body in rules if owns_height(body)))
+    fronts = [(sel, body) for sel, body in rules if re.search(r'--ledge-front\s*:', body)]
+    assert fronts, 'no rule sets --ledge-front'
+    for selector, body in fronts:
+        assert owns_height(body) or last_classes(selector) <= owners, selector
+
+
+def test_shelf_captions_sit_on_the_ledge_front():
+    """Reviews' captions (stars, a friend's name) are printed on the ledge's
+    front in Shelf: taken out of the figure's flow, cream on the wood."""
+    css = (ROOT / 'static' / 'styles.css').read_text()
+    rule = re.search(r'\.shelf-case \.shelf-figure figcaption \{([^}]*)\}', css)
+    assert rule and 'position: absolute' in rule.group(1)
+    assert 'var(--shelf-label)' in rule.group(1)

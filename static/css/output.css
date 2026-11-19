@@ -2393,6 +2393,10 @@ img.book-cover-img:not([data-loaded]) {
   color: rgb(var(--card-ink));
 }
 
+:root[data-style="shelf"] .shelf-case .shelf-figure figcaption .tab {
+  color: rgb(var(--shelf-label) / .85);
+}
+
 :root[data-style="cyberpunk"] :is(.flash-message > .tab:not(.flash-body), .flash-body > span:first-child)::before {
   color: rgb(var(--cp-f));
   content: "> SYS ";
@@ -2513,6 +2517,10 @@ img.book-cover-img:not([data-loaded]) {
 
 :root[data-style="shelf"] .cabinet-slip :is(.text-content-primary,.theme-opt),:root[data-style="shelf"] .cabinet-slip :is(.text-content-primary, .tilt-opt) {
   color: rgb(var(--card-ink));
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-figure figcaption .theme-opt,:root[data-style="shelf"] .shelf-case .shelf-figure figcaption  .tilt-opt {
+  color: rgb(var(--shelf-label) / .85);
 }
 
 .theme-opt:hover, .tilt-opt:hover {
@@ -8366,8 +8374,8 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) {
    and the outside top and right faces are the small cases' (above); the
    bottom is framed too, since here the last shelf isn't the case's floor.
    Each shelf is its label on the back wall, then its covers standing on a
-   ledge that runs wall to wall and scrolls with them, then any captions
-   (stars, a name) hanging below the ledge like the grid's badges.
+   ledge that runs wall to wall and scrolls with them, any captions (stars,
+   a name) printed on the ledge's front (below).
    The covers are all one height (h-28, the rows' one size), so the ledge is
    painted at a fixed depth in the row: --shelf-y, where the covers' bases
    stand --row-sink into its top face. */
@@ -8595,10 +8603,49 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) {
   background-repeat: no-repeat;
 }
 
-/* Captions (stars, a reviewer) hang below the ledge, under their cover */
+/* Captions (stars, a reviewer: Reviews) are printed on the ledge's front
+   under their cover, like a shelf-edge label (layout walk 16.0: hanging
+   below the ledge they read as the next shelf's). A row with captions has a
+   deeper front to hold them: one line (your stars) or two (a friend's stars
+   and name). The caption is taken out of the figure's flow (the figure is
+   position: relative, _shelf_rows.html), so the figure is just its cover and
+   the row's height stays the ledge's; it sits from the front's top edge.
+   (--ledge-h is declared again: a custom property's var() is worked out
+   where it is declared, so the case's --ledge-h keeps the case's front.) */
+
+:root[data-style="shelf"] .shelf-case .shelf-row:has(.shelf-figure) {
+  --ledge-front: calc(.9375rem + 7px);
+  /* one text-xs line */
+  --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-row:has(.shelf-figure figcaption > :nth-child(2)) {
+  --ledge-front: calc(1.875rem + 7px);
+  /* two */
+  --ledge-h: calc(var(--ledge-top) + var(--ledge-front));
+}
 
 :root[data-style="shelf"] .shelf-case .shelf-figure figcaption {
-  margin-top: calc(var(--ledge-h) - var(--row-sink));
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + var(--ledge-top) - var(--row-sink) + 3px);
+  color: rgb(var(--shelf-label));
+}
+
+/* Printed in the label's cream: gold stars vanish on the wood. The empty
+   stars faded, a name a little softer than the stars. */
+
+:root[data-style="shelf"] .shelf-case .shelf-figure figcaption .text-yellow-400 {
+  color: rgb(var(--shelf-label));
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-figure figcaption .text-content-tertiary {
+  color: rgb(var(--shelf-label) / .4);
+}
+
+:root[data-style="shelf"] .shelf-case .shelf-figure figcaption .text-content-secondary {
+  color: rgb(var(--shelf-label) / .85);
 }
 
 /* The item page's cover: a deeper box, standing free in the details card

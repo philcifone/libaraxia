@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 {% from '_shelves.html' import section_switch %}
 {# [+ Review] -> Book | Movie | Album lands here (reviews.find, ROADMAP 13):
    a plain GET search (no script) over what you may review: your shelf, your
@@ -15,6 +15,7 @@
 {% block content %}
     <main class="page-frame-narrow pt-20 pb-16">
         {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], 'Review ' ~ m.a ~ ' ' ~ m.noun) }}
+        {{ page_heading('star', 'Review ' ~ m.a ~ ' ' ~ m.noun, class='mb-4') }}
         {{ section_switch(media_type, urls=section_urls, wrap=False, class='pb-6') }}
 
         <form method="GET" action="{{ url_for('reviews.find') }}" role="search"

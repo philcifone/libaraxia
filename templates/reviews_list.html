@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 {% from '_shelves.html' import section_switch %}
 {# "See all" of one Reviews row (reviews.see_all, ROADMAP 13): every review
    in the list as a card, newest first (utils/reviews.py). Your own link to
@@ -14,7 +14,7 @@
 {% block content %}
     <main class="page-frame pt-20 pb-24">
         {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], heading) }}
-        <h1 class="text-3xl font-display text-content-primary text-center mb-6">{{ heading }}</h1>
+        {{ page_heading('star', heading, class='mb-4') }}
         {{ section_switch(media_type, urls=section_urls, wrap=False, class='pb-8') }}
 
         {% if rows %}

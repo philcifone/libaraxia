@@ -20,7 +20,7 @@
 
    In a bookcase (16.0): put `shelf-case` on the element round this partial
    (Reviews, Collections). Shelf then draws it as one bookcase, each shelf
-   its own ledge right under the covers (captions hang below it), the label
+   its own ledge right under the covers (captions printed on its front), the label
    on the back wall; other styles show the usual cards. shelf-item,
    shelf-link and shelf-label are the hooks for that, and every shelf has a
    .shelf-row, empty when it has no covers (hidden, except as a bare ledge
@@ -40,13 +40,18 @@
                 </span>
             </div>
             {% if not shelf.covers and shelf.empty %}
-            <p class="mt-2 text-sm text-content-secondary italic">{{ shelf.empty }}</p>
+            {# shelf-case-note: in Shelf's bookcase it lines up with the labels #}
+            <p class="shelf-case-note mt-2 text-sm text-content-secondary italic">{{ shelf.empty }}</p>
             {% endif %}
             {% if shelf.covers %}
             <div class="shelf-row items-end">
                 {% for c in shelf.covers %}
                     {% set labelled = c.stars or c.by %}
-                    {% if labelled %}<figure class="shelf-figure flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
+                    {# relative: the caption's sr-only "Rated 4 of 5" is absolutely
+                       placed; with no positioned ancestor inside the row it would be
+                       placed outside the scroller, not clipped by it, and widen the
+                       page (the Reviews page was 957 px wide on a phone) #}
+                    {% if labelled %}<figure class="shelf-figure relative flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
                     {% if c.cover_image_url|upload_exists %}
                     {{ cover_img(c.cover_image_url, c.title, cover_h ~ ' w-auto max-w-[8rem] rounded shadow-sm', 'shrink-0', lazy=True, item=c) }}
                     {% else %}
