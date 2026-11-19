@@ -225,3 +225,51 @@ def test_the_key_never_reaches_a_personal_backup(fake, db, people):
     dumped = json.dumps(snapshot(db, people['alice']), default=str)
     assert 'abs_accounts' not in dumped and KEY not in dumped
     assert db.execute('SELECT token_enc FROM abs_accounts').fetchone()[0] not in dumped
+
+
+# --- Settings: connect and disconnect (step 3) ------------------------------
+
+def test_no_card_and_no_routes_without_a_url(client, people, monkeypatch):
+    from tests.conftest import login
+    monkeypatch.delenv('AUDIOBOOKSHELF_URL', raising=False)
+    login(client, 'alice')
+    assert 'data-abs-card' not in client.get('/user/settings').get_data(as_text=True)
+    assert client.post('/abs/connect', data={'abs_token': KEY}).status_code == 404
+    assert client.post('/abs/disconnect').status_code == 404
+
+
+def test_connect_from_settings(client, db, people, fake):
+    from tests.conftest import login
+    fake({'/api/me': FakeResponse(body=ME)})
+    login(client, 'alice')
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-abs-card' in page and 'name="abs_token"' in page and 'data-abs-connected' not in page
+
+    r = client.post('/abs/connect', data={'abs_token': KEY}, follow_redirects=True)
+    page = r.get_data(as_text=True)
+    assert 'Connected to Audiobookshelf as phil.' in page and 'data-abs-connected' in page
+    assert KEY not in page                                       # write-only field
+    assert abs_.account(db, people['alice'])['abs_username'] == 'phil'
+
+    r = client.post('/abs/disconnect', follow_redirects=True)
+    assert 'Disconnected from Audiobookshelf' in r.get_data(as_text=True)
+    assert abs_.account(db, people['alice']) is None
+
+
+def test_connect_refused_key(client, db, people, fake):
+    from tests.conftest import login
+    fake({'/api/me': FakeResponse(401)})
+    login(client, 'alice')
+    page = client.post('/abs/connect', data={'abs_token': KEY}, follow_redirects=True).get_data(as_text=True)
+    assert "Audiobookshelf didn&#39;t accept that key." in page and abs_.account(db, people['alice']) is None
+
+
+def test_unreadable_key_asks_to_reconnect(client, db, people, fake):
+    from tests.conftest import login
+    db.execute("INSERT INTO abs_accounts (user_id, token_enc, abs_user_id, abs_username) VALUES (?, ?, 'u', 'phil')",
+               (people['alice'], abs_.seal(KEY, 'an-old-secret')))
+    db.commit()
+    fake({})
+    login(client, 'alice')
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-abs-reconnect' in page and 'data-abs-connected' not in page

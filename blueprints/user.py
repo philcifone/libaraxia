@@ -181,9 +181,11 @@ def settings():
     if current_user.is_admin:
         from blueprints.admin import settings_context
         admin = settings_context(conn)
+    from blueprints.audiobookshelf import settings_context as abs_context
     return render_template(
         'settings.html',
         user=me,
+        abs=abs_context(conn, current_user.id),      # None unless AUDIOBOOKSHELF_URL is set (16.0e)
         account_removal=removal_context(conn, current_user.id, viewer_is_admin=False),
         bulk_history=bulk.recent(conn, current_user),
         library_backups=personal_backups.list_backups(current_user.id),
