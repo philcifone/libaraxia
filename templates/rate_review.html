@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import cancel_link, crumbs %}
 
 {% block title %}{{ book.title }} - Rate & Review{% endblock %}
 {% block html_class %}bg-primary-bg{% endblock %}
@@ -203,12 +203,13 @@
                         >{{ read_data.comment if read_data else '' }}</textarea>
                     </div>
 
-                    <!-- Submit Button -->
-                    <div class="flex justify-center pt-4">
+                    <!-- Submit and Cancel: back where Submit would land (Reviews, or the item page) -->
+                    <div class="flex flex-wrap justify-center gap-3 pt-4">
                         <button type="submit"
-                                class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-md font-medium text-lg btn">
+                                class="bg-accent hover:bg-accent-hover text-on-accent px-5 sm:px-8 py-3 rounded-md font-medium text-lg btn">
                             Submit Review
                         </button>
+                        {{ cancel_link(url_for('reviews.index', type=m.type) if from_reviews else item_url(book), class='px-5 sm:px-8 py-3 rounded-md font-medium text-lg') }}
                     </div>
                 </form>
             </div>

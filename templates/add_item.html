@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs, page_heading, section_icons %}
+{% from '_icons.html' import cancel_link, crumbs, page_heading, section_icons %}
 {# Add a book, a movie or a vinyl (Phase 8.5, 8.7): one page for every media
    type. Rendered by books.add_book and media_section's add_item (Add Movie,
    Add Vinyl). On top, a lookup card with up to three tabs, then the form
@@ -37,6 +37,14 @@
 {% set tabs = [('search', 'Search', 'Search Title')] + ([('code', code_label, code_label ~ ' Lookup'),
                                                          ('scan', 'Scan', 'Scan Barcode')] if m.has_barcode else []) %}
 {% set to_wishlist = destination == 'wishlist' %}
+{# Where the crumb and Cancel go: back where you came from (Phil,
+   2026-11-19). Reviews' "Add it as unshelved" (then=review) came from
+   Reviews; a shelf add from the shelf grid you were last on (grid). #}
+{% if values.then == 'review' %}
+{% set back_url, back_label, back_grid = url_for('reviews.index', type=m.type), 'Reviews', none %}
+{% else %}
+{% set back_grid = none if to_wishlist else m.type %}
+{% endif %}
 {% set heading = ('Add ' ~ m.a ~ ' ' ~ m.Noun ~ ' to your Wishlist') if to_wishlist else ('Add ' ~ m.a ~ ' ' ~ m.Noun) %}
 
 {% block title %}{{ heading }} - libaraxia{% endblock %}
@@ -52,7 +60,7 @@
 {% block content %}
 <div id="add-item" data-type="{{ m.type }}"{% if request.method == 'GET' and code_value %} data-auto-lookup="1"{% endif %}{% if request.method == 'GET' and values.lookup_url %} data-lookup-url="{{ values.lookup_url }}"{% endif %} data-other-add-url="{{ other_add_url }}" data-music-add-url="{{ music_add_url or '' }}"
      class="page-frame-narrow pt-20 pb-10">
-    {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun) }}
+    {{ crumbs([(back_label, back_url)], 'Add ' ~ m.Noun, grid=back_grid) }}
     {# The page's heading card above the lookups (16.0), as on every page #}
     {{ page_heading('bookmark' if to_wishlist else section_icons[m.type], heading) }}
 
@@ -221,11 +229,12 @@
             </label>
             {% endif %}
 
-            <div class="md:col-span-2 flex justify-center">
+            <div class="md:col-span-2 flex flex-wrap justify-center gap-3">
                 <button type="submit" {% if is_book %}name="submit_book"{% endif %} id="add-item-submit"
-                        class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-lg font-medium btn">
+                        class="bg-accent hover:bg-accent-hover text-on-accent px-5 sm:px-8 py-3 rounded-lg font-medium btn">
                     {{ 'Add to Wishlist' if to_wishlist else 'Add ' ~ m.Noun }}
                 </button>
+                {{ cancel_link(back_url, grid=back_grid) }}
             </div>
         </form>
     </div>
