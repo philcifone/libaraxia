@@ -27,7 +27,8 @@ def item(title, author='An Author', audio=1, ebook='', **meta):
 def progress(item_id, value=0.5, finished=False, ebook=None):
     return {'libraryItemId': item_id, 'progress': 1 if finished else value, 'isFinished': finished,
             'startedAt': MS, 'finishedAt': MS + 86400000 * 30 if finished else None,
-            'currentTime': 100, 'duration': 36000, 'lastUpdate': MS, 'ebookProgress': ebook}
+            'currentTime': 36000 if finished else round(36000 * value), 'duration': 36000,
+            'lastUpdate': MS, 'ebookProgress': ebook}
 
 
 @pytest.fixture
@@ -426,7 +427,7 @@ def test_backup_restore_brings_links_back(app, db, people, abs_server):
 
 def test_progress_words():
     now = MS + 2 * 86400000
-    line = abs_import.progress_line({'progress': 0.43, 'currentTime': 18000, 'duration': 36720,
+    line = abs_import.progress_line({'progress': 0.43, 'currentTime': 14122, 'duration': 32842,
                                      'lastUpdate': MS, 'isFinished': False}, 'Audiobook', None, now)
     assert line == {'text': 'Audiobookshelf: 43 %, 5 h 12 min left, last listened 2 days ago.', 'unsynced': False}
     sliver = abs_import.progress_line({'progress': 0.001, 'lastUpdate': MS}, 'Audiobook', None, MS + 60 * 86400000)
@@ -526,3 +527,146 @@ def test_from_audiobookshelf_hidden_without_a_server(client, db, people):
     login(client, 'alice')
     page = client.get('/base/index').get_data(as_text=True)
     assert 'id="from_goodreads"' in page and 'id="from_audiobookshelf"' not in page
+
+
+# --- listening again: Libaraxia keeps every listen ----------------------------
+
+DAY = 86400000
+FIRST_DONE = MS + 30 * DAY                        # progress()'s finish: 14 Dec 2023
+
+
+def again(item_id, *, finished_at=None, position=0.25, updated=MS + 60 * DAY):
+    """ABS after a replay: startedAt is still the first listen's (ABS never
+    changes it), and `progress` can stay at 1 until you finish again."""
+    return {'libraryItemId': item_id, 'progress': 1, 'isFinished': bool(finished_at),
+            'startedAt': MS, 'finishedAt': finished_at, 'currentTime': 36000 * (1 if finished_at else position),
+            'duration': 36000, 'lastUpdate': updated, 'ebookProgress': None}
+
+
+@pytest.fixture
+def sessions(monkeypatch):
+    """ABS's listening sessions per item: {item id: [startedAt ms, ...]}."""
+    starts = {}
+    monkeypatch.setattr(abs_, 'listening_starts', lambda token, item_id, timeout=None: starts.get(item_id, []))
+    return starts
+
+
+def test_listening_again_then_finishing_again(app, db, people, abs_server, sessions):
+    alice = people['alice']
+    abs_server([item('Twice')], [progress('li_twice', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Twice')['id']
+
+    # Started again on 2 Feb 2024 (sessions before the first finish don't count)
+    sessions['li_twice'] = [MS + 2 * DAY, FIRST_DONE - DAY, MS + 80 * DAY, MS + 90 * DAY]
+    abs_server([item('Twice')], [again('li_twice', updated=MS + 95 * DAY)])
+    abs_import.sync(db, who(alice), 'key')
+    row = abs_import.plan(db, who(alice)).rows[0]
+    assert (row.box, row.choice, row.choices) == ('listening_again', 'again', ['again', 'later'])
+    assert row.data['progress'] == 0.25                    # from the position, not ABS's stale 1
+    assert row.adds == ['Currently Reading', 'started again 2 Feb 2024']
+    run(db, alice)
+    assert status_of(db, alice, book) == 'currently reading'
+    assert sessions_of(db, alice, book) == [('2023-11-14', '2023-12-14'), ('2024-02-02', None)]
+
+    # Still going: nothing new
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].box == 'imported'
+
+    # Finished: the open session is completed, the first one untouched
+    abs_server([item('Twice')], [again('li_twice', finished_at=MS + 100 * DAY)])
+    abs_import.sync(db, who(alice), 'key')
+    row = abs_import.plan(db, who(alice)).rows[0]
+    assert row.box == 'finished_since' and row.adds == ['Read', 'finished 22 Feb 2024']
+    run(db, alice)
+    assert status_of(db, alice, book) == 'read'
+    assert sessions_of(db, alice, book) == [('2023-11-14', '2023-12-14'), ('2024-02-02', '2024-02-22')]
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].box == 'imported'
+
+
+def test_finished_again_between_syncs(app, db, people, abs_server, sessions):
+    alice = people['alice']
+    abs_server([item('Twice')], [progress('li_twice', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Twice')['id']
+
+    sessions['li_twice'] = [MS + 80 * DAY, MS + 90 * DAY]
+    abs_server([item('Twice')], [again('li_twice', finished_at=MS + 100 * DAY)])
+    abs_import.sync(db, who(alice), 'key')
+    row = abs_import.plan(db, who(alice)).rows[0]
+    assert row.box == 'finished_again' and row.adds == ['listened again 2 Feb to 22 Feb 2024']
+    result = run(db, alice)
+    assert result['counts']['again'] == 1 and 'listened to again' in result['summary']
+    assert sessions_of(db, alice, book) == [('2023-11-14', '2023-12-14'), ('2024-02-02', '2024-02-22')]
+    assert status_of(db, alice, book) == 'read'
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].box == 'imported'
+
+
+def test_skip_and_not_now(app, db, people, abs_server, sessions):
+    alice = people['alice']
+    abs_server([item('Twice')], [progress('li_twice', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Twice')['id']
+
+    # Not now: nothing written, asked again next sync
+    abs_server([item('Twice')], [again('li_twice')])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice, {'li_twice': 'later'})
+    assert len(sessions_of(db, alice, book)) == 1 and status_of(db, alice, book) == 'read'
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].box == 'listening_again'
+
+    # Skipping a finished re-listen is remembered
+    abs_server([item('Twice')], [again('li_twice', finished_at=MS + 100 * DAY)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice, {'li_twice': 'skip'})
+    assert len(sessions_of(db, alice, book)) == 1
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].box == 'imported'
+
+
+def test_undo_listening_again(app, db, people, abs_server, sessions):
+    from utils import bulk
+    alice = people['alice']
+    abs_server([item('Twice')], [progress('li_twice', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Twice')['id']
+    abs_server([item('Twice')], [again('li_twice')])            # no sessions on ABS: start unknown
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].adds == ['Currently Reading', 'a new session, start date unknown']
+    edit_id = run(db, alice)['edit_id']
+    assert sessions_of(db, alice, book)[-1] == (None, None)
+    bulk.undo(db, who(alice), edit_id)
+    assert status_of(db, alice, book) == 'read' and sessions_of(db, alice, book) == [('2023-11-14', '2023-12-14')]
+    assert db.execute('SELECT finished_at FROM abs_links').fetchone()[0] == FIRST_DONE
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].box == 'listening_again'
+
+
+def test_item_page_says_a_newer_finish_is_unsynced():
+    link = {'finished_at': FIRST_DONE}
+    newer = abs_import.progress_line({'isFinished': True, 'finishedAt': MS + 100 * DAY}, 'Audiobook', link)
+    assert newer['unsynced']
+    same = abs_import.progress_line({'isFinished': True, 'finishedAt': FIRST_DONE}, 'Audiobook', link)
+    assert not same['unsynced']
+
+
+def test_review_page_shows_a_relisten(client, db, people, abs_server, sessions):
+    alice = people['alice']
+    connect(db, alice)
+    abs_server([item('Twice')], [progress('li_twice', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    sessions['li_twice'] = [MS + 80 * DAY]
+    abs_server([item('Twice')], [again('li_twice')])
+    login(client, 'alice')
+    client.post('/abs/sync')
+    page = client.get('/abs/review').get_data(as_text=True)
+    assert 'data-box="listening_again"' in page and '25 %, started again 2 Feb 2024' in page
+    assert 'Not now (asked again next sync)' in page and unbalanced_tags(page) == []

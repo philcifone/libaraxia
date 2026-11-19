@@ -270,3 +270,19 @@ def test_unreadable_key_asks_to_reconnect(client, db, people, fake):
     login(client, 'alice')
     page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-abs-reconnect' in page and 'data-abs-connected' not in page
+
+
+def test_listening_starts_pages_and_keeps_only_times(app, monkeypatch):
+    monkeypatch.setenv('AUDIOBOOKSHELF_URL', 'http://192.168.1.171:13378')
+    pages = {0: {'sessions': [{'startedAt': 3, 'deviceInfo': {'ip': 'x'}}, {'startedAt': 2}], 'numPages': 2},
+             1: {'sessions': [{'startedAt': 1}, {'startedAt': None}], 'numPages': 2}}
+    seen = []
+
+    def fake_call(token, path, *, params=None, **kw):
+        seen.append((path, params['page'], params['itemsPerPage']))
+        return pages[params['page']]
+    monkeypatch.setattr(abs_, '_call', fake_call)
+    assert abs_.listening_starts('key', 'li_one') == [3, 2, 1]
+    assert seen == [('/api/me/item/listening-sessions/li_one', 0, 50), ('/api/me/item/listening-sessions/li_one', 1, 50)]
+    with pytest.raises(abs_.AbsError):
+        abs_.listening_starts('key', '../me')                  # ids are checked before any call

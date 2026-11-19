@@ -78,7 +78,9 @@
                                 {%- if item.narrator and d.format == 'Audiobook' %} · read by {{ item.narrator }}{% endif %}
                                 {%- if item.duration and d.format == 'Audiobook' %} · {{ hours(item.duration) }}{% endif %}
                                 {%- if d.finished %} · finished{% if d.finished_on %} {{ d.finished_on|human_date }}{% endif %}
-                                {%- elif d.progress %} · {{ (d.progress * 100)|round|int }} %{% if d.started_on %}, started {{ d.started_on|human_date }}{% endif %}
+                                {%- elif d.progress %} · {{ (d.progress * 100)|round|int }} %
+                                    {%- if key == 'listening_again' %}{% if d.again_started_on %}, started again {{ d.again_started_on|human_date }}{% endif %}
+                                    {%- elif d.started_on %}, started {{ d.started_on|human_date }}{% endif %}
                                 {%- endif %}
                                 {%- if abs_link(row.item_id) %} · <a href="{{ abs_link(row.item_id) }}" class="text-accent underline" rel="noopener" target="_blank">on Audiobookshelf</a>{% endif %}
                             </p>

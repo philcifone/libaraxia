@@ -276,6 +276,29 @@ def progress(token, item_id, timeout=QUICK_TIMEOUT):
     return _progress_row(data) if isinstance(data, dict) else None
 
 
+SESSION_PAGES = 5            # 5 x 50 listening sessions per item is years of listening
+
+
+def listening_starts(token, item_id, timeout=TIMEOUT):
+    """When each of your listening sessions on an item began (ABS ms), in
+    no particular order: how the import dates a re-listen, since ABS's
+    progress record keeps only the first start (its startedAt is when the
+    record was made, ABS server/models/MediaProgress.js). Only the times
+    are kept; the sessions also carry device details, which go nowhere."""
+    starts = []
+    for page in range(SESSION_PAGES):
+        data = _call(token, f'/api/me/item/listening-sessions/{_check_id(item_id)}',
+                     params={'itemsPerPage': 50, 'page': page}, timeout=timeout, max_bytes=MAX_ME)
+        sessions = data.get('sessions') if isinstance(data, dict) else None
+        if not sessions:
+            break
+        starts += [int(s['startedAt']) for s in sessions
+                   if isinstance(s, dict) and isinstance(s.get('startedAt'), (int, float))]
+        if page + 1 >= int(data.get('numPages') or 0):
+            break
+    return starts
+
+
 def cover(token, item_id):
     """An item's cover image, as bytes (the caller validates it with Pillow)."""
     return _call(token, f'/api/items/{_check_id(item_id)}/cover', max_bytes=MAX_COVER, raw=True)

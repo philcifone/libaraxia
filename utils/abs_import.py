@@ -16,6 +16,10 @@ Rules the code keeps:
   - Only what you've started comes in (progress above 0, or finished);
     "Also books I haven't started" adds the rest, default skip. Podcasts
     and a book at 0 % never come in.
+  - Libaraxia keeps the history, ABS only says what's new: a book finished
+    before and listened to again adds a session (Listening again / Finished
+    again), dated from ABS's listening sessions, since its progress record
+    remembers only the first start. Earlier sessions are never touched.
   - Matching only looks at your own books and your household's shelf
     (BookIndex); your wishlist entries don't match (the listen becomes its
     own unowned row and the wish stays). abs_links remembers every ABS item
@@ -59,6 +63,16 @@ BOXES = {
         'title': 'Finished since your last sync',
         'text': 'Imported before as in progress; now finished. Completes that session and marks it Read.',
         'default': 'complete', 'choices': ['skip']},
+    'finished_again': {
+        'title': 'Finished again',
+        'text': "Finished before, and again since you last imported it. Adds another session with this "
+                "listen's dates; your earlier ones stay.",
+        'default': 'again', 'choices': ['skip']},
+    'listening_again': {
+        'title': 'Listening again',
+        'text': "Finished before, and started again. Adds a session from the day you started again and "
+                "marks it Currently Reading; a later sync finishes it. Your earlier ones stay.",
+        'default': 'again', 'choices': ['later']},
     'not_started': {
         'title': "Not started",
         'text': "In your Audiobookshelf libraries, never opened. Skipped unless you choose otherwise.",
@@ -78,6 +92,8 @@ CHOICES = {
     'separate': 'Add as its own book, unshelved',
     'complete': 'Mark finished',
     'want':     'Add as Want to Read, unshelved',
+    'again':    'Add this listen',
+    'later':    'Not now (asked again next sync)',
     'skip':     'Skip',
 }
 
@@ -108,10 +124,18 @@ def item_format(item):
 
 def _progress_of(fmt, prog):
     """How far along, 0 to 1: the listening for an audiobook, the reading
-    for an ebook."""
+    for an ebook. An audiobook's comes from its position when ABS gives
+    one: replaying a finished book leaves `progress` at 1 until you pass
+    the end again (ABS only resets it on "mark as not finished")."""
     if not prog:
         return 0
     value = prog.get('progress') if fmt == AUDIOBOOK else prog.get('ebookProgress')
+    if fmt == AUDIOBOOK and not prog.get('isFinished'):
+        try:
+            if float(prog.get('duration') or 0) > 0:
+                value = float(prog.get('currentTime') or 0) / float(prog['duration'])
+        except (TypeError, ValueError):
+            pass
     try:
         return max(0.0, min(1.0, float(value or 0)))
     except (TypeError, ValueError):
@@ -129,7 +153,35 @@ def _entry(item, prog):
         'started_on': _day(prog.get('startedAt')) if prog else None,
         'finished_on': _day(prog.get('finishedAt')) if finished else None,
         'finished_ms': int(prog.get('finishedAt') or 0) if finished else 0,
+        'updated_ms': int(prog.get('lastUpdate') or 0) if prog else 0,
     }
+
+
+def _listened_again(d, link):
+    """'finished' or 'listening' when ABS shows a listen after the one a
+    link recorded finishing, else None."""
+    if not link or link['outcome'] == 'skipped' or not link['finished_at']:
+        return None
+    if d['finished']:
+        return 'finished' if _ms_after(d['finished_ms'], link['finished_at']) else None
+    if d['progress'] > 0 and d['updated_ms'] > int(link['finished_at']):
+        return 'listening'
+    return None
+
+
+AGAIN_LOOKUPS = 50          # listening-session fetches per sync, at most
+
+
+def _again_started(token, item_id, after_ms):
+    """The day your first ABS listening session after `after_ms` began, or
+    None (none recorded, or the server didn't answer: the session is then
+    undated at the start)."""
+    try:
+        later = [ms for ms in abs_.listening_starts(token, item_id) if ms > after_ms]
+    except abs_.AbsError as e:
+        logger.info('Audiobookshelf listening sessions for %s: %s', item_id, type(e).__name__)
+        return None
+    return _day(min(later)) if later else None
 
 
 def sync(conn, user, token, include_unstarted=False):
@@ -150,6 +202,16 @@ def sync(conn, user, token, include_unstarted=False):
         elif include_unstarted:
             entry['not_started'] = True
             staged.append((item_id, entry))
+
+    # A re-listen of a book you finished before: when it began, from ABS's
+    # listening sessions (audio only; an ebook re-read stays undated)
+    links = _links(conn, user.id)
+    lookups = 0
+    for item_id, entry in staged:
+        link = links.get(item_id)
+        if _listened_again(entry, link) and entry['format'] == AUDIOBOOK and lookups < AGAIN_LOOKUPS:
+            lookups += 1
+            entry['again_started_on'] = _again_started(token, item_id, int(link['finished_at']))
 
     if not conn.in_transaction:
         conn.execute('BEGIN')
@@ -265,8 +327,10 @@ def writes_for(row, have):
     'complete_session', 'fill'}, or None for nothing. `have` is your data on
     row.book. The planner words it (adds); apply (step 5) does it."""
     d, choice = row.data, row.choice
-    if choice in (None, 'skip'):
+    if choice in (None, 'skip', 'later'):
         return None
+    if choice == 'again':
+        return _again_writes(row, have)
     status = _status_for(d, choice)
     session = None
     if choice != 'want' and (d['started_on'] or d['finished_on']):
@@ -298,6 +362,30 @@ def writes_for(row, have):
     return w
 
 
+def _again_writes(row, have):
+    """Listening again: an open session from the day you started again and
+    Currently Reading. Finished again: the open session you have finished,
+    else a new one with this listen's dates, and Read. Earlier sessions are
+    left as they are."""
+    d = row.data
+    have = have or {'status': None, 'sessions': []}
+    open_ = [s for s in have['sessions'] if s[2] is None]
+    w = {'create': False, 'status': None, 'session': None, 'complete_session': None}
+    if row.box == 'listening_again':
+        if have['status'] != 'currently reading':
+            w['status'] = 'currently reading'
+        if not open_:                       # unless you've started one by hand
+            w['session'] = {'started': d.get('again_started_on'), 'completed': None}
+        return w
+    if have['status'] != 'read':
+        w['status'] = 'read'
+    if open_:
+        w['complete_session'] = {'id': open_[-1][0], 'completed': d['finished_on']}
+    else:
+        w['session'] = {'started': d.get('again_started_on'), 'completed': d['finished_on']}
+    return w
+
+
 def _span(started, completed):
     """'8 Mar to 18 Mar 2026' (the year once when both share it)."""
     end = human_date(completed)
@@ -322,10 +410,13 @@ def _words(row, w):
         out.append(STATUS_WORDS[w['status']])
     s = w.get('session')
     if s:
+        again = 'again ' if row.box in ('listening_again', 'finished_again') else ''
         if s['completed']:
-            out.append(f"{verb} {_span(s['started'], s['completed'])}")
+            out.append(f"{verb} {again}{_span(s['started'], s['completed'])}")
+        elif s['started']:
+            out.append(f"started {again}{human_date(s['started'])}")
         else:
-            out.append(f"started {human_date(s['started'])}")
+            out.append(f"a new session, start date unknown")
     if w.get('complete_session'):
         out.append(f"finished {human_date(w['complete_session']['completed'])}")
     return out
@@ -358,6 +449,9 @@ def plan(conn, user):
         if link:
             if link['outcome'] == 'skipped' or link['book_id'] is None:
                 row.box = 'skipped_before'
+            elif _listened_again(d, link):
+                row.box = f'{_listened_again(d, link)}_again'
+                row.book = _book_summary(conn, link['book_id'], owners)
             elif d['finished'] and _ms_after(d['finished_ms'], link['finished_at']):
                 row.box = 'finished_since'
                 row.book = _book_summary(conn, link['book_id'], owners)
@@ -532,7 +626,7 @@ def _write_row(conn, user, row, edit_id):
     """Write one row and its journal item. Returns (book_id, session_id)."""
     from models import can_view_book
     d, w = row.data, row.w
-    when = d.get('started_on') or d.get('finished_on')
+    when = d.get('again_started_on') or d.get('started_on') or d.get('finished_on')
     session_id = None
     if w['create']:
         book_id = _create_book(conn, user.id, d)
@@ -576,8 +670,10 @@ def _write_row(conn, user, row, edit_id):
     return book_id, session_id
 
 
-def _link(conn, user, row, outcome, book_id, session_id, params):
-    """Record what an ABS item became, remembering the old link for undo."""
+def _link(conn, user, row, outcome, book_id, session_id, params, reopen=False):
+    """Record what an ABS item became, remembering the old link for undo.
+    `reopen` (Listening again) clears the finish it recorded, so the sync
+    that sees this listen finished completes its session."""
     d = row.data
     old = row.link
     if old is None:
@@ -590,14 +686,16 @@ def _link(conn, user, row, outcome, book_id, session_id, params):
         ON CONFLICT (user_id, abs_item_id) DO UPDATE SET
             book_id = excluded.book_id, outcome = excluded.outcome, asin = excluded.asin,
             session_id = COALESCE(excluded.session_id, abs_links.session_id),
-            finished_at = COALESCE(excluded.finished_at, abs_links.finished_at),
+            finished_at = CASE WHEN ? THEN NULL ELSE COALESCE(excluded.finished_at, abs_links.finished_at) END,
             linked_at = CURRENT_TIMESTAMP
     ''', (user.id, row.item_id, book_id, outcome, d['item'].get('asin') or None, session_id,
-          d['finished_ms'] or None))
+          d['finished_ms'] or None, reopen))
 
 
 SUMMARY_WORDS = (('created', 'added'), ('attached', 'added to books you have'),
-                 ('completed', 'marked finished'), ('skipped', 'skipped'), ('error', 'failed'))
+                 ('completed', 'marked finished'), ('again', 'listened to again'),
+                 ('skipped', 'skipped'), ('error', 'failed'))
+FOLLOW_UPS = ('finished_since', 'finished_again', 'listening_again')    # rows on a book already linked
 
 
 def apply(conn, user, fingerprint):
@@ -623,11 +721,15 @@ def apply(conn, user, fingerprint):
     written = 0
 
     for row in current.rows:
-        if row.box == 'imported' or row.choice is None:
+        if row.box == 'imported' or row.choice in (None, 'later'):
             continue
         if row.choice == 'skip':
             if row.box in SKIP_REMEMBERED:
                 _link(conn, user, row, 'skipped', None, None, params)
+                counts['skipped'] += 1
+            elif row.box == 'finished_again':
+                # Remembered by recording this finish, without a session
+                _link(conn, user, row, row.link['outcome'], row.link['book_id'], None, params)
                 counts['skipped'] += 1
             continue
         conn.execute('SAVEPOINT abs_row')
@@ -638,12 +740,13 @@ def apply(conn, user, fingerprint):
             else:
                 book_id, session_id = row.book['id'], None      # attached, nothing missing
             outcome = 'created' if row.w['create'] else 'attached'
-            if row.box == 'finished_since':
+            if row.box in FOLLOW_UPS:
                 outcome = row.link['outcome']
-                counts['completed'] += 1
+                counts['completed' if row.box == 'finished_since' else 'again'] += 1
             else:
                 counts[outcome] += 1
-            _link(conn, user, row, outcome, book_id, session_id, params)
+            _link(conn, user, row, outcome, book_id, session_id, params,
+                  reopen=row.box == 'listening_again')
             conn.execute('RELEASE abs_row')
         except Exception:
             logger.exception('Audiobookshelf import: item %s (%r) failed', row.item_id, row.title)
@@ -831,7 +934,8 @@ def progress_line(prog, fmt, link, now_ms=None):
     if prog.get('isFinished'):
         day = _day(prog.get('finishedAt'))
         text = f'Finished in Audiobookshelf on {human_date(day)}.' if day else 'Finished in Audiobookshelf.'
-        return {'text': text, 'unsynced': not (link and link.get('finished_at'))}
+        recorded = link and link.get('finished_at')
+        return {'text': text, 'unsynced': not recorded or _ms_after(prog.get('finishedAt') or 0, recorded)}
     share = _progress_of(fmt, prog)
     bits = ['under 1 %' if 0 < share < 0.005 else f'{round(share * 100)} %']
     if fmt == AUDIOBOOK and prog.get('duration'):

@@ -248,11 +248,14 @@ item id; store in `abs_staging`, go to the review. Four requests and about
 | New finished | finished, no match, no link | add unowned (Audiobook or Ebook), Read, one session | skip |
 | New in progress | not finished, no match, no link | add unowned, Currently Reading, session with a start date | skip |
 | Matches your copy | `BookIndex` match on your shelf or the household's | attach: status and session on that copy | add as a separate audiobook or ebook, skip |
-| Finished since last sync | linked, ABS now finished (or finished again later than `finished_at`) | complete the open session (or add a new one for a re-listen) and set Read | skip |
+| Finished since last sync | linked as in progress (`finished_at` NULL), ABS now finished | complete the open session and set Read | skip |
+| Finished again | linked as finished, ABS finished later than `finished_at` | another session, started on the first ABS listening session after the old finish; Read (an open session of yours is completed instead) | skip (remembered: the new finish is recorded) |
+| Listening again | linked as finished, ABS not finished, position above 0, `lastUpdate` after `finished_at` | an open session from the day you started again, Currently Reading; the link's `finished_at` is cleared so the finish arrives as Finished since | not now (asked again next sync) |
 | Not started (option) | no progress, no match, no link | skip | add unowned, Want to Read, no session |
 | Imported before | linked, nothing new | hidden, counted | — |
 | Skipped or deleted before | link with `skipped`, or `book_id` NULL | skip | add |
 
+- **Re-listens (added 2026-11-19, Phil: "keep our own record"):** ABS keeps one progress record per book; its `startedAt` is the record's creation and never moves, and a replay clears `finishedAt` until you finish again (`server/models/MediaProgress.js`). So the start of a re-listen comes from `GET /api/me/item/listening-sessions/<item>` (`audiobookshelf.listening_starts`, times only; at most 50 lookups per sync); an ebook re-read, or a server with no sessions, gives an undated start. An audiobook's progress is its position (`currentTime / duration`), since `progress` can stay at 1 through a replay. Earlier sessions are never changed.
 - **Matching:** `book_matching.BookIndex(conn, user_id).match(isbns=, title=,
   author=)`: your own books and your household's, never anyone else's. ISBN
   when ABS has one, else title (with subtitle forms) and author. **ASIN:**
