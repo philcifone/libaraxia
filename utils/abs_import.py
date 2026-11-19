@@ -6,7 +6,8 @@ for what you've listened to or read on the site's ABS server.
             abs_staging (replacing the last sync); writes nothing else
   plan()    read-only: sort every staged item into a box with a default
             choice and what it would write, plus a fingerprint
-  apply()   (step 5) re-plan, refuse if the fingerprint moved, write
+  apply()   re-plan, refuse if the fingerprint moved, write row by row
+            (a SAVEPOINT each), journalled in bulk_edits for undo
 
 Rules the code keeps:
   - Nothing from ABS is owned unless the catalogue already says so (Phil,
@@ -25,6 +26,7 @@ blueprint (blueprints/audiobookshelf.py) wraps it.
 """
 import hashlib
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -32,6 +34,8 @@ from utils import audiobookshelf as abs_
 from utils.book_matching import BookIndex
 from utils.loans import human_date
 from utils.media import AUDIOBOOK, EBOOK, only, BOOK
+
+logger = logging.getLogger(__name__)
 
 STAGING_HOURS = 24        # a sync waits this long for its review
 
@@ -182,6 +186,7 @@ class Row:
     book: dict = None             # the matched or linked book (id, title, author, owner, format, owned)
     link: dict = None             # the abs_links row, if any
     before: dict = None           # your data on that book now (fingerprinted)
+    w: dict = None                # writes_for(): what the choice writes
     adds: list = field(default_factory=list)        # what the choice writes, worded
 
     @property
@@ -383,7 +388,8 @@ def plan(conn, user):
         have = yours.get(row.book['id']) if row.book else None
         if row.book:
             row.before = {'book': [row.book['id'], row.book['format']], 'have': have}
-        row.adds = _words(row, writes_for(row, have))
+        row.w = writes_for(row, have)
+        row.adds = _words(row, row.w)
         rows.append(row)
 
     order = list(BOXES)
@@ -416,3 +422,366 @@ def hours(seconds):
     """ABS seconds as '16 h 10 min' for the review page."""
     from utils.media import format_runtime
     return format_runtime(round((seconds or 0) / 60)) if seconds else ''
+
+
+# ------------------------------------------------------------------ apply
+# Each written row journals one bulk_edit_items row (bulk edit's undo), with
+# only the parts it wrote: "book" (a created book), "status", "sessions" (the
+# ids added), "completed" (an open session it finished), "fill" (narrator and
+# length filled on your own audiobook row). `before` is NULL for a created
+# book. abs_links isn't journalled per item: bulk_edits.params lists the
+# links this apply made or changed, and undo puts those back (_after_undo).
+
+class StalePlan(PlanError):
+    """The data moved between the review and Import. `plan` is the fresh one."""
+    def __init__(self, plan):
+        super().__init__('Something changed since you looked; check the review and import again.')
+        self.plan = plan
+
+
+BOOK_PART = ('title', 'author', 'format', 'owned', 'narrator', 'runtime_minutes', 'removed_at')
+MAX_DESCRIPTION = 5000
+SKIP_REMEMBERED = ('finished_new', 'progress_new', 'match')   # a skip here is asked again only as "skipped before"
+
+
+def _part(conn, user_id, book_id, name, ids=()):
+    if name == 'sessions':
+        marks = ','.join('?' * len(ids)) or 'NULL'
+        return [dict(r) for r in conn.execute(
+            f'SELECT session_id, date_started, date_completed FROM reading_sessions '
+            f'WHERE user_id = ? AND book_id = ? AND session_id IN ({marks}) ORDER BY session_id',
+            (user_id, book_id, *ids))]
+    if name == 'completed':
+        row = conn.execute('SELECT session_id, date_started, date_completed FROM reading_sessions '
+                           'WHERE user_id = ? AND book_id = ? AND session_id = ?',
+                           (user_id, book_id, ids[0] if ids else None)).fetchone()
+        return None if row is None else dict(row)
+    if name == 'book':
+        row = conn.execute(f"SELECT {', '.join(BOOK_PART)} FROM books WHERE id = ?", (book_id,)).fetchone()
+        return None if row is None else dict(row)
+    if name == 'fill':
+        row = conn.execute('SELECT narrator, runtime_minutes FROM books WHERE id = ?', (book_id,)).fetchone()
+        return None if row is None else dict(row)
+    row = conn.execute('SELECT status, created_at, updated_at, quiet FROM collections '
+                       'WHERE book_id = ? AND user_id = ?', (book_id, user_id)).fetchone()
+    return None if row is None else dict(row)
+
+
+def _snapshot(conn, user_id, book_id, names, session_ids=(), completed_id=None):
+    return {name: _part(conn, user_id, book_id, name,
+                        [completed_id] if name == 'completed' else session_ids) for name in names}
+
+
+def _create_book(conn, user_id, d):
+    """A new unowned book from a staged item. Never owned (Phil's rule)."""
+    item, fmt = d['item'], d['format']
+    audio = fmt == AUDIOBOOK
+    cols = {
+        'title': item['title'] or 'Untitled', 'subtitle': item.get('subtitle') or None,
+        'author': item['author'] or 'Unknown', 'publisher': item.get('publisher') or None,
+        'publish_year': item.get('year') or None, 'isbn': item.get('isbn') or None,
+        'genre': (item.get('genres') or [None])[0],
+        'description': (item.get('description') or '')[:MAX_DESCRIPTION] or None,
+        'added_by': user_id, 'owned': 0, 'format': fmt,
+        'narrator': (item.get('narrator') or None) if audio else None,
+        'runtime_minutes': (round(item['duration'] / 60) or None) if audio and item.get('duration') else None,
+    }
+    # Dated when you started, so a first import doesn't flood friends' feeds
+    # as "added today" (the column default covers an undated one)
+    when = d.get('started_on') or d.get('finished_on')
+    if when:
+        cols['created_at'] = when
+    return conn.execute(f"INSERT INTO books ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
+                        list(cols.values())).lastrowid
+
+
+def _set_status(conn, user_id, book_id, status, when):
+    """A status, quiet (out of friends' feed, migration 031): new, or
+    replacing Want to Read (the plan only ever replaces that)."""
+    if conn.execute('SELECT 1 FROM collections WHERE user_id = ? AND book_id = ?', (user_id, book_id)).fetchone():
+        conn.execute('UPDATE collections SET status = ?, quiet = 1, updated_at = CURRENT_TIMESTAMP '
+                     'WHERE user_id = ? AND book_id = ?', (status, user_id, book_id))
+    elif when:
+        conn.execute('INSERT INTO collections (user_id, book_id, status, created_at, updated_at, quiet) '
+                     'VALUES (?, ?, ?, ?, ?, 1)', (user_id, book_id, status, when, when))
+    else:
+        conn.execute('INSERT INTO collections (user_id, book_id, status, quiet) VALUES (?, ?, ?, 1)',
+                     (user_id, book_id, status))
+
+
+def _fill(conn, user_id, book_id, d):
+    """Narrator and length onto your own Audiobook row, only where empty.
+    Returns True if anything would be filled (checked before writing)."""
+    item = d['item']
+    if d['format'] != AUDIOBOOK:
+        return False
+    book = conn.execute('SELECT added_by, format, narrator, runtime_minutes FROM books WHERE id = ?',
+                        (book_id,)).fetchone()
+    if not book or book['added_by'] != user_id or book['format'] != AUDIOBOOK:
+        return False
+    narrator = item.get('narrator') if not book['narrator'] else None
+    minutes = round(item['duration'] / 60) if not book['runtime_minutes'] and item.get('duration') else None
+    if not (narrator or minutes):
+        return False
+    conn.execute('UPDATE books SET narrator = COALESCE(narrator, ?), runtime_minutes = COALESCE(runtime_minutes, ?) '
+                 'WHERE id = ? AND added_by = ?', (narrator or None, minutes or None, book_id, user_id))
+    return True
+
+
+def _write_row(conn, user, row, edit_id):
+    """Write one row and its journal item. Returns (book_id, session_id)."""
+    from models import can_view_book
+    d, w = row.data, row.w
+    when = d.get('started_on') or d.get('finished_on')
+    session_id = None
+    if w['create']:
+        book_id = _create_book(conn, user.id, d)
+        before, names = None, ['book']
+    else:
+        book_id = row.book['id']
+        # Checked again now, as for any write onto a book id
+        if not can_view_book(conn, user, book_id):
+            raise PlanError('Not found')
+        names = (['status'] if w.get('status') else []) + (['completed'] if w.get('complete_session') else [])
+        completed_id = w['complete_session']['id'] if w.get('complete_session') else None
+        before = _snapshot(conn, user.id, book_id, names, completed_id=completed_id)
+        if w.get('session'):
+            before['sessions'] = []
+        fill_before = _part(conn, user.id, book_id, 'fill')
+        if _fill(conn, user.id, book_id, d):
+            names.append('fill')
+            before['fill'] = fill_before
+
+    if w.get('status'):
+        _set_status(conn, user.id, book_id, w['status'], when)
+        if w['create']:
+            names.append('status')
+    ids = []
+    if w.get('session'):
+        s = w['session']
+        session_id = conn.execute('INSERT INTO reading_sessions (user_id, book_id, date_started, date_completed) '
+                                  'VALUES (?, ?, ?, ?)', (user.id, book_id, s['started'], s['completed'])).lastrowid
+        ids.append(session_id)
+        names.append('sessions')
+    completed_id = None
+    if w.get('complete_session'):
+        completed_id = session_id = w['complete_session']['id']
+        conn.execute('UPDATE reading_sessions SET date_completed = ? '
+                     'WHERE session_id = ? AND user_id = ? AND book_id = ? AND date_completed IS NULL',
+                     (w['complete_session']['completed'], completed_id, user.id, book_id))
+    after = _snapshot(conn, user.id, book_id, names, ids, completed_id)
+    conn.execute('INSERT INTO bulk_edit_items (edit_id, book_id, before, after) VALUES (?, ?, ?, ?)',
+                 (edit_id, book_id, None if before is None else json.dumps(before, sort_keys=True),
+                  json.dumps(after, sort_keys=True)))
+    return book_id, session_id
+
+
+def _link(conn, user, row, outcome, book_id, session_id, params):
+    """Record what an ABS item became, remembering the old link for undo."""
+    d = row.data
+    old = row.link
+    if old is None:
+        params['created'].append(row.item_id)
+    elif row.item_id not in params['updated']:
+        params['updated'][row.item_id] = {k: old[k] for k in ('outcome', 'book_id', 'session_id', 'finished_at')}
+    conn.execute('''
+        INSERT INTO abs_links (user_id, abs_item_id, book_id, outcome, asin, session_id, finished_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (user_id, abs_item_id) DO UPDATE SET
+            book_id = excluded.book_id, outcome = excluded.outcome, asin = excluded.asin,
+            session_id = COALESCE(excluded.session_id, abs_links.session_id),
+            finished_at = COALESCE(excluded.finished_at, abs_links.finished_at),
+            linked_at = CURRENT_TIMESTAMP
+    ''', (user.id, row.item_id, book_id, outcome, d['item'].get('asin') or None, session_id,
+          d['finished_ms'] or None))
+
+
+SUMMARY_WORDS = (('created', 'added'), ('attached', 'added to books you have'),
+                 ('completed', 'marked finished'), ('skipped', 'skipped'), ('error', 'failed'))
+
+
+def apply(conn, user, fingerprint):
+    """Write the plan the user reviewed. Raises StalePlan (with the fresh
+    plan) if anything moved since `fingerprint`. A row that fails leaves
+    nothing behind and the rest carry on. Deletes the staging and commits.
+    Returns {'edit_id', 'summary', 'counts'}."""
+    from utils.bulk import KEEP_DAYS
+    current = plan(conn, user)
+    if current is None:
+        raise PlanError('Sync with Audiobookshelf first.')
+    if current.fingerprint != fingerprint:
+        raise StalePlan(current)
+
+    conn.execute("DELETE FROM bulk_edits WHERE created_at < datetime('now', ?)", (f'-{KEEP_DAYS} days',))
+    # One transaction: without it the first SAVEPOINT's RELEASE would commit
+    if not conn.in_transaction:
+        conn.execute('BEGIN')
+    edit_id = conn.execute("INSERT INTO bulk_edits (user_id, action, params, summary, item_count) "
+                           "VALUES (?, 'audiobookshelf', '{}', '', 0)", (user.id,)).lastrowid
+    params = {'edit_id': edit_id, 'created': [], 'updated': {}}
+    counts = {key: 0 for key, _ in SUMMARY_WORDS}
+    written = 0
+
+    for row in current.rows:
+        if row.box == 'imported' or row.choice is None:
+            continue
+        if row.choice == 'skip':
+            if row.box in SKIP_REMEMBERED:
+                _link(conn, user, row, 'skipped', None, None, params)
+                counts['skipped'] += 1
+            continue
+        conn.execute('SAVEPOINT abs_row')
+        try:
+            if row.writes:
+                book_id, session_id = _write_row(conn, user, row, edit_id)
+                written += 1
+            else:
+                book_id, session_id = row.book['id'], None      # attached, nothing missing
+            outcome = 'created' if row.w['create'] else 'attached'
+            if row.box == 'finished_since':
+                outcome = row.link['outcome']
+                counts['completed'] += 1
+            else:
+                counts[outcome] += 1
+            _link(conn, user, row, outcome, book_id, session_id, params)
+            conn.execute('RELEASE abs_row')
+        except Exception:
+            logger.exception('Audiobookshelf import: item %s (%r) failed', row.item_id, row.title)
+            conn.execute('ROLLBACK TO abs_row')
+            conn.execute('RELEASE abs_row')
+            counts['error'] += 1
+
+    bits = [f'{counts[k]} {words}' for k, words in SUMMARY_WORDS if counts.get(k)]
+    summary = 'Audiobookshelf import: ' + (', '.join(bits) if bits else 'nothing written')
+    if written or params['created'] or params['updated']:
+        conn.execute('UPDATE bulk_edits SET params = ?, summary = ?, item_count = ? WHERE id = ?',
+                     (json.dumps(params, sort_keys=True), summary, written, edit_id))
+    else:
+        conn.execute('DELETE FROM bulk_edits WHERE id = ?', (edit_id,))
+        edit_id = None
+    conn.execute('DELETE FROM abs_staging WHERE user_id = ?', (user.id,))
+    conn.commit()
+    return {'edit_id': edit_id, 'summary': summary, 'counts': counts}
+
+
+# ------------------------------------------------------------------ covers
+
+COVER_SECONDS = 15
+
+
+def fetch_covers(conn, user, token, budget=COVER_SECONDS):
+    """Covers from ABS for books the import created that have none, until
+    the time budget runs out; the rest are tried on the next import.
+    Returns (fetched, left). Commits after each cover."""
+    import time
+    from io import BytesIO
+    from PIL import Image
+    from utils.book_utils import placeholder_reason, save_cover_image
+
+    rows = conn.execute('''
+        SELECT l.abs_item_id, b.id FROM abs_links l JOIN books b ON b.id = l.book_id
+        WHERE l.user_id = ? AND l.outcome = 'created' AND b.added_by = ?
+          AND (b.cover_image_url IS NULL OR b.cover_image_url = '')
+        ORDER BY l.id''', (user.id, user.id)).fetchall()
+    deadline = time.monotonic() + budget
+    fetched = 0
+    for i, r in enumerate(rows):
+        if time.monotonic() > deadline:
+            return fetched, len(rows) - i
+        try:
+            img = Image.open(BytesIO(abs_.cover(token, r['abs_item_id'])))
+            img.load()
+            if placeholder_reason(img):
+                continue
+            path = save_cover_image(img)
+        except Exception as e:          # AbsError, or not an image Pillow can read
+            logger.info('Audiobookshelf cover for %s: %s', r['abs_item_id'], type(e).__name__)
+            continue
+        conn.execute("UPDATE books SET cover_image_url = ? WHERE id = ? AND added_by = ? "
+                     "AND (cover_image_url IS NULL OR cover_image_url = '')", (path, r['id'], user.id))
+        conn.commit()
+        fetched += 1
+    return fetched, 0
+
+
+# ------------------------------------------------------------------ undo (through the bulk journal)
+
+def _journal_after(conn, params, book_id):
+    item = conn.execute('SELECT after FROM bulk_edit_items WHERE edit_id = ? AND book_id = ?',
+                        (params.get('edit_id'), book_id)).fetchone()
+    return json.loads(item['after']) if item and item['after'] else {}
+
+
+def _current(conn, user, book_id, params):
+    """The parts the import wrote, as they are now (undo's guard compares
+    this with the journalled `after`)."""
+    after = _journal_after(conn, params, book_id)
+    ids = [s['session_id'] for s in after.get('sessions') or []]
+    completed = (after.get('completed') or {}).get('session_id')
+    return _snapshot(conn, user.id, book_id, list(after), ids, completed)
+
+
+def _restore(conn, user, book_id, before, after, params):
+    from models import other_users_with_book_data
+    from utils.goodreads_plan import _yours_beyond
+    from utils.image_utils import delete_image_file, is_safe_upload_path
+    if before is None:
+        # A book the import created: deleted only if nobody else has data on
+        # it and you've added nothing of your own since (Goodreads' rule)
+        book = conn.execute('SELECT added_by, cover_image_url FROM books WHERE id = ?', (book_id,)).fetchone()
+        if (book is None or book['added_by'] != user.id
+                or other_users_with_book_data(conn, book_id, user.id)
+                or _yours_beyond(conn, user, book_id, after)):
+            return False
+        conn.execute('DELETE FROM books WHERE id = ? AND added_by = ?', (book_id, user.id))
+        if book['cover_image_url'] and is_safe_upload_path(book['cover_image_url']):
+            delete_image_file(book['cover_image_url'])
+        return True
+    for name, was in before.items():
+        if name == 'sessions':
+            conn.executemany('DELETE FROM reading_sessions WHERE session_id = ? AND user_id = ? AND book_id = ?',
+                             [(s['session_id'], user.id, book_id) for s in after.get('sessions') or []])
+        elif name == 'status':
+            if was is None:
+                conn.execute('DELETE FROM collections WHERE user_id = ? AND book_id = ?', (user.id, book_id))
+            else:
+                conn.execute('UPDATE collections SET status = ?, created_at = ?, updated_at = ?, quiet = ? '
+                             'WHERE user_id = ? AND book_id = ?',
+                             (was['status'], was['created_at'], was['updated_at'], was['quiet'], user.id, book_id))
+        elif name == 'completed' and was is not None:
+            conn.execute('UPDATE reading_sessions SET date_completed = ? WHERE session_id = ? AND user_id = ?',
+                         (was['date_completed'], was['session_id'], user.id))
+        elif name == 'fill' and was is not None:
+            conn.execute('UPDATE books SET narrator = ?, runtime_minutes = ? WHERE id = ? AND added_by = ?',
+                         (was['narrator'], was['runtime_minutes'], book_id, user.id))
+    return True
+
+
+def _after_undo(conn, user, edit_id):
+    """The links this import made go; the ones it changed go back."""
+    row = conn.execute('SELECT params FROM bulk_edits WHERE id = ? AND user_id = ?', (edit_id, user.id)).fetchone()
+    params = json.loads(row['params']) if row else {}
+    conn.executemany('DELETE FROM abs_links WHERE user_id = ? AND abs_item_id = ?',
+                     [(user.id, item_id) for item_id in params.get('created', [])])
+    for item_id, was in (params.get('updated') or {}).items():
+        conn.execute('''UPDATE abs_links SET outcome = ?,
+                            book_id = (SELECT id FROM books WHERE id = ?),
+                            session_id = (SELECT session_id FROM reading_sessions WHERE session_id = ?),
+                            finished_at = ?
+                        WHERE user_id = ? AND abs_item_id = ?''',
+                     (was['outcome'], was['book_id'], was['session_id'], was['finished_at'], user.id, item_id))
+
+
+def _not_a_bulk_edit(*args, **kwargs):
+    from utils.bulk import BulkError
+    raise BulkError('That bulk action is not available.')
+
+
+def _make_action():
+    from utils.bulk import Action
+    return Action(
+        params=_not_a_bulk_edit, plan=_not_a_bulk_edit, write=_not_a_bulk_edit,
+        current=_current, restore=_restore,
+        describe=lambda p: 'Audiobookshelf import', summary=lambda p, n: 'Audiobookshelf import',
+        key=lambda b: None, label=lambda k, p: '', same_text=lambda p: '',
+        after_undo=_after_undo)

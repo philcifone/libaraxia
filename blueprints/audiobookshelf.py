@@ -146,6 +146,47 @@ def choose():
     return redirect(url_for('abs.review'))
 
 
+@abs_blueprint.route('/apply', methods=['POST'])
+@login_required
+@limiter.limit('6 per hour')
+def apply():
+    """Save the form's choices, back up your library, write the import,
+    then fetch covers for what it added (a time budget; the rest next
+    time). Undo is the bulk journal's, under Recent bulk edits."""
+    from utils import personal_backups
+    conn = get_db()
+    plan = abs_import.plan(conn, current_user)
+    if plan is None:
+        flash('Nothing waiting for review; sync with Audiobookshelf first.', 'error')
+        return _back()
+    abs_import.choose(conn, current_user, _form_choices(plan))
+    # Your library as it is, before the import writes
+    try:
+        personal_backups.create(conn, current_user.id, current_user.username, 'audiobookshelf')
+    except personal_backups.PersonalBackupError:
+        current_app.logger.exception('Backup before the Audiobookshelf import failed for user %s', current_user.id)
+        flash("Couldn't back up your library first, so nothing was imported.", 'error')
+        return redirect(url_for('abs.review'))
+    try:
+        result = abs_import.apply(conn, current_user, request.form.get('fingerprint', ''))
+    except abs_import.PlanError as e:          # StalePlan included: the review shows the fresh plan
+        conn.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('abs.review'))
+    message = result['summary'] + '.'
+    token = abs_.token_for(conn, current_user.id, _secret())
+    if token:
+        fetched, left = abs_import.fetch_covers(conn, current_user, token)
+        if fetched:
+            message += f" {fetched} cover{'' if fetched == 1 else 's'} from Audiobookshelf."
+        if left:
+            message += f" {left} more cover{'' if left == 1 else 's'} next time."
+    if result['edit_id']:
+        message += ' Undo it under Recent bulk edits.'
+    flash(message, 'success')
+    return _back()
+
+
 @abs_blueprint.route('/discard', methods=['POST'])
 @login_required
 def discard():

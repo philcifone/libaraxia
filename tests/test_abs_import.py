@@ -189,3 +189,231 @@ def test_review_is_yours_alone(client, db, people, abs_server):
     abs_import.sync(db, who(people['alice']), 'key')
     login(client, 'bob')
     assert 'Secret Listen' not in client.get('/abs/review', follow_redirects=True).get_data(as_text=True)
+
+
+# --- apply, undo, covers (step 5) ---------------------------------------------
+
+def book_row(db, title):
+    return db.execute('SELECT * FROM books WHERE title = ?', (title,)).fetchone()
+
+
+def status_of(db, user_id, book_id):
+    row = db.execute('SELECT status FROM collections WHERE user_id = ? AND book_id = ?', (user_id, book_id)).fetchone()
+    return row and row[0]
+
+
+def sessions_of(db, user_id, book_id):
+    return [tuple(r) for r in db.execute('SELECT date_started, date_completed FROM reading_sessions '
+                                         'WHERE user_id = ? AND book_id = ? ORDER BY session_id', (user_id, book_id))]
+
+
+def run(db, user_id, choices=None):
+    u = who(user_id)
+    if choices:
+        abs_import.choose(db, u, choices)
+    return abs_import.apply(db, u, abs_import.plan(db, u).fingerprint)
+
+
+def test_apply_creates_unowned_books(app, db, people, abs_server):
+    alice = people['alice']
+    abs_server([item('Heard', narrator='Ray Porter'), item('Going'), item('Screen', audio=0, ebook='epub')],
+               [progress('li_heard', finished=True), progress('li_going', 0.3),
+                progress('li_screen', 0, ebook=0.5)])
+    abs_import.sync(db, who(alice), 'key')
+    result = run(db, alice)
+    assert result['counts']['created'] == 3 and result['edit_id']
+
+    heard = book_row(db, 'Heard')
+    assert (heard['format'], heard['owned'], heard['narrator'], heard['runtime_minutes'], heard['added_by']) == \
+        ('Audiobook', 0, 'Ray Porter', 600, alice)
+    assert heard['created_at'].startswith('2023-11-14')                  # dated when you started
+    assert status_of(db, alice, heard['id']) == 'read'
+    assert sessions_of(db, alice, heard['id']) == [('2023-11-14', '2023-12-14')]
+    quiet = db.execute('SELECT quiet FROM collections WHERE book_id = ?', (heard['id'],)).fetchone()[0]
+    assert quiet == 1                                                     # not in friends' feed
+
+    going = book_row(db, 'Going')
+    assert status_of(db, alice, going['id']) == 'currently reading'
+    assert sessions_of(db, alice, going['id']) == [('2023-11-14', None)]
+    screen = book_row(db, 'Screen')
+    assert (screen['format'], screen['owned'], screen['narrator'], screen['runtime_minutes']) == ('Ebook', 0, None, None)
+    links = {r['abs_item_id']: r['outcome'] for r in db.execute('SELECT * FROM abs_links')}
+    assert links == {'li_heard': 'created', 'li_going': 'created', 'li_screen': 'created'}
+    assert db.execute('SELECT COUNT(*) FROM abs_staging').fetchone()[0] == 0
+
+    # A second sync and import creates nothing
+    abs_import.sync(db, who(alice), 'key')
+    assert {r.box for r in abs_import.plan(db, who(alice)).rows} == {'imported'}
+    assert run(db, alice)['edit_id'] is None
+    assert db.execute("SELECT COUNT(*) FROM books WHERE title IN ('Heard', 'Going', 'Screen')").fetchone()[0] == 3
+
+
+def test_ownership_never_written(app, db, people, abs_server):
+    """Phil's rule: nothing from ABS is owned unless the catalogue says so."""
+    alice = people['alice']
+    paper = add_book(db, alice, 'Paper', 'An Author')                       # owned, a printed book
+    heard = add_book(db, alice, 'Heard Before', 'An Author')
+    db.execute("UPDATE books SET owned = 0, format = 'Audiobook', runtime_minutes = 99 WHERE id = ?", (heard,))
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'want to read')", (alice, heard))
+    db.commit()
+    abs_server([item('Paper'), item('Heard Before'), item('Fresh'), item('Never')],
+               [progress('li_paper', finished=True), progress('li_heard_before', finished=True),
+                progress('li_fresh')])
+    abs_import.sync(db, who(alice), 'key', include_unstarted=True)
+    run(db, alice, {'li_never': 'want'})
+
+    p = book_row(db, 'Paper')
+    assert (p['owned'], p['format'], p['narrator'], p['runtime_minutes']) == (1, None, None, None)
+    assert status_of(db, alice, paper) == 'read'
+    h = book_row(db, 'Heard Before')
+    assert (h['owned'], h['narrator'], h['runtime_minutes']) == (0, 'Ray Porter', 99)   # filled where empty only
+    assert status_of(db, alice, heard) == 'read'                                       # Want to Read moved on
+    assert book_row(db, 'Fresh')['owned'] == 0 and book_row(db, 'Never')['owned'] == 0
+    assert status_of(db, alice, book_row(db, 'Never')['id']) == 'want to read'
+    assert sessions_of(db, alice, book_row(db, 'Never')['id']) == []
+
+
+def test_in_progress_then_finished_completes_the_session(app, db, people, abs_server, monkeypatch):
+    alice = people['alice']
+    abs_server([item('Long One')], [progress('li_long_one', 0.2)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Long One')['id']
+    abs_server([item('Long One')], [progress('li_long_one', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    row = abs_import.plan(db, who(alice)).rows[0]
+    assert row.box == 'finished_since' and row.adds == ['Read', 'finished 14 Dec 2023']
+    run(db, alice)
+    assert status_of(db, alice, book) == 'read'
+    assert sessions_of(db, alice, book) == [('2023-11-14', '2023-12-14')]   # the same session, completed
+    abs_import.sync(db, who(alice), 'key')
+    assert abs_import.plan(db, who(alice)).rows[0].box == 'imported'
+
+
+def test_skip_is_remembered(app, db, people, abs_server):
+    alice = people['alice']
+    abs_server([item('Not For Me')], [progress('li_not_for_me', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice, {'li_not_for_me': 'skip'})
+    assert book_row(db, 'Not For Me') is None
+    abs_import.sync(db, who(alice), 'key')
+    row = abs_import.plan(db, who(alice)).rows[0]
+    assert (row.box, row.choice, row.choices) == ('skipped_before', 'skip', ['skip', 'add'])
+    run(db, alice, {'li_not_for_me': 'add'})
+    assert book_row(db, 'Not For Me')['owned'] == 0
+
+
+def test_stale_review_is_refused(app, db, people, abs_server):
+    alice = people['alice']
+    mine = add_book(db, alice, 'Mine', 'An Author')
+    abs_server([item('Mine')], [progress('li_mine')])
+    abs_import.sync(db, who(alice), 'key')
+    seen = abs_import.plan(db, who(alice)).fingerprint
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, mine))
+    db.commit()
+    with pytest.raises(abs_import.StalePlan):
+        abs_import.apply(db, who(alice), seen)
+    assert sessions_of(db, alice, mine) == []
+
+
+def test_undo(app, db, people, abs_server):
+    from utils import bulk
+    alice, bob = people['alice'], people['bob']
+    mine = add_book(db, alice, 'Mine', 'An Author')
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'want to read')", (alice, mine))
+    db.commit()
+    abs_server([item('Mine'), item('New One'), item('Reviewed')],
+               [progress('li_mine', finished=True), progress('li_new_one'), progress('li_reviewed', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    edit_id = run(db, alice)['edit_id']
+    reviewed = book_row(db, 'Reviewed')['id']
+    db.execute("INSERT INTO read_data (user_id, book_id, rating) VALUES (?, ?, 5)", (bob, reviewed))  # bob's data
+    db.commit()
+
+    result = bulk.undo(db, who(alice), edit_id)
+    assert result.changed == 2 and result.skipped == 1
+    assert book_row(db, 'New One') is None
+    assert book_row(db, 'Reviewed') is not None                     # someone else has data on it: kept
+    assert status_of(db, alice, mine) == 'want to read' and sessions_of(db, alice, mine) == []
+    assert db.execute('SELECT COUNT(*) FROM abs_links').fetchone()[0] == 0
+    # A fresh sync offers them again (Mine matches; Reviewed is still your book)
+    abs_import.sync(db, who(alice), 'key')
+    assert boxes(abs_import.plan(db, who(alice))) == {'Mine': 'match', 'New One': 'progress_new',
+                                                      'Reviewed': 'match'}
+
+
+def test_undo_reopens_a_completed_session(app, db, people, abs_server):
+    from utils import bulk
+    alice = people['alice']
+    abs_server([item('Long One')], [progress('li_long_one', 0.2)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Long One')['id']
+    abs_server([item('Long One')], [progress('li_long_one', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    edit_id = run(db, alice)['edit_id']
+    bulk.undo(db, who(alice), edit_id)
+    assert status_of(db, alice, book) == 'currently reading'
+    assert sessions_of(db, alice, book) == [('2023-11-14', None)]
+    assert db.execute('SELECT finished_at FROM abs_links').fetchone()[0] is None
+
+
+def test_covers_from_abs(app, db, people, abs_server, static_root, monkeypatch):
+    from io import BytesIO
+    from PIL import Image
+    alice = people['alice']
+    monkeypatch.setitem(app.config, 'UPLOAD_FOLDER', str(static_root / 'uploads'))
+    picture = BytesIO()
+    img = Image.new('RGB', (300, 300))        # square, like most audiobook covers; not a flat colour
+    img.putdata([(x % 256, y % 256, (x + y) % 256) for y in range(300) for x in range(300)])
+    img.save(picture, 'PNG')
+    monkeypatch.setattr(abs_, 'cover', lambda token, item_id: picture.getvalue() if item_id == 'li_one' else b'junk')
+    abs_server([item('One'), item('Two')], [progress('li_one'), progress('li_two')])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    with app.app_context():
+        assert abs_import.fetch_covers(db, who(alice), 'key') == (1, 0)
+    cover = book_row(db, 'One')['cover_image_url']
+    assert cover.startswith('uploads/') and (static_root / cover).is_file()
+    assert not book_row(db, 'Two')['cover_image_url']
+    with app.app_context():
+        assert abs_import.fetch_covers(db, who(alice), 'key', budget=-1) == (0, 1)   # out of time: next time
+
+
+def test_apply_route_backs_up_first(client, db, people, abs_server, monkeypatch):
+    from utils import personal_backups
+    connect(db, people['alice'])
+    monkeypatch.setattr(abs_, 'cover', lambda token, item_id: b'')
+    abs_server([item('Project Hail Mary', 'Andy Weir')], [progress('li_project_hail_mary', finished=True)])
+    login(client, 'alice')
+    client.post('/abs/sync')
+    fingerprint = abs_import.plan(db, who(people['alice'])).fingerprint
+    page = client.post('/abs/apply', data={'fingerprint': fingerprint}, follow_redirects=True).get_data(as_text=True)
+    assert 'Audiobookshelf import: 1 added.' in page and 'Undo it under Recent bulk edits.' in page
+    assert book_row(db, 'Project Hail Mary')['owned'] == 0
+    kinds = [b['kind'] for b in personal_backups.list_backups(people['alice'])]
+    assert kinds == ['audiobookshelf']
+    assert 'Audiobookshelf import' in client.get('/user/settings').get_data(as_text=True)
+
+
+def test_apply_route_refuses_a_stale_review(client, db, people, abs_server):
+    connect(db, people['alice'])
+    abs_server([item('One')], [progress('li_one')])
+    login(client, 'alice')
+    client.post('/abs/sync')
+    page = client.post('/abs/apply', data={'fingerprint': 'old'}, follow_redirects=True).get_data(as_text=True)
+    assert 'Something changed since you looked' in page and book_row(db, 'One') is None
+
+
+def test_backup_restore_brings_links_back(app, db, people, abs_server):
+    from utils import personal_backups
+    alice = people['alice']
+    abs_server([item('Kept')], [progress('li_kept', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    with app.app_context():
+        made = personal_backups.create(db, alice, 'alice')
+        db.execute('DELETE FROM abs_links')
+        db.commit()
+        personal_backups.restore(db, alice, made['name'])
+    assert db.execute('SELECT abs_item_id, outcome FROM abs_links').fetchall()[0][:] == ('li_kept', 'created')

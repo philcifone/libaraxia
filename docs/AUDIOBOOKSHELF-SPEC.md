@@ -276,7 +276,7 @@ item id; store in `abs_staging`, go to the review. Four requests and about
   `process_image` like any upload), inside Apply with a 15 s budget; any left
   are offered again by the next Sync ("3 covers to fetch").
 
-**Apply** (`POST /abs/apply`, 3 per hour) follows `goodreads_plan.apply`:
+**Apply** (`POST /abs/apply`, 6 per hour) follows `goodreads_plan.apply`:
 a personal backup first (`personal_backups` kind `audiobookshelf`; refuse
 without it); a fingerprint of the staged rows and your data (a stale review is
 a 409 with the fresh plan); one transaction, a SAVEPOINT per row; each row
