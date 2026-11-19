@@ -429,13 +429,16 @@ def test_progress_words():
     now = MS + 2 * 86400000
     line = abs_import.progress_line({'progress': 0.43, 'currentTime': 14122, 'duration': 32842,
                                      'lastUpdate': MS, 'isFinished': False}, 'Audiobook', None, now)
-    assert line == {'text': 'Audiobookshelf: 43 %, 5 h 12 min left, last listened 2 days ago.', 'unsynced': False}
+    assert line == {'text': 'Audiobookshelf: 43 %, 5 h 12 min left, last listened 2 days ago.', 'unsynced': False,
+                    'progress': 0.43}
     sliver = abs_import.progress_line({'progress': 0.001, 'lastUpdate': MS}, 'Audiobook', None, MS + 60 * 86400000)
     assert sliver['text'] == 'Audiobookshelf: under 1 %, last listened on 14 Nov 2023.'
     ebook = abs_import.progress_line({'ebookProgress': 0.25, 'lastUpdate': now}, 'Ebook', None, now)
     assert ebook['text'] == 'Audiobookshelf: 25 %, last read today.'
+    assert ebook['progress'] == 0.25                # the cover's ring
     done = abs_import.progress_line({'isFinished': True, 'finishedAt': MS}, 'Audiobook', {'finished_at': None}, now)
-    assert done == {'text': 'Finished in Audiobookshelf on 14 Nov 2023.', 'unsynced': True}
+    assert done == {'text': 'Finished in Audiobookshelf on 14 Nov 2023.', 'unsynced': True}   # no ring
+    assert 'progress' not in abs_import.progress_line(None, 'Audiobook', None, now)
     assert not abs_import.progress_line({'isFinished': True, 'finishedAt': MS}, 'Audiobook',
                                         {'finished_at': MS}, now)['unsynced']
 

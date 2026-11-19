@@ -1457,6 +1457,35 @@ dialog::backdrop { background: rgb(var(--black) / .55); }
    is a drop-shadow filter, which follows the picture, not the box's empty
    margins (a box-shadow or border-radius would draw the box). */
 .cover-zoom-open { display: block; width: 100%; padding: 0; background: none; border: 0; cursor: zoom-in; }
+
+/* Audiobookshelf progress ring (book_detail.js addProgressRing; Phil,
+   2026-11-19): a small accent arc on the cover's top-right corner, from 12
+   o'clock clockwise, for an item in progress there. Its disc is the page's
+   surface, a little see-through, so the line reads over any cover. It sits
+   in the cover's box: in Shelf .cover-box is the positioned box; elsewhere
+   .cover-box is display: contents, so the cover's button (or a coverless
+   item's placeholder) is. */
+.cover-stand .cover-zoom-open, .cover-stand .no-cover { position: relative; }
+.abs-ring {
+    position: absolute;
+    top: .375rem;
+    right: .375rem;
+    z-index: 1;                 /* over the Shelf glare layer */
+    width: 1.375rem;            /* the phone's cover is 7rem wide */
+    height: 1.375rem;
+    transform: rotate(-90deg);  /* the circle starts at 3 o'clock; 12 instead */
+    pointer-events: none;
+}
+@media (min-width: 768px) {
+    .abs-ring { top: .5rem; right: .5rem; width: 1.75rem; height: 1.75rem; }
+}
+.abs-ring-disc { fill: rgb(var(--surface) / .8); stroke: none; }
+.abs-ring-arc {
+    fill: none;
+    stroke: rgb(var(--accent));
+    stroke-width: 4;
+    stroke-linecap: round;
+}
 .cover-zoom {
     width: 100vw; height: 100dvh; max-width: none; max-height: none;
     margin: 0; padding: 0; border: 0; background: transparent;

@@ -945,4 +945,7 @@ def progress_line(prog, fmt, link, now_ms=None):
     if prog.get('lastUpdate'):
         verb = 'listened' if fmt == AUDIOBOOK else 'read'
         bits.append(f'last {verb} {_ago(prog["lastUpdate"], now_ms)}')
-    return {'text': 'Audiobookshelf: ' + ', '.join(bits) + '.', 'unsynced': False}
+    # `progress` (0 to 1): the ring on the item page's cover (book_detail.js);
+    # only while in progress, so a finished or unstarted item has none
+    return {'text': 'Audiobookshelf: ' + ', '.join(bits) + '.', 'unsynced': False,
+            'progress': round(min(max(share, 0), 1), 4)}

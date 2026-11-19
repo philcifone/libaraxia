@@ -343,8 +343,43 @@ function fillAbsProgress() {
                 line.append(open);
             }
             line.hidden = false;
+            if (typeof data.progress === 'number') addProgressRing(data.progress);
         })
         .catch(() => {});
+}
+
+// The progress ring on the cover's top-right corner (Phil, 2026-11-19): a
+// thin accent arc from 12 o'clock, clockwise, for an item in progress in
+// Audiobookshelf (75 % reaches 9 o'clock). The line under the details says
+// the same in words, so the ring is decoration for screen readers.
+// pathLength="100" makes the dash length the percentage itself; the -90deg
+// turn moves the circle's start from 3 o'clock to 12.
+function addProgressRing(share) {
+    const host = document.querySelector('.cover-stand .cover-box, .cover-stand .no-cover');
+    if (!host || host.querySelector('.abs-ring')) return;
+    const pct = Math.max(1, Math.min(100, Math.round(share * 100)));   // a sliver still shows
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 36 36');
+    svg.setAttribute('class', 'abs-ring');
+    svg.setAttribute('aria-hidden', 'true');
+    // the disc fills the badge; the arc runs inside it, clear of its edge
+    const circle = (cls, r, dash) => {
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', '18');
+        c.setAttribute('cy', '18');
+        c.setAttribute('r', String(r));
+        c.setAttribute('pathLength', '100');
+        c.setAttribute('class', cls);
+        if (dash) c.setAttribute('stroke-dasharray', `${dash} 100`);
+        return c;
+    };
+    svg.append(circle('abs-ring-disc', 18), circle('abs-ring-arc', 11, pct));
+    // a hover title (not read out: the line below is)
+    const title = document.createElementNS(NS, 'title');
+    title.textContent = `${pct} % in Audiobookshelf`;
+    svg.prepend(title);
+    host.append(svg);
 }
 
 fillAbsProgress();

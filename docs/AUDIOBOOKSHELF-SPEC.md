@@ -300,6 +300,10 @@ put back).
   (JSON; 404 unless the link is yours; 120 per hour; 60 s in-memory cache per
   user and item), so the page never waits on the LAN. Silent when ABS is
   down.
+- While in progress, the same answer draws a small ring on the cover's
+  top-right corner (Phil, 2026-11-19): an accent arc from 12 o'clock,
+  clockwise, on a disc of the page's surface (50 % is half a circle, 75 %
+  reaches 9 o'clock). None when finished or not started.
 - The item page also gets a provenance note beside the Goodreads one:
   "Imported from Audiobookshelf on 18 Nov 2026".
 - "Open in Audiobookshelf" goes to `AUDIOBOOKSHELF_PUBLIC_URL` +
