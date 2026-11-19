@@ -9,7 +9,7 @@ the 3D view needs of them is utils/item3d.py.
 from flask import url_for
 
 from utils import image_utils
-from utils.media import BOOK
+from utils.media import BOOK, is_digital
 
 # The photo_kinds table (migrations 040, 041; a test keeps the two in
 # step), in the gallery's order. SPINE is the left side, as a book in the
@@ -36,7 +36,7 @@ def label(kind, fmt=None, media_type=None):
     """What the UI calls a kind: a book's right side and ends are its
     pages ("Fore-edge"); on a VHS the spine is the "Left side", since it
     has a right one too."""
-    if media_type == BOOK and fmt != 'Audiobook' and kind in BOOK_LABELS:
+    if media_type == BOOK and not is_digital(fmt) and kind in BOOK_LABELS:
         return BOOK_LABELS[kind]
     if kind == SPINE and fmt == 'VHS':
         return 'Left side'

@@ -273,6 +273,7 @@ def create_app():
         return url_for(endpoint, username=username) if scope == 'friend' else url_for(endpoint)
     app.add_template_global(shelf_url, 'shelf_url')
     app.add_template_global(media.SECTION_NAMES, 'SECTION_NAMES')
+    app.add_template_global(media.length_parts, 'length_parts')    # an audiobook's length on the form (16.0e)
     app.add_template_global(media.SECTION_WORDS, 'SECTION_WORDS')
     app.add_template_filter(media.season_short, 'season_short')
 

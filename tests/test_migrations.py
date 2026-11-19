@@ -114,7 +114,7 @@ def wind_back_to_023(conn):
                                                      '031_bulk_edits.sql', '034_video_kind.sql',
                                                      '036_item_photos.sql', '037_condition_grades.sql',
                                                      '038_item_value.sql', '040_photo_kinds.sql',
-                                                     '041_faces.sql');
+                                                     '041_faces.sql', '043_audiobook_fields.sql');
     """)
 
 
@@ -499,6 +499,7 @@ UNDO_036_TO_038 = """
     DROP TABLE item_photos;
     DROP TABLE photo_kinds;
     DROP TABLE condition_grades;
+    ALTER TABLE books DROP COLUMN narrator;           -- 043 comes back after them
     ALTER TABLE books DROP COLUMN discogs_release_id;
     ALTER TABLE books DROP COLUMN value_checked_at;
     ALTER TABLE books DROP COLUMN value_note;
@@ -509,7 +510,8 @@ UNDO_036_TO_038 = """
     ALTER TABLE books DROP COLUMN condition;
     DELETE FROM schema_migrations
      WHERE name IN ('036_item_photos.sql', '037_condition_grades.sql', '038_item_value.sql',
-                    '040_photo_kinds.sql', '041_faces.sql');   -- 040 rebuilds item_photos, so it goes with 036; 041 adds to it
+                    '040_photo_kinds.sql', '041_faces.sql',    -- 040 rebuilds item_photos, so it goes with 036; 041 adds to it
+                    '043_audiobook_fields.sql');               -- books.narrator, after 038's columns
 """
 
 

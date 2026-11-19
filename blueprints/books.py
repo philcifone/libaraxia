@@ -33,6 +33,15 @@ from utils.search import by_arg, next_page, page_arg
 books_blueprint = Blueprint('books', __name__, template_folder='templates')
 
 
+def _audio_fields(form, book_format):
+    """(narrator, length in minutes) from a book form (16.0e): kept only for
+    an audiobook, so switching a book away from Audiobook clears them."""
+    if book_format != media.AUDIOBOOK:
+        return None, None
+    narrator = (form.get('narrator') or '').strip()[:300] or None
+    return narrator, media.audio_length(form.get('length_hours'), form.get('length_minutes'))
+
+
 @books_blueprint.route("/thumbnail")
 @login_required
 @limiter.limit("600 per hour")
@@ -106,11 +115,13 @@ def add_book():
 
         # "I don't own this" (8B.3): kept off the shelf, there for its review
         owned = not request.form.get("not_owned")
+        book_format = media.book_format(request.form.get("format"))
+        narrator, length = _audio_fields(request.form, book_format)
         cursor = conn.execute("""
             INSERT INTO books (title, author, publisher, publish_year, isbn,
                              page_count, cover_image_url, description, subtitle, genre, added_by, owned,
-                             format)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             format, narrator, runtime_minutes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             request.form["title"],
             request.form["author"],
@@ -124,7 +135,8 @@ def add_book():
             request.form.get("genre", ""),
             current_user.id,
             1 if owned else 0,
-            media.book_format(request.form.get("format")),   # Book (NULL) or Audiobook
+            book_format,                # Book (NULL), Audiobook or Ebook
+            narrator, length,
         ))
         copy_fields.save(conn, cursor.lastrowid, copy)
         # The placeholder set picked on the form (16.0c)
@@ -525,13 +537,15 @@ def edit_book(id):
             current_app.logger.warning(f"Invalid page_count value: {page_count_raw}, defaulting to 0")
             page_count = 0
 
+        book_format = media.book_format(request.form.get("format"))
+        narrator, length = _audio_fields(request.form, book_format)
         # The ISBN is saved too: until Phase 8.5 the form showed it but the
         # UPDATE left it out, so corrections were silently dropped.
         conn.execute("""
             UPDATE books
             SET title = ?, author = ?, publisher = ?, publish_year = ?, isbn = ?,
                 page_count = ?, cover_image_url = ?, description = ?, subtitle = ?, genre = ?,
-                format = ?
+                format = ?, narrator = ?, runtime_minutes = ?
             WHERE id = ?
         """, (
             request.form["title"],
@@ -544,7 +558,7 @@ def edit_book(id):
             request.form.get("description", ""),
             request.form.get("subtitle", ""),
             request.form.get("genre", ""),
-            media.book_format(request.form.get("format")),
+            book_format, narrator, length,
             id
         ))
         copy_fields.save(conn, id, copy)

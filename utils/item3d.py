@@ -41,7 +41,7 @@ from PIL import Image
 
 from utils import image_utils, photos
 from utils.book_utils import on_shelf
-from utils.media import BOOK, VIDEO, RECORD, media_type_of
+from utils.media import BOOK, VIDEO, RECORD, is_digital, media_type_of
 
 BOOK_SHAPE, SLEEVE, JEWEL, CASE, TAPE = 'book', 'sleeve', 'jewel', 'case', 'tape'
 
@@ -64,9 +64,9 @@ PAPER_CD_DEPTH = 0.016
 
 def shape_for(media_type, fmt=None):
     """The shape an item of this type and format is, or None (an
-    audiobook has no box to turn)."""
+    audiobook or ebook has no box to turn)."""
     if media_type == BOOK:
-        return None if fmt == 'Audiobook' else BOOK_SHAPE
+        return None if is_digital(fmt) else BOOK_SHAPE
     if media_type == VIDEO:
         return TAPE if fmt == 'VHS' else CASE
     if media_type == RECORD:
@@ -162,7 +162,7 @@ HEADING_BOOKS = 10      # at most: five each side of the title, which a phone ha
 # (model() has the last word): a cover, a back, and the spine (a tape's
 # left or right side).
 _HEADING = {
-    BOOK: ('library_books', "(b.format IS NULL OR b.format <> 'Audiobook')",
+    BOOK: ('library_books', "(b.format IS NULL OR b.format NOT IN ('Audiobook', 'Ebook'))",
            "(SELECT COUNT(*) FROM item_photos p WHERE p.book_id = b.id AND p.kind IN ('back', 'spine')) = 2"),
     VIDEO: ('library_videos', "b.format = 'VHS'",
             "EXISTS (SELECT 1 FROM item_photos p WHERE p.book_id = b.id AND p.kind = 'back') "

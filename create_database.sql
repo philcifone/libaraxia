@@ -156,6 +156,8 @@ CREATE TABLE books (
     value_note TEXT,
     value_checked_at TIMESTAMP,
     discogs_release_id INTEGER,
+    -- An audiobook's narrator (migration 043); its length is runtime_minutes.
+    narrator TEXT,
     FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_books_added_by ON books(added_by);
@@ -632,4 +634,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('039_value_jobs.sql'),
     ('040_photo_kinds.sql'),
     ('041_faces.sql'),
-    ('042_loans.sql');
+    ('042_loans.sql'),
+    ('043_audiobook_fields.sql');

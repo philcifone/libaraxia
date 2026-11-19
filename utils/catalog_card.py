@@ -239,6 +239,8 @@ def physical_description(book):
         return f"{extent}{time} : {details.rstrip('.')}." if details else f'{extent}{time}'
     if fmt == media.AUDIOBOOK:
         return '1 audiobook'
+    if fmt == media.EBOOK:
+        return '1 online resource'      # AACR2's wording for an ebook
     return f"{book['page_count']} p." if book['page_count'] else ''
 
 

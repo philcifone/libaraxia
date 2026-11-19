@@ -124,9 +124,12 @@
                             ] %}
                             {% else %}
                             {# 8B.2: a plain book has no stored format; an audiobook's
-                               page count is its print edition's #}
+                               page count is its print edition's. 16.0e: an audiobook's
+                               narrator and length (runtime_minutes). #}
                             {% set details = [
                                 ('Format', book['format'] or 'Book'),
+                                ('Narrator', book['narrator'] if book['format'] == 'Audiobook' else false),
+                                ('Length', runtime if book['format'] == 'Audiobook' else false),
                                 ('Publisher', book['publisher']),
                                 ('Publication Year', book['publish_year']),
                                 ('Print Pages' if book['format'] == 'Audiobook' else 'Page Count', (book['page_count']|string + ' pages') if book['page_count'] else none),
@@ -136,8 +139,10 @@
                             {% endif %}
                             {# A code (ISBN, barcode, catalogue number) is one long word:
                                on a phone it takes the badge's full width rather than
-                               break mid-number in a half column #}
-                            {% for item in details if item[0] != 'Format' or item[1] %}
+                               break mid-number in a half column. A value of false is a row
+                               that doesn't apply (a narrator on a printed book): left out,
+                               where an empty one says "Not set". #}
+                            {% for item in details if (item[0] != 'Format' or item[1]) and item[1] is not sameas false %}
                             <div class="space-y-1 {{ 'col-span-2 lg:col-span-1' if item[0] in ('ISBN', m.code, 'Cat. No.', 'Catalogue Number') }}">
                                 <span class="label text-sm pb-1">{{ item[0] }}</span>
                                 {# An empty field keeps its label, so you can see what's missing,

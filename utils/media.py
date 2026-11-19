@@ -39,11 +39,12 @@ MEDIA_TYPES = (BOOK, VIDEO, RECORD)
 
 # Formats by type. Adding one needs no migration (books.format has no
 # CHECK), just an entry here. Books (8B.2): a plain book is stored as NULL
-# (every book from before 8B.2, and new ones), an audiobook as 'Audiobook';
-# book_format() turns the form's choice into that. Audiobooks never count
-# toward page totals (blueprints/user.py), owned or not.
+# (every book from before 8B.2, and new ones), an audiobook as 'Audiobook',
+# an ebook as 'Ebook' (16.0e); book_format() turns the form's choice into
+# that. Audiobooks never count toward page totals (blueprints/user.py),
+# owned or not; an ebook's pages count, it was read.
 FORMATS = {
-    BOOK: ('Book', 'Audiobook'),
+    BOOK: ('Book', 'Audiobook', 'Ebook'),
     VIDEO: ('VHS', 'DVD'),        # Phil, 2026-11-07: no LaserDisc or Betamax
     # Speed isn't stored: it follows from the format (LP 33, 7" 45); the odd
     # exception goes in the notes. CD and Cassette since the section became
@@ -52,6 +53,10 @@ FORMATS = {
 }
 DEFAULT_FORMAT = {BOOK: 'Book', VIDEO: 'VHS', RECORD: 'LP'}
 AUDIOBOOK = 'Audiobook'
+EBOOK = 'Ebook'
+# Books with no physical copy (16.0e): no 3D box, no placeholder faces, no
+# page-edge photo labels. Use is_digital() rather than listing them.
+DIGITAL_FORMATS = (AUDIOBOOK, EBOOK)
 VIDEO_FORMATS = FORMATS[VIDEO]
 DEFAULT_VIDEO_FORMAT = DEFAULT_FORMAT[VIDEO]
 
@@ -102,9 +107,41 @@ def kind_of(row):
 
 
 def book_format(value):
-    """What to store for a book form's Format choice: 'Audiobook', or None
-    for a plain book (so old rows and new ones read the same)."""
-    return AUDIOBOOK if (value or '').strip() == AUDIOBOOK else None
+    """What to store for a book form's Format choice: 'Audiobook' or 'Ebook',
+    or None for a plain book (so old rows and new ones read the same)."""
+    value = (value or '').strip()
+    return value if value in DIGITAL_FORMATS else None
+
+
+def is_digital(fmt):
+    """Whether a book's stored format has no physical copy (an audiobook or
+    an ebook, 16.0e). Takes the format, or a row with a 'format' key."""
+    if not isinstance(fmt, (str, type(None))):
+        try:
+            fmt = fmt['format']
+        except (KeyError, IndexError, TypeError):
+            return False
+    return fmt in DIGITAL_FORMATS
+
+
+def audio_length(hours, minutes):
+    """An audiobook's length from the form's two fields, in minutes, or None
+    for none. Bad or negative input reads as 0; '0 h 90 min' is 90 minutes;
+    capped at 999 hours."""
+    def number(value):
+        try:
+            return max(0, int(str(value if value is not None else '').strip() or 0))
+        except (TypeError, ValueError):
+            return 0
+    total = min(number(hours) * 60 + number(minutes), 999 * 60)
+    return total or None
+
+
+def length_parts(minutes):
+    """(hours, minutes) for the form, ('', '') for none."""
+    if not minutes:
+        return '', ''
+    return divmod(int(minutes), 60)
 
 
 def format_label(fmt):
@@ -119,7 +156,7 @@ def format_label(fmt):
 # format badge (Phil, 2026-11-11), except the wishlist, where a wish is for
 # a format (.format-badge, _wishlist_card.html; Phil, 2026-11-15).
 FORMAT_ICONS = {
-    'VHS': 'vhs', 'DVD': 'dvd', AUDIOBOOK: 'audiobook',
+    'VHS': 'vhs', 'DVD': 'dvd', AUDIOBOOK: 'audiobook', EBOOK: 'ebook',
     'LP': 'turntable', 'CD': 'disc-2', 'Cassette': 'cassette-tape',
 }
 

@@ -10572,6 +10572,18 @@ form:has(#not_owned:checked) .when-owned {
   display: none;
 }
 
+/* An audiobook's narrator and length (16.0e): shown while Format is
+   Audiobook, by CSS. Hidden fields still submit; the routes keep them only
+   for an audiobook (blueprints/books.py _audio_fields). */
+
+form .when-audiobook {
+  display: none;
+}
+
+form:has(#format option[value="Audiobook"]:checked) .when-audiobook {
+  display: block;
+}
+
 /* Lend panel (16.0d): the name field only for "Someone else", by CSS, no
    script. With no household or friends that is the only choice, so it shows. */
 

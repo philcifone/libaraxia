@@ -391,13 +391,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formatSelect && type === RECORD) formatSelect.dataset.filled = formatSelect.value;
 
     // Books (8B.2): an audiobook is usually borrowed or streamed, so picking
-    // Audiobook ticks "Not on my shelf", and back to Book unticks it. Once
+    // Audiobook (or Ebook, 16.0e) ticks "Not on my shelf", and back to Book unticks it. Once
     // you've clicked the box yourself, it's yours and the format leaves it be.
     const notOwnedBox = $('not_owned');
     if (formatSelect && notOwnedBox && type === BOOK) {
         notOwnedBox.addEventListener('change', () => { notOwnedBox.dataset.touched = '1'; });
         formatSelect.addEventListener('change', () => {
-            if (!notOwnedBox.dataset.touched) notOwnedBox.checked = formatSelect.value === 'Audiobook';
+            if (!notOwnedBox.dataset.touched) notOwnedBox.checked = ['Audiobook', 'Ebook'].includes(formatSelect.value);
         });
     }
 
