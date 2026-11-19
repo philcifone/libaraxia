@@ -11,8 +11,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // One place sets the open/closed state. The sidebar slides with a class;
     // the hamburger icon (bars <-> X) follows aria-expanded in styles.css, so
     // the two can't drift apart the way separately toggled classes could.
+    // Closed, it's inert: only slid off-screen, its links would still take
+    // Tab stops and be read out. If focus was inside when it closes
+    // (Escape), it goes back to the hamburger rather than being lost.
     const setSidebarOpen = (open) => {
+        if (!open && sidebar.contains(document.activeElement)) hamburger.focus();
         sidebar.classList.toggle("-translate-x-full", !open);
+        sidebar.inert = !open;
         hamburger.setAttribute("aria-expanded", String(open));
     };
     const sidebarIsOpen = () => hamburger.getAttribute("aria-expanded") === "true";

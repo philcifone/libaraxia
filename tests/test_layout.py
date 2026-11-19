@@ -1501,3 +1501,14 @@ def test_book_box_shows_pages():
     # rather than one (Phil, 2026-11-17)
     assert '@media (min-resolution: 3dppx)' in css
     assert '--leaf: calc(2px / 3); --leaf-line: calc(1px / 3);' in css
+
+
+def test_the_closed_sidebar_takes_no_tab_stops(client, people):
+    """The sidebar is a drawer slid off-screen when closed; its links took
+    Tab stops (and were read out) all the same, in every style. Closed it's
+    inert, from the first paint (the markup) and after (sidebar.js)."""
+    login(client, 'alice')
+    page = client.get('/collections/collections').get_data(as_text=True)
+    assert re.search(r'<div id="sidebar"\s+class="[^"]*"\s+inert>', page)
+    js = pathlib.Path('static/sidebar.js').read_text()
+    assert 'sidebar.inert = !open;' in js and 'hamburger.focus()' in js
