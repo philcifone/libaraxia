@@ -311,6 +311,16 @@ def create_app():
         return faces_for(get_db(), rows) if rows else {}
     app.add_template_global(box_faces, 'box_faces')
 
+    # The grids' Lent badge (16.0d, utils/loans.lent_map): {book_id: borrower}
+    # for the open loans on the viewer's or their household's shelf only, so
+    # a friend's grid never shows one
+    def lent_map(rows):
+        from utils.loans import lent_map as lent_for
+        if not rows or not _current_user.is_authenticated:
+            return {}
+        return lent_for(get_db(), _current_user.id, [row['id'] for row in rows])
+    app.add_template_global(lent_map, 'lent_map')
+
     # The placeholder sets an add form offers for a media type (16.0c,
     # utils/faces.sets_for_type): [(body label, [set rows])]
     def face_sets_for(media_type):

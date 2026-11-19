@@ -63,7 +63,7 @@ def from_goodreads(args, viewer_id):
     return sql + ')', params
 
 
-def books_query(owner_ids, args, data_user, viewer_id=None):
+def books_query(owner_ids, args, data_user, viewer_id=None, lent_ok=True):
     """(SQL, params) for the Books grid: books on the shelves of `owner_ids`,
     narrowed by the search and filters in `args` (the query string).
 
@@ -72,14 +72,15 @@ def books_query(owner_ids, args, data_user, viewer_id=None):
     rating and tag filters and the search's tag matching use (the entries in
     view: you on your own and the household's shelves, the friend on theirs).
     `viewer_id` is who is looking (From Goodreads is always theirs); it
-    defaults to `data_user`.
+    defaults to `data_user`. `lent_ok=False` on a friend's shelf, where
+    Show: Lent out isn't offered (loans are the shelf's people's).
     """
     marks = ','.join('?' * len(owner_ids))
     query = f'SELECT b.* FROM library_books b WHERE b.added_by IN ({marks})'
     params = list(owner_ids)
 
     # Only what's on the shelf unless Show asks for not-owned or removed ones
-    query += shelf_filter(args)
+    query += shelf_filter(args, lent_ok=lent_ok)
 
     term = (args.get('search_term') or '').strip()
     if term:

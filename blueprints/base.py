@@ -45,7 +45,8 @@ def library_page(template, owner_ids, data_user, **extra):
 
     conn = get_db()
     # The filters live in utils/grid_query.py, shared with bulk edit's selection of a view
-    query, params = grid_query.books_query(owner_ids, request.args, data_user, current_user.id)
+    query, params = grid_query.books_query(owner_ids, request.args, data_user, current_user.id,
+                                           lent_ok='friend' not in extra)
 
     total_count = conn.execute(query.replace("SELECT b.*", "SELECT COUNT(b.id)", 1), params).fetchone()[0]
     order_sql, order_params = sorting.order_by(sort_by, sort_order, data_user)
@@ -55,7 +56,7 @@ def library_page(template, owner_ids, data_user, **extra):
     has_more = (offset + len(books)) < total_count
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'books': card_json(conn, data_user, books),   # list view's columns too
+        return jsonify({'books': card_json(conn, data_user, books, current_user.id),   # list view's columns too
                         'total_count': total_count, 'has_more': has_more, 'current_page': page})
 
     # A search on your own or the household's shelf also says what matches

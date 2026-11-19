@@ -187,7 +187,7 @@ def borrowed_by(conn, user_id):
     """What the user has borrowed and not returned, newest first, with the
     item's columns a shelf row needs."""
     return conn.execute(f'''
-        SELECT {_COLUMNS}, b.title, b.cover_image_url, b.media_type
+        SELECT {_COLUMNS}, b.title, b.author, b.cover_image_url, b.media_type, b.video_kind
         FROM loans l {_JOINS}
         WHERE l.borrower_id = ? AND l.returned_at IS NULL
         ORDER BY l.lent_at DESC, l.id DESC
@@ -200,7 +200,7 @@ def lent_out(conn, user_id, media_type=None):
     members = get_library_members(user_id, conn)
     owners = ','.join('?' * len(members))
     sql = f'''
-        SELECT {_COLUMNS}, b.title, b.cover_image_url, b.media_type
+        SELECT {_COLUMNS}, b.title, b.author, b.cover_image_url, b.media_type
         FROM loans l {_JOINS}
         WHERE l.returned_at IS NULL AND b.added_by IN ({owners})
     '''

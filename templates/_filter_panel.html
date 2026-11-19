@@ -108,7 +108,8 @@
                             data-change="filtersChanged"
                             class="w-full bg-primary-bg text-content-primary rounded-lg border border-rule-strong px-3 py-2
                                    focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
-                        {% for value, label in SHOW_CHOICES %}
+                        {# Lent out (16.0d) is the shelf's people's: not on a friend's grid #}
+                        {% for value, label in SHOW_CHOICES if value != 'lent' or not (friend or tab == 'friend') %}
                         <option value="{{ value }}" {% if show == value %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>

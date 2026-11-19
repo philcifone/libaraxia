@@ -118,7 +118,7 @@ class Section:
         match_sql, match_params = self.search_match(term, viewer_id)
         return off_shelf_matches(conn, self.view, owner_ids, match_sql, match_params, viewer_id)
 
-    def filtered(self, conn, owner_ids, args, viewer_id):
+    def filtered(self, conn, owner_ids, args, viewer_id, lent_ok=True):
         """Items owned by `owner_ids`, with the search, filters and sort from
         the query string. The parameter names are the Library's
         (search_term, genre, read_status, rating, tags[], show), so
@@ -126,12 +126,13 @@ class Section:
         work here too; `format` is the sections' own, `kind` (movie / tv)
         Movies & TV's. Bulk edit's "select all in this view" runs this too
         (grid_query.view_ids), so a filter added here is matched there. Status, rating and tag
-        filters are the viewer's own, as on the Library pages."""
+        filters are the viewer's own, as on the Library pages. `lent_ok`:
+        False on a friend's grid (shelf_filter)."""
         marks = ','.join('?' * len(owner_ids))
         # self.view is one of our own view names, never request input
         sql = f"SELECT b.* FROM {self.view} b WHERE b.added_by IN ({marks})"
         params = list(owner_ids)
-        sql += shelf_filter(args)
+        sql += shelf_filter(args, lent_ok=lent_ok)
 
         term = (args.get('search_term') or '').strip()
         if term:
@@ -329,7 +330,8 @@ def make_blueprint(section: Section) -> Blueprint:
         # whoever's entries are in view: the friend on their shelf, you on
         # yours and the household's (11.3)
         data_user = owner_ids[0] if tab == 'friend' else current_user.id
-        rows, sort_by, sort_order = section.filtered(conn, owner_ids, request.args, data_user)
+        rows, sort_by, sort_order = section.filtered(conn, owner_ids, request.args, data_user,
+                                                     lent_ok=tab != 'friend')
         return render_template(
             'media_grid.html', books=rows, tab=tab, marks_user=data_user,
             total_count=len(rows), has_more=False, current_page=1,

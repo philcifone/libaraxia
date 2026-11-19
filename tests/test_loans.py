@@ -302,3 +302,73 @@ def test_a_video_comes_back_to_its_own_page(client, db, cast):
     login(client, 'bob')
     r = client.post(f'/loans/{tape}/lend', data=lend_form(borrower_name='Ray'))
     assert r.headers['Location'].endswith(f'/videos/{tape}#loans')
+
+
+# --- grids, Collections, profile (step 3) ----------------------------------
+
+def test_grid_badge_and_show_lent_on_your_households_grids(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    add_book(db, cast['alice'], 'Emma')
+    loans.lend(db, who(db, cast['bob']), book(db, dune), borrower_name='Ray')
+    db.commit()
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    assert page.count('data-lent') == 1 and 'title="Lent to Ray"' in page
+    assert '<option value="lent"' in page
+    lent_only = client.get('/base/index?show=lent').get_data(as_text=True)
+    assert 'Dune' in lent_only and 'Emma' not in lent_only
+    # Infinite scroll's JSON carries it too
+    data = client.get('/base/index?show=lent', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
+    assert [(b['title'], b['lent_to']) for b in data['books']] == [('Dune', 'Ray')]
+
+
+def test_a_lent_item_that_was_removed_is_still_lent_out(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray')
+    db.execute("UPDATE books SET removed_at = '2026-11-01' WHERE id = ?", (dune,))
+    db.commit()
+    login(client, 'alice')
+    assert 'Dune' in client.get('/base/index?show=lent').get_data(as_text=True)
+
+
+def test_a_friends_grid_shows_no_badge_and_ignores_show_lent(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray')
+    tape = add_book(db, cast['alice'], 'Alien')
+    db.execute("UPDATE books SET media_type = 'video', format = 'VHS' WHERE id = ?", (tape,))
+    loans.lend(db, who(db, cast['alice']), book(db, tape), borrower_name='Ray')
+    db.commit()
+    login(client, 'carol')
+    for url in ('/base/library/alice', '/videos/user/alice'):
+        r = client.get(url)
+        page = r.get_data(as_text=True)
+        assert r.status_code == 200 and 'data-lent' not in page and 'Ray' not in page, url
+        assert '<option value="lent"' not in page, url
+        assert client.get(url + '?show=lent').status_code == 200
+    data = client.get('/base/library/alice?show=lent', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
+    assert [(b['title'], b['lent_to']) for b in data['books']] == [('Dune', None)]
+
+
+def test_collections_has_a_lent_out_row_for_the_household(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    login(client, 'bob')
+    assert 'Lent out' not in client.get('/collections/collections').get_data(as_text=True)
+    loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray')
+    db.commit()
+    page = client.get('/collections/collections').get_data(as_text=True)
+    assert 'Lent out' in page and '/base/shared-library?show=lent' in page and 'Ray' in page
+    assert 'Lent out' not in client.get('/collections/collections?type=video').get_data(as_text=True)
+
+
+def test_borrowed_on_your_own_profile_only(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_id=cast['carol'], due_at='2099-01-01')
+    db.commit()
+    login(client, 'carol')
+    profile = client.get('/user/carol').get_data(as_text=True)
+    assert 'data-borrowed' in profile and '/loans/borrowed' in profile
+    page = client.get('/loans/borrowed').get_data(as_text=True)
+    assert 'data-borrowed-item' in page and 'From alice since' in page and 'due 1 Jan 2099' in page
+    login(client, 'alice')
+    assert 'data-borrowed' not in client.get('/user/carol').get_data(as_text=True)
+    assert 'data-borrowed-item' not in client.get('/loans/borrowed').get_data(as_text=True)

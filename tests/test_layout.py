@@ -1280,7 +1280,8 @@ def test_case_headings_stand_outside_the_bookcase(client, db, people):
     assert 'border-bottom-width: 0;' in case[:case.index('}')]
     assert '<div class="shelf-row mt-4"></div>' in pathlib.Path('templates/collections.html').read_text()
     src = pathlib.Path('templates/user.html').read_text()
-    assert src.count('class="case-wrap ') == 2 and 'shelf-case-heading' not in src
+    # Collections, Wishlist and Borrowed (16.0d)
+    assert src.count('class="case-wrap ') == 3 and 'shelf-case-heading' not in src
 
 
 def test_have_matches_are_small_bookcases(client, db, people):

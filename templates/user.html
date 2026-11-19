@@ -269,6 +269,17 @@
         </section>
         {% endif %}
 
+        {# Borrowed (16.0d): what you have of other people's; your own profile only #}
+        {% if borrowed_shelf %}
+        <section class="case-wrap bg-secondary rounded-xl p-4 sm:p-6 card" data-borrowed>
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-display text-content-primary">Borrowed</h2>
+                <a href="{{ url_for('loans.borrowed') }}" class="text-accent hover:text-accent-hover transition-colors text-sm">View all →</a>
+            </div>
+            <div class="shelf-case">{% with shelves=[borrowed_shelf], shelf_cols='grid-cols-1' %}{% include '_shelf_rows.html' %}{% endwith %}</div>
+        </section>
+        {% endif %}
+
         <!-- Friends List Section -->
         {% if are_friends %}
         {# library-card: a library book card in its pocket (Phil,

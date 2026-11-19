@@ -114,6 +114,8 @@ def profile(username):
             if rows:
                 profile_shelves.append((shelves.SECTION_NAMES[media_type], rows))
         wishlist_shelves = shelves.wishlist_shelves(conn, user['id'], username=link_user)
+    # Borrowed (16.0d): your own profile only; friends visiting don't see it
+    borrowed_shelf = shelves.borrowed_shelf(conn, user['id']) if is_own_profile else None
 
     # Check if this user is in current user's shared library
     in_shared_library = shares_library_with(current_user.id, user['id']) if not is_own_profile else False
@@ -159,6 +161,7 @@ def profile(username):
         friends=friends,
         profile_shelves=profile_shelves,
         wishlist_shelves=wishlist_shelves,
+        borrowed_shelf=borrowed_shelf,
         in_shared_library=in_shared_library,
         household=household,
         recent_reviews=recent_reviews,

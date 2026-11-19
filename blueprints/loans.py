@@ -7,7 +7,7 @@ Someone who can't see the item gets a 404, as on the item page. A refused
 action (not theirs, not on the shelf, already lent, a bad date) is a flash
 with LoanError's message.
 """
-from flask import Blueprint, abort, current_app, flash, redirect, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import can_view_book
@@ -64,6 +64,15 @@ def lend(book_id):
         borrower_name=form.get('borrower_name', '') if borrower_id is None else '',
         lent_at=form.get('lent_at'), due_at=form.get('due_at'), note=form.get('note', '')),
         'Lent.')
+
+
+@loans_blueprint.route('/borrowed')
+@login_required
+def borrowed():
+    """What you have borrowed and not returned (the profile's Borrowed row
+    opens it): each item with who lent it, since when and when it's due."""
+    rows = loans.borrowed_by(get_db(), current_user.id)
+    return render_template('loans_borrowed.html', rows=rows, today=loans.today())
 
 
 def _loan_book(conn, loan_id):

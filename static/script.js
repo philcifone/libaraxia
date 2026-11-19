@@ -401,6 +401,10 @@ class InfiniteScroll {
             ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>'
             : '';
         // No format badge: an item's format shows on its page (Phil, 2026-11-11)
+        // Lent (16.0d): as _book_grid.html; card_json sends lent_to only to the shelf's people
+        const lentBadge = book.lent_to
+            ? `<span class="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 text-xs font-bold bg-secondary-bg text-content-primary border border-accent rounded-pill whitespace-nowrap lent-badge" title="Lent to ${escapeHtml(book.lent_to)}" data-lent>Lent<span class="sr-only"> to ${escapeHtml(book.lent_to)}</span></span>`
+            : '';
 
 
         const coverImage = book.cover_image_url   // cover-box: as _book_grid.html
@@ -421,6 +425,7 @@ class InfiniteScroll {
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
                         ${removedBadge}
+                        ${lentBadge}
                         ${coverImage}
                     </div>
                     <div class="book-info p-3 sm:p-4">

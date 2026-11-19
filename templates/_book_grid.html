@@ -12,6 +12,8 @@
         {% set marks = viewer_marks(books, marks_user|default(none)) %}
         {# Top and side photos on the Shelf style's box faces (photos.box_faces) #}
         {% set faces = box_faces(books) %}
+        {# Lent out (16.0d): your and your household's items only #}
+        {% set lent = lent_map(books) %}
         <div id="book-container" data-media="{{ m.type if m else 'book' }}" data-view="grid"{% if remember_grid|default(false) %} data-remember-grid{% endif %}{% if bulk_select|default(false) %} data-bulkable{% if bulk_view is defined %} data-bulk-view="{{ bulk_view }}"{% endif %}{% endif %} class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             {% set mark = marks.get(book.id, {}) %}
@@ -25,6 +27,10 @@
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Unshelved</span>
                         {% elif book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
+                        {% endif %}
+                        {# Lent (16.0d): top centre, clear of the badge above and the bulk check mark #}
+                        {% if lent.get(book.id) %}
+                        <span class="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 text-xs font-bold bg-secondary-bg text-content-primary border border-accent rounded-pill whitespace-nowrap lent-badge" title="Lent to {{ lent[book.id] }}" data-lent>Lent<span class="sr-only"> to {{ lent[book.id] }}</span></span>
                         {% endif %}
                         {% if book.cover_image_url|upload_exists %}
                         {# cover-box: the Shelf style draws the cover as a 3D box on it;
