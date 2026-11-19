@@ -429,13 +429,16 @@ def test_progress_words():
     now = MS + 2 * 86400000
     line = abs_import.progress_line({'progress': 0.43, 'currentTime': 14122, 'duration': 32842,
                                      'lastUpdate': MS, 'isFinished': False}, 'Audiobook', None, now)
-    assert line == {'text': 'Audiobookshelf: 43 %, 5 h 12 min left, last listened 2 days ago.', 'unsynced': False}
+    assert line == {'text': 'Audiobookshelf: 43 %, 5 h 12 min left, last listened 2 days ago.', 'unsynced': False,
+                    'progress': 0.43}
     sliver = abs_import.progress_line({'progress': 0.001, 'lastUpdate': MS}, 'Audiobook', None, MS + 60 * 86400000)
     assert sliver['text'] == 'Audiobookshelf: under 1 %, last listened on 14 Nov 2023.'
     ebook = abs_import.progress_line({'ebookProgress': 0.25, 'lastUpdate': now}, 'Ebook', None, now)
     assert ebook['text'] == 'Audiobookshelf: 25 %, last read today.'
+    assert ebook['progress'] == 0.25                # the cover's ring
     done = abs_import.progress_line({'isFinished': True, 'finishedAt': MS}, 'Audiobook', {'finished_at': None}, now)
-    assert done == {'text': 'Finished in Audiobookshelf on 14 Nov 2023.', 'unsynced': True}
+    assert done == {'text': 'Finished in Audiobookshelf on 14 Nov 2023.', 'unsynced': True}   # no ring
+    assert 'progress' not in abs_import.progress_line(None, 'Audiobook', None, now)
     assert not abs_import.progress_line({'isFinished': True, 'finishedAt': MS}, 'Audiobook',
                                         {'finished_at': MS}, now)['unsynced']
 
@@ -670,3 +673,108 @@ def test_review_page_shows_a_relisten(client, db, people, abs_server, sessions):
     page = client.get('/abs/review').get_data(as_text=True)
     assert 'data-box="listening_again"' in page and '25 %, started again 2 Feb 2024' in page
     assert 'Not now (asked again next sync)' in page and unbalanced_tags(page) == []
+
+
+# --- the progress ring on covers (Phil, 2026-11-19) ------------------------------
+
+def stored(db, user_id, item_id):
+    row = db.execute('SELECT progress FROM abs_links WHERE user_id = ? AND abs_item_id = ?',
+                     (user_id, item_id)).fetchone()
+    return row['progress'] if row else 'no link'
+
+
+def test_progress_is_kept_for_the_ring(app, db, people, abs_server):
+    alice = people['alice']
+    abs_server([item('Halfway'), item('Done'), item('Ebook', audio=0, ebook='epub')],
+               [progress('li_halfway', 0.4), progress('li_done', finished=True),
+                progress('li_ebook', 0, ebook=0.25)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    # The import writes it: in progress only, by position for audio
+    assert stored(db, alice, 'li_halfway') == 0.4
+    assert stored(db, alice, 'li_done') is None                  # finished: no ring
+    assert stored(db, alice, 'li_ebook') == 0.25
+
+    # Every later Sync refreshes it, whether or not the item is in that review
+    abs_server([item('Halfway'), item('Done'), item('Ebook', audio=0, ebook='epub')],
+               [progress('li_halfway', 0.75), progress('li_done', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    assert stored(db, alice, 'li_halfway') == 0.75
+    assert stored(db, alice, 'li_ebook') is None                 # ABS has no progress for it now
+
+    # rings(): yours, by book id
+    assert abs_import.rings(db, alice) == {book_row(db, 'Halfway')['id']: 0.75}
+    assert abs_import.rings(db, people['bob']) == {}
+
+
+def test_ring_on_the_grid_and_lists_is_yours_alone(client, db, people, abs_server, monkeypatch):
+    from blueprints import audiobookshelf as abs_bp
+    alice = people['alice']
+    connect(db, alice)
+    abs_server([item('Heard')], [progress('li_heard', 0.5)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    book = book_row(db, 'Heard')['id']
+
+    login(client, 'alice')
+    page = client.get('/base/index?show=all').get_data(as_text=True)
+    assert 'data-abs-ring="50"' in page and 'stroke-dasharray="50 100"' in page
+    r = client.get('/base/index?show=all', headers={'X-Requested-With': 'XMLHttpRequest'})
+    assert [b['abs_progress'] for b in r.get_json()['books'] if b['id'] == book] == [0.5]
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'data-abs-ring="50"' in page                          # before the live line answers
+
+    # The live line updates the stored value, so the grid follows it
+    abs_bp._PROGRESS_CACHE.clear()
+    monkeypatch.setattr(abs_, 'progress', lambda token, item_id, timeout=None:
+                        {'progress': 0.9, 'currentTime': 32400, 'duration': 36000, 'isFinished': False})
+    assert client.get(f'/abs/progress/{book}').get_json()['progress'] == 0.9
+    assert 'data-abs-ring="90"' in client.get('/base/index?show=all').get_data(as_text=True)
+
+    # bob shares the shelf: the book, never alice's ring
+    login(client, 'bob')
+    shared = client.get('/base/shared-library?show=all').get_data(as_text=True)
+    assert f'/books/book/{book}' in shared and 'data-abs-ring' not in shared
+    r = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'data-abs-ring' not in r
+
+    # Finished on ABS: the ring goes
+    login(client, 'alice')
+    abs_bp._PROGRESS_CACHE.clear()
+    monkeypatch.setattr(abs_, 'progress', lambda token, item_id, timeout=None:
+                        {'progress': 1, 'isFinished': True, 'finishedAt': MS})
+    assert 'progress' not in client.get(f'/abs/progress/{book}').get_json()
+    assert 'data-abs-ring' not in client.get('/base/index?show=all').get_data(as_text=True)
+
+
+def test_disconnect_clears_the_rings(client, db, people, abs_server):
+    alice = people['alice']
+    connect(db, alice)
+    abs_server([item('Heard')], [progress('li_heard', 0.5)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    login(client, 'alice')
+    client.post('/abs/disconnect')
+    assert stored(db, alice, 'li_heard') is None
+    assert book_row(db, 'Heard') is not None                     # what you imported stays
+
+
+def test_ring_markup_matches_its_js_twin(app):
+    """_covers.html progress_ring and common.js progressRingHtml draw the
+    same ring, and a sliver still shows."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('node not installed')
+    with app.test_request_context():
+        macro = app.jinja_env.get_template('_covers.html').module.progress_ring
+        server = {v: str(macro(v)).strip() for v in (0.5, 0.004, 1, 0.755)}
+        assert str(macro(None)).strip() == '' and str(macro(0)).strip() == ''
+    src = Path(app.root_path, 'static', 'common.js').read_text()
+    fn = re.search(r'function progressRingHtml\(share\) \{.*?\n\}', src, re.S).group(0)
+    out = subprocess.run([node, '-e', fn + '\nconsole.log(JSON.stringify([0.5, 0.004, 1, 0.755].map(progressRingHtml)))'],
+                         capture_output=True, text=True, check=True).stdout
+    assert dict(zip((0.5, 0.004, 1, 0.755), json.loads(out))) == server
+    assert 'data-abs-ring="1"' in server[0.004] and 'data-abs-ring="76"' in server[0.755]

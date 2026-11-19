@@ -377,6 +377,8 @@ CREATE TABLE abs_links (
     session_id  INTEGER REFERENCES reading_sessions(session_id) ON DELETE SET NULL,
     finished_at TIMESTAMP,              -- ABS finishedAt last recorded
     linked_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- 0 to 1 while in progress, for the cover's ring; NULL otherwise (045)
+    progress    REAL CHECK (progress IS NULL OR (progress > 0 AND progress <= 1)),
     UNIQUE (user_id, abs_item_id)
 );
 CREATE INDEX idx_abs_links_book ON abs_links(book_id);
@@ -677,4 +679,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('041_faces.sql'),
     ('042_loans.sql'),
     ('043_audiobook_fields.sql'),
-    ('044_audiobookshelf.sql');
+    ('044_audiobookshelf.sql'),
+    ('045_abs_progress.sql');

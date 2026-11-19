@@ -11,7 +11,8 @@
 //   confirmSubmit(form, event, message, options)                (confirm in a submit handler)
 //   dismissFlash(element)   close the flash message containing element
 //   <div data-read-more>    long text clamped with a "Read more" toggle (below)
-//   noCoverHtml(title, author, {size, box})  placeholder for a book with no cover
+//   noCoverHtml(title, author, {size, box, ring})  placeholder for a book with no cover
+//   progressRingHtml(share)  the Audiobookshelf progress ring on a cover (0 to 1)
 
 'use strict';
 
@@ -412,7 +413,10 @@ document.addEventListener('error', event => {
             print.classList.remove('rack-print');
             box.remove();
         } else {
-            box.outerHTML = noCoverHtml(img.alt, img.dataset.author || '');
+            // keeping the Audiobookshelf ring, if the cover had one
+            const ring = box.querySelector('.abs-ring');
+            box.outerHTML = noCoverHtml(img.alt, img.dataset.author || '',
+                                        { ring: ring ? Number(ring.dataset.absRing) / 100 : null });
         }
         return;
     }
@@ -435,10 +439,23 @@ document.addEventListener('load', event => {
 // (keep the two in step). src is the uploads path as stored; alt and author
 // are escaped here. author sets data-author, which the load-error handler
 // above uses to title the placeholder it swaps in.
-function coverBoxHtml(src, alt, imgClass, { author = null } = {}) {
+function coverBoxHtml(src, alt, imgClass, { author = null, ring = null } = {}) {
     const authorAttr = author === null ? '' : ` data-author="${escapeHtml(author)}"`;
     return `<span class="cover-box"><img src="/static/${escapeHtml(src)}" alt="${escapeHtml(alt)}"${authorAttr}`
-         + ` class="${imgClass}"><span class="cover-sheen" aria-hidden="true"></span></span>`;
+         + ` class="${imgClass}"><span class="cover-sheen" aria-hidden="true"></span>${progressRingHtml(ring)}</span>`;
+}
+
+// The Audiobookshelf progress ring: _covers.html progress_ring()'s twin
+// (keep the two in step). `share` is 0 to 1; nothing for none or 0. The
+// only value in it is a number, so the string is safe as HTML.
+function progressRingHtml(share) {
+    const value = Number(share);
+    if (!(value > 0)) return '';
+    const pct = Math.max(1, Math.min(100, Math.round(value * 100)));
+    return `<svg class="abs-ring" viewBox="0 0 36 36" aria-hidden="true" data-abs-ring="${pct}">`
+         + `<title>${pct} % in Audiobookshelf</title>`
+         + '<circle class="abs-ring-disc" cx="18" cy="18" r="18"/>'
+         + `<circle class="abs-ring-arc" cx="18" cy="18" r="11" pathLength="100" stroke-dasharray="${pct} 100"/></svg>`;
 }
 
 // --- A cover's edge colour (Shelf) ------------------------------------------
@@ -489,12 +506,12 @@ if (document.documentElement.dataset.style === 'shelf') {
 // --- No cover -----------------------------------------------------------------
 // The JS twin of templates/_no_cover.html (keep the two in step): a plain
 // binding with the title on it, for cards built in script.
-function noCoverHtml(title, author, { size = 'md', box = 'w-full h-full' } = {}) {
+function noCoverHtml(title, author, { size = 'md', box = 'w-full h-full', ring = null } = {}) {
     const titleHtml = title ? `<span class="no-cover-title">${escapeHtml(title)}</span>` : '';
     const authorHtml = title && author && size !== 'sm'
         ? `<span class="no-cover-author">${escapeHtml(author)}</span>` : '';
     const long = title && title.length > 30 ? ' no-cover-long' : '';   // as _no_cover.html
-    return `<div class="no-cover no-cover-${size}${long} ${box}" aria-hidden="true">${titleHtml}${authorHtml}</div>`;
+    return `<div class="no-cover no-cover-${size}${long} ${box}" aria-hidden="true">${titleHtml}${authorHtml}${progressRingHtml(ring)}</div>`;
 }
 
 // --- Read more ---------------------------------------------------------------

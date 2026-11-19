@@ -27,9 +27,9 @@
             <!-- Book Cover -->
             <div class="w-full max-w-[300px] mx-auto">
                 {% if book.cover_image_url|upload_exists %}
-                    {{ cover_img(book['cover_image_url'], m.Noun ~ ' cover', 'w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]') }}
+                    {{ cover_img(book['cover_image_url'], m.Noun ~ ' cover', 'w-full h-auto rounded-lg shadow-lg transition-transform hover:scale-[1.02]', ring=abs_ring(book.id)) }}
                 {% else %}
-                    {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg', ring=abs_ring(book.id) %}{% include '_no_cover.html' %}{% endwith %}
                 {% endif %}
             </div>
 

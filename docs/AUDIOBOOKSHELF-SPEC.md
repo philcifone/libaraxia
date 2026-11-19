@@ -300,6 +300,16 @@ put back).
   (JSON; 404 unless the link is yours; 120 per hour; 60 s in-memory cache per
   user and item), so the page never waits on the LAN. Silent when ABS is
   down.
+- The progress ring (Phil, 2026-11-19): on every cover of an item you're
+  partway through on ABS (grids, Collections and Reviews rows, the feed, Do
+  I Have This?, Borrowed, the item page), a small accent arc on the
+  top-right corner, from 12 o'clock clockwise, on a disc of the page's
+  surface (50 % is half a circle, 75 % reaches 9 o'clock). None when
+  finished or not started; your own progress only, never another user's.
+  The grid can't ask ABS per cover, so the progress is saved on
+  `abs_links.progress` (migration 045) by every Sync, the import, and each
+  item page's live line; Disconnect clears it. The text stays on the item
+  page and in the reading history.
 - The item page also gets a provenance note beside the Goodreads one:
   "Imported from Audiobookshelf on 18 Nov 2026".
 - "Open in Audiobookshelf" goes to `AUDIOBOOKSHELF_PUBLIC_URL` +

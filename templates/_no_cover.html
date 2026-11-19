@@ -7,7 +7,9 @@
      {% endwith %}
    size: lg | md | sm (sm shows the title only). box: sizing classes.
    no-cover-long marks a long title, so a small cover can drop the author
-   (the Shelf movie case does). #}
+   (the Shelf movie case does). ring: Audiobookshelf progress, 0 to 1, for
+   the progress ring (_covers.html progress_ring); unset: none. #}
+{% from '_covers.html' import progress_ring %}
 {%- set size = size or 'md' -%}
 <div class="no-cover no-cover-{{ size }}{% if title and title|length > 30 %} no-cover-long{% endif %} {{ box or 'w-full h-full' }}" aria-hidden="true">
     {%- if title %}
@@ -16,4 +18,5 @@
     <span class="no-cover-author">{{ author }}</span>
     {%- endif %}
     {%- endif %}
+    {{- progress_ring(ring|default(none)) }}
 </div>

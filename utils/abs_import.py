@@ -157,6 +157,14 @@ def _entry(item, prog):
     }
 
 
+def ring_value(entry):
+    """What the cover's progress ring shows for a staged entry: 0 to 1 while
+    in progress, None when finished or not started (no ring)."""
+    if entry['finished'] or not entry['progress'] > 0:
+        return None
+    return round(min(entry['progress'], 1.0), 4)
+
+
 def _listened_again(d, link):
     """'finished' or 'listening' when ABS shows a listen after the one a
     link recorded finishing, else None."""
@@ -220,6 +228,13 @@ def sync(conn, user, token, include_unstarted=False):
     conn.executemany('INSERT INTO abs_staging (user_id, abs_item_id, data) VALUES (?, ?, ?)',
                      [(user.id, item_id, json.dumps(entry)) for item_id, entry in staged])
     conn.execute('UPDATE abs_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE user_id = ?', (user.id,))
+    # The rings on covers: every item you imported before gets ABS's progress
+    # now, whether or not it's in this review (an item ABS no longer has
+    # progress for has no ring)
+    rings = {item_id: ring_value(_entry(item, progress.get(item_id)))
+             for item_id, item in items.items() if item_format(item)}
+    conn.executemany('UPDATE abs_links SET progress = ? WHERE user_id = ? AND abs_item_id = ?',
+                     [(rings.get(item_id), user.id, item_id) for item_id in links])
     conn.commit()
     return len(staged)
 
@@ -681,15 +696,16 @@ def _link(conn, user, row, outcome, book_id, session_id, params, reopen=False):
     elif row.item_id not in params['updated']:
         params['updated'][row.item_id] = {k: old[k] for k in ('outcome', 'book_id', 'session_id', 'finished_at')}
     conn.execute('''
-        INSERT INTO abs_links (user_id, abs_item_id, book_id, outcome, asin, session_id, finished_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO abs_links (user_id, abs_item_id, book_id, outcome, asin, session_id, finished_at, progress)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (user_id, abs_item_id) DO UPDATE SET
             book_id = excluded.book_id, outcome = excluded.outcome, asin = excluded.asin,
             session_id = COALESCE(excluded.session_id, abs_links.session_id),
             finished_at = CASE WHEN ? THEN NULL ELSE COALESCE(excluded.finished_at, abs_links.finished_at) END,
+            progress = excluded.progress,
             linked_at = CURRENT_TIMESTAMP
     ''', (user.id, row.item_id, book_id, outcome, d['item'].get('asin') or None, session_id,
-          d['finished_ms'] or None, reopen))
+          d['finished_ms'] or None, ring_value(d), reopen))
 
 
 SUMMARY_WORDS = (('created', 'added'), ('attached', 'added to books you have'),
@@ -892,6 +908,23 @@ def _make_action():
 
 # ------------------------------------------------------------------ the item page (step 6)
 
+def rings(conn, user_id):
+    """{book_id: progress 0 to 1} for the user's items in progress on ABS,
+    as the last Sync or item page saw them: the progress ring on covers
+    (app.py abs_ring). Yours only; never another user's."""
+    return {r['book_id']: r['progress'] for r in conn.execute(
+        'SELECT book_id, progress FROM abs_links '
+        "WHERE user_id = ? AND book_id IS NOT NULL AND progress IS NOT NULL AND outcome IN ('created', 'attached')",
+        (user_id,))}
+
+
+def store_progress(conn, user_id, item_id, value):
+    """Keep what the item page's live line just read (None: no ring), so
+    the grid's ring matches it. Caller commits."""
+    conn.execute('UPDATE abs_links SET progress = ? WHERE user_id = ? AND abs_item_id = ?',
+                 (value, user_id, item_id))
+
+
 def link_for(conn, user_id, book_id):
     """Your abs_links row on a book (the latest, if more than one ABS item
     points at it), or None. Only ever yours: nobody else sees anything."""
@@ -945,4 +978,7 @@ def progress_line(prog, fmt, link, now_ms=None):
     if prog.get('lastUpdate'):
         verb = 'listened' if fmt == AUDIOBOOK else 'read'
         bits.append(f'last {verb} {_ago(prog["lastUpdate"], now_ms)}')
-    return {'text': 'Audiobookshelf: ' + ', '.join(bits) + '.', 'unsynced': False}
+    # `progress` (0 to 1): the ring on the item page's cover (book_detail.js);
+    # only while in progress, so a finished or unstarted item has none
+    return {'text': 'Audiobookshelf: ' + ', '.join(bits) + '.', 'unsynced': False,
+            'progress': round(min(max(share, 0), 1), 4)}

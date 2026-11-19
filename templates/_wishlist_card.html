@@ -37,9 +37,9 @@
         <span class="cover-anchor">
             <a href="{{ url }}" class="book-link block">
                 {% if book.cover_image_url|upload_exists %}
-                {{ cover_img(book.cover_image_url, book.title, 'book-cover-img object-cover w-full ' ~ ('aspect-square' if book.media_type == 'record' else 'h-72') ~ ' group-hover:opacity-90 transition-opacity duration-200', author=book.author or '') }}
+                {{ cover_img(book.cover_image_url, book.title, 'book-cover-img object-cover w-full ' ~ ('aspect-square' if book.media_type == 'record' else 'h-72') ~ ' group-hover:opacity-90 transition-opacity duration-200', author=book.author or '', ring=abs_ring(book.id)) }}
                 {% else %}
-                {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72') %}{% include '_no_cover.html' %}{% endwith %}
+                {% with title=book.title, author=book.author, size='md', box=('w-full aspect-square' if book.media_type == 'record' else 'w-full h-72'), ring=abs_ring(book.id) %}{% include '_no_cover.html' %}{% endwith %}
                 {% endif %}
                 {# The format (Phil, 2026-11-15: a wish is for a format, so a VHS
                    and a DVD, or an LP and a CD, shouldn't need a click to tell

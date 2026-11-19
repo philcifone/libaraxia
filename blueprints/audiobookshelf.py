@@ -227,6 +227,9 @@ def progress(book_id):
         return jsonify({'success': False, 'error': "Audiobookshelf didn't answer."}), 502
     answer = {'success': True, **abs_import.progress_line(prog, fmt, link),
               'link': abs_.item_link(link['abs_item_id'])}
+    # The covers' ring follows what this just read
+    abs_import.store_progress(conn, current_user.id, link['abs_item_id'], answer.get('progress'))
+    conn.commit()
     if len(_PROGRESS_CACHE) > 1000:
         _PROGRESS_CACHE.clear()
     _PROGRESS_CACHE[key] = (time.monotonic(), answer)

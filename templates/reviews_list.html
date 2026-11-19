@@ -24,9 +24,9 @@
             <li class="bg-secondary rounded-lg p-4 card flex gap-4 min-w-0">
                 <a href="{{ page }}" class="shrink-0 self-start" aria-label="{{ r.title }}">
                     {% if r.cover_image_url|upload_exists %}
-                    {{ cover_img(r.cover_image_url, '', 'w-20 max-h-32 object-contain rounded shadow-sm', lazy=True) }}
+                    {{ cover_img(r.cover_image_url, '', 'w-20 max-h-32 object-contain rounded shadow-sm', lazy=True, ring=abs_ring(r.id)) }}
                     {% else %}
-                    {% with title=r.title, size='sm', box='h-28 w-auto aspect-[2/3] rounded' %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=r.title, size='sm', box='h-28 w-auto aspect-[2/3] rounded', ring=abs_ring(r.id) %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                 </a>
                 <div class="flex-1 min-w-0">

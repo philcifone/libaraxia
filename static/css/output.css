@@ -4962,6 +4962,84 @@ dialog::backdrop {
   cursor: zoom-in;
 }
 
+/* Audiobookshelf progress ring (_covers.html progress_ring, common.js
+   progressRingHtml; Phil, 2026-11-19): a small accent arc on a cover's
+   top-right corner, from 12 o'clock clockwise, wherever the cover of an
+   item you're partway through shows. Its disc is the page's surface, a
+   little see-through, so the line reads over any cover.
+   It sits in the cover's box. In Shelf .cover-box is that box already. In
+   the other styles .cover-box is display: contents, so a cover with a
+   ring gets a box of its own, sized by its picture as Shelf's is, except
+   where the picture fills a box that is already placed: the grid's
+   .book-cover and the item page's cover button. A coverless item's
+   placeholder is its own box. */
+
+.cover-stand .cover-zoom-open,
+.no-cover:has(> .abs-ring) {
+  position: relative;
+}
+
+.cover-box:has(> .abs-ring):not(.book-cover > .cover-box, .cover-zoom-open > .cover-box) {
+  display: block;
+  position: relative;
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.abs-ring {
+  position: absolute;
+  top: .25rem;
+  right: .25rem;
+  z-index: 1;
+  /* over the Shelf glare layer */
+  width: 1.125rem;
+  /* a list's small cover */
+  height: 1.125rem;
+  transform: rotate(-90deg);
+  /* the circle starts at 3 o'clock; 12 instead */
+  pointer-events: none;
+}
+
+/* The grid's covers and the item page's: a size up (a phone's are 7rem) */
+
+:is(.book-cover, .cover-stand) .abs-ring {
+  top: .375rem;
+  right: .375rem;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+@media (min-width: 768px) {
+  .cover-stand .abs-ring {
+    top: .5rem;
+    right: .5rem;
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
+/* List view's thumbnails */
+
+[data-view="list"] .book-cover .abs-ring {
+  top: .125rem;
+  right: .125rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.abs-ring-disc {
+  fill: rgb(var(--surface) / .8);
+  stroke: none;
+}
+
+.abs-ring-arc {
+  fill: none;
+  stroke: rgb(var(--accent));
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
 .cover-zoom {
   width: 100vw;
   height: 100dvh;
