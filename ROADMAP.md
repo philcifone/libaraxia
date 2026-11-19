@@ -17,7 +17,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 14b | Granular Goodreads import, site and personal backups, "Unshelved" | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import) |
 | 14c | Tweaks after 14b: CSRF, undated sessions, Settings for everyone, profile tabs, cyclers, Shelf bookcases and boxed covers, username collisions | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14c-tweaks-after-14b) |
 | 15 | Movies & TV (a Kind and Season on videos, TMDb TV lookup), free-form cover crop | Done 2026-11-12 (15.3 on 2026-11-10), [archive](docs/ROADMAP-ARCHIVE.md#phase-15-movies--tv-cover-crop). Lending moved to 17.1 |
-| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Photos, condition and value (16.0a) done 2026-11-15; left: a final layout pass, a code review, then screenshots of the finished app |
+| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Photos, condition and value (16.0a) done 2026-11-15; left: lending and Audiobookshelf (16.0d, 16.0e, moved up from 17 on 2026-11-18), a final layout pass, a code review, then screenshots of the finished app |
 | 17 | [Future roadmap](#phase-17-future-roadmap) | After the portfolio; shown on the showcase site as what's next |
 
 **Numbering:** the old Phase 9 is now 14 (2026-11-08), so the open phases run in order after the finished ones. 11 was once the archive fork (dropped, see Not planned); the number is reused. On 2026-11-09 the portfolio phase moved from 15 to 16 so it stays last.
@@ -76,7 +76,7 @@ From Phil, 2026-11-08: for a portfolio, not commercial or public use.
 ### 16.0 Final layout pass 🟠
 Before the screenshots (Phil, 2026-11-12). Layout only, no new features: go app- and style-wide over the pages that grew piece by piece and still read as stacked cards: Activity Feed, Notifications, Friends, Wishlist, Settings and Admin, the review pages, Do I Have This?. Spacing, widths (the 4xl / 7xl mix), card nesting, headings, phone layouts, and the Shelf bookcase look where it belongs (in Shelf it's on headings, the feed, notifications and the item page so far). Check all four styles in both modes.
 **Spec: [docs/STYLE-TWEAKS-SPEC.md](docs/STYLE-TWEAKS-SPEC.md)** (approved 2026-11-12, from Phil's style-tweaks brief): the bookcase rule, a refactor to shared tokens and one cover component, Shelf tweaks, Friends and profile changes, cover glare. Branch `phase-16-style-pass`, one commit per step (spec section 10).
-- [ ] Walk every page at phone and desktop width in each style; list what's off; fix in one pass.
+- [ ] Walk every page at phone and desktop width in each style; list what's off; fix in one pass. After 16.0d and 16.0e, so it covers their pages too.
 - [x] Feed: the dismiss X and the like/comment row sit in fixed corners; give them a place in the layout. Done 2026-11-13: the feed card is the Reviews list's card, the like in its own row (style pass steps 5 and the taste pass).
 
 ### 16.0a Photos, condition and value 🟢 (done 2026-11-15, merged to main)
@@ -95,6 +95,27 @@ From Phil, 2026-11-15. **Spec: [docs/FACES-SPEC.md](docs/FACES-SPEC.md).** Every
 - [x] Then: VHS tapes on the Movies heading, as the books on the Shelves one (same seed, your own Movies page).
 - [x] Then (Phil, 2026-11-16): Admin → Placeholders as one tab per medium (VHS sleeves and clamshells together; the set names say which); no default sets, nothing automatic (an item shows a placeholder only where its owner picked one); a top or bottom uploaded upright is turned to lie wide, a spine or side to stand tall. Bulk edit's More menu applies a set to the selection (undoable). Shelf's flat box: a vinyl sleeve is 1px in its cover's edge colour; a CD shows its spine on its right side; a book's plain top and side are lined pages, as in 3D and on the heading.
 
+### 16.0d Lend an item 🟠
+Moved up from 17.1 (Phil, 2026-11-18; originally 15.2). Record who has a physical copy, for any type.
+**Spec: [docs/LENDING-SPEC.md](docs/LENDING-SPEC.md)** (approved 2026-11-18). Decided: the owner or any household member lends and marks returned; a borrower who's a user is in the lender's circle, anyone else is a typed name; loans show to the shelf's people and the borrower only; the borrower is notified on lending, the owner when someone else lends or returns their item; the Lent badge sits top centre (open to change). Branch `phase-16d-lending-abs`, shared with 16.0e, lending first.
+- [ ] 1. `loans` table (migration 042), `utils/loans.py`.
+- [ ] 2. Item page: banner, Lend, Mark returned, history; `can_view_book` for borrowers; the notification.
+- [ ] 3. Grid badge, Show: Lent out, the Collections row, the profile's Borrowed row.
+- [ ] 4. Do I have this?, exports.
+- [ ] 5. Docs, screenshots.
+
+### 16.0e Audiobookshelf connection 🟠
+Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf server: an import of finished and in-progress audiobooks (unowned Audiobook books with a status and a session, after a review, undoable) and a live progress line on imported items.
+**Spec: [docs/AUDIOBOOKSHELF-SPEC.md](docs/AUDIOBOOKSHELF-SPEC.md)** (approved 2026-11-18; the API was probed on Phil's server). Decided: one server for the site (`AUDIOBOOKSHELF_URL`, the LAN address), each user's own API key in Settings, encrypted at rest; review, then apply; started books by default (an option for the rest); ebooks too (a new `Ebook` format); a narrator and a length for audiobooks, and hours listened in Stats; podcasts and books at 0 % stay out; nothing from ABS is owned unless the catalogue already says so. Same branch, after 16.0d.
+- [ ] 1. Migration 043; the Ebook format, narrator and length on the forms and item page.
+- [ ] 1b. An Audiobooks block in the Books stats (hours listened).
+- [ ] 2. The client and key encryption.
+- [ ] 3. Settings card: connect, disconnect.
+- [ ] 4. Sync and the review page.
+- [ ] 5. Apply, undo, covers.
+- [ ] 6. Live progress line, provenance note.
+- [ ] 7. Docs, a real sync on dev, screenshots.
+
 ### 16.0b Code review 🟠
 The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.
 - [ ] Run the review, triage, fix.
@@ -106,7 +127,7 @@ The last step before the portfolio, once Phil calls the app feature-complete eno
 ### 16.2 Showcase site spec 🟠 (medium)
 - [ ] Write `docs/SHOWCASE-SPEC.md` first; build after it's agreed. A static site (Hugo or Astro, which Phil already uses) showing the project's progress as a **timeline**: a fancy changelog.
   - Sources: the git history, the archived phases and their dates (`docs/ROADMAP-ARCHIVE.md`), `docs/DEVLOG.md`, and before/after screenshots per phase (the 2026-11-02 set, the Phase 0 refresh, styles, sections).
-  - A "What's next" page from Phase 17 (lending, Audiobookshelf, scrobbling, email).
+  - A "What's next" page from Phase 17 (scrobbling, email, the fediverse idea).
   - A feature tour and a short "how it's built" page (raw SQLite with tracked migrations, CSP with no inline JS, the SSRF guard, the access model, auto-deploy on green CI).
   - Same privacy rule as 16.1: anonymised data only. No tracking scripts, self-hosted fonts, Phil's house style.
   - Where it lives: a subpath or subdomain of philcifone.com; decide in the spec.
@@ -123,21 +144,7 @@ The last step before the portfolio, once Phil calls the app feature-complete eno
 
 ## Phase 17: Future roadmap
 
-From Phil, 2026-11-12: after the portfolio (16), and listed on the showcase site (16.2) as the project's future roadmap. Not scheduled; each item gets a short spec or a prompt with its open questions before it's built.
-
-### 17.1 Lend an item 🟢
-Moved from 15.2 (Phil, 2026-11-12). Decide before building: whether a household member can lend an item the owner added, whether a borrower who's a user must be in your circle, and who (if anyone) is notified on return.
-Record who has a physical copy, for any type.
-- [ ] A `loans` table (migration): `book_id` (CASCADE), `lent_by` (the owner), `borrower_id` (a user in your circle, nullable) or `borrower_name` (free text, for someone not on the site), `lent_at`, `due_at` (optional), `returned_at`, `note`. One open loan per item.
-- [ ] Item page: Lend / Mark returned (POST, owner or household member, as the shelf it's on). A "Lent to Bob" badge on the cover, a Show: lent filter, and a "Lent out" row on Shelves.
-- [ ] Do I have this? answers "yours, lent to Bob since March". The borrower (if a user) sees "Borrowed from Alice" on the item page and a list on their profile; a notification when lent, none when returned.
-- [ ] Loan history kept (returned loans stay, shown on the item page). Exports include loans.
-- Lending within a household is still worth recording (who physically has it), so it isn't limited to friends.
-
-### 17.2 Audiobookshelf connection 🟢
-Moved from Parked. Audiobooks are books with format Audiobook, usually not owned (ROADMAP 8B.2/8B.3, docs/ARCHITECTURE.md "Product direction"), and Phil's Audiobookshelf server tracks listening better than this project should. Not fully formed yet; first decide what flows which way:
-- [ ] Spec: read-only import of finished audiobooks (as finished, unowned Audiobook books with a session), or a live link (progress shown on the item page), or both. Auth: an Audiobookshelf API token per user in Settings, stored like other secrets, never sent to the browser; server-side fetches through `book_utils._get_public()`-style checks, except that a LAN address is the point here, so it needs its own allow-list.
-- [ ] Matching through `utils/book_matching.py` (ISBN / ASIN, title and author), never against all of `books`; re-runs don't duplicate.
+From Phil, 2026-11-12: after the portfolio (16), and listed on the showcase site (16.2) as the project's future roadmap. Not scheduled; each item gets a short spec or a prompt with its open questions before it's built. 17.1 (lending) and 17.2 (Audiobookshelf) moved up to 16.0d and 16.0e on 2026-11-18; the numbers aren't reused.
 
 ### 17.3 Scrobble listens to Last.fm / ListenBrainz 🟢
 When you log a listen of a record (a reading session on a vinyl or CD, the album's Listening History), send it as scrobbles.
