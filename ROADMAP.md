@@ -101,7 +101,7 @@ Moved up from 17.1 (Phil, 2026-11-18; originally 15.2). Record who has a physica
 - [x] 1. `loans` table (migration 042), `utils/loans.py`.
 - [x] 2. Item page: banner, Lend, Mark returned, history; `can_view_book` for borrowers; the notification.
 - [x] 3. Grid badge, Show: Lent out, the Collections row, the profile's Borrowed row.
-- [ ] 4. Do I have this?, exports.
+- [x] 4. Do I have this?, exports.
 - [ ] 5. Docs, screenshots.
 
 ### 16.0e Audiobookshelf connection 🟠

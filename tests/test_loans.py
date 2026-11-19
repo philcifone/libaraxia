@@ -372,3 +372,55 @@ def test_borrowed_on_your_own_profile_only(client, db, cast):
     login(client, 'alice')
     assert 'data-borrowed' not in client.get('/user/carol').get_data(as_text=True)
     assert 'data-borrowed-item' not in client.get('/loans/borrowed').get_data(as_text=True)
+
+
+# --- Do I have this? and exports (step 4) ----------------------------------
+
+def test_do_i_have_this_words_the_loan(client, db, cast):
+    dune = add_book(db, cast['alice'], 'Dune')
+    loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_id=cast['carol'], lent_at='2026-03-03')
+    db.commit()
+    login(client, 'alice')
+    assert 'On your shelf, lent to carol since Mar 2026' in client.get('/have/?q=Dune').get_data(as_text=True)
+    login(client, 'bob')
+    assert "On the shelf: alice&#39;s, lent to carol since Mar 2026" in \
+        client.get('/have/?q=Dune').get_data(as_text=True)
+    login(client, 'carol')
+    page = client.get('/have/?q=Dune').get_data(as_text=True)
+    assert 'You have it on loan' in page and 'Borrowed from alice since Mar 2026' in page
+
+
+def test_do_i_have_this_keeps_loans_from_others(client, db, cast):
+    """dave has data on carol's copy, which carol lent to Ray: dave sees the
+    copy in the results, never the loan."""
+    emma = add_book(db, cast['carol'], 'Emma')
+    db.execute("INSERT INTO read_data (user_id, book_id, rating) VALUES (?, ?, 4)", (cast['dave'], emma))
+    loans.lend(db, who(db, cast['carol']), book(db, emma), borrower_name='Ray')
+    db.commit()
+    login(client, 'dave')
+    page = client.get('/have/?q=Emma').get_data(as_text=True)
+    assert 'Emma' in page and 'Ray' not in page and 'lent to' not in page
+
+
+def test_exports_carry_loans(app, db, cast):
+    from utils.export import data_zip, library_csv
+    import csv, io, zipfile
+    dune = add_book(db, cast['alice'], 'Dune')
+    first = loans.lend(db, who(db, cast['bob']), book(db, dune), borrower_id=cast['dave'], lent_at='2026-01-01')
+    loans.mark_returned(db, who(db, cast['alice']), first, '2026-02-01')
+    loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray', lent_at='2026-03-01',
+               due_at='2026-04-01')
+    db.commit()
+    rows = list(csv.DictReader(io.StringIO(library_csv(db, cast['bob']))))
+    dune_row = next(r for r in rows if r['Title'] == 'Dune')
+    assert (dune_row['Section'], dune_row['Lent To'], dune_row['Lent On'], dune_row['Due Back']) == \
+        ('Shared (alice)', 'Ray', '2026-03-01', '2026-04-01')
+
+    def loans_csv(user_id):
+        with zipfile.ZipFile(io.BytesIO(data_zip(db, user_id))) as z:
+            return [(r['Direction'], r['Borrower'], r['Returned On'])
+                    for r in csv.DictReader(io.StringIO(z.read('loans.csv').decode()))]
+    assert loans_csv(cast['alice']) == [('Lent', 'dave', '2026-02-01'), ('Lent', 'Ray', '')]
+    assert loans_csv(cast['bob']) == [('Lent', 'dave', '2026-02-01')]       # the one bob lent
+    assert loans_csv(cast['dave']) == [('Borrowed', 'dave', '2026-02-01')]
+    assert loans_csv(cast['carol']) == []

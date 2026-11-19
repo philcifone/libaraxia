@@ -5,6 +5,7 @@ answers "do I already have this?" for you:
 
   - yours, on the shelf;
   - your household's (someone else in your library group owns it);
+  - borrowed: someone else's copy lent to you and not returned (16.0d);
   - on your wishlist;
   - yours but not owned (read / watched / listened to, never bought);
   - removed from your shelf (had it, it left);
@@ -12,11 +13,14 @@ answers "do I already have this?" for you:
     reviewed): you've read it, even if no one here owns it.
 
 Each match carries your status and rating, so "no, but you read it and
-gave it 4/5" is one look. Same scope rule as book_matching: only your own
+gave it 4/5" is one look, and its open loan, so "yours, lent to bob since
+Mar 2026" is too (16.0d; only on your and your household's copies, where
+loans are yours to see, and on a copy lent to you). Same scope rule as book_matching: only your own
 items, your household's and things you have data on, never the whole
 `books` table.
 """
 import re
+from datetime import date
 
 from models import get_library_members
 from utils import media, search
@@ -26,7 +30,8 @@ MAX_RESULTS = 20
 
 # The verdict per match, most reassuring first: the page sorts by it and
 # the headline uses the best one.
-VERDICTS = ('yours', 'household', 'wishlist', 'not_owned', 'removed', 'their_wishlist', 'data_only')
+VERDICTS = ('yours', 'household', 'borrowed', 'wishlist', 'not_owned', 'removed', 'their_wishlist',
+            'data_only')
 
 
 def parse_query(q):
@@ -59,6 +64,8 @@ def _verdict(row, user_id, members):
         return 'their_wishlist'     # a household member wants it: nobody has it
     if row['owned'] and row['removed_at'] is None and row['added_by'] in members:
         return 'yours' if mine else 'household'
+    if row['loan_borrower_id'] == user_id:
+        return 'borrowed'           # someone else's copy, lent to you (16.0d)
     if mine and not row['owned']:
         return 'not_owned'
     if mine and row['removed_at'] is not None:
@@ -97,20 +104,33 @@ def find(conn, user_id, q):
                (SELECT status FROM collections c WHERE c.book_id = b.id AND c.user_id = ?) AS status,
                (SELECT rating FROM read_data r WHERE r.book_id = b.id AND r.user_id = ?) AS rating,
                (SELECT COUNT(*) FROM reading_sessions s
-                 WHERE s.book_id = b.id AND s.user_id = ? AND s.date_completed IS NOT NULL) AS times_done
+                 WHERE s.book_id = b.id AND s.user_id = ? AND s.date_completed IS NOT NULL) AS times_done,
+               -- The open loan (16.0d): who has it, since when, who lent it
+               l.borrower_id AS loan_borrower_id, l.lent_at AS loan_lent_at,
+               COALESCE(lb.username, l.borrower_name) AS loan_borrower,
+               COALESCE(ll.username, u.username) AS loan_lender
         FROM books b LEFT JOIN users u ON u.id = b.added_by
+        LEFT JOIN loans l ON l.book_id = b.id AND l.returned_at IS NULL
+        LEFT JOIN users lb ON lb.id = l.borrower_id
+        LEFT JOIN users ll ON ll.id = l.lent_by
         WHERE ({match_sql})
           AND (b.added_by IN ({marks})
                OR EXISTS (SELECT 1 FROM wishlist w WHERE w.book_id = b.id AND w.user_id = ?)
                OR EXISTS (SELECT 1 FROM collections c WHERE c.book_id = b.id AND c.user_id = ?)
-               OR EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ?))
+               OR EXISTS (SELECT 1 FROM read_data r WHERE r.book_id = b.id AND r.user_id = ?)
+               OR l.borrower_id = ?)
         LIMIT {MAX_RESULTS * 3}
-    """, [user_id] * 4 + match_params + members + [user_id] * 3).fetchall()
+    """, [user_id] * 4 + match_params + members + [user_id] * 4).fetchall()
 
     matches = []
     for r in rows:
         row = dict(r)
         row['verdict'] = _verdict(row, user_id, members)
+        # Loans are the shelf's people's and the borrower's: keep the loan
+        # only on your household's copies and on one lent to you
+        if not (row['added_by'] in members or row['loan_borrower_id'] == user_id):
+            for key in ('loan_borrower_id', 'loan_lent_at', 'loan_borrower', 'loan_lender'):
+                row[key] = None
         matches.append(row)
     matches.sort(key=lambda r: (VERDICTS.index(r['verdict']), (r['title'] or '').lower()))
     result['matches'] = matches[:MAX_RESULTS]
@@ -118,14 +138,34 @@ def find(conn, user_id, q):
     return result
 
 
-def verdict_label(row):
+def _month(value):
+    """'2026-03-03' as 'Mar 2026'."""
+    try:
+        d = date.fromisoformat(str(value)[:10])
+    except (TypeError, ValueError):
+        return ''
+    return f"{d.strftime('%b')} {d.year}"
+
+
+def _lent(row, user_id=None):
+    """', lent to bob since Mar 2026' for a match with an open loan."""
+    if not row.get('loan_lent_at'):
+        return ''
+    who = 'you' if user_id and row.get('loan_borrower_id') == user_id else row.get('loan_borrower')
+    return f", lent to {who} since {_month(row['loan_lent_at'])}"
+
+
+def verdict_label(row, user_id=None):
     """One match's verdict in words, as the Do I have this? page shows it
-    (have.html) and the Add pages' local check (ROADMAP 14c)."""
+    (have.html) and the Add pages' local check (ROADMAP 14c). `user_id`
+    (the viewer) words a loan to them as "lent to you"."""
     v, owner = row['verdict'], row.get('owner')
     if v == 'yours':
-        return 'On your shelf'
+        return 'On your shelf' + _lent(row, user_id)
     if v == 'household':
-        return f"On the shelf: {owner}'s"
+        return f"On the shelf: {owner}'s" + _lent(row, user_id)
+    if v == 'borrowed':
+        return f"Borrowed from {row.get('loan_lender') or owner} since {_month(row['loan_lent_at'])}"
     if v == 'wishlist':
         return 'On your wishlist'
     if v == 'not_owned':
