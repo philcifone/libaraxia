@@ -2,6 +2,7 @@
 (ROADMAP 16.0e step 4, docs/AUDIOBOOKSHELF-SPEC.md section 8). The client
 is stubbed: what ABS would answer is set per test."""
 import json
+import re
 from types import SimpleNamespace
 
 import pytest
@@ -483,3 +484,45 @@ def test_live_line_quiet_when_abs_is_down(client, db, people, abs_server, monkey
     login(client, 'alice')
     r = client.get(f"/abs/progress/{book_row(db, 'Heard')['id']}")
     assert r.status_code == 502 and r.get_json() == {'success': False, 'error': "Audiobookshelf didn't answer."}
+
+
+# --- the Books filter: From Audiobookshelf ------------------------------------
+
+def grid_titles(client, url):
+    r = client.get(url, headers={'X-Requested-With': 'XMLHttpRequest'})
+    assert r.status_code == 200
+    return sorted(b['title'] for b in r.get_json()['books'])
+
+
+def test_from_audiobookshelf_filter(client, db, people, abs_server):
+    alice = people['alice']
+    mine = add_book(db, alice, 'Paper Copy', 'An Author')                  # owned: the listen attaches
+    add_book(db, alice, 'Untouched', 'An Author')
+    gr = db.execute("INSERT INTO goodreads_imports (user_id, filename, row_count) VALUES (?, 'x.csv', 1)",
+                    (alice,)).lastrowid
+    db.execute("INSERT INTO goodreads_rows (import_id, line, book_id, outcome) VALUES (?, 1, ?, 'matched')",
+               (gr, add_book(db, alice, 'From Goodreads', 'An Author')))
+    db.commit()
+    abs_server([item('Paper Copy'), item('Heard')], [progress('li_paper_copy', finished=True),
+                                                     progress('li_heard', finished=True)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+
+    login(client, 'alice')
+    assert grid_titles(client, '/base/index?from=audiobookshelf') == ['Paper Copy']          # on the shelf
+    assert grid_titles(client, '/base/index?from=audiobookshelf&show=all') == ['Heard', 'Paper Copy']
+    assert grid_titles(client, '/base/index?from=audiobookshelf&from=goodreads&show=all') == \
+        ['From Goodreads', 'Heard', 'Paper Copy']                                         # either source
+    page = client.get('/base/index?from=audiobookshelf').get_data(as_text=True)
+    assert re.search(r'id="from_audiobookshelf"[^>]*checked', page)
+
+    # Always your own imports: bob shares alice's shelf but imported nothing
+    login(client, 'bob')
+    assert grid_titles(client, '/base/index?from=audiobookshelf&show=all') == []
+    assert mine
+
+
+def test_from_audiobookshelf_hidden_without_a_server(client, db, people):
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    assert 'id="from_goodreads"' in page and 'id="from_audiobookshelf"' not in page

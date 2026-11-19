@@ -61,7 +61,8 @@ function toggleFilters(open) {
 // The filter-panel fields. Clearing removes only these, so the search term,
 // shared-library member and sort survive.
 // show_removed: the old name of `show`, still in some bookmarks
-// from: From Goodreads (ROADMAP 14b), books only; gr_shelf: one Goodreads shelf (14c)
+// from: From Goodreads (ROADMAP 14b) and From Audiobookshelf (16.0e), books
+// only; gr_shelf: one Goodreads shelf (14c)
 // kind: Movies & TV's movie / tv (15.1)
 const FILTER_PARAMS = ['genre', 'format', 'kind', 'read_status', 'rating', 'tags[]', 'show', 'show_removed', 'from', 'gr_shelf', 'page', 'csrf_token'];
 
@@ -89,9 +90,10 @@ function readFilterState() {
     document.querySelectorAll('#filter-form input[name="tags[]"]:checked').forEach(tag => {
         state.push({ key: `tag=${tag.value}`, label: 'Tag', value: tag.value });
     });
-    if (document.getElementById('from_goodreads')?.checked) {
-        state.push({ key: 'from=goodreads', label: 'From', value: 'Goodreads' });
-    }
+    [['from_goodreads', 'Goodreads'], ['from_audiobookshelf', 'Audiobookshelf']].forEach(([id, name]) => {
+        const box = document.getElementById(id);
+        if (box?.checked) state.push({ key: `from=${box.value}`, label: 'From', value: name });
+    });
     const grShelf = document.getElementById('gr_shelf');
     if (grShelf?.checked) {
         state.push({ key: `gr_shelf=${grShelf.value}`, label: 'Goodreads shelf', value: grShelf.value });
@@ -102,7 +104,8 @@ function readFilterState() {
 // How many fields differ between two states: anything added, removed or
 // changed (a changed select counts once, not as one removed + one added).
 function countFilterChanges(applied, current) {
-    const name = key => key.startsWith('tag=') ? key : key.split('=')[0];
+    // Tags and From sources are one field each; the rest are by name
+    const name = key => (key.startsWith('tag=') || key.startsWith('from=')) ? key : key.split('=')[0];
     const a = new Map(applied.map(f => [name(f.key), f.key]));
     const c = new Map(current.map(f => [name(f.key), f.key]));
     let changes = 0;

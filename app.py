@@ -281,6 +281,9 @@ def create_app():
     app.add_template_global(shelf_url, 'shelf_url')
     app.add_template_global(media.SECTION_NAMES, 'SECTION_NAMES')
     app.add_template_global(media.length_parts, 'length_parts')    # an audiobook's length on the form (16.0e)
+    # The Books filter's From Audiobookshelf box shows only on a site with a server
+    from utils import audiobookshelf
+    app.add_template_global(audiobookshelf.enabled, 'abs_enabled')
     app.add_template_global(media.SECTION_WORDS, 'SECTION_WORDS')
     app.add_template_filter(media.season_short, 'season_short')
 
