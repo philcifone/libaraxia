@@ -138,6 +138,8 @@
    Two independent settings on <html>, saved per user (Profile → Appearance):
      data-style = house (Gruvbox, square, bold lines) | classic (the original look)
                 | outrun (80s neon, dark only: the Mode setting is ignored)
+                | cyberpunk (a HUD fork of Outrun: its fonts, dark only, a
+                  small Gruvbox CRT palette, thin lines and cut corners)
                 | shelf (iBooks-style bookcase; House colours for now)
      data-mode  = system (follow the OS) | light | dark
    Colours are RGB channels so Tailwind alpha modifiers (bg-accent/20) work.
@@ -221,6 +223,32 @@
         --outline-edge: rgb(var(--accent) / .85);
     }
 
+    /* Cyberpunk (forked from Outrun, Phil 2026-11-18): Outrun's fonts, fixed
+       (the Font choice doesn't apply), square, no glows: thin solid lines.
+       The cut corners and the lines that follow them are the "Cyberpunk"
+       section after "Outrun effects"; these are the plain-shape fallbacks. */
+    :root[data-style="cyberpunk"] {
+        --font-body: "VT323", ui-monospace, monospace;
+        --font-display: "Audiowide", system-ui, sans-serif;
+        --font-title: var(--font-display);
+        --r-sm: 0; --r: 0; --r-md: 0; --r-lg: 0; --r-xl: 0; --r-2xl: 0; --r-3xl: 0; --r-pill: 0;
+        --sh-sm: none; --sh: none; --sh-md: none; --sh-lg: none; --sh-xl: none; --sh-2xl: none; --sh-inner: none;
+        --sh-hard: none;
+        --card-border: rgb(var(--accent) / .7);
+        --bw-card: 1px;
+        --bw-btn: 1px;
+        --card-edge: rgb(var(--accent) / .7);
+        --card-edge-nested: rgb(var(--rule));
+        --sh-card: none;
+        --sh-card-hover: none;
+        --card-press: none;
+        --sh-btn: none;
+        --sh-btn-hover: none;
+        --btn-press: none;
+        --bw-outline: 1px;
+        --outline-edge: rgb(var(--accent) / .7);
+    }
+
     /* Shelf (ROADMAP 10.1, light pass): soft and rounded like the iBooks
        shelf, with House's accents on its own parchment and walnut neutrals.
        The bookcase itself is at the end of this file; its wood is the flat
@@ -278,27 +306,28 @@
 
     /* ---- Font choice (Profile -> Appearance -> Font; users.font, data-font).
        "theme" (no block) keeps the style's own fonts. A choice sets body,
-       headings and page titles alike, in every style but Outrun (its fonts
-       are fixed; the picker hides there); it comes after the style blocks. ---- */
-    :root[data-font="baskerville"]:not([data-style="outrun"]) {
+       headings and page titles alike, in every style but Outrun and
+       Cyberpunk (their fonts are fixed; the picker hides there); it comes
+       after the style blocks. ---- */
+    :root[data-font="baskerville"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "Libre Baskerville", Georgia, serif;
         --font-display: "Libre Baskerville", Georgia, serif;
         --font-title: var(--font-display);
     }
     /* Garamond's small x-height reads a size smaller than the rest at the
        same font-size; font-size-adjust scales it to match. */
-    :root[data-font="garamond"]:not([data-style="outrun"]) {
+    :root[data-font="garamond"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "EB Garamond Variable", Garamond, Georgia, serif;
         --font-display: "EB Garamond Variable", Garamond, Georgia, serif;
         --font-title: var(--font-display);
         font-size-adjust: .44;   /* about Literata's size; .5 overshot */
     }
-    :root[data-font="literata"]:not([data-style="outrun"]) {
+    :root[data-font="literata"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "Literata Variable", Georgia, serif;
         --font-display: "Literata Variable", Georgia, serif;
         --font-title: var(--font-display);
     }
-    :root[data-font="jost"]:not([data-style="outrun"]) {
+    :root[data-font="jost"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
         --font-body: "Jost Variable", "Futura", system-ui, sans-serif;
         --font-display: "Jost Variable", "Futura", system-ui, sans-serif;
         --font-title: var(--font-display);
@@ -317,13 +346,13 @@
        Contrast (WCAG): every shade is >= 4.5:1 behind its
        --on-accent text; as text on --surface, all >= 4.5 except light green
        (4.16, the original) and dark red (4.29). ---- */
-    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; --acc-t: 142 192 124; --acc-t-hover: 176 211 163; --acc-n: 5 217 232; }
-    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; --acc-t: 162 188 178; --acc-t-hover: 190 208 201; --acc-n: 92 148 255; }
-    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; --acc-t: 222 164 180; --acc-t-hover: 232 191 202; --acc-n: 190 110 255; }
-    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; --acc-t: 254 160 82; --acc-t-hover: 254 188 134; --acc-n: 255 158 0; }
-    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; --acc-t: 253 148 136; --acc-t-hover: 254 180 172; --acc-n: 255 56 120; }
-    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; --acc-t: 250 189 47; --acc-t-hover: 252 209 109; --acc-n: 255 230 0; }
-    [data-swatch="green"] { --acc-l: 121 116 14; --acc-d: 152 151 26; --acc-n: 57 255 140; }
+    :root[data-accent="aqua"],   [data-swatch="aqua"]   { --acc-l: 66 123 88;   --acc-l-hover: 53 98 70;  --acc-d: 104 157 106; --acc-d-hover: 142 192 124; --acc-t: 142 192 124; --acc-t-hover: 176 211 163; --acc-n: 5 217 232; --acc-c: 142 192 124; --acc-ch: 176 211 163; }
+    :root[data-accent="blue"],   [data-swatch="blue"]   { --acc-l: 7 102 120;   --acc-l-hover: 6 82 96;   --acc-d: 131 165 152; --acc-d-hover: 162 188 178; --acc-t: 162 188 178; --acc-t-hover: 190 208 201; --acc-n: 92 148 255; --acc-c: 131 165 152; --acc-ch: 162 188 178; }
+    :root[data-accent="purple"], [data-swatch="purple"] { --acc-l: 143 63 113;  --acc-l-hover: 114 50 90; --acc-d: 211 134 155; --acc-d-hover: 222 164 180; --acc-t: 222 164 180; --acc-t-hover: 232 191 202; --acc-n: 190 110 255; --acc-c: 211 134 155; --acc-ch: 222 164 180; }
+    :root[data-accent="orange"], [data-swatch="orange"] { --acc-l: 175 58 3;    --acc-l-hover: 140 46 2;  --acc-d: 254 128 25;  --acc-d-hover: 254 160 82; --acc-t: 254 160 82; --acc-t-hover: 254 188 134; --acc-n: 255 158 0; --acc-c: 254 128 25; --acc-ch: 254 160 82; }
+    :root[data-accent="red"],    [data-swatch="red"]    { --acc-l: 157 0 6;     --acc-l-hover: 126 0 5;   --acc-d: 251 73 52;   --acc-d-hover: 252 118 103; --acc-t: 253 148 136; --acc-t-hover: 254 180 172; --acc-n: 255 56 120; --acc-c: 251 73 52; --acc-ch: 252 118 103; }
+    :root[data-accent="yellow"], [data-swatch="yellow"] { --acc-l: 143 91 14;   --acc-l-hover: 114 73 11; --acc-d: 215 153 33;  --acc-d-hover: 250 189 47; --acc-t: 250 189 47; --acc-t-hover: 252 209 109; --acc-n: 255 230 0; --acc-c: 250 189 47; --acc-ch: 252 209 109; }
+    [data-swatch="green"] { --acc-l: 121 116 14; --acc-d: 152 151 26; --acc-n: 57 255 140; --acc-c: 184 187 38; --acc-ch: 208 210 110; }
 
     /* Accent as text (text-accent, tailwind.config.js textColor). The same
        colour as the accent everywhere except OG dark, whose greys need the
@@ -346,6 +375,10 @@
        red the classic Outrun hot pink. All >= 5:1 as text on the darks and
        behind the dark --on-accent text. */
     :root[data-style="outrun"] .accent-swatch { background: rgb(var(--acc-n, 57 255 140)); }
+    /* Cyberpunk: every accent's Gruvbox bright shade (--acc-c), the old CRT
+       phosphor colours, with a paler hover (--acc-ch). All >= 5:1 as text on
+       its near-blacks and behind its near-black --on-accent text. */
+    :root[data-style="cyberpunk"] .accent-swatch { background: rgb(var(--acc-c, 184 187 38)); }
 
     /* ---- House palette (Gruvbox). Light is the default for any style-less page. ---- */
 
@@ -550,6 +583,47 @@
         --neon-orange: 255 158 0;   /* #ff9e00 */
     }
 
+    /* ---- Cyberpunk palette: dark only, the same html:root trick as
+       Outrun. Gruvbox's neutrals pushed toward black, its bright colours for
+       text, accents and statuses. A small palette on purpose: the chosen
+       accent for lines and highlights, one alert colour (--cp-alert) for the
+       second highlight, cream ink, and a dim grey (--cp-dim) for inactive
+       things (the reference's greyed-out "waiting" items). ---- */
+    html:root[data-style="cyberpunk"] {
+        color-scheme: dark;
+        --paper: 15 17 18;          /* #0f1112 */
+        --surface: 21 24 26;        /* #15181a */
+        --fill: 29 32 33;           /* #1d2021 */
+        --rule: 60 56 54;           /* #3c3836 */
+        --rule-strong: 102 92 84;   /* #665c54 */
+        --accent: var(--acc-c, 184 187 38);         /* #b8bb26, or the chosen accent's bright shade */
+        --accent-hover: var(--acc-ch, 208 210 110);
+        --accent-text: var(--accent);
+        --accent-text-hover: var(--accent-hover);
+        --chart-bar: var(--accent);
+        --on-accent: 15 17 18;      /* #0f1112 */
+        --ink: 235 219 178;         /* #ebdbb2 */
+        --ink-2: 213 196 161;       /* #d5c4a1 */
+        --muted: 168 153 132;       /* #a89984 */
+        --faint: 146 131 116;       /* #928374: 5.3:1 on --surface */
+        --red: 251 73 52;           /* #fb4934 */
+        --red-strong: 251 73 52;
+        --yellow: 250 189 47;       /* #fabd2f */
+        --green: 184 187 38;        /* #b8bb26 */
+        --blue: 131 165 152;        /* #83a598 */
+        --blue-strong: 131 165 152;
+        --orange: 254 128 25;       /* #fe8019 */
+        --purple: 211 134 155;      /* #d3869b */
+        --black: 0 0 0;
+        /* The fixed parts of the look, whatever the accent */
+        --cp-alert: 254 128 25;     /* #fe8019, Gruvbox bright orange */
+        --cp-dim: 80 73 69;         /* #504945 */
+    }
+    /* The alert colour never sits next to an accent of its own family */
+    html:root[data-style="cyberpunk"]:is([data-accent="orange"], [data-accent="red"], [data-accent="yellow"]) {
+        --cp-alert: 142 192 124;    /* #8ec07c, Gruvbox bright aqua */
+    }
+
     /* ---- Shelf palette: parchment and maple in light, walnut in dark. The
        neutrals only; the accents and status colours are House's (the accent
        shades read the same on these, checked: >= 4.5:1 as text on surface,
@@ -738,8 +812,10 @@
 
     /* House: form controls get the same 2px ink outline as cards (no shadow).
        Scoped to the style and specific enough to beat the templates'
-       `border border-rule-strong` utilities. */
-    :root:not([data-style="classic"]):not([data-style="shelf"]) :is(
+       `border border-rule-strong` utilities. Not in Cyberpunk, whose thin
+       lines are the 1px default above (the #filter-toggle in here makes
+       this rule hard to outrank, so it is left out instead). */
+    :root:not([data-style="classic"]):not([data-style="shelf"]):not([data-style="cyberpunk"]) :is(
         input[type="text"], input[type="email"], input[type="password"], input[type="search"],
         input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
         select, textarea,
@@ -868,10 +944,10 @@
     }
 
     /* ---- Avatars (every profile picture and initial, in templates and
-       JS-built HTML): round, but square in Negative Earth and Outrun, which
+       JS-built HTML): round, but square in Negative Earth, Outrun and Cyberpunk, which
        square everything (Phil, 2026-11-15) ---- */
     .avatar { border-radius: 9999px; }
-    :root:is([data-style="house"], [data-style="outrun"]) .avatar { border-radius: 0; }
+    :root:is([data-style="house"], [data-style="outrun"], [data-style="cyberpunk"]) .avatar { border-radius: 0; }
 
     /* ---- Small details from philcifone.com / negativeearth.net (House only) ---- */
 
@@ -1293,10 +1369,12 @@
         box-shadow: 0 0 0 2px rgb(var(--paper)), 0 0 12px 3px rgb(var(--accent) / .8);
     }
 
-    /* Dark only: the Mode pickers have nothing to do, so they say so */
+    /* Dark only: the Mode pickers have nothing to do, so they say so
+       (Cyberpunk too: dark only, fixed fonts) */
     :root[data-style="outrun"] :is([data-mode-picker], [data-font-picker]) { display: none; }
+    :root[data-style="cyberpunk"] :is([data-mode-picker], [data-font-picker]) { display: none; }
     [data-outrun-note] { display: none; }
-    :root[data-style="outrun"] [data-outrun-note] { display: block; }
+    :root:is([data-style="outrun"], [data-style="cyberpunk"]) [data-outrun-note] { display: block; }
 }
 
 @layer utilities {
@@ -3331,7 +3409,7 @@ html:has(.item3d[open]) { overflow: hidden; }
    hover:bg-primary and data-[active=true]:border-accent. */
 :root { --tab-recess: rgb(var(--fill)); --tab-sink: none; }
 :root[data-mode="dark"],
-html:root[data-style="outrun"] { --tab-recess: rgb(var(--paper)); }
+html:root:is([data-style="outrun"], [data-style="cyberpunk"]) { --tab-recess: rgb(var(--paper)); }
 :root[data-style="classic"]:not([data-palette="walnut"])[data-mode="dark"] {
     --tab-recess: color-mix(in srgb, rgb(var(--surface)), black 30%);
 }
@@ -4834,3 +4912,518 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
 }
 /* Shelf: the magnifier stays a round glass */
 :root[data-style="shelf"] .crop-loupe { border-radius: 50%; }
+
+/* ==== Cyberpunk (forked from Outrun, Phil 2026-11-18) ====
+   A sci-fi HUD after Phil's reference: no sky, grid, sunset or glow; a flat
+   near-black screen, thin lines in the accent, titles in Audiowide capitals.
+   Its tokens are in Themes (shape block, palette). Unlayered and at the end,
+   so these beat the Tailwind utilities (border-rule, bg-...) on the same
+   elements, as the Shelf blocks above do. */
+:root[data-style="cyberpunk"] .topbar {
+    border-bottom: 1px solid rgb(var(--accent) / .7);
+}
+:root[data-style="cyberpunk"] :is(.site-title, .page-title) {
+    font-family: var(--font-title);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: rgb(var(--accent-text));
+}
+:root[data-style="cyberpunk"] :is(h2, h3).font-display {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+/* ---- Cyberpunk shapes (phase 2): the reference's HUD panels ----
+   Two kinds of corner, both drawn with gradients, so they take the accent:
+   - Filled corners (cards): the box stays square and a solid triangle
+     fills two corners. Drawn on an overlay (::after) so a cover or a row of
+     tabs flush with the corner can't hide it. Nothing is clipped, so menus
+     that hang out of a card and focus rings inside it are untouched.
+   - Cut corners (header bars, buttons, chips, avatars): clip-path cuts
+     the corner off, and since that also cuts the border there, the
+     diagonal edge is a background layer laid just inside the cut. These
+     have nothing that sticks out of them; focus is drawn inside (an inset
+     ring), as an outline would be clipped too.
+   The cut-corner layers, for a corner square of side --cp-c in colour
+   --cp-edge: "to <the inside>" puts the 50% line exactly on the cut, and
+   the colour runs from just over it to 1px inside (the outer half is
+   clipped away). */
+:root[data-style="cyberpunk"] {
+    --cp-flag: 14px;    /* the filled corner triangles on cards */
+    --cp-cut: 16px;     /* header bars */
+    --cp-cut-sm: 9px;   /* buttons */
+    --cp-cut-xs: 6px;   /* chips, badges, avatars */
+}
+/* Declared on the elements, not :root: a custom property resolves the
+   var()s inside it where it is declared, so on :root --cp-edge would be
+   read once, before any element sets it. */
+:root[data-style="cyberpunk"] :is(.page-heading, .btn-outline, .chip, .rounded-pill) {
+    --cp-diag-tl: linear-gradient(to bottom right, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+    --cp-diag-tr: linear-gradient(to bottom left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+    --cp-diag-br: linear-gradient(to top left, transparent calc(50% - .5px), var(--cp-edge) 0 calc(50% + 1px), transparent 0);
+}
+
+/* Cards: thin accent outline, solid triangles top-left and bottom-right */
+:root[data-style="cyberpunk"] :is(.card, .card-link):not(.absolute, .fixed, .sticky) { position: relative; }
+:root[data-style="cyberpunk"] :is(.card, .card-link)::after {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--bw-card));     /* over the border, to the outer corner */
+    pointer-events: none;
+    background:
+        linear-gradient(to bottom right, rgb(var(--accent)) calc(50% - .5px), transparent calc(50% + .5px))
+            top left / var(--cp-flag) var(--cp-flag) no-repeat,
+        linear-gradient(to top left, rgb(var(--accent)) calc(50% - .5px), transparent calc(50% + .5px))
+            bottom right / var(--cp-flag) var(--cp-flag) no-repeat;
+}
+/* A card in a card is a section: hairline, no triangles */
+:root[data-style="cyberpunk"] .card .card::after { content: none; }
+/* Clickable cards light up instead of moving */
+:root[data-style="cyberpunk"] .card-link { transition: border-color .15s ease; }
+:root[data-style="cyberpunk"] :is(.card-link:hover, .card-link:focus-visible) { border-color: rgb(var(--accent)); }
+:root[data-style="cyberpunk"] :is(.card-link:hover, .card-link:focus-visible)::after { --cp-flag: 22px; }
+/* The member chips are pills of text: the triangles would cover it */
+:root[data-style="cyberpunk"] .member-chip::after { content: none; }
+
+/* Header bars (page headings): the reference's title bar. Top-right cut,
+   two small blocks on the top edge at the left, no triangles. */
+:root[data-style="cyberpunk"] .page-heading {
+    --cp-edge: var(--card-edge);
+    clip-path: polygon(0 0, calc(100% - var(--cp-cut)) 0, 100% var(--cp-cut), 100% 100%, 0 100%);
+    background-image:
+        var(--cp-diag-tr),
+        linear-gradient(rgb(var(--accent)), rgb(var(--accent))),
+        linear-gradient(rgb(var(--accent)), rgb(var(--accent)));
+    background-size: var(--cp-cut) var(--cp-cut), 7px 4px, 7px 4px;
+    background-position: top right, 7px 5px, 17px 5px;
+    background-repeat: no-repeat;
+    background-origin: border-box;
+}
+:root[data-style="cyberpunk"] .page-heading::after { content: none; }
+
+/* Buttons: cut top-left and bottom-right, a slanted box. Filled ones are
+   their colour to the edge (no outline); outlined ones draw the cuts'
+   edges in their outline colour. */
+:root[data-style="cyberpunk"] :is(.btn, .fab) {
+    --cp-c: var(--cp-cut-sm);
+    clip-path: polygon(var(--cp-c) 0, 100% 0, 100% calc(100% - var(--cp-c)), calc(100% - var(--cp-c)) 100%, 0 100%, 0 var(--cp-c));
+    border-color: transparent;
+}
+:root[data-style="cyberpunk"] .fab { --cp-c: 14px; }
+:root[data-style="cyberpunk"] .btn-outline {
+    --cp-edge: var(--outline-edge);
+    border-color: var(--outline-edge);
+    background-image: var(--cp-diag-tl), var(--cp-diag-br);
+    background-size: var(--cp-c) var(--cp-c);
+    background-position: top left, bottom right;
+    background-repeat: no-repeat;
+    background-origin: border-box;
+}
+/* Danger outlines (border-red-*) keep their red on the cuts too */
+:root[data-style="cyberpunk"] .btn-outline[class*="border-red"] { --cp-edge: rgb(var(--red)); border-color: rgb(var(--red)); }
+:root[data-style="cyberpunk"] :is(.btn, .fab):focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px rgb(var(--ink));
+}
+
+/* Chips and badges: a small cut bottom-right. The edge line is for the
+   outlined chips; a filled badge has no outline to continue. (The add
+   button and its menu are rounded-pill too, but they are buttons.) */
+:root[data-style="cyberpunk"] :is(.chip, .rounded-pill):not(.avatar, .fab) {
+    --cp-c: var(--cp-cut-xs);
+    --cp-edge: transparent;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cp-c)), calc(100% - var(--cp-c)) 100%, 0 100%);
+    background-image: var(--cp-diag-br);
+    background-size: var(--cp-c) var(--cp-c);
+    background-position: bottom right;
+    background-repeat: no-repeat;
+    background-origin: border-box;
+}
+/* as specific as the rule above, so it wins by coming later */
+:root[data-style="cyberpunk"] .chip:not(.fab) { --cp-edge: rgb(var(--rule-strong)); }
+:root[data-style="cyberpunk"] .chip[aria-pressed="true"] { --cp-edge: rgb(var(--accent)); }
+:root[data-style="cyberpunk"] .chip:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgb(var(--ink)); }
+
+/* Avatars: square with the bottom-right corner cut */
+:root[data-style="cyberpunk"] .avatar {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 25%), calc(100% - 25%) 100%, 0 100%);
+}
+
+/* Form fields: thin lines, not the 2px ink of Negative Earth; the accent
+   when focused */
+:root[data-style="cyberpunk"] :is(
+    input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+    input[type="number"], input[type="date"], input[type="url"], input[type="tel"],
+    select, textarea, #filter-toggle) {
+    border-width: 1px;
+    border-color: rgb(var(--rule-strong));
+}
+:root[data-style="cyberpunk"] :is(input, select, textarea, #filter-toggle):is(:hover, :focus-visible) {
+    border-color: rgb(var(--accent));
+}
+:root[data-style="cyberpunk"] :is(input, select, textarea):focus-visible { outline-offset: 1px; }
+:root[data-style="cyberpunk"] input[type="checkbox"],
+:root[data-style="cyberpunk"] input[type="radio"] { accent-color: rgb(var(--accent)); }
+
+/* Tabs: inactive in the dim grey, the active one in the accent */
+:root[data-style="cyberpunk"] .tab + .tab { border-left-color: rgb(var(--cp-dim)); }
+:root[data-style="cyberpunk"] :is(.tab, .search-method-btn):not(.tab-active, [aria-selected="true"], [data-active="true"]) {
+    color: rgb(var(--muted));
+}
+
+/* No cover: the reference's hatched block, the title over it */
+:root[data-style="cyberpunk"] .no-cover {
+    background-image: repeating-linear-gradient(-45deg, rgb(var(--cp-dim) / .55) 0 1px, transparent 1px 7px);
+    border-color: rgb(var(--cp-dim));
+    border-left-color: rgb(var(--accent));
+}
+
+/* Labels (PUBLISHER, ISBN, form labels): their underline is the
+   reference's rail, with a small block at its end */
+:root[data-style="cyberpunk"] .label {
+    background: linear-gradient(rgb(var(--accent)), rgb(var(--accent))) right bottom / 5px 3px no-repeat;
+}
+
+/* ---- Cyberpunk finishing touches (phase 3) ---- */
+
+/* The screen: a faint flat grid behind everything (body::before), and over
+   everything a CRT's scanlines and darkened edges (body::after, above the
+   top bar and sidebar, never catching a click). body is see-through so the
+   grid shows; <html> keeps the paper colour. Static, apart from a faint
+   slow flicker for those who don't ask for reduced motion. */
+:root[data-style="cyberpunk"] body { background: transparent; }
+:root[data-style="cyberpunk"] body::before,
+:root[data-style="cyberpunk"] body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+:root[data-style="cyberpunk"] body::before {
+    z-index: -1;
+    background-image:
+        linear-gradient(rgb(var(--ink) / .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(var(--ink) / .035) 1px, transparent 1px);
+    background-size: 96px 96px;
+}
+:root[data-style="cyberpunk"] body::after {
+    z-index: 70;
+    background:
+        radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / .32) 100%),
+        repeating-linear-gradient(to bottom, rgb(0 0 0 / .16) 0 1px, transparent 1px 3px);
+}
+@media (prefers-reduced-motion: no-preference) {
+    :root[data-style="cyberpunk"] body::after { animation: cp-flicker 7s steps(1, end) infinite; }
+}
+@keyframes cp-flicker {
+    0%, 100% { opacity: 1; }
+    46%      { opacity: .82; }
+    47%      { opacity: 1; }
+    83%      { opacity: .9; }
+    84%      { opacity: 1; }
+}
+@media print {
+    :root[data-style="cyberpunk"] body::before,
+    :root[data-style="cyberpunk"] body::after { content: none; }
+}
+
+/* RGB split, as on the reference's lettering: the alert colour a pixel to
+   the left, blue to the right. Page titles also get its faded echo below.
+   Headings only, never running text. */
+:root[data-style="cyberpunk"] .page-title {
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .6), 1px 0 rgb(var(--blue) / .6),
+                 0 .55em 3px rgb(var(--accent) / .14);
+}
+:root[data-style="cyberpunk"] .site-title {
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .6), 1px 0 rgb(var(--blue) / .6);
+}
+:root[data-style="cyberpunk"] :is(h2, h3).font-display {
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .45), 1px 0 rgb(var(--blue) / .45);
+}
+
+/* Stats (_profile_stats.html): the number tiles are readouts, big numbers
+   in the title face with a corner block; the other panels are thin boxes. */
+:root[data-style="cyberpunk"] :is(.stat-tile, .stat-panel) {
+    border: 1px solid rgb(var(--rule));
+    background-image: linear-gradient(rgb(var(--accent)), rgb(var(--accent)));
+    background-size: 10px 3px;
+    background-position: top left;
+    background-repeat: no-repeat;
+}
+:root[data-style="cyberpunk"] .stat-tile > dd:first-of-type {
+    font-family: var(--font-display);
+    font-weight: 400;
+    color: rgb(var(--accent-text));
+    letter-spacing: .04em;
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .45), 1px 0 rgb(var(--blue) / .45);
+}
+:root[data-style="cyberpunk"] .stat-tile > dt { text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; }
+
+/* Bars are segmented, like a meter: the chart's months stack in blocks, the
+   year bars and every progress bar (reading goal, cover fetch) run in cells.
+   The goal tick is the alert colour. */
+:root[data-style="cyberpunk"] .chart-fill {
+    border-radius: 0;
+    -webkit-mask-image: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px);
+    mask-image: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px);
+}
+:root[data-style="cyberpunk"] :is(.year-bar .year-seg, [role="progressbar"] > *) {
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px);
+    mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px);
+}
+:root[data-style="cyberpunk"] :is(.year-goal, .year-goal-key) { background: rgb(var(--cp-alert)); }
+
+/* Loading: the spinners (script.js) become a bar filling cell by cell */
+.cp-loader { display: none; }
+:root[data-style="cyberpunk"] svg.animate-spin { display: none; }
+:root[data-style="cyberpunk"] .cp-loader {
+    display: inline-block;
+    width: 4.5rem;
+    height: .8rem;
+    padding: 2px;
+    border: 1px solid rgb(var(--accent) / .7);
+}
+:root[data-style="cyberpunk"] .cp-loader::before {
+    content: "";
+    display: block;
+    height: 100%;
+    background: repeating-linear-gradient(90deg, rgb(var(--accent)) 0 6px, transparent 6px 8px);
+    animation: cp-load 1.2s steps(8, end) infinite;
+}
+@keyframes cp-load {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    :root[data-style="cyberpunk"] .cp-loader::before { animation: none; }
+}
+
+/* The boot screen (cyberpunk.js, once per login; 5 s, Phil 2026-11-18).
+   data-boot="on": a plain cover from the first paint, until the script has
+   the body. data-boot="run": the screen (.cp-boot) is up and covers the page
+   itself. The script times every piece through custom properties: --d its
+   start, --dur its length, --n its characters. Lines are typed by revealing
+   them a character at a time (VT323 is monospaced, so --n even steps are
+   --n characters); each OK pops in after its dots; the last line ends in a
+   two-character block cursor that blinks; then a flash and a short cut to
+   the app. No fade in: it is simply there. Under the scanlines (70). */
+:root[data-style="cyberpunk"][data-boot="on"]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: rgb(var(--paper));
+}
+.cp-boot { display: none; }
+:root[data-style="cyberpunk"] .cp-boot {
+    position: fixed;
+    inset: 0;
+    z-index: 66;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 max(1rem, 50vw - 20ch);    /* a 40-character column, centred */
+    background: rgb(var(--paper));
+    font: 400 clamp(.95rem, 3.9vw, 1.6rem) / 1.5 var(--font-body);
+    color: rgb(var(--ink-2));
+    white-space: pre;
+    cursor: default;
+    animation: cp-boot-flash var(--dur) ease-out var(--d),
+               cp-boot-out var(--out-dur) ease-in var(--out) forwards;
+}
+:root[data-style="cyberpunk"] .cp-boot-head {
+    color: rgb(var(--accent-text));
+    text-shadow: -1px 0 rgb(var(--cp-alert) / .5), 1px 0 rgb(var(--blue) / .5);
+}
+:root[data-style="cyberpunk"] .cp-boot-type {
+    display: inline-block;
+    animation: cp-boot-type var(--dur) steps(var(--n), end) var(--d) both;
+}
+:root[data-style="cyberpunk"] .cp-boot-ok {
+    color: rgb(var(--accent-text));
+    animation: cp-boot-show var(--dur) var(--d) both;
+}
+:root[data-style="cyberpunk"] .cp-boot-cursor {
+    display: inline-block;
+    width: 2ch;
+    height: 1em;
+    vertical-align: -.1em;
+    background: rgb(var(--accent));
+    animation: cp-boot-show 1ms var(--d) both,
+               cp-boot-blink .32s steps(1, end) var(--d) infinite;
+}
+@keyframes cp-boot-type {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+@keyframes cp-boot-show {
+    from { visibility: hidden; }
+    to   { visibility: visible; }
+}
+@keyframes cp-boot-blink {
+    50% { opacity: 0; }
+}
+@keyframes cp-boot-flash {
+    0%   { background-color: rgb(var(--accent) / .55); color: rgb(var(--paper)); }
+    100% { background-color: rgb(var(--paper)); }
+}
+@keyframes cp-boot-out {
+    to { opacity: 0; visibility: hidden; }
+}
+
+/* ---- Cyberpunk polish (pass 2, Phil 2026-11-18) ---- */
+
+/* Selected text in the accent; thin square scrollbars; a block caret in
+   text fields where the browser has one (Chrome; others keep the line). */
+:root[data-style="cyberpunk"] ::selection {
+    background: rgb(var(--accent));
+    color: rgb(var(--on-accent));
+}
+:root[data-style="cyberpunk"],
+:root[data-style="cyberpunk"] * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--accent) / .6) rgb(var(--paper));
+}
+:root[data-style="cyberpunk"] :is(input, textarea) {
+    caret-color: rgb(var(--accent));
+    caret-shape: block;
+}
+
+/* Status lights: a small square LED before a status, in its colour. On the
+   item page's status chips the chosen one is lit and the rest are dark
+   (outline only); in list view a status is always lit. */
+:root[data-style="cyberpunk"] :is([data-item-status] .chip, .book-status[data-status]) { --cp-led: var(--cp-dim); }
+:root[data-style="cyberpunk"] :is([data-item-status] .chip:is([value="read"], [value="watched"], [value="listened"]),
+                                  .book-status:is([data-status="read"], [data-status="watched"], [data-status="listened"])) { --cp-led: var(--accent); }
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[value^="want"], .book-status[data-status^="want"]) { --cp-led: var(--yellow); }
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[value="currently reading"], .book-status[data-status="currently reading"]) { --cp-led: var(--cp-alert); }
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[value="did not finish"], .book-status[data-status="did not finish"]) { --cp-led: var(--red); }
+:root[data-style="cyberpunk"] :is([data-item-status] .chip, .book-status[data-status])::before {
+    content: "";
+    display: inline-block;
+    flex-shrink: 0;
+    width: .5rem;
+    height: .5rem;
+    margin-right: .45rem;
+    border: 1px solid rgb(var(--cp-led));
+    background: rgb(var(--cp-led) / .15);
+}
+/* Lit. On the pressed (accent-filled) chip a dark ring keeps an
+   accent-coloured light visible. */
+:root[data-style="cyberpunk"] :is([data-item-status] .chip[aria-pressed="true"], .book-status[data-status])::before {
+    background: rgb(var(--cp-led));
+}
+:root[data-style="cyberpunk"] [data-item-status] .chip[aria-pressed="true"]::before {
+    border-color: rgb(var(--paper) / .8);
+}
+
+/* Covers lock on: on hover (a mouse, never a tap) or keyboard focus, four
+   corner brackets snap in over the cover, like a targeting reticle. */
+:root[data-style="cyberpunk"] .book-link .book-cover::after {
+    --cp-b: rgb(var(--accent));
+    --cp-l: 16px;
+    content: "";
+    position: absolute;
+    inset: 8px;
+    z-index: 11;            /* over the Unshelved / Removed badges */
+    pointer-events: none;
+    background:
+        linear-gradient(var(--cp-b), var(--cp-b)) top left / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) top left / 2px var(--cp-l),
+        linear-gradient(var(--cp-b), var(--cp-b)) top right / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) top right / 2px var(--cp-l),
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom left / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom left / 2px var(--cp-l),
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom right / var(--cp-l) 2px,
+        linear-gradient(var(--cp-b), var(--cp-b)) bottom right / 2px var(--cp-l);
+    background-repeat: no-repeat;
+    opacity: 0;
+    transform: scale(1.15);
+    transition: opacity .1s ease, transform .2s steps(4, end);
+}
+@media (hover: hover) {
+    :root[data-style="cyberpunk"] .book-link:hover .book-cover::after { opacity: 1; transform: none; }
+}
+:root[data-style="cyberpunk"] .book-link:focus-visible .book-cover::after { opacity: 1; transform: none; }
+/* Bulk select: a selected item stays locked on */
+:root[data-style="cyberpunk"] [data-select="on"] .book-item[aria-selected="true"] .book-cover::after { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    :root[data-style="cyberpunk"] .book-link .book-cover::after { transform: none; transition: none; }
+}
+
+/* Flash messages as terminal lines: dark, a 1px line and a hatched edge in
+   the message's colour, and a prefix (> OK, > ERR, > WARN, > SYS). The
+   prefix is decoration ("/ ''": screen readers skip it); the role="status"
+   and the words say what happened. */
+:root[data-style="cyberpunk"] .flash-message {
+    --cp-f: var(--blue);
+    background:
+        repeating-linear-gradient(-45deg, rgb(var(--cp-f)) 0 2px, transparent 2px 5px) left top / 6px 100% no-repeat,
+        rgb(var(--surface));
+    color: rgb(var(--ink));
+    border: 1px solid rgb(var(--cp-f));
+    box-shadow: none;
+    padding-left: calc(1rem + 6px);
+}
+:root[data-style="cyberpunk"] .flash-success { --cp-f: var(--accent); }
+:root[data-style="cyberpunk"] .flash-error   { --cp-f: var(--red); }
+:root[data-style="cyberpunk"] .flash-warning { --cp-f: var(--yellow); }
+:root[data-style="cyberpunk"] :is(.flash-message > .flex-1:not(.flash-body), .flash-body > span:first-child)::before {
+    color: rgb(var(--cp-f));
+    content: "> SYS ";
+    content: "> SYS " / "";
+}
+:root[data-style="cyberpunk"] .flash-success :is(.flex-1:not(.flash-body), .flash-body > span:first-child)::before { content: "> OK "; content: "> OK " / ""; }
+:root[data-style="cyberpunk"] .flash-error :is(.flex-1:not(.flash-body), .flash-body > span:first-child)::before { content: "> ERR "; content: "> ERR " / ""; }
+:root[data-style="cyberpunk"] .flash-warning :is(.flex-1:not(.flash-body), .flash-body > span:first-child)::before { content: "> WARN "; content: "> WARN " / ""; }
+
+/* Empty states (_empty_state.html): NO SIGNAL over a hatched band */
+:root[data-style="cyberpunk"] .empty-state {
+    background-image: repeating-linear-gradient(-45deg, rgb(var(--cp-dim) / .8) 0 1px, transparent 1px 6px);
+    background-size: 100% 10px;
+    background-position: top;
+    background-repeat: no-repeat;
+}
+:root[data-style="cyberpunk"] .empty-state::before {
+    display: block;
+    margin-bottom: .5rem;
+    font-family: var(--font-display);
+    font-size: .8rem;
+    letter-spacing: .25em;
+    color: rgb(var(--cp-alert));
+    content: "NO SIGNAL";
+    content: "NO SIGNAL" / "";
+}
+
+/* ---- Cyberpunk glitch (cyberpunk.js) ----
+   A 450 ms stutter: the element jumps a few pixels, is sliced (clip-path)
+   and splits into the alert colour and blue (drop-shadows follow the
+   glyphs or the cover's edge). Hard steps, no easing. The script puts it
+   on the page title as the page loads, then on one cover or heading every
+   10 s; never with reduced motion (the script doesn't run then). */
+:root[data-style="cyberpunk"] .cp-glitch {
+    animation: cp-glitch 450ms steps(1, end);
+}
+:root[data-style="cyberpunk"] :is(.site-title, .page-title).cp-glitch { display: inline-block; }
+@keyframes cp-glitch {
+    0%   { transform: translate(-3px, 0);
+           filter: drop-shadow(-3px 0 rgb(var(--cp-alert))) drop-shadow(3px 0 rgb(var(--blue)));
+           clip-path: inset(12% 0 58% 0); }
+    12%  { transform: translate(3px, 1px);
+           clip-path: inset(55% 0 12% 0); }
+    24%  { transform: translate(-1px, -1px);
+           filter: drop-shadow(2px 0 rgb(var(--cp-alert))) drop-shadow(-2px 0 rgb(var(--blue)));
+           clip-path: none; }
+    38%  { transform: translate(2px, 0);
+           clip-path: inset(30% 0 38% 0); }
+    50%  { transform: none;
+           filter: drop-shadow(-1px 0 rgb(var(--cp-alert))) drop-shadow(1px 0 rgb(var(--blue)));
+           clip-path: none; }
+    64%  { transform: translate(-2px, 0);
+           clip-path: inset(70% 0 4% 0); }
+    76%  { transform: none; filter: none; clip-path: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    :root[data-style="cyberpunk"] .cp-glitch { animation: none; }
+}

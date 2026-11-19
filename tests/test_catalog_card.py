@@ -126,6 +126,10 @@ def test_the_shelf_cabinet_puts_filters_in_the_bottom_row(client, db, people):
     page = client.get('/base/index').get_data(as_text=True)
     assert page.index('id="filter-toggle"') < page.index('class="view-bar')
     assert 'data-idle="Select"' in page
+    # The open panel drops from the search row (z-30) over the view bar,
+    # which sits below it (z-20); a z-30 there painted the sorts over the panel
+    bar = page[page.index('class="view-bar'):].split('>', 1)[0]
+    assert 'relative z-20' in bar and 'z-30' not in bar
 
     db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (people['alice'],))
     db.commit()
@@ -133,3 +137,4 @@ def test_the_shelf_cabinet_puts_filters_in_the_bottom_row(client, db, people):
     assert page.count('id="filter-toggle"') == 1 and page.count('id="filter-panel"') == 1
     assert page.index('class="view-bar') < page.index('id="filter-toggle"')
     assert 'data-idle="Batch"' in page
+    assert 'relative z-30' in page[page.index('class="view-bar'):].split('>', 1)[0]

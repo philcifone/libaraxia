@@ -30,6 +30,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 
 Housekeeping that doesn't belong to a phase. Tick and remove as done.
 
+- [x] **Cyberpunk style** (Phil, 2026-11-18; branch `cyberpunk`): a fifth style forked from Outrun (its fonts, dark only, accent selectable) with a Gruvbox CRT palette, HUD corners (filled on cards, cut on header bars, buttons, chips, avatars), segmented stats bars, a CRT layer and a boot screen once per login. Pass 2: boot readouts from the user's counts, a timed glitch (page title on load, a random cover or heading every 10 s), status lights, cover brackets, terminal flash messages, NO SIGNAL empty states, selection, scrollbars and caret; login flashes now wait for the boot screen. Also fixed for every style: the sort row painted over the open filter panel on shelf pages.
 - [ ] **Prod, Phil, from about 2026-11-09:** in `/home/phil/library-catalog`, delete `library-prod.db`, `libaraxia.db`, `library.db.backup-20251104` and the `library.db.backup-20261102-*` files from the Phase 2 deploy.
 - [ ] **Prod, Phil:** Admin → placeholder covers → clear them, then fetch missing covers (the October blank strips, 8F).
 - [ ] **Dev DB provenance:** `library.db` in the repo may be an old Goodreads import test rather than a prod copy (Phil, 2026-11-08). Before using it as evidence about prod, or for the 16.1 screenshots, take a fresh anonymised copy of prod's DB.
@@ -100,7 +101,7 @@ The last step before the portfolio, once Phil calls the app feature-complete eno
 
 ### 16.1 README and screenshots 🟠
 - [ ] README: the optional value sources' setup (Discogs seller settings, eBay keys), from docs/PHOTOS-VALUE-SPEC.md section 7.
-- [ ] Retake the README screenshots in every style (Negative Earth, OG, Shelf, Outrun) and both modes, from an **anonymised copy** of the DB (rename other users, clear their emails, bios, avatars and review text), never the live one. Bring the README up to date (sections, Do I Have This?, reviews, styles).
+- [ ] Retake the README screenshots in every style (Negative Earth, OG, Shelf, Outrun, Cyberpunk) and both modes, from an **anonymised copy** of the DB (rename other users, clear their emails, bios, avatars and review text), never the live one. Bring the README up to date (sections, Do I Have This?, reviews, styles).
 
 ### 16.2 Showcase site spec 🟠 (medium)
 - [ ] Write `docs/SHOWCASE-SPEC.md` first; build after it's agreed. A static site (Hugo or Astro, which Phil already uses) showing the project's progress as a **timeline**: a fancy changelog.
@@ -162,7 +163,7 @@ Added 2026-11-12 (Phil). Unsure it's possible or wanted; an idea to look into, n
 ## Parked
 
 Not scheduled; pick up only when Phil asks.
-- Outrun: angled card and button corners via `clip-path` (it also clips borders and focus outlines, so draw those inside the shape). Animations: none yet; any added must respect `prefers-reduced-motion`.
+- Outrun: angled card and button corners via `clip-path` (it also clips borders and focus outlines, so draw those inside the shape). Animations: none yet; any added must respect `prefers-reduced-motion`. Cyberpunk now does this (styles.css "Cyberpunk shapes": filled corners on an overlay for cards, `clip-path` plus a gradient edge for the rest); Outrun could reuse it.
 
 ## Not planned
 

@@ -354,3 +354,19 @@ def collection_value(conn, user_id):
     total = {k: sum(r[k] for r in rows) for k in ('shelved', 'valued', 'value_cents', 'priced', 'paid_cents')}
     oldest = min((r['oldest'] for r in rows if r['oldest']), default=None)
     return {'sections': rows, 'total': total, 'oldest': (oldest or '')[:10]}
+
+
+def boot_counts(conn, user_id):
+    """The Cyberpunk boot screen's readouts (static/cyberpunk.js): what's on
+    the user's shelves across all three types, their custom collections, and
+    their friends. Three small counts, asked once per login (app.boot_stats)."""
+    shelf = ' UNION ALL '.join(
+        f'SELECT 1 FROM {view} b WHERE b.added_by = :u AND b.owned = 1 AND b.removed_at IS NULL'
+        for view in media.VIEWS.values())
+    row = conn.execute(f'''
+        SELECT (SELECT COUNT(*) FROM ({shelf})) AS items,
+               (SELECT COUNT(*) FROM user_collections WHERE user_id = :u) AS lists,
+               (SELECT COUNT(*) FROM friendships
+                WHERE user_id_1 = :u OR user_id_2 = :u) AS friends''',
+        {'u': user_id}).fetchone()
+    return dict(row)

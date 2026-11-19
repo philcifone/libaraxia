@@ -609,6 +609,31 @@ def test_outrun_style_is_dark_only_with_neon_accents(client, db, people):
         assert (d / file).is_file() and (d / 'OFL.txt').is_file(), font
 
 
+def test_cyberpunk_style_is_dark_only_with_outruns_fonts(client, db, people):
+    """Cyberpunk (forked from Outrun, Phil 2026-11-18): selectable, dark only
+    with Outrun's fixed fonts (Mode and Font pickers hidden, the same note),
+    every accent's Gruvbox bright shade, and none of Outrun's scenery."""
+    login(client, 'alice')
+    assert client.post('/user/update_theme', json={'style': 'cyberpunk'}).status_code == 200
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-style="cyberpunk"' in page and 'data-outrun-note' in page
+
+    css = pathlib.Path('static/styles.css').read_text()
+    assert 'html:root[data-style="cyberpunk"] {' in css          # outranks House dark blocks
+    for key in ('baskerville', 'garamond', 'literata', 'jost'):
+        assert f':root[data-font="{key}"]:not([data-style="outrun"]):not([data-style="cyberpunk"])' in css
+    assert ':root[data-style="cyberpunk"] :is([data-mode-picker], [data-font-picker])' in css
+    assert ':root:is([data-style="outrun"], [data-style="cyberpunk"]) [data-outrun-note]' in css
+    for name in ('aqua', 'blue', 'purple', 'orange', 'red', 'yellow', 'green'):
+        rule = re.search(r'\[data-swatch="' + name + r'"\]\s*\{([^}]*)\}', css).group(1)
+        assert '--acc-c:' in rule and '--acc-ch:' in rule, name
+    cyber = re.search(r'html:root\[data-style="cyberpunk"\] \{([^}]*)\}', css).group(1)
+    assert '--accent: var(--acc-c,' in cyber and '--cp-alert:' in cyber
+    # Outrun's look stays Outrun's: no sky, grid, sunset or neon in Cyberpunk
+    assert '--neon-' not in cyber
+    assert not re.search(r'data-style="cyberpunk"\][^{]*body::(before|after)[^{]*\{[^}]*perspective', css)
+
+
 def test_shelf_style_bookcase(client, db, people):
     """Shelf (10.1 light pass): selectable in both modes, and the bookcase's
     ledge gradient uses the same numbers as the rows it sits under."""
@@ -660,7 +685,7 @@ def test_shelf_style_reaches_every_cover_grid():
     assert "container.classList.toggle('grid', !list)" in js
     assert 'cover-stand' in pathlib.Path('templates/book_detail.html').read_text()
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':root:not([data-style="classic"]):not([data-style="shelf"]) :is(' in css
+    assert ':root:not([data-style="classic"]):not([data-style="shelf"]):not([data-style="cyberpunk"]) :is(' in css
     assert '#book-container.grid' not in css
 
 
@@ -1452,11 +1477,12 @@ def test_tabs_are_raised_and_recessed_in_every_style():
     assert '[data-style="classic"] .tab-active' not in css
 
 
-def test_avatars_are_square_in_negative_earth_and_outrun():
-    """Every avatar is .avatar: round, square in Negative Earth and Outrun
-    (Phil, 2026-11-15). No avatar keeps a bare rounded-full, which would stay round."""
+def test_avatars_are_square_in_negative_earth_outrun_and_cyberpunk():
+    """Every avatar is .avatar: round, square in Negative Earth, Outrun and
+    Cyberpunk (Phil, 2026-11-15). No avatar keeps a bare rounded-full, which would stay round."""
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':root:is([data-style="house"], [data-style="outrun"]) .avatar { border-radius: 0; }' in css
+    assert (':root:is([data-style="house"], [data-style="outrun"], [data-style="cyberpunk"])'
+            ' .avatar { border-radius: 0; }') in css
     for path in list(pathlib.Path('templates').rglob('*.html')) + list(pathlib.Path('static').glob('*.js')):
         for line in path.read_text().splitlines():
             if 'rounded-full' in line:
@@ -1501,6 +1527,119 @@ def test_book_box_shows_pages():
     # rather than one (Phil, 2026-11-17)
     assert '@media (min-resolution: 3dppx)' in css
     assert '--leaf: calc(2px / 3); --leaf-line: calc(1px / 3);' in css
+
+
+def test_cyberpunk_cards_are_never_clipped():
+    """Cyberpunk's HUD shapes (phase 2): cards get filled corners drawn on
+    an overlay, never clip-path, which would cut off menus hanging out of a
+    card (the filter panel) and focus rings inside it. Only boxes with
+    nothing sticking out are cut: header bars, buttons, chips, avatars."""
+    css = pathlib.Path('static/styles.css').read_text()
+    section = css[css.index('/* ---- Cyberpunk shapes (phase 2)'):]
+    rules = re.findall(r'([^{}]+)\{([^}]*)\}', section)
+    clipped = [sel.strip() for sel, body in rules if 'clip-path' in body]
+    assert clipped, 'expected cut corners somewhere'
+    for sel in clipped:
+        assert not re.search(r'\.card(-link)?\b', sel), sel
+    # The cut edges' gradients read --cp-edge, so they must be declared on
+    # the elements that set it, not on :root (where it isn't set yet)
+    root = re.search(r':root\[data-style="cyberpunk"\] \{([^}]*)\}', section).group(1)
+    assert '--cp-diag' not in root
+    # Positioned cards stay positioned; the overlay only makes static ones relative
+    assert ':is(.card, .card-link):not(.absolute, .fixed, .sticky) { position: relative; }' in section
+
+
+def test_cyberpunk_boot_screen_once_per_login(client, people):
+    """Cyberpunk's boot screen (phase 3): base.html carries the login mark
+    (the seed drawn at login) and loads cyberpunk.js in <head>, not deferred,
+    so the screen is up before the first paint. The script boots once per
+    mark, never with reduced motion or blocked storage; the screen is CSS."""
+    login(client, 'alice')
+    page = client.get('/collections/collections').get_data(as_text=True)
+    head = page[:page.index('</head>')]
+    assert '<meta name="login-mark" content="' in head
+    assert head.index('name="login-mark"') < head.index('cyberpunk.js')
+    assert '<script src="/static/cyberpunk.js"></script>' in head        # not deferred
+    js = pathlib.Path('static/cyberpunk.js').read_text()
+    assert "prefers-reduced-motion: reduce" in js and 'localStorage' in js and 'catch' in js
+    # Five seconds (Phil, 2026-11-18), the last line ending in the cursor;
+    # the text goes in with textContent, never innerHTML
+    assert 'const END = 5000;' in js and "'> ENTERING LIBARAXIA '" in js and 'cursor: true' in js
+    assert 'innerHTML' not in js
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root[data-style="cyberpunk"][data-boot="on"]::before' in css
+    assert '.cp-boot { display: none; }' in css             # only Cyberpunk shows it
+    # The CRT layer never catches a click and is off in print
+    crt = css[css.index('/* ---- Cyberpunk finishing touches (phase 3)'):]
+    assert 'pointer-events: none' in crt and '@media print' in crt
+    # Signed out (the sign-in page): no mark, so no boot
+    client.post('/auth/logout')
+    assert 'login-mark' not in client.get('/auth/login').get_data(as_text=True)
+
+
+def test_cyberpunk_boot_readouts_on_the_first_page_after_login_only(client, db, people):
+    """The boot screen's readouts (pass 2, Phil 2026-11-18): the first full
+    page after a login in Cyberpunk carries the user's counts; later pages
+    don't (no query), and neither does another style, which leaves them for
+    the first Cyberpunk page instead. Shelf counts skip removed and
+    never-owned rows."""
+    alice, carol = people['alice'], people['carol']
+    add_book(db, alice, title='Dune')
+    removed = add_book(db, alice, title='Gone')
+    unowned = add_book(db, alice, title='Borrowed')
+    db.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP WHERE id = ?", (removed,))
+    db.execute("UPDATE books SET owned = 0 WHERE id = ?", (unowned,))
+    db.execute("INSERT INTO user_collections (user_id, name) VALUES (?, 'Favourites')", (alice,))
+    db.execute("UPDATE users SET theme_style = 'house' WHERE id = ?", (alice,))
+    db.commit()
+    login(client, 'alice')
+    assert 'boot-stats' not in client.get('/collections/collections').get_data(as_text=True)
+    db.execute("UPDATE users SET theme_style = 'cyberpunk' WHERE id = ?", (alice,))
+    db.commit()
+    page = client.get('/collections/collections').get_data(as_text=True)
+    head = page[:page.index('</head>')]
+    friends = scalar(db, 'SELECT COUNT(*) FROM friendships WHERE user_id_1 = ? OR user_id_2 = ?', alice, alice)
+    assert friends >= 1                                         # carol, from the seed
+    meta = re.search(r'<meta name="boot-stats"[^>]*>', head).group(0)
+    assert 'data-user="alice"' in meta
+    assert 'data-items="1"' in meta and 'data-lists="1"' in meta and f'data-friends="{friends}"' in meta
+    assert head.index('name="boot-stats"') < head.index('cyberpunk.js')
+    # Once: the next page has none
+    assert 'boot-stats' not in client.get('/collections/collections').get_data(as_text=True)
+    js = pathlib.Path('static/cyberpunk.js').read_text()
+    assert "meta[name=\"boot-stats\"]" in js and "'OK'" in js       # falls back to OK
+
+
+def test_cyberpunk_glitch_is_timed_not_on_hover_or_tap(client):
+    """The glitch (pass 2, Phil 2026-11-18): once on the page title as the
+    page loads, then one cover or heading every 10 s, on a timer, so it is
+    the same on a phone; no hover or tap triggers, skipped in a hidden tab,
+    none with reduced motion."""
+    js = pathlib.Path('static/cyberpunk.js').read_text()
+    glitch = js[js.index('function glitch('):]
+    assert 'const EVERY = 10000;' in glitch and 'setInterval(random, EVERY)' in glitch
+    assert 'document.hidden' in glitch
+    # Covers, item page titles and headings; never a grid card's title (Phil)
+    pool = re.search(r"const POOL = '([^']*)'", glitch).group(1)
+    assert '.detail-title' in pool and '.book-cover' in pool and 'book-title' not in pool
+    assert 'class="detail-title ' in pathlib.Path('templates/book_detail.html').read_text()
+    assert not re.search(r"addEventListener\('(mouse|pointer|touch|click)", glitch)
+    css = pathlib.Path('static/styles.css').read_text()
+    rules = css[css.index('/* ---- Cyberpunk glitch'):]
+    assert ':root[data-style="cyberpunk"] .cp-glitch {' in rules
+    assert '@media (prefers-reduced-motion: reduce)' in rules
+    # The cover brackets are hover-only on a mouse (never a tap) or keyboard focus
+    polish = css[css.index('/* ---- Cyberpunk polish'):]
+    assert '@media (hover: hover)' in polish and '.book-link:focus-visible .book-cover::after' in polish
+
+
+def test_login_messages_wait_for_the_cyberpunk_boot_screen():
+    """The login's flashes (Welcome, unread notifications) close after 5 s,
+    as long as the boot screen lasts: their clock starts when it's gone."""
+    common = pathlib.Path('static/common.js').read_text()
+    dismiss = common[common.index('function scheduleFlashDismiss'):]
+    assert 'dataset.boot' in dismiss and "'cyberpunk:booted'" in dismiss
+    assert "new Event('cyberpunk:booted')" in pathlib.Path('static/cyberpunk.js').read_text()
 
 
 def test_the_closed_sidebar_takes_no_tab_stops(client, people):

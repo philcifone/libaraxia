@@ -41,7 +41,7 @@
             <div class="min-w-0">
                 {# data-fit-title: a long title steps down a size until it
                    wraps to three lines at most (book_detail.js fitTitle) #}
-                <h1 class="text-4xl font-display text-content-primary mb-2" data-fit-title>
+                <h1 class="detail-title text-4xl font-display text-content-primary mb-2" data-fit-title>
                     <span data-fit-title-text>{{ book['title'] }}</span>
                     {% if book['subtitle'] %}
                         <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
@@ -84,7 +84,7 @@
                                cover first, when there are more photos; else the zoom #}
                             <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
                                     aria-label="Show the cover bigger">
-                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'w-full rounded-lg shadow-lg') }}
+                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'detail-cover w-full rounded-lg shadow-lg') }}
                             </button>
                         {% else %}
                             {# An album's placeholder is square, as on the grid (Phil, 2026-11-14) #}

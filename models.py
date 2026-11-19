@@ -66,7 +66,8 @@ def username_error(conn, username, user_id=None):
 # To add a style, add its CSS blocks there and its key + label here.
 # Keys are stored in users.theme_style and used in CSS; the names are what
 # the Appearance picker shows (renamed 2026-11-08, Phil).
-THEME_STYLES = {'house': 'Negative Earth', 'classic': 'OG', 'outrun': 'Outrun', 'shelf': 'Shelf'}
+THEME_STYLES = {'house': 'Negative Earth', 'classic': 'OG', 'outrun': 'Outrun',
+                'cyberpunk': 'Cyberpunk', 'shelf': 'Shelf'}
 THEME_MODES = {'system': 'System', 'light': 'Light', 'dark': 'Dark'}
 DEFAULT_THEME_STYLE = 'house'
 DEFAULT_THEME_MODE = 'system'

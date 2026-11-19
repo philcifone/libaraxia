@@ -62,7 +62,7 @@
 
 {# Ratings 5 down to 1, a bar each; the numbers are printed too #}
 {% macro rating_bars(s) -%}
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">Your ratings</h3>
                     {% if s.rated %}
                     {% set top = s.ratings|max(attribute='count') %}
@@ -84,7 +84,7 @@
 {%- endmacro %}
 
 {% macro tile(label, value, sub=None, wide=False) -%}
-<div class="bg-primary rounded-lg p-3 sm:p-4 {{ 'col-span-2' if wide }}">
+<div class="stat-tile bg-primary rounded-lg p-3 sm:p-4 {{ 'col-span-2' if wide }}">
     <dt class="text-sm text-content-secondary mb-1">{{ label }}</dt>
     <dd class="text-2xl sm:text-3xl font-bold text-content-primary">{{ value }}</dd>
     {% if sub %}<dd class="mt-1 text-xs text-content-secondary">{{ sub }}</dd>{% endif %}
@@ -143,7 +143,7 @@
         <div data-stats-panel data-kind="all" data-view="insights" hidden>
             <h2 class="mb-6 text-2xl font-display text-content-primary">Everything: insights</h2>
             <div class="grid md:grid-cols-2 gap-4">
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">Creators you return to</h3>
                     {% if a.top_creators %}
                     <ol class="space-y-2">
@@ -157,7 +157,7 @@
                     </ol>
                     {% else %}<p class="text-content-secondary text-sm">Nothing finished yet.</p>{% endif %}
                 </div>
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">Top genres</h3>
                     {% if a.top_genres %}
                     <ol class="space-y-2">
@@ -171,7 +171,7 @@
                     {% else %}<p class="text-content-secondary text-sm">No genres yet.</p>{% endif %}
                 </div>
                 {{ rating_bars(a) }}
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">Firsts</h3>
                     <dl class="space-y-2 text-sm">
                         {% if a.logging_since %}<div class="flex justify-between gap-3"><dt class="text-content-secondary">Logging since</dt><dd class="text-content-primary">{{ a.logging_since }}</dd></div>{% endif %}
@@ -213,7 +213,7 @@
             {% if s.not_owned %}{% set tiles = tiles + [('Unshelved', s.not_owned)] %}{% endif %}
             <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
                 {% for label, value in tiles %}
-                <div class="bg-primary rounded-lg p-3 sm:p-4">
+                <div class="stat-tile bg-primary rounded-lg p-3 sm:p-4">
                     <dt class="text-sm text-content-secondary mb-1">{{ label }}</dt>
                     <dd class="text-2xl sm:text-3xl font-bold text-content-primary">{{ value }}</dd>
                 </div>
@@ -230,7 +230,7 @@
             {% if s.longest or s.top_shelf_genre %}
             <dl class="grid md:grid-cols-2 gap-3 sm:gap-4 mb-8">
                 {% if s.longest %}
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <dt class="text-sm text-content-secondary mb-1">Longest on the shelf</dt>
                     <dd class="text-lg font-bold text-content-primary">{{ s.longest.title }}
                         <span class="block text-sm font-normal text-content-secondary">
@@ -239,7 +239,7 @@
                 </div>
                 {% endif %}
                 {% if s.top_shelf_genre %}
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <dt class="text-sm text-content-secondary mb-1">Most common genre</dt>
                     <dd class="text-lg font-bold text-content-primary">{{ s.top_shelf_genre }}</dd>
                 </div>
@@ -307,7 +307,7 @@
                     ('Top genres', s.top_genres, 'No genres on what you ' ~ m.verb_past ~ ' yet.'),
                     ('Top ' ~ creators|lower, s.top_creators, 'Nothing ' ~ m.verb_past ~ ' yet.'),
                 ] %}
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">{{ title }}</h3>
                     {% if items %}
                     <ol class="space-y-2">
@@ -327,7 +327,7 @@
 
                 {{ rating_bars(s) }}
 
-                <div class="bg-primary rounded-lg p-4">
+                <div class="stat-panel bg-primary rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">Collections</h3>
                     {% if s.statuses %}
                     <ul class="flex flex-wrap gap-2">
@@ -341,7 +341,7 @@
                 </div>
 
                 {% if s.by_decade %}
-                <div class="bg-primary rounded-lg p-4 md:col-span-2">
+                <div class="stat-panel bg-primary rounded-lg p-4 md:col-span-2">
                     <h3 class="text-lg font-semibold text-content-primary mb-3">On the shelf by decade</h3>
                     <ul class="flex flex-wrap gap-2">
                         {% for row in s.by_decade %}

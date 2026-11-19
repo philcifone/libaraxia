@@ -103,6 +103,12 @@ function dismissFlash(element) {
 function scheduleFlashDismiss(flashMessage) {
     // A message with a link stays until closed or the next page
     if (flashMessage.hasAttribute('data-flash-keep')) return;
+    // Behind the Cyberpunk boot screen (cyberpunk.js, 5 s): count from when
+    // it's gone, or the message closes before anyone could read it
+    if (document.documentElement.dataset.boot) {
+        document.addEventListener('cyberpunk:booted', () => scheduleFlashDismiss(flashMessage), { once: true });
+        return;
+    }
     setTimeout(() => {
         if (flashMessage.isConnected) dismissFlash(flashMessage);
     }, FLASH_DISMISS_TIME);

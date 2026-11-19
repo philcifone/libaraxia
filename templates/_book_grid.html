@@ -54,7 +54,7 @@
                     {# List view only: year, your status, your rating #}
                     <div class="book-meta">
                         <span class="book-year">{{ book.publish_year or '' }}</span>
-                        <span class="book-status">{{ labels_for(book).status_labels[mark.status] if mark.status else '' }}</span>
+                        <span class="book-status"{% if mark.status %} data-status="{{ mark.status }}"{% endif %}>{{ labels_for(book).status_labels[mark.status] if mark.status else '' }}</span>
                         <span class="book-rating">{% if mark.rating %}<span class="text-yellow-400" aria-hidden="true">{{ '★' * (mark.rating|int) }}</span><span class="text-content-tertiary" aria-hidden="true">{{ '☆' * (5 - mark.rating|int) }}</span><span class="sr-only">Rated {{ mark.rating|int }} of 5</span>{% endif %}</span>
                     </div>
                 </a>

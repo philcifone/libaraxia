@@ -71,10 +71,10 @@ def test_list_view_columns_and_infinite_scroll_json(client, db, people):
     page = client.get('/base/index').get_data(as_text=True)
     assert 'data-view="grid"' in page and 'class="book-meta"' in page
     assert '<span class="book-year">1965</span>' in page
-    assert '<span class="book-status">Read</span>' in page and 'Rated 4 of 5' in page
+    assert '<span class="book-status" data-status="read">Read</span>' in page and 'Rated 4 of 5' in page
     data = client.get('/base/index?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
     card = next(b for b in data['books'] if b['title'] == 'Dune')
-    assert (card['year'], card['status'], card['rating']) == (1965, 'Read', 4)
+    assert (card['year'], card['status'], card['status_key'], card['rating']) == (1965, 'Read', 'read', 4)
     css = pathlib.Path('static/styles.css').read_text()
     assert '#book-container[data-view="list"]' in css and '.book-meta { display: none; }' in css
 
