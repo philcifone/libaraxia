@@ -203,6 +203,11 @@ def create_app():
         app.logger.info("Database: %s", db_path)
     else:
         app.logger.warning("Database %s does not exist yet; run `python3 manage.py migrate`", db_path)
+
+    # Audiobookshelf (16.0e): a bad URL, or plain HTTP to a public host
+    from utils import audiobookshelf
+    for warning in audiobookshelf.config_warnings():
+        app.logger.warning(warning)
     
     # Register Blueprints
     app.register_blueprint(auth_blueprint, url_prefix='/auth')

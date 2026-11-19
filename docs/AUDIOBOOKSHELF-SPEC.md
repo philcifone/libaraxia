@@ -128,7 +128,10 @@ AUDIOBOOKSHELF_PUBLIC_URL=https://books.example     # links in the browser (opti
 - Phil's key belongs to his ABS user, which is `root`. ABS keys have no
   scopes, so the app only ever reads (GET, and the read-only batch POST).
 
-## 6. Data model (migration 043)
+## 6. Data model (migrations 043 and 044)
+
+Built as two migrations: 043 is `books.narrator` (step 1, useful without
+ABS), 044 the three ABS tables (step 2).
 
 ```sql
 -- An audiobook's narrator(s), as ABS writes them ("Ray Porter, Jane Doe").
@@ -317,11 +320,11 @@ put back).
 
 ## 11. Steps (one commit each)
 
-1. Migration 043 (`books.narrator` and the ABS tables), the Ebook format,
+1. Migration 043 (`books.narrator`), the Ebook format,
    narrator and length on the forms, item page, search and exports
    (section 7); useful on its own, before any ABS code.
 1b. The Audiobooks block in Stats and "hours listened" in the overview.
-2. `cryptography`, `utils/audiobookshelf.py` (client against a fake in tests;
+2. Migration 044 (the ABS tables), `cryptography`, `utils/audiobookshelf.py` (client against a fake in tests;
    encryption), `.env.example`.
 3. Settings card: connect, disconnect, the warning for a dead key.
 4. Sync, staging, plan and the review page (with the not-started option).
