@@ -1980,3 +1980,17 @@ def test_shelf_captions_sit_on_the_ledge_front():
     rule = re.search(r'\.shelf-case \.shelf-figure figcaption \{([^}]*)\}', css)
     assert rule and 'position: absolute' in rule.group(1)
     assert 'var(--shelf-label)' in rule.group(1)
+
+
+def test_walk_pages_have_the_framed_heading(client, db, people):
+    """Layout walk step 7: Borrowed and the admin pages printed a bare <h1>;
+    they get page_heading like every other page (CLAUDE.md: titles with
+    page_heading), and Borrowed's empty line is a card."""
+    login(client, 'alice')                                # an admin
+    for url in ('/loans/borrowed', '/admin/backups', '/admin/placeholder_covers', '/faces/admin',
+                '/admin/orphaned_images', '/admin/unowned_books'):
+        html = client.get(url).get_data(as_text=True)
+        assert 'class="page-heading' in html, url
+        assert '<h1 class="text-3xl' not in html, url
+    html = client.get('/loans/borrowed').get_data(as_text=True)
+    assert re.search(r'<div class="bg-secondary [^"]*card[^"]*">\s*<p[^>]*>Nothing borrowed right now', html)

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 {# What you have borrowed and not returned (ROADMAP 16.0d, loans.borrowed):
    opened from your profile's Borrowed row. Each item links to its page,
    which says the same and keeps the loan's history. #}
@@ -11,7 +11,7 @@
 {% block content %}
     <main class="page-frame-narrow pt-20 pb-24">
         {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Borrowed') }}
-        <h1 class="text-3xl font-display text-content-primary text-center mb-6">Borrowed</h1>
+        {{ page_heading('book-open', 'Borrowed', class='mb-6') }}
 
         {% if rows %}
         <ul class="space-y-4">
@@ -39,7 +39,10 @@
             {% endfor %}
         </ul>
         {% else %}
-        <p class="text-content-secondary text-center italic py-8">Nothing borrowed right now.</p>
+        {# an empty state is a card, as the Reviews lists' (layout walk 16.0) #}
+        <div class="bg-secondary rounded-lg p-8 max-w-md mx-auto card text-center">
+            <p class="text-content-secondary italic">Nothing borrowed right now.</p>
+        </div>
         {% endif %}
     </main>
 {% endblock %}

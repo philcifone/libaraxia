@@ -51,8 +51,8 @@ def test_add_pages_cancel_back_where_they_came_from(client, db, people):
 
 
 def test_review_cancels_where_submit_lands(client, db, people):
-    """Submit from Reviews lands on Reviews (read.rate_review), else on the
-    item page: Cancel goes to the same place."""
+    """Opened from Reviews, Cancel goes back there (where Submit lands too,
+    read.rate_review); otherwise to the item page."""
     book = add_book(db, people['alice'], 'Dune')
     login(client, 'alice')
     assert cancel(client, f'/read/rate_review/{book}')[0] == f'/books/book/{book}'

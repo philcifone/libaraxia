@@ -32,8 +32,10 @@
            band, under its drawers (.cabinet-band) #}
         <div class="cabinet-part cabinet-end mb-8">
             <div class="cabinet-band">
-            <input type="search" id="wishlist-search" aria-label="Filter your wishlist"
-                   placeholder="Filter by title, author, director or artist..."
+            {# A short placeholder: the long one ("title, author, director or
+               artist") was cut at 390 px; the label says it in full #}
+            <input type="search" id="wishlist-search" aria-label="Filter your wishlist by title, author, director or artist"
+                   placeholder="Filter by title or name..."
                    class="w-full px-4 py-2.5 bg-secondary-bg border border-rule-strong rounded-lg
                           focus:ring-2 focus:ring-accent focus:border-transparent
                           placeholder-gray-400 text-content-primary transition-all">

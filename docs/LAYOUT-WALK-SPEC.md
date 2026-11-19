@@ -91,7 +91,17 @@ The rest of the 16.0 walk (Notifications, Friends, Settings and Admin spacing, t
 
 ## 8. Findings (filled in by step 7, kept current)
 
-To be filled in by the walk: every page at 390 px and 1280 px, in all five styles and both modes. `claude` is seeded first (a few reviews, an item of each type, a wishlist entry, a friend's review), through the app, not SQL. The walk script (Playwright, scratchpad) also reports any page wider than its window, which found section 4's first item.
+The walk, 2026-11-19: `claude` seeded through the app (two reviews, a movie and an album added by hand; a wishlist entry, a loan out, a friend's reviews were there), then 37 pages (every grid, shelf, list, form, item and profile page a member sees) in all five styles, light and dark, at 390 px and 1280 px: 740 page loads. A Playwright script (scratchpad, not committed) reported any page wider than its window, any HTTP error and any console or page error; it found none after steps 1 to 6. The light-mode screenshots were checked by eye as contact sheets per style and width. Then the admin pages and Borrowed again after their fix.
+
+| # | Page | What was off | Done |
+|---|---|---|---|
+| W1 | Borrowed (`loans_borrowed.html`) | a bare `<h1>` and a bare "Nothing borrowed right now" line, the only member page without the framed heading | `page_heading('book-open', ...)`; the empty line is a card, as the Reviews lists' |
+| W2 | Admin: Backups, Placeholders, Unowned Books, Orphaned Images, Covers | bare `<h1>`s | `page_heading('settings', ...)`, the description under it; a test covers W1 and W2 |
+| W3 | Wishlist filter | the placeholder was cut at 390 px (step 2's open item) | "Filter by title or name..."; the label keeps the full wording |
+| W4 | Rate & review | a book's Submit lands on the Library's Read shelf; a movie's or album's on its item page (Reviews: Reviews). Cancel goes to the item page (section 5) | Open: Phil's call whether a book's Submit should land on its page too |
+| W5 | Profile -> Stats | the profile cabinet's Overview drawer and Stats' Overview drawer, one above the other | Open: renaming Stats' to "Totals" would fix it |
+
+Not covered: the sign-in pages (logged out), Settings' Admin tab beyond its drawers, the item page's tabs (left as they are, section 10).
 
 ## 9. Steps (one commit each)
 
@@ -101,7 +111,7 @@ To be filled in by the walk: every page at 390 px and 1280 px, in all five style
 4. Rate & review: the phone layout. Done 2026-11-19: one grid with named areas (`styles.css .review-layout`): a 6rem cover beside the title on a phone, the form under both; from md the title across the top, then the cover and the form, as before. Stars are 44 px targets. Also found: a reading session's row made the page 442 px wide at 390; it wraps now, the Started: / Completed: words for screen readers on a phone. Submit and Cancel together: step 5.
 5. Cancel buttons and their tests. Done 2026-11-19: `cancel_link(url, title=, grid=)` in `_icons.html` on Add, Edit book, Edit movie / album and Rate & review (the grep found no other full-page form without a way out: the Goodreads and Audiobookshelf reviews have Discard / Cancel). Changed from section 5: Rate & review opened from Reviews cancels to Reviews, where its Submit lands, not the item page; Add from Reviews (`then=review`) cancels to Reviews and its crumb says Reviews too (it said Library); a shelf Add's Cancel and crumb carry `data-grid-crumb`, so both go back to the grid you were last on, sort and filters kept. Main buttons and Cancel are `px-5 sm:px-8` so the pair fits one line at 390 in House's font. Tests: `tests/test_cancel.py`.
 6. Do I Have This? cards; unused CSS removed. Done 2026-11-19: each match is the feed's card, one link; an album's placeholder stays square. Nothing else used `.case-card` / `.case-cover` (the feed, notifications and the item page had left them on 2026-11-13), so their rules went; the page heading keeps its small bookcase (`.page-heading` alone in those rules now).
-7. Walk every page (section 8), list what's off, fix; ARCHITECTURE.md and the style-tweaks spec's rule table; screenshots for Phil.
+7. Walk every page (section 8), list what's off, fix; ARCHITECTURE.md and the style-tweaks spec's rule table; screenshots for Phil. Done 2026-11-19: section 8; W1 to W3 fixed, W4 and W5 open for Phil.
 
 ## 10. Decided (Phil, 2026-11-19)
 
