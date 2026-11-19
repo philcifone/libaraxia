@@ -17,7 +17,7 @@ Priority key: 🔴 do soon · 🟠 important · 🟢 nice to have
 | 14b | Granular Goodreads import, site and personal backups, "Unshelved" | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14b-granular-goodreads-import) |
 | 14c | Tweaks after 14b: CSRF, undated sessions, Settings for everyone, profile tabs, cyclers, Shelf bookcases and boxed covers, username collisions | Done 2026-11-12, [archive](docs/ROADMAP-ARCHIVE.md#phase-14c-tweaks-after-14b) |
 | 15 | Movies & TV (a Kind and Season on videos, TMDb TV lookup), free-form cover crop | Done 2026-11-12 (15.3 on 2026-11-10), [archive](docs/ROADMAP-ARCHIVE.md#phase-15-movies--tv-cover-crop). Lending moved to 17.1 |
-| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Photos, condition and value (16.0a) done 2026-11-15; left: lending and Audiobookshelf (16.0d, 16.0e, moved up from 17 on 2026-11-18), a final layout pass, a code review, then screenshots of the finished app |
+| 16 | [Portfolio: README, showcase site, demo](#phase-16-portfolio-readme-showcase-site-demo) | Photos, condition and value (16.0a) done 2026-11-15; lending and Audiobookshelf (16.0d, 16.0e) done 2026-11-19; left: a final layout pass, manual reading progress (16.0f), a code review, then screenshots of the finished app |
 | 17 | [Future roadmap](#phase-17-future-roadmap) | After the portfolio; shown on the showcase site as what's next |
 
 **Numbering:** the old Phase 9 is now 14 (2026-11-08), so the open phases run in order after the finished ones. 11 was once the archive fork (dropped, see Not planned); the number is reused. On 2026-11-09 the portfolio phase moved from 15 to 16 so it stays last.
@@ -95,7 +95,7 @@ From Phil, 2026-11-15. **Spec: [docs/FACES-SPEC.md](docs/FACES-SPEC.md).** Every
 - [x] Then: VHS tapes on the Movies heading, as the books on the Shelves one (same seed, your own Movies page).
 - [x] Then (Phil, 2026-11-16): Admin → Placeholders as one tab per medium (VHS sleeves and clamshells together; the set names say which); no default sets, nothing automatic (an item shows a placeholder only where its owner picked one); a top or bottom uploaded upright is turned to lie wide, a spine or side to stand tall. Bulk edit's More menu applies a set to the selection (undoable). Shelf's flat box: a vinyl sleeve is 1px in its cover's edge colour; a CD shows its spine on its right side; a book's plain top and side are lined pages, as in 3D and on the heading.
 
-### 16.0d Lend an item 🟠
+### 16.0d Lend an item 🟢 (done 2026-11-19, merged to main)
 Moved up from 17.1 (Phil, 2026-11-18; originally 15.2). Record who has a physical copy, for any type.
 **Spec: [docs/LENDING-SPEC.md](docs/LENDING-SPEC.md)** (approved 2026-11-18). Decided: the owner or any household member lends and marks returned; a borrower who's a user is in the lender's circle, anyone else is a typed name; loans show to the shelf's people and the borrower only; the borrower is notified on lending, the owner when someone else lends or returns their item; the Lent badge sits top centre (open to change). Branch `phase-16d-lending-abs`, shared with 16.0e, lending first.
 - [x] 1. `loans` table (migration 042), `utils/loans.py`.
@@ -104,7 +104,7 @@ Moved up from 17.1 (Phil, 2026-11-18; originally 15.2). Record who has a physica
 - [x] 4. Do I have this?, exports.
 - [x] 5. Docs, screenshots (item page, grids and Collections in every style; the 16.0 walk covers the rest).
 
-### 16.0e Audiobookshelf connection 🟠
+### 16.0e Audiobookshelf connection 🟢 (done 2026-11-19, merged to main)
 Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf server: an import of finished and in-progress audiobooks (unowned Audiobook books with a status and a session, after a review, undoable) and a live progress line on imported items.
 **Spec: [docs/AUDIOBOOKSHELF-SPEC.md](docs/AUDIOBOOKSHELF-SPEC.md)** (approved 2026-11-18; the API was probed on Phil's server). Decided: one server for the site (`AUDIOBOOKSHELF_URL`, the LAN address), each user's own API key in Settings, encrypted at rest; review, then apply; started books by default (an option for the rest); ebooks too (a new `Ebook` format); a narrator and a length for audiobooks, and hours listened in Stats; podcasts and books at 0 % stay out; nothing from ABS is owned unless the catalogue already says so. Same branch, after 16.0d.
 - [x] 1. Migration 043; the Ebook format, narrator and length on the forms and item page.
@@ -115,6 +115,11 @@ Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf serv
 - [x] 5. Apply, undo, covers.
 - [x] 6. Live progress line, provenance note.
 - [x] 7. Docs, a real sync on dev, screenshots.
+- [x] Then (Phil, 2026-11-19): the progress ring on every cover of an item in progress (saved on `abs_links.progress`, migration 045).
+
+### 16.0f Manual reading progress 🟠
+From Phil, 2026-11-19: a progress tracker you fill in yourself for books you're Currently Reading that Audiobookshelf doesn't track (paper books, ebooks read elsewhere), before the code review and the portfolio. Needs a short spec first. Open questions: page number, percent, or both (a page needs the book's page count, which not every book has); one value per book or per reading session (a re-read starts again at 0); where you set it (the item page's reading history, Rate & review, a quick control on the Currently Reading row); whether it shows the same ring on covers as Audiobookshelf's, and which wins when a book has both; whether it shows in the feed or to friends.
+- [ ] Spec, then build.
 
 ### 16.0b Code review 🟠
 The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.
