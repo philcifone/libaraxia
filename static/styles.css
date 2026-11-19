@@ -5401,7 +5401,7 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
    and splits into the alert colour and blue (drop-shadows follow the
    glyphs or the cover's edge). Hard steps, no easing. The script puts it
    on the page title as the page loads, then on one cover or heading every
-   30 s; never with reduced motion (the script doesn't run then). */
+   10 s; never with reduced motion (the script doesn't run then). */
 :root[data-style="cyberpunk"] .cp-glitch {
     animation: cp-glitch 450ms steps(1, end);
 }

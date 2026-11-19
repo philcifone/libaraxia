@@ -1612,12 +1612,12 @@ def test_cyberpunk_boot_readouts_on_the_first_page_after_login_only(client, db, 
 
 def test_cyberpunk_glitch_is_timed_not_on_hover_or_tap(client):
     """The glitch (pass 2, Phil 2026-11-18): once on the page title as the
-    page loads, then one cover or heading every 30 s, on a timer, so it is
+    page loads, then one cover or heading every 10 s, on a timer, so it is
     the same on a phone; no hover or tap triggers, skipped in a hidden tab,
     none with reduced motion."""
     js = pathlib.Path('static/cyberpunk.js').read_text()
     glitch = js[js.index('function glitch('):]
-    assert 'const EVERY = 30000;' in glitch and 'setInterval(random, EVERY)' in glitch
+    assert 'const EVERY = 10000;' in glitch and 'setInterval(random, EVERY)' in glitch
     assert 'document.hidden' in glitch
     assert not re.search(r"addEventListener\('(mouse|pointer|touch|click)", glitch)
     css = pathlib.Path('static/styles.css').read_text()

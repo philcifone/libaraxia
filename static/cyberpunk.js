@@ -155,13 +155,13 @@
 
     // ---- The glitch ---------------------------------------------------------
     // A short digital stutter (class cp-glitch, CSS "Cyberpunk glitch"): the
-    // page title once as the page loads, then every 30 s one thing on screen
+    // page title once as the page loads, then every 10 s one thing on screen
     // picked at random, a cover or a heading. On a timer, not on hover, so it
     // works the same on a phone; never on a tap. Skipped while the tab is
     // hidden, so a tab left open doesn't queue them up.
     function glitch(bootMs) {
         const FIRST = 500;          // after the page (or the boot screen) is up
-        const EVERY = 30000;
+        const EVERY = 10000;      // Phil, 2026-11-18 (was 30 s)
         const LENGTH = 450;         // the animation's length in the CSS
         const POOL = '.book-cover, .detail-cover, .page-title, .card h2.font-display, .site-title';
 
