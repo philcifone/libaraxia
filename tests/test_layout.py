@@ -1640,3 +1640,14 @@ def test_login_messages_wait_for_the_cyberpunk_boot_screen():
     dismiss = common[common.index('function scheduleFlashDismiss'):]
     assert 'dataset.boot' in dismiss and "'cyberpunk:booted'" in dismiss
     assert "new Event('cyberpunk:booted')" in pathlib.Path('static/cyberpunk.js').read_text()
+
+
+def test_the_closed_sidebar_takes_no_tab_stops(client, people):
+    """The sidebar is a drawer slid off-screen when closed; its links took
+    Tab stops (and were read out) all the same, in every style. Closed it's
+    inert, from the first paint (the markup) and after (sidebar.js)."""
+    login(client, 'alice')
+    page = client.get('/collections/collections').get_data(as_text=True)
+    assert re.search(r'<div id="sidebar"\s+class="[^"]*"\s+inert>', page)
+    js = pathlib.Path('static/sidebar.js').read_text()
+    assert 'sidebar.inert = !open;' in js and 'hamburger.focus()' in js
