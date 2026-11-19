@@ -130,7 +130,6 @@ def test_a_plain_book_has_the_open_book_icon_like_movies_and_music(client, db, p
 def test_audiobook_narrator_and_length(client, db, people):
     """Add an audiobook with a narrator and length; the item page shows them;
     switching it to a printed book clears both."""
-    from tests.conftest import login
     login(client, 'alice')
     form = {'submit_book': '1', 'title': 'Project Hail Mary', 'author': 'Andy Weir', 'format': 'Audiobook',
             'not_owned': '1', 'narrator': 'Ray Porter', 'length_hours': '16', 'length_minutes': '10'}
@@ -154,7 +153,6 @@ def test_audiobook_narrator_and_length(client, db, people):
 
 
 def test_ebook_format(client, db, people):
-    from tests.conftest import login
     from utils import media
     login(client, 'alice')
     client.post('/books/add', data={'submit_book': '1', 'title': 'Snow Crash', 'author': 'Neal Stephenson',

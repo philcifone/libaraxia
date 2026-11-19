@@ -111,7 +111,7 @@ Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf serv
 - [x] 1b. An Audiobooks block in the Books stats (hours listened).
 - [x] 2. The client and key encryption.
 - [x] 3. Settings card: connect, disconnect.
-- [ ] 4. Sync and the review page.
+- [x] 4. Sync and the review page.
 - [ ] 5. Apply, undo, covers.
 - [ ] 6. Live progress line, provenance note.
 - [ ] 7. Docs, a real sync on dev, screenshots.

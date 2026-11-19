@@ -2,7 +2,7 @@
 (ROADMAP 16.0e step 1b, docs/AUDIOBOOKSHELF-SPEC.md section 7)."""
 from datetime import datetime
 
-from tests.conftest import add_book, login
+from conftest import add_book, login
 
 TODAY = datetime(2026, 11, 18)
 

@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.conftest import add_book, add_user, fk_violations, make_friends, scalar
+from conftest import add_book, add_user, fk_violations, login, make_friends, scalar
 from utils import loans
 from utils.loans import LoanError
 
@@ -214,7 +214,6 @@ def test_loans_outlive_the_borrower_and_lender_accounts(db, cast):
 
 # --- routes and pages ------------------------------------------------------
 
-from tests.conftest import login  # noqa: E402
 
 
 def lend_form(**fields):

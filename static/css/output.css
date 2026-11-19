@@ -10900,6 +10900,32 @@ html[data-gr-bar="on"] body {
   }
 }
 
+/* Audiobookshelf import review (16.0e, templates/abs_review.html): the
+   Goodreads row's parts without its tick or cover; one plain form */
+
+.abs-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .35rem .75rem;
+  align-items: start;
+  padding: .6rem .25rem;
+}
+
+.abs-row .gr-main, .abs-row .gr-choice {
+  grid-column: auto;
+}
+
+@media (max-width: 639px) {
+  .abs-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .abs-row .gr-choice {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 /* ---- Corners for the crop tool and bulk edit (ROADMAP 14c) ----
    Both were drawn square in every style. They take the style's own radius
    tokens, like the cards beside them: rounded in OG and Shelf, square in

@@ -281,12 +281,17 @@ def cover(token, item_id):
     return _call(token, f'/api/items/{_check_id(item_id)}/cover', max_bytes=MAX_COVER, raw=True)
 
 
+# Where ABS's web app lives under its origin: its pages carry
+# <base href="/audiobookshelf/"> (checked on Phil's 2.32.1, 2026-11-18)
+WEB_PATH = '/audiobookshelf'
+
+
 def item_link(item_id):
     """The item's page on ABS for a browser (public URL), or None."""
     base = public_url()
     if not base or not isinstance(item_id, str) or not ITEM_ID.match(item_id):
         return None
-    return f'{base}/item/{item_id}'
+    return f'{base}{WEB_PATH}/item/{item_id}'
 
 
 # ------------------------------------------------------------ accounts

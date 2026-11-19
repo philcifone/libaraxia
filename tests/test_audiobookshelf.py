@@ -6,6 +6,7 @@ import json
 import pytest
 import requests
 
+from conftest import login
 from utils import audiobookshelf as abs_
 from utils.audiobookshelf import AbsError
 
@@ -91,9 +92,9 @@ def test_urls_and_warnings(monkeypatch):
     monkeypatch.delenv('AUDIOBOOKSHELF_PUBLIC_URL', raising=False)
     assert abs_.base_url() == BASE and abs_.public_url() == BASE
     assert abs_.config_warnings() == []                         # plain HTTP on the LAN is fine
-    assert abs_.item_link('li_book') == BASE + '/item/li_book' and abs_.item_link('../x') is None
+    assert abs_.item_link('li_book') == BASE + '/audiobookshelf/item/li_book' and abs_.item_link('../x') is None
     monkeypatch.setenv('AUDIOBOOKSHELF_PUBLIC_URL', 'https://books.example.test')
-    assert abs_.item_link('li_book') == 'https://books.example.test/item/li_book'
+    assert abs_.item_link('li_book') == 'https://books.example.test/audiobookshelf/item/li_book'
     monkeypatch.setenv('AUDIOBOOKSHELF_URL', 'http://books.example.test')
     assert 'unencrypted' in abs_.config_warnings()[0]
     monkeypatch.setenv('AUDIOBOOKSHELF_URL', 'ftp://192.168.1.2')
@@ -229,8 +230,7 @@ def test_the_key_never_reaches_a_personal_backup(fake, db, people):
 
 # --- Settings: connect and disconnect (step 3) ------------------------------
 
-def test_no_card_and_no_routes_without_a_url(client, people, monkeypatch):
-    from tests.conftest import login
+def test_no_card_and_no_routes_without_a_url(client, db, people, monkeypatch):
     monkeypatch.delenv('AUDIOBOOKSHELF_URL', raising=False)
     login(client, 'alice')
     assert 'data-abs-card' not in client.get('/user/settings').get_data(as_text=True)
@@ -239,7 +239,6 @@ def test_no_card_and_no_routes_without_a_url(client, people, monkeypatch):
 
 
 def test_connect_from_settings(client, db, people, fake):
-    from tests.conftest import login
     fake({'/api/me': FakeResponse(body=ME)})
     login(client, 'alice')
     page = client.get('/user/settings').get_data(as_text=True)
@@ -257,7 +256,6 @@ def test_connect_from_settings(client, db, people, fake):
 
 
 def test_connect_refused_key(client, db, people, fake):
-    from tests.conftest import login
     fake({'/api/me': FakeResponse(401)})
     login(client, 'alice')
     page = client.post('/abs/connect', data={'abs_token': KEY}, follow_redirects=True).get_data(as_text=True)
@@ -265,7 +263,6 @@ def test_connect_refused_key(client, db, people, fake):
 
 
 def test_unreadable_key_asks_to_reconnect(client, db, people, fake):
-    from tests.conftest import login
     db.execute("INSERT INTO abs_accounts (user_id, token_enc, abs_user_id, abs_username) VALUES (?, ?, 'u', 'phil')",
                (people['alice'], abs_.seal(KEY, 'an-old-secret')))
     db.commit()

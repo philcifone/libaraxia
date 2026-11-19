@@ -299,8 +299,9 @@ put back).
   down.
 - The item page also gets a provenance note beside the Goodreads one:
   "Imported from Audiobookshelf on 18 Nov 2026".
-- "Open in Audiobookshelf" goes to `AUDIOBOOKSHELF_PUBLIC_URL` + `/item/<id>`
-  (the path is checked against Phil's server in step 6).
+- "Open in Audiobookshelf" goes to `AUDIOBOOKSHELF_PUBLIC_URL` +
+  `/audiobookshelf/item/<id>` (checked on Phil's server: the web app's pages
+  carry `<base href="/audiobookshelf/">`).
 
 ## 10. Code
 
@@ -312,9 +313,10 @@ put back).
   `POST /connect`, `/disconnect`, `/sync`, `/choose`, `/apply`, `/discard`;
   `GET /review`, `/progress/<book_id>`. All `@login_required`, CSRF on POSTs,
   per-route limits; 404 for everything when no URL is configured.
-- `templates/abs_review.html`, the Settings card in `_settings_library.html`,
-  `static/abs_review.js` (choices, the Goodreads review's helpers where they
-  fit).
+- `templates/abs_review.html` (built as one plain form with no script: a
+  select per item and an "All in this box" select per box, saved by Save
+  choices or Import; a few dozen rows don't need the Goodreads review's
+  selection bar), the Settings card in `_settings_library.html`.
 - `.env.example`, `requirements.txt` (`cryptography`), `docs/ARCHITECTURE.md`
   (blueprint, utilities, tables, env vars), the README at 16.1.
 
