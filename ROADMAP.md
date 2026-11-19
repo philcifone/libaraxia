@@ -114,7 +114,7 @@ Moved up from 17.2 (Phil, 2026-11-18). Read-only from Phil's Audiobookshelf serv
 - [x] 4. Sync and the review page.
 - [x] 5. Apply, undo, covers.
 - [x] 6. Live progress line, provenance note.
-- [ ] 7. Docs, a real sync on dev, screenshots.
+- [x] 7. Docs, a real sync on dev, screenshots.
 
 ### 16.0b Code review 🟠
 The last step before the portfolio, once Phil calls the app feature-complete enough: spend one of the free Claude Code multi-agent cloud reviews on it. Phil runs it (it's user-triggered and billed; Claude can't start it): `/code-review ultra` on the branch, or `/code-review ultra <PR#>`. Triage the findings into fixes before 16.1, so the screenshots show the fixed app.

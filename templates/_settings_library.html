@@ -79,7 +79,7 @@
     <form method="POST" action="{{ url_for('abs.sync') }}" class="space-y-3 mb-4" data-abs-sync>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <p class="text-sm text-content-secondary">Sync brings in what you've started there (finished or in progress) for you to review before anything is saved. Everything comes in unshelved: listening to a book doesn't mean you own it.</p>
-        <label class="flex items-center gap-2 text-content-primary"><input type="checkbox" name="include_unstarted" value="1" class="form-checkbox text-accent"> Also books I haven't started (skipped unless you choose otherwise)</label>
+        <label class="flex items-start gap-2 text-content-primary"><input type="checkbox" name="include_unstarted" value="1" class="form-checkbox text-accent shrink-0 mt-1"> Also books I haven't started (skipped unless you choose otherwise)</label>
         <div class="flex flex-wrap gap-3 items-center">
             <button type="submit" class="px-6 py-3 bg-accent rounded-lg text-on-accent hover:bg-accent-hover btn">Sync</button>
             {% if abs.staged %}<a href="{{ url_for('abs.review') }}" class="text-accent underline" data-abs-review-link>Back to the last sync's review</a>{% endif %}

@@ -56,6 +56,7 @@ A user's **circle** is themselves, their household and their friends (`models.ci
 | Edit, remove/restore, delete, transfer a book; bulk genre/format/owned/remove | owner or admin | `books.py`, `utils/bulk.py` |
 | Join / leave a household | invite from the owner to a friend; anyone can leave, owner leaving hands over to the longest member | `utils/households.py` |
 | Change email | current password (plus re-verification if required) | `user.update_email` |
+| Audiobookshelf: key, sync, review, import, the item page's progress line | the user only (`/abs/progress` is a 404 unless the link is yours) | `utils/audiobookshelf.py`, `utils/abs_import.link_for` |
 | Admin pages | admins | `@admin_required` |
 
 No per-item privacy settings. Household members who aren't friends see each other's books but not profiles or feed.
