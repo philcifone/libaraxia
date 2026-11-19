@@ -235,6 +235,31 @@ CREATE TABLE item_faces (
 );
 CREATE INDEX idx_item_faces_placeholder ON item_faces(placeholder_id);
 
+-- Loans (migration 042, ROADMAP 16.0d, docs/LENDING-SPEC.md): who has a
+-- physical copy. lent_by = who handed it over (owner or household member);
+-- borrower_id = a user in the lender's circle, or NULL for someone not on
+-- the site; borrower_name always filled (typed, or the user's name when
+-- lent). A record, not a lock: it doesn't follow the item's shelf state.
+CREATE TABLE loans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    lent_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    borrower_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    borrower_name TEXT NOT NULL,
+    lent_at DATE NOT NULL,
+    due_at DATE,
+    returned_at DATE,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (length(trim(borrower_name)) > 0),
+    CHECK (due_at IS NULL OR due_at >= lent_at),
+    CHECK (returned_at IS NULL OR returned_at >= lent_at)
+);
+CREATE UNIQUE INDEX idx_loans_one_open ON loans(book_id) WHERE returned_at IS NULL;
+CREATE INDEX idx_loans_book ON loans(book_id);
+CREATE INDEX idx_loans_borrower ON loans(borrower_id) WHERE borrower_id IS NOT NULL;
+CREATE INDEX idx_loans_lent_by ON loans(lent_by);
+
 -- Per-user status: reading, watching or listening (statuses table).
 CREATE TABLE collections (
     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -606,4 +631,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('038_item_value.sql'),
     ('039_value_jobs.sql'),
     ('040_photo_kinds.sql'),
-    ('041_faces.sql');
+    ('041_faces.sql'),
+    ('042_loans.sql');

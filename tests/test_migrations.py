@@ -189,6 +189,7 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
         DROP TABLE goodreads_rows;     -- added by 032
         DROP TABLE goodreads_imports;
         DROP TABLE goodreads_staging;
+        DROP TABLE loans;              -- added by 042
         -- videos, added by 023
         DROP VIEW library_videos;
         DROP INDEX idx_books_media_type;
