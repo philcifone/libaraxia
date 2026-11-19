@@ -1619,6 +1619,10 @@ def test_cyberpunk_glitch_is_timed_not_on_hover_or_tap(client):
     glitch = js[js.index('function glitch('):]
     assert 'const EVERY = 10000;' in glitch and 'setInterval(random, EVERY)' in glitch
     assert 'document.hidden' in glitch
+    # Covers, item page titles and headings; never a grid card's title (Phil)
+    pool = re.search(r"const POOL = '([^']*)'", glitch).group(1)
+    assert '.detail-title' in pool and '.book-cover' in pool and 'book-title' not in pool
+    assert 'class="detail-title ' in pathlib.Path('templates/book_detail.html').read_text()
     assert not re.search(r"addEventListener\('(mouse|pointer|touch|click)", glitch)
     css = pathlib.Path('static/styles.css').read_text()
     rules = css[css.index('/* ---- Cyberpunk glitch'):]

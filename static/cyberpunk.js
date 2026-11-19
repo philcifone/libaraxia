@@ -155,15 +155,17 @@
 
     // ---- The glitch ---------------------------------------------------------
     // A short digital stutter (class cp-glitch, CSS "Cyberpunk glitch"): the
-    // page title once as the page loads, then every 10 s one thing on screen
-    // picked at random, a cover or a heading. On a timer, not on hover, so it
-    // works the same on a phone; never on a tap. Skipped while the tab is
+    // page title (an item page's own title there) once as the page loads,
+    // then every 10 s one thing on screen picked at random: a cover, an item
+    // page's title or a heading. Never a grid card's title (Phil): too small
+    // to read as a glitch. On a timer, not on hover, so it works the same on
+    // a phone; never on a tap. Skipped while the tab is
     // hidden, so a tab left open doesn't queue them up.
     function glitch(bootMs) {
         const FIRST = 500;          // after the page (or the boot screen) is up
-        const EVERY = 10000;      // Phil, 2026-11-18 (was 30 s)
+        const EVERY = 10000;        // Phil, 2026-11-18 (was 30 s)
         const LENGTH = 450;         // the animation's length in the CSS
-        const POOL = '.book-cover, .detail-cover, .page-title, .card h2.font-display, .site-title';
+        const POOL = '.book-cover, .detail-cover, .detail-title, .page-title, .card h2.font-display, .site-title';
 
         const run = el => {
             if (!el || el.classList.contains('cp-glitch')) return;
@@ -184,7 +186,7 @@
         };
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
-                run(document.querySelector('.page-title') || document.querySelector('.site-title'));
+                run(document.querySelector('.page-title, .detail-title') || document.querySelector('.site-title'));
                 setInterval(random, EVERY);
             }, (bootMs || 0) + FIRST);
         });
