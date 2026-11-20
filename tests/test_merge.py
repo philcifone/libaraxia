@@ -59,7 +59,7 @@ def test_a_pre_ownership_record_folds_into_your_copy(db, people):
     p = merge.plan(db, mine, old)
     assert p['clashes'] == []
     assert [f['field'] for f in p['fills']] == ['page_count', 'description']
-    assert ('tags both records had', 1) in p['drops'] and p['people'] == ['alice']
+    assert ('tag both records had', 1) in p['drops'] and p['people'] == ['alice']
 
     merge.apply(db, who(db, alice), mine, old, {}, ['page_count', 'description'])
     assert not exists(db, old)
@@ -163,3 +163,74 @@ def test_who_may_merge(db, people):
     with pytest.raises(MergeError, match='ask an admin'):
         merge.apply(db, bob, bobs, old, {}, [])
     assert exists(db, old)
+
+
+# --- the page (blueprints/merge.py) -------------------------------------------
+
+from conftest import add_user, login                               # noqa: E402
+
+
+def test_find_preview_merge_and_undo_through_the_page(client, db, people):
+    bob = people['bob']
+    old = unowned(db, 'Dune', page_count=412)
+    mine = add_book(db, bob, 'Dune')
+    add_review(db, bob, old, rating=5, comment='First read')
+    db.execute("INSERT INTO read_data (user_id, book_id, comment) VALUES (?, ?, 'Second read')", (bob, mine))
+    db.commit()
+    login(client, 'bob')
+
+    # The edit page's Book tools link here; the search finds the unowned record bob has data on
+    assert f'/merge/?keep={mine}' in client.get(f'/books/edit/{mine}').get_data(as_text=True)
+    found = client.get(f'/merge/?keep={mine}&q=dune').get_data(as_text=True)
+    assert f'fold={old}' in found
+
+    page = client.get(f'/merge/?keep={mine}&fold={old}').get_data(as_text=True)
+    assert 'data-merge-preview' in page and f'name="choice:read_data:{bob}:comment"' in page
+    assert 'name="fill" value="page_count"' in page
+
+    # Without the choice: refused, nothing written
+    r = client.post('/merge/', data={'keep': mine, 'fold': old, 'fill': 'page_count'})
+    assert r.status_code == 302 and exists(db, old)
+
+    r = client.post('/merge/', data={'keep': mine, 'fold': old, 'fill': 'page_count',
+                                     f'choice:read_data:{bob}:comment': 'fold'})
+    assert r.headers['Location'].endswith(f'/books/book/{mine}')
+    assert not exists(db, old)
+    assert scalar(db, 'SELECT comment FROM read_data WHERE book_id = ?', mine) == 'First read'
+    assert scalar(db, 'SELECT page_count FROM books WHERE id = ?', mine) == 412
+    history = client.get('/merge/').get_data(as_text=True)
+    assert 'data-merge-history' in history and f'Merged Dune (#{old}) into Dune (#{mine})' in history
+
+    edit_id = scalar(db, "SELECT id FROM bulk_edits WHERE action = 'merge'")
+    client.post(f'/merge/{edit_id}/undo')
+    assert exists(db, old)
+    assert scalar(db, 'SELECT comment FROM read_data WHERE book_id = ?', mine) == 'Second read'
+    assert fk_violations(db) == []
+
+
+def test_the_page_never_reveals_or_merges_what_you_cannot_see(client, db, people):
+    erin = add_user(db, 'erin')
+    hers = add_book(db, erin, 'Dune')
+    lonely = unowned(db, 'Dune')                    # unowned, and bob has no data on it
+    mine = add_book(db, people['bob'], 'Dune')
+    login(client, 'bob')
+    assert client.get(f'/merge/?keep={hers}').status_code == 404
+    found = client.get(f'/merge/?keep={mine}&q=dune').get_data(as_text=True)
+    assert f'fold={hers}' not in found and f'fold={lonely}' not in found
+    assert client.post('/merge/', data={'keep': mine, 'fold': hers}).status_code == 404
+    assert exists(db, hers)
+    # Someone else's merge can't be undone by bob
+    alice_edit = db.execute("INSERT INTO bulk_edits (user_id, action, params, summary, item_count) "
+                            "VALUES (?, 'merge', '{}', 'x', 1)", (people['alice'],)).lastrowid
+    db.commit()
+    assert client.post(f'/merge/{alice_edit}/undo').status_code == 404
+
+
+def test_refused_merges_say_why(client, db, people):
+    film = add_book(db, people['bob'], 'Dune')
+    db.execute("UPDATE books SET media_type = 'video' WHERE id = ?", (film,))
+    mine = add_book(db, people['bob'], 'Dune')
+    db.commit()
+    login(client, 'bob')
+    page = client.get(f'/merge/?keep={mine}&fold={film}').get_data(as_text=True)
+    assert 'data-merge-refused' in page and 'same kind' in page and 'name="keep"' not in page

@@ -73,12 +73,23 @@ MOVERS = {
     'item_faces':           ('book_id', 'clash', ('kind',)),
 }
 
-TABLE_LABELS = {'reading_sessions': 'reading sessions', 'loans': 'loans', 'goodreads_rows': 'Goodreads import lines',
-                'abs_links': 'Audiobookshelf links', 'notifications': 'notifications', 'book_tags': 'tags',
-                'collection_books': 'collection entries', 'activity_likes': 'likes',
-                'dismissed_activities': 'dismissed feed entries', 'bulk_edit_items': 'older bulk edits',
-                'read_data': 'reviews and ratings', 'collections': 'statuses', 'wishlist': 'wishlist entries',
-                'item_photos': 'photos', 'item_faces': 'faces'}
+# (one, many) for the preview's counts
+TABLE_LABELS = {'reading_sessions': ('reading session', 'reading sessions'), 'loans': ('loan', 'loans'),
+                'goodreads_rows': ('Goodreads import line', 'Goodreads import lines'),
+                'abs_links': ('Audiobookshelf link', 'Audiobookshelf links'),
+                'notifications': ('notification', 'notifications'), 'book_tags': ('tag', 'tags'),
+                'collection_books': ('collection entry', 'collection entries'), 'activity_likes': ('like', 'likes'),
+                'dismissed_activities': ('dismissed feed entry', 'dismissed feed entries'),
+                'bulk_edit_items': ('entry in an older bulk edit (that edit can no longer undo this record)',
+                                    'entries in older bulk edits (those edits can no longer undo this record)'),
+                'read_data': ('review or rating', 'reviews or ratings'), 'collections': ('status', 'statuses'),
+                'wishlist': ('wishlist entry', 'wishlist entries'), 'item_photos': ('photo', 'photos'),
+                'item_faces': ('face', 'faces')}
+
+
+def _words(table, n, suffix=''):
+    one, many = TABLE_LABELS[table]
+    return f'{one if n == 1 else many}{suffix}'
 
 ACTION_KEY = 'merge'
 STATUS_WORDS = {'read': 'Read', 'currently reading': 'Currently Reading', 'want to read': 'Want to Read',
@@ -192,17 +203,17 @@ def plan(conn, keep_id, fold_id):
         if not rows:
             continue
         if how == 'drop':
-            drops.append((TABLE_LABELS[table], len(rows)))
+            drops.append((_words(table, len(rows)), len(rows)))
             continue
         if how == 'dedupe':
             kept = {tuple(r[k] for k in key) for r in _rows(conn, table, keep_id)}
             dupes = sum(1 for r in rows if tuple(r[k] for k in key) in kept)
             if dupes:
-                drops.append((f'{TABLE_LABELS[table]} both records had', dupes))
+                drops.append((_words(table, dupes, ' both records had'), dupes))
             if len(rows) - dupes:
-                counts.append((TABLE_LABELS[table], len(rows) - dupes))
+                counts.append((_words(table, len(rows) - dupes), len(rows) - dupes))
             continue
-        counts.append((TABLE_LABELS[table], len(rows)))
+        counts.append((_words(table, len(rows)), len(rows)))
     people_ids = {r['user_id'] for t in ('read_data', 'collections', 'reading_sessions', 'wishlist', 'book_tags')
                   for r in _rows(conn, t, fold_id)}
     return {'keep': dict(keep), 'fold': dict(fold), 'fills': fills, 'counts': counts, 'drops': drops,
@@ -455,3 +466,35 @@ def make_action():
         describe=lambda p: 'Merge', summary=lambda p, n: f"Merged {p.get('title', 'a record')}",
         key=lambda b: None, label=lambda k, p: '', same_text=lambda p: '',
         after_undo=None)
+
+
+# ------------------------------------------------------------------ the page's lists
+
+def candidates(conn, user, keep, query, limit=20):
+    """Records `user` might fold into `keep`, matching `query` in the title
+    or author: the same type, not `keep`. An admin sees every record; anyone
+    else their own and the unowned ones they have data on (what Show:
+    Everything lists for them), so the search never reveals a record they
+    can't open. may_merge still decides on the preview."""
+    query = (query or '').strip()
+    if not query:
+        return []
+    like = f'%{query}%'
+    sql = ('SELECT b.*, u.username AS owner FROM books b LEFT JOIN users u ON u.id = b.added_by '
+           'WHERE b.media_type = ? AND b.id != ? AND (b.title LIKE ? OR b.author LIKE ?)')
+    params = [media.media_type_of(keep), keep['id'], like, like]
+    if not user.is_admin:
+        sql += ''' AND (b.added_by = ? OR (b.added_by IS NULL AND b.id IN (
+                     SELECT book_id FROM read_data WHERE user_id = ?
+                     UNION SELECT book_id FROM collections WHERE user_id = ?
+                     UNION SELECT book_id FROM reading_sessions WHERE user_id = ?
+                     UNION SELECT book_id FROM wishlist WHERE user_id = ?)))'''
+        params += [user.id] * 5
+    sql += ' ORDER BY LOWER(b.title), b.id LIMIT ?'
+    return conn.execute(sql, [*params, limit]).fetchall()
+
+
+def recent(conn, user, limit=10):
+    """Your merges, newest first, for undo."""
+    return conn.execute("SELECT * FROM bulk_edits WHERE user_id = ? AND action = ? ORDER BY id DESC LIMIT ?",
+                        (user.id, ACTION_KEY, limit)).fetchall()

@@ -88,6 +88,16 @@
         {% endif %}
         </section>
 
+        {# Merge (16.0f): another record of the same work folds into this one #}
+        <section class="space-y-3">
+            <h2 class="label text-sm pb-1">Merge</h2>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                <p class="flex-1 text-sm text-content-secondary"><strong class="text-content-primary">Two records for this {{ noun }}?</strong> Move the other one's reviews, statuses, history and photos onto this one, and delete the empty record. You see everything before it happens, and it can be undone.</p>
+                <a href="{{ url_for('merge.index', keep=book['id']) }}" data-merge-link
+                   class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline text-center">Merge Another Into This</a>
+            </div>
+        </section>
+
         {# Permanent delete: for mistakes (duplicates, bad scans) #}
         <section class="space-y-3">
             <h2 class="label text-sm pb-1">Delete permanently</h2>

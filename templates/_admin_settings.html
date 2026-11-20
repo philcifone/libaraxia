@@ -393,6 +393,18 @@
             </form>
         </div>
 
+        <!-- Merge records (16.0f, utils/merge.py) -->
+        <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
+            <div>
+                <h3 class="text-content-primary font-medium mb-1">Merge records</h3>
+                <p class="text-sm text-content-secondary">Two records for one work: fold one into the other (reviews, statuses, history, photos), with a preview, a backup first and undo</p>
+            </div>
+            <a href="{{ url_for('merge.index') }}"
+               class="bg-accent hover:bg-blue-600 text-on-accent px-4 py-2 rounded-lg font-medium btn">
+                Open
+            </a>
+        </div>
+
         <!-- Unowned Books -->
         <div class="mt-4 flex items-center justify-between p-4 bg-primary rounded-lg hover:border-gray-600 transition-colors">
             <div>

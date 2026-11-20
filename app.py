@@ -35,6 +35,7 @@ from blueprints.values import values_blueprint
 from blueprints.faces import faces_blueprint
 from blueprints.loans import loans_blueprint
 from blueprints.audiobookshelf import abs_blueprint
+from blueprints.merge import merge_blueprint
 from config import DevelopmentConfig, ProductionConfig
 from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
@@ -233,6 +234,7 @@ def create_app():
     app.register_blueprint(faces_blueprint, url_prefix='/faces')
     app.register_blueprint(loans_blueprint, url_prefix='/loans')
     app.register_blueprint(abs_blueprint, url_prefix='/abs')
+    app.register_blueprint(merge_blueprint, url_prefix='/merge')
 
     # "VHS" is shown as "Cartridge" (utils/media.py)
     from utils import media
