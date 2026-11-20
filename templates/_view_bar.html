@@ -47,7 +47,7 @@
 {# z-30 only when the filter panel drops from this row (Shelf's cabinet);
    otherwise it drops from the search row above, also z-30, and a z-30 here
    (later in the page) painted the sort selects over the open panel. #}
-<div class="view-bar flex items-center gap-2 sm:gap-3 mb-6{{ ' cabinet-part cabinet-base relative ' ~ ('z-30' if in_cabinet and books else 'z-20') if cabinet|default(false) }}">
+<div class="view-bar flex items-center gap-2 sm:gap-3 mb-4{{ ' cabinet-part cabinet-base relative ' ~ ('z-30' if in_cabinet and books else 'z-20') if cabinet|default(false) }}">
         <form method="GET" action="{{ request.path }}" id="sort-form" class="flex-1 min-w-0 flex items-center justify-end gap-2">
             {% for key in request.args %}
             {% if key not in ('sort_by', 'sort_order', 'page', 'csrf_token') %}

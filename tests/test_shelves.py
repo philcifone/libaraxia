@@ -1,4 +1,5 @@
 """Collections per section (ROADMAP 8C) and the profile's shelf rows (8C/8D)."""
+import re
 import sqlite3
 
 from conftest import add_book, login, scalar
@@ -32,8 +33,9 @@ def test_collections_page_has_a_tab_per_section(client, db, people):
 
     page = client.get('/collections/collections').get_data(as_text=True)      # Books by default
     assert 'Reading Shelves' in page and 'Did Not Finish' in page and 'Want to Watch' not in page
-    assert 'Books <span class="text-sm opacity-75">(1)' in page
-    assert 'Movies &amp; TV <span class="text-sm opacity-75">(2)' in page                # a status and a shelf entry
+    # No counts on the drawers (Phil, 2026-11-19): each row has its own
+    row = re.search(r'<div class="tab-row.*?</nav>', page, re.S).group(0)
+    assert 'opacity-75' not in row and '(' not in row
     assert 'Noir' not in page
 
     page = client.get('/collections/collections?type=video').get_data(as_text=True)

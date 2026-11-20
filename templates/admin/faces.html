@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
+{% from '_shelves.html' import tab_row %}
 {#- Admin -> Placeholders (ROADMAP 16.0c, docs/FACES-SPEC.md; blueprints/faces.py):
     one tab per medium (books, vinyl, CDs, cassettes, DVDs, VHS; common.js
     initTabs, the tab in the URL hash), each with its placeholder images by
@@ -19,7 +20,7 @@
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Placeholders') }}
 
         <div>
-            <h1 class="text-3xl font-display text-content-primary mb-2">Placeholders</h1>
+            {{ page_heading('settings', 'Placeholders') }}
             <p class="text-content-secondary text-sm">
                 Photos of the plain parts of things: a clamshell's plastic top and sides, an orange tape's
                 bottom, a clear DVD case's edge, a book's pages. Upload them under their medium, then group
@@ -30,11 +31,10 @@
         </div>
 
         <div data-tabs class="space-y-6">
-            <div class="bg-secondary rounded-xl overflow-hidden card grid grid-cols-3 sm:flex sm:items-stretch" role="tablist" aria-label="Mediums" hidden>
-                {% for group in library %}
-                <button type="button" role="tab" id="tab-medium-{{ group.medium }}" aria-controls="medium-{{ group.medium }}" aria-selected="false" class="tab">{{ group.label }}</button>
-                {% endfor %}
-            </div>
+            {% set mediums = [] %}
+            {% for group in library %}{% set _ = mediums.append((group.medium, group.label)) %}{% endfor %}
+            {{ tab_row(mediums, 'Mediums', class='', tab_id='tab-medium-', panel='medium-',
+                       nav_class='grid grid-cols-3 sm:flex sm:items-stretch') }}
 
         {% for group in library %}
         <section role="tabpanel" id="medium-{{ group.medium }}" aria-labelledby="tab-medium-{{ group.medium }}"

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_shelves.html' import tab_row %}
 {% from '_icons.html' import page_heading %}
 {# Your shelves, one section at a time (collections.view_collections, ROADMAP
    8C): Books | Movies | Music tabs (?type=), then that section's status
@@ -9,18 +10,12 @@
 
 {% block content %}
     <main class="page-frame pt-20 pb-16">
-        {{ page_heading('collections', 'Collections', class='mb-8') }}
+        {{ page_heading('collections', 'Collections') }}
 
-        <div class="bg-secondary rounded-xl overflow-hidden card mb-8">
-            <nav class="flex items-stretch" aria-label="Collection sections">
-                {% for key, label, count in tabs %}
-                <a href="{{ url_for('collections.view_collections', type=key) }}"
-                   class="tab {% if media_type == key %}tab-active{% endif %}" {% if media_type == key %}aria-current="page"{% endif %}>
-                    <span class="text-center">{{ label }} <span class="text-sm opacity-75">({{ count }})</span></span>
-                </a>
-                {% endfor %}
-            </nav>
-        </div>
+        {# Books | Movies | Music: the catalog's drawers in Shelf #}
+        {% set urls = {} %}
+        {% for key, _label in tabs %}{% set _ = urls.update({key: url_for('collections.view_collections', type=key)}) %}{% endfor %}
+        {{ tab_row(tabs, 'Collection sections', active=media_type, urls=urls) }}
 
         {# The section's shelves (16.0): its status shelves, then its custom
            collections, in one card; in Shelf, one bookcase with a shelf per

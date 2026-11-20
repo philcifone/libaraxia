@@ -1,0 +1,35 @@
+{# The Shelves pages' empty grid (index.html, shared_library.html): what
+   to say when nothing shows, and the way out. Set before including:
+     home:  this page's URL with nothing applied
+     whose: 'your shelf' / "the household's shelves"
+     scope: the search's reach, said in the no-match text
+   A search that finds nothing only once the filters are on says so, and
+   offers to clear just the filters (Phil, 2026-11-19: "Infinite jest" with
+   From: Goodreads on read as if the book wasn't on the shelf at all). The
+   household's page had none of this and drew an empty bookcase. #}
+{% set filtered = request.args.keys()|reject('in', ['sort_by', 'sort_order', 'page', 'per_page', 'view'])|list %}
+{% set filters = filtered|reject('equalto', 'search_term')|list %}
+{% set term = request.args.get('search_term', '')|trim %}
+{% if term and filters %}
+{% with title='No books match "' ~ term ~ '" with these filters',
+        text='The search finds nothing on ' ~ whose ~ ' once the filters are applied. Clear them to search ' ~ whose ~ ' as a whole.',
+        links=[(home ~ '?' ~ {'search_term': term}|urlencode, 'Clear the filters'), (home, 'Clear everything')] %}
+    {% include '_empty_state.html' %}
+{% endwith %}
+{% elif term %}
+{% with title='No books on ' ~ whose ~ ' match "' ~ term ~ '"',
+        text=scope ~ ' To find a book you don\'t have yet, search from Add Book.',
+        links=[(url_for('books.add_book'), 'Go to Add Book'), (home, 'Clear the search')] %}
+    {% include '_empty_state.html' %}
+{% endwith %}
+{% elif filtered %}
+{% with title='No books match these filters',
+        text='Nothing on ' ~ whose ~ ' matches the current filters.',
+        links=[(home, 'Clear filters')] %}
+    {% include '_empty_state.html' %}
+{% endwith %}
+{% elif empty_title %}
+{% with title=empty_title, text=empty_text, links=empty_links %}
+    {% include '_empty_state.html' %}
+{% endwith %}
+{% endif %}

@@ -16,7 +16,8 @@ def panels(html):
 def test_own_profile_has_overview_stats_reviews(client, people):
     login(client, 'alice')
     html = client.get('/user/alice').get_data(as_text=True)
-    assert 'role="tablist" aria-label="Profile" hidden' in html     # shown by JS only
+    # the row is shown by JS only (tab_row: the cabinet round the tablist is hidden)
+    assert re.search(r'<div class="tab-row [^"]*" data-tab-row hidden>\s*<div [^>]*>\s*<div [^>]*role="tablist" aria-label="Profile">', html)     # shown by JS only
     p = panels(html)
     assert list(p) == ['overview', 'stats', 'reviews']
     # Settings-like things moved to the Settings page
@@ -40,7 +41,8 @@ def test_non_friend_profile_has_no_tabs(client, people):
 def test_settings_for_everyone_with_old_anchors_inside(client, people):
     login(client, 'carol')                       # not an admin
     html = client.get('/user/settings').get_data(as_text=True)
-    assert 'role="tablist" aria-label="Settings" hidden' in html
+    # the row is shown by JS only (tab_row: the cabinet round the tablist is hidden)
+    assert re.search(r'<div class="tab-row [^"]*" data-tab-row hidden>\s*<div [^>]*>\s*<div [^>]*role="tablist" aria-label="Settings">', html)
     p = panels(html)
     assert list(p) == ['library', 'account']
     assert 'id="library-backups"' in p['library'] and 'Export Library to CSV' in p['library']

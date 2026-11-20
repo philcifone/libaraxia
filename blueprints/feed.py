@@ -21,6 +21,8 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.format,
+            b.owned,
             b.video_kind,
             b.created_at,
             b.genre,
@@ -54,6 +56,8 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.format,
+            b.owned,
             b.video_kind,
             b.genre,
             u.username,
@@ -84,6 +88,8 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.format,
+            b.owned,
             b.video_kind,
             u.username,
             'collection_added' as activity_type
@@ -120,6 +126,8 @@ def activity_feed():
             b.author,
             b.cover_image_url,
             b.media_type,
+            b.format,
+            b.owned,
             b.video_kind,
             u.username,
             'review_added' as activity_type
@@ -157,6 +165,8 @@ def activity_feed():
             'author': book['author'],
             'cover_image_url': book['cover_image_url'],
             'media_type': book['media_type'],
+            'format': book['format'],      # the cover's box (_covers.html cover_img item=)
+            'owned': book['owned'],
             'video_kind': book['video_kind'],
             'genre': book['genre'],
             'username': book['username'],
@@ -182,6 +192,8 @@ def activity_feed():
             'author': wishlist_item['author'],
             'cover_image_url': wishlist_item['cover_image_url'],
             'media_type': wishlist_item['media_type'],
+            'format': wishlist_item['format'],      # the cover's box (_covers.html cover_img item=)
+            'owned': wishlist_item['owned'],
             'video_kind': wishlist_item['video_kind'],
             'genre': wishlist_item['genre'],
             'username': wishlist_item['username'],
@@ -208,6 +220,8 @@ def activity_feed():
             'author': collection['author'],
             'cover_image_url': collection['cover_image_url'],
             'media_type': collection['media_type'],
+            'format': collection['format'],      # the cover's box (_covers.html cover_img item=)
+            'owned': collection['owned'],
             'video_kind': collection['video_kind'],
             'username': collection['username'],
             'user_id': collection['user_id'],
@@ -233,6 +247,8 @@ def activity_feed():
             'author': review['author'],
             'cover_image_url': review['cover_image_url'],
             'media_type': review['media_type'],
+            'format': review['format'],      # the cover's box (_covers.html cover_img item=)
+            'owned': review['owned'],
             'video_kind': review['video_kind'],
             'username': review['username'],
             'user_id': review['user_id'],

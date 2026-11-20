@@ -84,9 +84,10 @@ async function setAppearance(kind, value) {     // kind: 'style', 'mode', 'accen
         if (!response.ok || !data.success) throw new Error(data.message);
         // A shelf page's catalog cabinet is laid out by the server for the
         // Shelf style (Filters in the bottom row, Batch; _view_bar.html), so
-        // switching into or out of Shelf there reloads it, once saved
+        // switching into or out of Shelf there reloads it, once saved. Only
+        // there: every tab row is a cabinet too (tab_row), drawn by CSS alone
         if (kind === 'style' && (value === 'shelf') !== (previous === 'shelf')
-                && document.querySelector('.cabinet-part')) {
+                && document.querySelector('.view-bar.cabinet-part')) {
             location.reload();
         }
     } catch (err) {

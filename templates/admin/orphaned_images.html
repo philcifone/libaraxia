@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 
 {% block title %}Orphaned Images - Admin{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -10,7 +10,7 @@
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Orphaned Images') }}
 
         <div class="mb-8">
-            <h1 class="text-3xl font-display text-content-primary mb-2">Orphaned Images</h1>
+            {{ page_heading('settings', 'Orphaned Images') }}
             <p class="text-content-secondary text-sm">
                 Image files on disk that are not referenced in the database
             </p>

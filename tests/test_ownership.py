@@ -272,7 +272,8 @@ def test_grid_badges_audiobooks_and_format_filter(client, db, people):
     page = client.get('/base/index').get_data(as_text=True)
     assert 'name="format"' in page
     assert 'title="Audiobook"' not in page                   # no grid badge (2026-11-11)
-    assert 'title="Audiobook"' in client.get(f'/books/book/{audio}').get_data(as_text=True)
+    # The item page names it in its facts (its heading has no format icon since 2026-11-19)
+    assert 'font-medium break-words">Audiobook</p>' in client.get(f'/books/book/{audio}').get_data(as_text=True)
     assert titles(client, '/base/index?format=Audiobook') == {'Spoken'}
     assert titles(client, '/base/index?format=Book') == {'Paper'}
     assert client.get('/base/index', headers=AJAX).get_json()['books'][1]['format'] == 'Audiobook'

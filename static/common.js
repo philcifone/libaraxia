@@ -11,7 +11,7 @@
 //   confirmSubmit(form, event, message, options)                (confirm in a submit handler)
 //   dismissFlash(element)   close the flash message containing element
 //   <div data-read-more>    long text clamped with a "Read more" toggle (below)
-//   noCoverHtml(title, author, {size, box, ring})  placeholder for a book with no cover
+//   noCoverHtml(title, author, {size, box, ring, media, format, faces})  placeholder for a book with no cover
 //   progressRingHtml(share)  the Audiobookshelf progress ring on a cover (0 to 1)
 
 'use strict';
@@ -217,19 +217,22 @@ function runAction(element, attribute, event) {
 // Settings). Markup, all server-rendered:
 //
 //   <div data-tabs>
-//     <div role="tablist" aria-label="..." hidden>
+//     <div data-tab-row hidden> ... <div role="tablist" aria-label="...">
 //       <button type="button" role="tab" id="tab-x" aria-controls="x" class="tab">X</button> ...
-//     </div>
+//     </div> ... </div>
 //     <div role="tabpanel" id="x" aria-labelledby="tab-x"> ... </div> ...
 //   </div>
 //
+// The tab row is _shelves.html tab_row() (the catalog cabinet's drawers in
+// Shelf; a bare [role="tablist"] child, hidden itself, works too).
 // Without JS the tab bar stays hidden and every panel shows, stacked. The
 // open tab is the URL hash (#x); a hash naming something inside a panel
 // (#library-backups) opens that panel and scrolls to it, so old links still
 // land. Arrow keys, Home and End move between tabs (roving tabindex).
 function initTabs(root) {
-    const list = root.querySelector(':scope > [role="tablist"]');
+    const list = root.querySelector(':scope > [role="tablist"], :scope > [data-tab-row] [role="tablist"]');
     if (!list) return;
+    const row = list.closest('[data-tab-row]') ?? list;     // what stays hidden without JS
     const tabs = [...list.querySelectorAll('[role="tab"]')];
     const panels = tabs.map(tab => document.getElementById(tab.getAttribute('aria-controls')));
     if (!tabs.length || panels.includes(null)) return;
@@ -259,7 +262,7 @@ function initTabs(root) {
         return true;
     }
 
-    list.hidden = false;
+    row.hidden = false;
     if (!fromHash()) select(0);
     tabs.forEach((tab, i) => tab.addEventListener('click', () => select(i, { remember: true })));
     list.addEventListener('keydown', event => {
@@ -413,10 +416,14 @@ document.addEventListener('error', event => {
             print.classList.remove('rack-print');
             box.remove();
         } else {
-            // keeping the Audiobookshelf ring, if the cover had one
+            // keeping the box's type and faces, and the Audiobookshelf
+            // ring if the cover had one
             const ring = box.querySelector('.abs-ring');
-            box.outerHTML = noCoverHtml(img.alt, img.dataset.author || '',
-                                        { ring: ring ? Number(ring.dataset.absRing) / 100 : null });
+            box.outerHTML = noCoverHtml(img.alt, img.dataset.author || '', {
+                ring: ring ? Number(ring.dataset.absRing) / 100 : null,
+                media: box.dataset.media, format: box.dataset.format,
+                faces: box.getAttribute('style'),
+            });
         }
         return;
     }
@@ -438,11 +445,22 @@ document.addEventListener('load', event => {
 // A cover picture's box: the JS twin of cover_img() in templates/_covers.html
 // (keep the two in step). src is the uploads path as stored; alt and author
 // are escaped here. author sets data-author, which the load-error handler
-// above uses to title the placeholder it swaps in.
-function coverBoxHtml(src, alt, imgClass, { author = null, ring = null } = {}) {
+// above uses to title the placeholder it swaps in. media, format and faces
+// make it the item's box in Shelf (boxAttrsHtml); ring is the
+// Audiobookshelf progress, 0 to 1.
+function coverBoxHtml(src, alt, imgClass, { author = null, ring = null, media = null, format = null, faces = null } = {}) {
     const authorAttr = author === null ? '' : ` data-author="${escapeHtml(author)}"`;
-    return `<span class="cover-box"><img src="/static/${escapeHtml(src)}" alt="${escapeHtml(alt)}"${authorAttr}`
+    return `<span class="cover-box"${boxAttrsHtml({ media, format, faces })}><img src="/static/${escapeHtml(src)}" alt="${escapeHtml(alt)}"${authorAttr}`
          + ` class="${imgClass}"><span class="cover-sheen" aria-hidden="true"></span>${progressRingHtml(ring)}</span>`;
+}
+
+// A cover box's attributes: the twin of _covers.html box_attrs() (keep the
+// two in step). data-media and data-format, which the Shelf style's box
+// rules key on, and the top and side photos (--face-top / --face-side, as
+// card_json's `faces`) as its style. Nothing without a media type.
+function boxAttrsHtml({ media = null, format = null, faces = null } = {}) {
+    const type = media ? ` data-media="${escapeHtml(media)}" data-format="${escapeHtml(format || '')}"` : '';
+    return type + (faces ? ` style="${escapeHtml(faces)}"` : '');
 }
 
 // The Audiobookshelf progress ring: _covers.html progress_ring()'s twin
@@ -487,10 +505,10 @@ function coverEdge(img) {
 
 // A vinyl sleeve's flat box takes its cover's edge colour (--edge on its
 // .cover-box; Phil, 2026-11-16). Every record that isn't a CD or a
-// cassette, on a grid or the item page. Images load at any time (grids
-// add cards as you scroll), so a capture-phase load listener catches each.
-const VINYL_COVER = ':is([data-media="record"] .book-item, .cover-stand[data-media="record"])'
-    + ':not([data-format="CD"], [data-format="Cassette"]) .cover-box > img';
+// cassette, wherever its box is shown (the box carries its type:
+// cover_img item=). Images load at any time (grids add cards as you
+// scroll), so a capture-phase load listener catches each.
+const VINYL_COVER = '.cover-box[data-media="record"]:not([data-format="CD"], [data-format="Cassette"]) > img';
 function paintVinylEdge(img) {
     if (!(img instanceof HTMLImageElement) || !img.matches(VINYL_COVER)) return;
     const edge = coverEdge(img);
@@ -506,12 +524,13 @@ if (document.documentElement.dataset.style === 'shelf') {
 // --- No cover -----------------------------------------------------------------
 // The JS twin of templates/_no_cover.html (keep the two in step): a plain
 // binding with the title on it, for cards built in script.
-function noCoverHtml(title, author, { size = 'md', box = 'w-full h-full', ring = null } = {}) {
+function noCoverHtml(title, author, { size = 'md', box = 'w-full h-full', ring = null, media = null, format = null, faces = null } = {}) {
     const titleHtml = title ? `<span class="no-cover-title">${escapeHtml(title)}</span>` : '';
     const authorHtml = title && author && size !== 'sm'
         ? `<span class="no-cover-author">${escapeHtml(author)}</span>` : '';
     const long = title && title.length > 30 ? ' no-cover-long' : '';   // as _no_cover.html
-    return `<div class="no-cover no-cover-${size}${long} ${box}" aria-hidden="true">${titleHtml}${authorHtml}${progressRingHtml(ring)}</div>`;
+    return `<div class="no-cover no-cover-${size}${long} ${box}"${boxAttrsHtml({ media, format, faces })} aria-hidden="true">`
+         + `${titleHtml}${authorHtml}${progressRingHtml(ring)}</div>`;
 }
 
 // --- Read more ---------------------------------------------------------------
@@ -596,4 +615,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // Only a path on this site ("/..." but not "//host")
         if (url && url.startsWith('/') && !url.startsWith('//')) link.href = url;
     });
+});
+
+
+// An item's heading (_item_heading.html: the item page, Rate & review):
+// a long title (Dr. Strangelove's 69 characters) wraps to six lines at
+// text-4xl on a phone and pushes the details off the screen. Step the
+// heading down a Tailwind size at a time until the title itself (not the
+// subtitle, which has its own size) wraps to MAX_TITLE_LINES or fewer.
+// Most titles never leave text-4xl. getClientRects() on an inline span
+// returns one rect per line box, so it counts the rendered lines directly.
+const TITLE_SIZES = ['text-4xl', 'text-3xl', 'text-2xl'];
+const MAX_TITLE_LINES = 3;
+
+function fitTitle() {
+    const heading = document.querySelector('[data-fit-title]');
+    const text = heading && heading.querySelector('[data-fit-title-text]');
+    if (!text) return;
+    for (const size of TITLE_SIZES) {
+        heading.classList.remove(...TITLE_SIZES);
+        heading.classList.add(size);
+        if (text.getClientRects().length <= MAX_TITLE_LINES) return;
+    }
+    // Still over at the smallest size: leave it there rather than shrink further.
+}
+
+// common.js loads in <head>: fit once the page has parsed
+document.addEventListener('DOMContentLoaded', fitTitle);
+// Wrapping depends on the web font (Young Serif is wider than the fallback)
+// and on the width, so fit again once fonts load and after a resize or rotation.
+if (document.fonts) document.fonts.ready.then(fitTitle);
+let fitTitleFrame = 0;
+window.addEventListener('resize', () => {
+    cancelAnimationFrame(fitTitleFrame);
+    fitTitleFrame = requestAnimationFrame(fitTitle);
 });

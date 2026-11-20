@@ -1,5 +1,5 @@
-{# Profile statistics (ROADMAP 12.1). Two levels: Overview | Insights on top,
-   then Books | Movies | Music (only the types the user has; books always).
+{# Profile statistics (ROADMAP 12.1). Two levels: All | Books | Movies |
+   Music (only the types the user has; books always), then Overview | Insights.
    Every type gets the same blocks, worded by `m` (media.media_labels), from
    utils/stats.py type_stats(). All panels are in the page; user.js
    showStats() shows the one matching the section's data-view and data-kind,
@@ -91,32 +91,22 @@
 </div>
 {%- endmacro %}
 
-<section class="bg-secondary rounded-xl overflow-hidden card"
-         data-stats data-view="overview" data-kind="{{ 'all' if multi else type_stats[0][0].type }}" aria-label="Statistics">
-    <div class="flex" role="tablist" aria-label="Statistics view">
-        {% for key, label in [('overview', 'Overview'), ('insights', 'Insights')] %}
-        <button type="button" role="tab" data-click="statsView" data-stats-view="{{ key }}"
-                aria-selected="{{ 'true' if loop.first else 'false' }}"
-                class="tab tab-button {% if loop.first %}active{% endif %}">{{ label }}</button>
-        {% endfor %}
-    </div>
-
+{# The two switches are one catalog cabinet in Shelf (Phil, 2026-11-19):
+   the type's drawers on top, Overview | Insights under them, both out of
+   the card, so the card is just the numbers. tab_row's toggle buttons:
+   user.js showStats() moves tab-active and aria-pressed. #}
+{% from '_shelves.html' import tab_row %}
+<section data-stats data-view="overview" data-kind="{{ 'all' if multi else type_stats[0][0].type }}" aria-label="Statistics">
+    {% set views = [('overview', 'Overview'), ('insights', 'Insights')] %}
     {% if multi %}
-    <div class="px-4 sm:px-6 pt-5">
-        <div class="bg-primary rounded-xl overflow-hidden card">
-            <div class="flex items-stretch" role="group" aria-label="Section">
-                <button type="button" data-click="statsKind" data-stats-kind="all" aria-pressed="true"
-                        class="tab tab-active">All</button>
-                {% for m, s in type_stats %}
-                <button type="button" data-click="statsKind" data-stats-kind="{{ m.type }}" aria-pressed="false"
-                        class="tab">{{ SECTION_NAMES[m.type] }}</button>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
+    {% set kinds = [('all', 'All')] %}{% for m, s in type_stats %}{% set _ = kinds.append((m.type, SECTION_NAMES[m.type])) %}{% endfor %}
+    {{ tab_row(kinds, 'Section', active='all', action='statsKind', data='stats-kind', end=False, class='pb-3') }}
+    {{ tab_row(views, 'Statistics view', active='overview', action='statsView', data='stats-view', lower=True) }}
+    {% else %}
+    {{ tab_row(views, 'Statistics view', active='overview', action='statsView', data='stats-view') }}
     {% endif %}
 
-    <div class="p-4 sm:p-6">
+    <div class="bg-secondary rounded-xl overflow-hidden card p-4 sm:p-6">
         {% if multi %}
         {% set a = all_stats %}
         {# ---------------- All: Overview ---------------- #}

@@ -778,3 +778,19 @@ def test_ring_markup_matches_its_js_twin(app):
                          capture_output=True, text=True, check=True).stdout
     assert dict(zip((0.5, 0.004, 1, 0.755), json.loads(out))) == server
     assert 'data-abs-ring="1"' in server[0.004] and 'data-abs-ring="76"' in server[0.755]
+
+
+def test_a_dash_subtitle_matches_your_copy(db, people):
+    """Phil, 2026-11-19: Audiobookshelf's "Blood in the Machine - The Origins
+    of the Rebellion Against Big Tech" became its own audiobook instead of
+    attaching to the paper copy, as the matcher only split at a colon. A
+    spaced dash starts a subtitle too; a hyphen inside a word doesn't."""
+    from utils.book_matching import BookIndex, wanted_title_forms
+    alice = people['alice']
+    paper = add_book(db, alice, 'Blood in the Machine', 'Brian Merchant')
+    index = BookIndex(db, alice)
+    for title in ('Blood in the Machine - The Origins of the Rebellion Against Big Tech',
+                  'Blood in the Machine – The Origins', 'Blood in the Machine: The Origins'):
+        assert index.match((), title, 'Brian Merchant')[0]['id'] == paper, title
+    assert wanted_title_forms('Spider-Man') == ['Spider-Man']
+    assert wanted_title_forms(' - Untitled') == [' - Untitled']

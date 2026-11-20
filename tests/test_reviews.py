@@ -1,5 +1,7 @@
 """The Reviews section (ROADMAP 13): rows per type, access, See all, the
 [+ Review] search scope and the not-owned path."""
+import re
+
 from conftest import add_book, add_review, add_user, login, make_friends, scalar
 
 
@@ -196,3 +198,56 @@ def test_not_owned_movie_and_album_land_on_review(client, db, people):
         assert r.status_code == 302 and r.location.endswith(f'/read/rate_review/{item}?from=reviews')
         assert scalar(db, 'SELECT owned FROM books WHERE id = ?', item) == 0
         assert scalar(db, 'SELECT media_type FROM books WHERE id = ?', item) == kind
+
+
+# --- layout (layout walk 16.0, step 3) -----------------------------------------
+
+def test_list_and_find_pages_have_the_framed_heading(client, db, people):
+    """Your reviews, Friends' reviews, Finished, not reviewed yet and the
+    [+ Review] search: crumbs, then page_heading (the framed heading in
+    Shelf), then the drawers."""
+    login(client, 'alice')
+    for url in ('/reviews/all/mine', '/reviews/all/friends', '/reviews/all/unreviewed',
+                '/reviews/find?type=book'):
+        html = page(client, url)
+        crumbs, heading, drawers = (html.find(m) for m in
+                                    ('aria-label="Breadcrumb"', 'class="page-heading', 'class="tab-row'))
+        assert -1 < crumbs < heading < drawers, url
+
+
+def test_captioned_cover_keeps_its_screen_reader_text_in_the_row(client, db, people):
+    """The stars' "Rated 4 of 5" is sr-only, absolutely placed. The caption's
+    figure is its containing block, so it stays inside the row's scroller;
+    without that it was placed past the scroller and widened the page (the
+    Reviews page was 957 px wide on a phone)."""
+    add_review(db, people['carol'], add_book(db, people['carol'], 'Carols Pick'), rating=4)
+    login(client, 'alice')
+    html = page(client, '/reviews/')
+    figure = re.search(r'<figure class="shelf-figure ([^"]*)"', html)
+    assert figure and 'relative' in figure.group(1).split()
+    assert 'Rated 4 of 5' in html
+
+
+def test_empty_row_line_lines_up_in_the_bookcase(client, db, people):
+    """'Nothing reviewed yet...' takes the case's note padding in Shelf, not
+    the case's edge."""
+    login(client, 'alice')
+    html = page(client, '/reviews/')
+    assert re.search(r'<p class="shelf-case-note[^"]*">Nothing reviewed yet', html)
+
+
+def test_rate_review_page_layout(client, db, people):
+    """Rate & review (layout walk 16.0, step 4): the item's heading (its cover
+    beside the title, as on the item page since 2026-11-19), then the form,
+    each star a 44 px tap target, and the session row free to wrap."""
+    alice = people['alice']
+    book = add_book(db, alice, 'Layout Pick')
+    add_review(db, alice, book)
+    login(client, 'alice')
+    html = page(client, f'/read/rate_review/{book}')
+    spots = [html.find(f'class="{c}') for c in ('item-heading-grid', 'cover-stand', 'review-layout', 'review-main')]
+    assert -1 < spots[0] < spots[1] < spots[2] < spots[3]
+    stars = re.findall(r'<label for="star\d"\s+class="rating-star ([^"]*)"', html)
+    assert len(stars) == 5 and all({'w-11', 'h-11'} <= set(c.split()) for c in stars)
+    row = re.search(r'<div class="([^"]*)" id="session-\d+">', html)
+    assert row and 'flex-wrap' in row.group(1).split()

@@ -48,27 +48,39 @@ def _title_keys(title, author):
     return [f'{title}|{a}' for a in _author_keys(author)] if title else []
 
 
+# Where a subtitle starts in a title: a colon, or a dash with spaces round it
+# ("Blood in the Machine - The Origins of the Rebellion Against Big Tech", as
+# Audiobookshelf has it, Phil 2026-11-19); a hyphen inside a word isn't one
+_SUBTITLE_SEP = re.compile(r'\s*:\s*|\s+[-\u2013\u2014]\s+')
+
+
+def _main_title(title):
+    """The title before its subtitle, or None when it has no separator."""
+    parts = _SUBTITLE_SEP.split(title or '', maxsplit=1)
+    return parts[0] if len(parts) == 2 and parts[0].strip() else None
+
+
 def stored_title_forms(title, subtitle=None):
     """The titles a stored book answers to: under the title alone and with
     its subtitle (Goodreads puts the subtitle in the title, "Consider the
     Lobster and Other Essays", "This Is Water: Some Thoughts, ...", the
-    lookups split it off), and before a colon, for a title stored with its
-    subtitle in it ("Invisible Monsters: A Novel")."""
+    lookups split it off), and before a colon or a spaced dash, for a title
+    stored with its subtitle in it ("Invisible Monsters: A Novel")."""
     titles = [title]
     if subtitle:
         titles.append(f"{title} {subtitle}")
-    if ':' in (title or ''):
-        titles.append(title.split(':', 1)[0])
+    if _main_title(title):
+        titles.append(_main_title(title))
     return titles
 
 
 def wanted_title_forms(title):
     """The titles to look for: the whole title (which also finds a book
-    stored as title + subtitle), then the part before a colon, for a book
-    stored without its subtitle."""
+    stored as title + subtitle), then the part before a colon or a spaced
+    dash, for a book stored without its subtitle."""
     candidates = [title]
-    if ':' in (title or ''):
-        candidates.append(title.split(':', 1)[0])
+    if _main_title(title):
+        candidates.append(_main_title(title))
     return candidates
 
 

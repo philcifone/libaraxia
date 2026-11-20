@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs, page_heading, section_icons %}
+{% from '_icons.html' import cancel_link, crumbs, page_heading, section_icons %}
 {# Edit a book (blueprints/books.edit_book). The fields are the shared
    _item_fields.html, so Add Book, Add Movie and both edit pages look the
    same; "Find a better cover" (cover_finder.js) is on Add Book too. #}
@@ -20,10 +20,11 @@
             {% include '_item_fields.html' %}
             {% endwith %}
 
-            <div class="md:col-span-2 flex justify-center">
-                <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-lg font-medium btn">
+            <div class="md:col-span-2 flex flex-wrap justify-center gap-3">
+                <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-5 sm:px-8 py-3 rounded-lg font-medium btn">
                     Save Changes
                 </button>
+                {{ cancel_link(item_url(book), title='Photos you changed are already saved: Cancel leaves those') }}
             </div>
         </form>
     </div>

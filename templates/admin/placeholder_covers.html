@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 
 {% block title %}Placeholder Covers - Admin{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -9,7 +9,7 @@
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Covers') }}
 
         <div class="mb-8">
-            <h1 class="text-3xl font-display text-content-primary mb-2">Covers</h1>
+            {{ page_heading('settings', 'Covers') }}
             <p class="text-content-secondary text-sm">
                 Some cover services answer a miss with a stock "image not available" picture, and older
                 downloads kept those as covers (new ones are refused). Clearing them sets those books to

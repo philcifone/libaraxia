@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs, page_heading, section_icons %}
+{% from '_icons.html' import cancel_link, crumbs, page_heading, section_icons %}
 {# Edit a movie or vinyl (blueprints/media_section.py, edit_item). Adding is add_item.html; the
    fields are the shared _item_fields.html, so both look the same.
    `values` holds the fields (the books row, or the posted form after an
@@ -21,10 +21,11 @@
             {% include '_item_fields.html' %}
             {% endwith %}
 
-            <div class="md:col-span-2 flex justify-center">
-                <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-8 py-3 rounded-lg font-medium btn">
+            <div class="md:col-span-2 flex flex-wrap justify-center gap-3">
+                <button type="submit" class="bg-accent hover:bg-accent-hover text-on-accent px-5 sm:px-8 py-3 rounded-lg font-medium btn">
                     Save Changes
                 </button>
+                {{ cancel_link(item_url(video), title='Photos you changed are already saved: Cancel leaves those') }}
             </div>
         </form>
     </div>

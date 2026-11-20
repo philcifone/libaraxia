@@ -871,6 +871,42 @@ def shelf_filter(args, alias='b', lent_ok=True):
     return f" AND {on_shelf(alias)}"
 
 
+# The grid views and the media type each holds (create_database.sql)
+VIEW_TYPES = {'library_books': 'book', 'library_videos': 'video', 'library_records': 'record'}
+
+
+def has_data_sql(alias='b'):
+    """SQL condition (one ? for the user, five times): the user has their own
+    data on the item: a review or rating, a status, a reading session, a tag
+    or a place in one of their collections."""
+    return (f"(EXISTS (SELECT 1 FROM read_data x WHERE x.book_id = {alias}.id AND x.user_id = ?)"
+            f" OR EXISTS (SELECT 1 FROM collections x WHERE x.book_id = {alias}.id AND x.user_id = ?)"
+            f" OR EXISTS (SELECT 1 FROM reading_sessions x WHERE x.book_id = {alias}.id AND x.user_id = ?)"
+            f" OR EXISTS (SELECT 1 FROM book_tags x WHERE x.book_id = {alias}.id AND x.user_id = ?)"
+            f" OR EXISTS (SELECT 1 FROM collection_books x JOIN user_collections uc"
+            f" ON uc.collection_id = x.collection_id WHERE x.book_id = {alias}.id AND uc.user_id = ?))")
+
+
+def grid_source(view, owner_ids, args, viewer_id, lent_ok=True):
+    """(SQL, params): 'SELECT b.* FROM ... WHERE ...' for a grid of the
+    shelves of `owner_ids`, before its Show choice and filters.
+
+    Show: Everything on your own or the household's grid (`lent_ok`, the
+    shelf's people) also brings in items with no owner (`added_by IS NULL`,
+    from before items had owners) that the viewer has data on: Phil,
+    2026-11-19, "if I want to see everything, I want to see *everything*"
+    (his reviews from 2025 hang on such records). The grid marks them No
+    owner. Ownerless items nobody here has touched stay out, and a friend's
+    grid never shows them (the views leave them out)."""
+    marks = ','.join('?' * len(owner_ids))
+    if show_choice(args) == 'all' and lent_ok and viewer_id is not None:
+        sql = (f"SELECT b.* FROM books b WHERE b.media_type = ?"
+               f" AND (b.id IN (SELECT id FROM {view} WHERE added_by IN ({marks}))"
+               f" OR (b.added_by IS NULL AND {has_data_sql('b')}))")
+        return sql, [VIEW_TYPES[view], *owner_ids, *[viewer_id] * 5]
+    return f"SELECT b.* FROM {view} b WHERE b.added_by IN ({marks})", list(owner_ids)
+
+
 def off_shelf_matches(conn, view, owner_ids, match_sql, match_params, viewer_id, limit=5):
     """The search hint (ROADMAP 8B.3): items that match a search but are
     hidden because they aren't on the shelf (not owned, or removed). For
@@ -942,8 +978,10 @@ def card_json(conn, viewer_id, books, looker_id=None):
             'cover_image_url': b['cover_image_url'] if upload_exists(b['cover_image_url']) else None,
             'removed': b['removed_at'] is not None,
             'not_owned': not b['owned'],
+            'no_owner': b['added_by'] is None,    # Show: Everything's ownerless items (grid_source)
             'lent_to': lent.get(b['id']),         # the Lent badge (16.0d)
             'abs_progress': rings.get(b['id']),   # the progress ring (0 to 1, or none)
+            'media_type': media.media_type_of(b), # the cover's box (common.js boxAttrsHtml)
             'format': media.shown_format(b),      # none for an unshelved movie or album
             # Videos (15.1): 'tv' or None (a movie), and a TV set's season text;
             # `by` ("directed by", "created by") and `season_short` ("S2") are

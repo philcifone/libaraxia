@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 
 {% block title %}Unowned Books - Admin{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -9,7 +9,7 @@
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Unowned Books') }}
 
         <div class="mb-8">
-            <h1 class="text-3xl font-display text-content-primary mb-2">Unowned Books</h1>
+            {{ page_heading('settings', 'Unowned Books') }}
             <p class="text-content-secondary text-sm">
                 Books with no owner: their owner's account was deleted with "no owner", or they predate
                 owners. They keep their reviews and reading history but show in no library until someone

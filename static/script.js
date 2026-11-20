@@ -398,7 +398,9 @@ class InfiniteScroll {
         // on the container's data-view (styles.css, "List view").
         // Not-owned and removed items only appear when Show asks for them,
         // and are marked so they can't pass for something on the shelf
-        const removedBadge = book.not_owned
+        const removedBadge = book.no_owner
+            ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill" title="From before items had owners: on no one\'s shelf, kept for your review and history" data-no-owner>No owner</span>'
+            : book.not_owned
             ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Unshelved</span>'
             : book.removed
             ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>'
@@ -410,11 +412,13 @@ class InfiniteScroll {
             : '';
 
 
-        const coverImage = book.cover_image_url   // cover-box: as _book_grid.html
+        // cover-box: as _book_grid.html; the item's box (type, format, faces) and ring
+        const box = { ring: book.abs_progress, media: book.media_type, format: book.format, faces: book.faces };
+        const coverImage = book.cover_image_url
             ? coverBoxHtml(book.cover_image_url, book.title,
                 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200',
-                { author: book.author || '', ring: book.abs_progress })
-            : noCoverHtml(book.title, book.author, { ring: book.abs_progress });
+                { author: book.author || '', ...box })
+            : noCoverHtml(book.title, book.author, box);
 
         // List view's columns: year, your status, your rating (card_json)
         const rating = Number(book.rating) || 0;
@@ -423,7 +427,7 @@ class InfiniteScroll {
             : '';
 
         return `
-            <div class="book-item group" data-format="${escapeHtml(book.format || '')}"${book.faces ? ` style="${escapeHtml(book.faces)}"` : ''}>
+            <div class="book-item group" data-format="${escapeHtml(book.format || '')}">
                 <a href="/books/book/${encodeURIComponent(book.id)}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">

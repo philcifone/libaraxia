@@ -124,17 +124,13 @@ def shelves(conn, user_id, media_type):
             'count': _count(conn, user_id, media_type, which),
             'covers': [{
                 'id': r['id'], 'cover_image_url': r['cover_image_url'], 'title': r['title'],
+                'media_type': r['media_type'], 'format': r['format'],
                 'rating': r['rating'] if which != 'unreviewed' else None,
                 'stars': which != 'unreviewed',
                 'by': r['username'] if which == 'friends' else None,
             } for r in rows],
         })
     return out
-
-
-def section_counts(conn, user_id):
-    """{media_type: reviews you wrote + friends' + waiting} for the tabs."""
-    return {t: sum(_count(conn, user_id, t, w) for w in LISTS) for t in media.MEDIA_TYPES}
 
 
 # --- [+ Review]: what you may review --------------------------------------

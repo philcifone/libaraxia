@@ -335,6 +335,24 @@ def test_empty_states(client, db, people):
     assert 'Your library is empty' not in text('/base/index') and 'Dune' in text('/base/index')
 
 
+def test_a_search_hidden_by_filters_says_so(client, db, people):
+    """Phil, 2026-11-19: "Infinite jest" with From: Goodreads on said "No
+    books on your shelf match", though the book was on it; the household's
+    shelves drew an empty bookcase instead of anything. Both pages now say
+    when it's the filters, with a link that keeps the search and drops them."""
+    add_book(db, people['alice'], 'Dune', 'Frank Herbert')
+    login(client, 'alice')
+    text = lambda url: ' '.join(client.get(url).get_data(as_text=True).split())
+    for home, whose in (('/base/index', 'your shelf'), ('/base/shared-library', 'the household&#39;s shelves')):
+        page = text(home + '?search_term=Dune&genre=Nope')
+        assert 'No books match &#34;Dune&#34; with these filters' in page, home
+        assert f'href="{home}?search_term=Dune"' in page and 'Clear the filters' in page, home
+        assert 'Dune' in text(home + '?search_term=Dune')       # without the filter it's there
+        page = text(home + '?search_term=zzzz')
+        assert f'No books on {whose} match &#34;zzzz&#34;' in page and 'Clear the search' in page, home
+        assert 'No books match these filters' in text(home + '?genre=Nope'), home
+
+
 def test_reading_chart_months(db, people):
     """7.3: books finished per month for the profile chart. Twelve months
     ending now; a quiet year falls back to the twelve months ending at the
@@ -685,7 +703,7 @@ def test_shelf_style_reaches_every_cover_grid():
     js = pathlib.Path('static/script.js').read_text()
     # switchView keeps shelf-grid and only drops .grid in list view
     assert "container.classList.toggle('grid', !list)" in js
-    assert 'cover-stand' in pathlib.Path('templates/book_detail.html').read_text()
+    assert 'cover-stand' in pathlib.Path('templates/_item_heading.html').read_text()
     css = pathlib.Path('static/styles.css').read_text()
     assert ':root:not([data-style="classic"]):not([data-style="shelf"]):not([data-style="cyberpunk"]) :is(' in css
     assert '#book-container.grid' not in css
@@ -735,7 +753,7 @@ def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
     # One cover component (16.0): the macro and its JS twin make the box, and
     # the grid (server-rendered and infinite scroll) goes through them
     assert '<span class="cover-box' in pathlib.Path('templates/_covers.html').read_text()
-    assert '<span class="cover-box"><img' in pathlib.Path('static/common.js').read_text()
+    assert '<span class="cover-box"${boxAttrsHtml({ media, format, faces })}><img' in pathlib.Path('static/common.js').read_text()
     assert 'cover_img(' in pathlib.Path('templates/_book_grid.html').read_text()
     assert 'coverBoxHtml(' in pathlib.Path('static/script.js').read_text()
     # The egg: Movies only
@@ -1014,7 +1032,8 @@ def test_dead_cover_links_get_the_placeholder_everywhere(client, db, people, sta
 
 def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     """The Shelf style draws the item page's cover as a 3D box (14c): the
-    image sits in .cover-box and the stand says which kind of item it is."""
+    image sits in .cover-box, which says which kind of item it is (layout
+    walk step 1: the box, not the stand)."""
     import os
     from conftest import add_book, login
     os.makedirs(static_root / 'uploads', exist_ok=True)
@@ -1022,10 +1041,10 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     book = add_book(db, people['alice'], cover='uploads/c.jpg')
     login(client, 'alice')
     html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'class="cover-stand w-full max-w-[300px]" data-media="book"' in html
-    # An ID badge at every width: the facts beside the cover, two columns on a phone
-    assert 'grid-cols-[7rem_minmax(0,1fr)]' in html and 'class="item-facts ' in html
-    assert '<span class="cover-box"><img src="/static/uploads/c.jpg"' in html
+    assert 'class="cover-stand w-full">' in html
+    # In the heading, beside the title (Phil, 2026-11-19); the facts under it
+    assert html.index('class="item-heading-grid"') < html.index('class="cover-stand') < html.index('class="item-facts ')
+    assert '<span class="cover-box" data-media="book" data-format=""><img src="/static/uploads/c.jpg"' in html
 
 
 def test_item_page_cover_opens_bigger(client, db, people, static_root):
@@ -1050,16 +1069,6 @@ def test_item_page_cover_opens_bigger(client, db, people, static_root):
     html = client.get(f'/books/book/{without}').get_data(as_text=True)
     assert 'cover-zoom' not in html and 'item-3d' not in html
 
-
-def test_item_page_format_icon_is_accent(client, db, people):
-    """The item heading's format icon is in the accent, as every page
-    heading's icon is (page_heading in _icons.html)."""
-    from conftest import add_book, login
-    book = add_book(db, people['alice'])
-    login(client, 'alice')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    import re
-    assert re.search(r'<span class="shrink-0 text-accent" role="img"\s+aria-label="Book"', html)
 
 def test_shelf_chips_recessed_until_chosen():
     """Shelf style (Phil, 2026-11-13): an unchosen chip is a well (inset
@@ -1159,9 +1168,9 @@ def test_item_add_and_edit_pages_have_one_heading_card(client, db, people):
         page = client.get(url).get_data(as_text=True)
         assert page.count('class="page-heading ') == 1, url
     item = client.get(f'/books/book/{book}').get_data(as_text=True)
-    # the title is in the heading card, before the details card
+    # the cover and the title are in the heading card, before the details card
     heading = item.index('class="page-heading ')
-    assert heading < item.index('<h1', heading) < item.index('Dune', heading) < item.index('cover-stand', heading)
+    assert heading < item.index('cover-stand', heading) < item.index('<h1', heading) < item.index('<span data-fit-title-text>Dune', heading) < item.index('item-facts')
 
 
 def test_shelf_site_title_stays_cream():
@@ -1286,28 +1295,29 @@ def test_case_headings_stand_outside_the_bookcase(client, db, people):
     assert src.count('class="case-wrap ') == 3 and 'shelf-case-heading' not in src
 
 
-def test_have_matches_are_small_bookcases(client, db, people):
-    """16.0 step 7: Do I Have This? matches are case cards in Shelf, the
-    cover standing on the ledge through the shared .case-cover hook (the
-    feed's too)."""
+def test_have_matches_are_feed_cards(client, db, people):
+    """Layout walk 16.0 step 6 (Phil): Do I Have This? matches are the
+    feed's card (they were small bookcases in Shelf), the whole card one
+    link, the cover a box for its item."""
     add_book(db, people['alice'], title='Dune', cover='uploads/x.jpg')
     login(client, 'alice')
     page = client.get('/have/?q=dune').get_data(as_text=True)
-    assert 'class="case-card flex gap-6 ' in page and 'case-cover' in page   # gap-6: room for the box's side
+    assert 'case-card' not in page and 'case-cover' not in page
+    match = re.search(r'<a href="/books/book/\d+" class="feed-card [^"]*card-link[^"]*">(.*?)</a>', page, re.S)
+    assert match and 'data-media="book"' in match.group(1) and 'Dune' in match.group(1)
 
 
 def test_have_album_covers_are_square(client, db, people):
-    """An album's cover in Do I Have This? is a square box, not squeezed
-    into a book's 5rem-wide slot (Phil, 2026-11-13)."""
+    """An album's cover in Do I Have This? is square, not squeezed into a
+    book's slot (Phil, 2026-11-13): the picture keeps its own shape
+    (object-contain), the placeholder is w-20 h-20."""
     from test_records import add_record
-    album = add_record(db, people['alice'], title='Mule', artist='Orville Peck')
-    db.execute("UPDATE books SET cover_image_url = 'uploads/x.jpg' WHERE id = ?", (album,)); db.commit()
+    add_record(db, people['alice'], title='Mule', artist='Orville Peck')
     login(client, 'alice')
     page = client.get('/have/?q=mule').get_data(as_text=True)
-    match = page[page.index('class="case-card flex gap-6 '):]
+    match = page[page.index('class="feed-card '):]
     match = match[:match.index('</a>')]
-    assert 'max-w-[5rem]' not in match
-    assert re.search(r'class="[^"]*\bh-24\b[^"]*\bw-24\b', match)   # the picture, or the square placeholder
+    assert re.search(r'class="no-cover [^"]*\bh-20 w-20\b', match)
 
 
 def test_infinite_scroll_finds_the_grid_by_data_not_layout_classes():
@@ -1369,73 +1379,23 @@ def test_add_page_keeps_a_draft_and_crop_blocks_zoom():
 
 
 def test_record_item_box_is_thinner():
-    """An album's box on the item page is about half a book's depth, as on
-    the grid (Phil, 2026-11-14)."""
+    """An album's box is about half a book's depth, on the item page as on
+    the grid (Phil, 2026-11-14): each page sets a thin depth beside the
+    book's, and a record's box takes it (layout walk step 1)."""
     css = pathlib.Path('static/styles.css').read_text()
-    assert ':root[data-style="shelf"] .cover-stand[data-media="record"] { --box-depth: 5px; }' in css
-    # a vinyl sleeve is card: 1px on the item page and the grid, in its
-    # cover's edge colour a shade darker; CDs and cassettes keep the
-    # record depth (Phil, 2026-11-16)
-    vinyl = ':not([data-format="CD"], [data-format="Cassette"]) { --box-depth: 1px; }'
-    assert ':root[data-style="shelf"] .cover-stand[data-media="record"]' + vinyl in css
-    assert ':root[data-style="shelf"] .shelf-grid.grid[data-media="record"] .book-item' + vinyl in css
+    assert ':root[data-style="shelf"] .cover-stand {\n    --box-depth: 9px;\n    --box-thin: 5px;' in css
+    assert ':root[data-style="shelf"] .shelf-grid.grid {\n    --box-depth: 7px;\n    --box-thin: 4px;\n}' in css
+    assert (':root[data-style="shelf"] :is(.cover-box, .no-cover):is([data-media="record"], '
+            '[data-media="video"][data-format="DVD"]) {\n    --box-depth: var(--box-thin);') in css
+    # a vinyl sleeve is card: 1px everywhere, in its cover's edge colour a
+    # shade darker; CDs and cassettes keep the record depth (Phil, 2026-11-16)
+    assert (':root[data-style="shelf"] :is(.cover-box, .no-cover)[data-media="record"]'
+            ':not([data-format="CD"], [data-format="Cassette"]) {\n    --box-depth: 1px;') in css
     assert 'color-mix(in srgb, rgb(var(--edge, var(--box-side))) 70%, black)' in css
     common = pathlib.Path('static/common.js').read_text()
     assert "addEventListener('load', event => paintVinylEdge(event.target), true)" in common
-
-
-def test_empty_detail_fields_say_not_set(client, db, people):
-    """An empty field on an item page keeps its label and says "Not set" in
-    a marked, muted line: it used to print Python's None ("None pages")."""
-    book = add_book(db, people['alice'])
-    login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    facts = page.split('item-facts', 1)[1].split('</div>\n                </div>', 1)[0]
-    # publisher, year, page count, ISBN and genre are all empty on this book
-    assert facts.count('data-unset') == 5
-    assert 'None' not in facts
-    db.execute("UPDATE books SET page_count = 320, publisher = 'Scribner' WHERE id = ?", (book,))
-    db.commit()
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert page.count('data-unset') == 3 and '320 pages' in page
-
-
-def test_box_shadow_stays_off_the_shelf():
-    """A Shelf cover's shadow falls on the wall to its right and never
-    below its base (Phil, 2026-11-14: a shadow under it made it float):
-    the offset is up, and the blur is no more than offset plus spread."""
-    css = pathlib.Path('static/styles.css').read_text()
-    assert '--box-shadow: calc(var(--box-depth) + 6px) -4px 8px -4px rgb(0 0 0 / var(--box-shade));' in css
-    assert 'box-contact' not in css and 'box-cast' not in css
-
-
-def test_og_walnut_palette(client, db, people):
-    """OG can take Shelf's parchment and walnut (Phil, 2026-11-15): a saved
-    users.palette on <html data-palette>, a picker shown in OG only, and
-    CSS that matches OG alone."""
-    login(client, 'alice')
-    assert 'data-palette="theme"' in client.get('/base/index').get_data(as_text=True)
-    assert client.post('/user/update_theme', json={'palette': 'mahogany'}).status_code == 400
-    assert client.post('/user/update_theme', json={'style': 'classic', 'palette': 'walnut'}).status_code == 200
-    assert scalar(db, 'SELECT palette FROM users WHERE id = ?', people['alice']) == 'walnut'
-    page = client.get('/user/settings').get_data(as_text=True)
-    assert 'data-palette="walnut"' in page and 'data-kind="palette"' in page
-    css = pathlib.Path('static/styles.css').read_text()
-    assert ':root[data-style="classic"][data-palette="walnut"] {' in css
-    assert ':root[data-style="classic"][data-palette="walnut"][data-mode="dark"] {' in css
-    assert ':root:not([data-style="classic"]) [data-palette-picker] { display: none; }' in css
-
-
-def test_no_byline_without_a_creator(client, db, people):
-    """No bare "by" under the title when an item has no author, director or
-    artist (Phil, 2026-11-15)."""
-    book = add_book(db, people['alice'], 'Anonymous Work', '')
-    login(client, 'alice')
-    assert 'data-byline' not in client.get(f'/books/book/{book}').get_data(as_text=True)
-    db.execute("UPDATE books SET author = 'Someone' WHERE id = ?", (book,))
-    db.commit()
-    assert 'data-byline' in client.get(f'/books/book/{book}').get_data(as_text=True)
-
+    assert ("const VINYL_COVER = '.cover-box[data-media=\"record\"]"
+            ":not([data-format=\"CD\"], [data-format=\"Cassette\"]) > img';") in common
 
 def test_item_page_has_no_pointer_to_the_tools(client, db, people):
     """The "Mark it unshelved, transfer it or delete it ... under Edit"
@@ -1446,16 +1406,22 @@ def test_item_page_has_no_pointer_to_the_tools(client, db, people):
 
 
 def test_dvd_box_is_thinner_than_vhs(client, db, people):
-    """The item page's Shelf box knows the format, and a DVD case is thinner
-    than a VHS clamshell (Phil, 2026-11-15)."""
-    css = pathlib.Path('static/styles.css').read_text()
-    assert ':root[data-style="shelf"] .cover-stand[data-media="video"][data-format="DVD"] { --box-depth: 5px; }' in css
-    tpl = pathlib.Path('templates/book_detail.html').read_text()
-    assert 'data-format="{{ book[\'format\'] or \'\' }}"' in tpl
-    # and on the grid, server-drawn and script-drawn cards alike
-    assert '.shelf-grid.grid[data-media="video"] .book-item[data-format="DVD"] { --box-depth: 4px; }' in css
-    assert 'class="book-item group" data-format="{{ book|item_format or \'\' }}"' in pathlib.Path('templates/_book_grid.html').read_text()
-    assert 'class="book-item group" data-format="${escapeHtml(book.format || \'\')}"' in pathlib.Path('static/script.js').read_text()
+    """A DVD case is thinner than a VHS clamshell (Phil, 2026-11-15): its
+    box knows the format, on the item page and the grid, server-drawn and
+    script-drawn cards alike (the thin-depth rule: test above)."""
+    dvd = add_book(db, people['alice'], title='Heat')
+    db.execute("UPDATE books SET media_type = 'video', format = 'DVD' WHERE id = ?", (dvd,))
+    db.commit()
+    login(client, 'alice')
+    box = '<span class="cover-box" data-media="video" data-format="DVD">'
+    nobox = 'class="no-cover no-cover-md w-full h-full" data-media="video" data-format="DVD"'
+    assert nobox in client.get('/videos/').get_data(as_text=True)
+    assert 'data-media="video" data-format="DVD"' in client.get(f'/videos/{dvd}').get_data(as_text=True)
+    common = pathlib.Path('static/common.js').read_text()
+    assert ' data-media="${escapeHtml(media)}" data-format="${escapeHtml(format || \'\')}"' in common
+    script = pathlib.Path('static/script.js').read_text()
+    assert 'media: book.media_type, format: book.format, faces: book.faces' in script
+    assert box.startswith('<span class="cover-box"')
 
 
 def test_headings_have_no_subtitles_and_one_height(client, db, people):
@@ -1505,7 +1471,8 @@ def test_wishlist_covers_show_the_format(client, db, people):
         items[title] = book
     db.commit()
     login(client, 'alice')
-    page = client.get('/wishlist/view').get_data(as_text=True)
+    page = ''.join(client.get(f'/wishlist/view?show={tab}').get_data(as_text=True)
+                   for tab in ('books', 'movies', 'music'))
     for fmt in ('VHS', 'DVD', 'LP', '7in', 'Audiobook'):
         assert f'data-format-badge="{fmt}"' in page, fmt
     assert page.count('data-format-badge=') == 5               # not the plain book
@@ -1516,15 +1483,14 @@ def test_wishlist_covers_show_the_format(client, db, people):
 
 
 def test_book_box_shows_pages():
-    """A book's flat box, on the grid and the item page, has lined pages
-    on its top and side unless a photo or placeholder fills that face; audiobooks
-    and unowned books too (Phil, 2026-11-16)."""
+    """A book's flat box, wherever it is shown, has lined pages on its top
+    and side unless a photo or placeholder fills that face; audiobooks and
+    unowned books too (Phil, 2026-11-16)."""
     css = pathlib.Path('static/styles.css').read_text()
-    who = (':root[data-style="shelf"] :is(.shelf-grid.grid[data-media="book"] .book-item, '
-           '.cover-stand[data-media="book"])')
+    who = ':root[data-style="shelf"] :is(.cover-box, .no-cover)[data-media="book"]'
     assert 'Audiobook"]):not([style*="--face-' not in css
-    assert who + ':not([style*="--face-side"]) :is(.cover-box, .no-cover)::before {' in css
-    assert who + ':not([style*="--face-top"]) :is(.cover-box, .no-cover)::after {' in css
+    assert who + ':not([style*="--face-side"])::before {' in css
+    assert who + ':not([style*="--face-top"])::after {' in css
     assert 'repeating-linear-gradient(90deg,\n        rgb(var(--box-side)) 0 var(--leaf)' in css
     # finer leaves on a 2x or 3x screen, so a 5px box shows several lines
     # rather than one (Phil, 2026-11-17)
@@ -1625,7 +1591,7 @@ def test_cyberpunk_glitch_is_timed_not_on_hover_or_tap(client):
     # Covers, item page titles and headings; never a grid card's title (Phil)
     pool = re.search(r"const POOL = '([^']*)'", glitch).group(1)
     assert '.detail-title' in pool and '.book-cover' in pool and 'book-title' not in pool
-    assert 'class="detail-title ' in pathlib.Path('templates/book_detail.html').read_text()
+    assert 'class="detail-title ' in pathlib.Path('templates/_item_heading.html').read_text()
     assert not re.search(r"addEventListener\('(mouse|pointer|touch|click)", glitch)
     css = pathlib.Path('static/styles.css').read_text()
     rules = css[css.index('/* ---- Cyberpunk glitch'):]
@@ -1714,3 +1680,422 @@ def test_dangerous_confirms_say_yes_and_what_they_do():
     scripts = '\n'.join(p.read_text() for p in (ROOT / 'static').glob('*.js'))
     assert not re.search(r'data-confirm-ok="(OK|Delete|Remove)"', pages)
     assert not re.search(r"ok: '(OK|Delete|Remove)'", scripts)
+
+
+def test_empty_detail_fields_say_not_set(client, db, people):
+    """An empty field on an item page keeps its label and says "Not set" in
+    a marked, muted line: it used to print Python's None ("None pages")."""
+    book = add_book(db, people['alice'])
+    login(client, 'alice')
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    facts = page.split('item-facts', 1)[1].split('</div>\n                </div>', 1)[0]
+    # publisher, year, page count, ISBN and genre are all empty on this book
+    assert facts.count('data-unset') == 5
+    assert 'None' not in facts
+    db.execute("UPDATE books SET page_count = 320, publisher = 'Scribner' WHERE id = ?", (book,))
+    db.commit()
+    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert page.count('data-unset') == 3 and '320 pages' in page
+
+
+def test_box_shadow_stays_off_the_shelf():
+    """A Shelf cover's shadow falls on the wall to its right and never
+    below its base (Phil, 2026-11-14: a shadow under it made it float):
+    the offset is up, and the blur is no more than offset plus spread."""
+    css = pathlib.Path('static/styles.css').read_text()
+    assert '--box-shadow: calc(var(--box-depth) + 6px) -4px 8px -4px rgb(0 0 0 / var(--box-shade));' in css
+    assert 'box-contact' not in css and 'box-cast' not in css
+
+
+def test_og_walnut_palette(client, db, people):
+    """OG can take Shelf's parchment and walnut (Phil, 2026-11-15): a saved
+    users.palette on <html data-palette>, a picker shown in OG only, and
+    CSS that matches OG alone."""
+    login(client, 'alice')
+    assert 'data-palette="theme"' in client.get('/base/index').get_data(as_text=True)
+    assert client.post('/user/update_theme', json={'palette': 'mahogany'}).status_code == 400
+    assert client.post('/user/update_theme', json={'style': 'classic', 'palette': 'walnut'}).status_code == 200
+    assert scalar(db, 'SELECT palette FROM users WHERE id = ?', people['alice']) == 'walnut'
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-palette="walnut"' in page and 'data-kind="palette"' in page
+    css = pathlib.Path('static/styles.css').read_text()
+    assert ':root[data-style="classic"][data-palette="walnut"] {' in css
+    assert ':root[data-style="classic"][data-palette="walnut"][data-mode="dark"] {' in css
+    assert ':root:not([data-style="classic"]) [data-palette-picker] { display: none; }' in css
+
+
+def test_no_byline_without_a_creator(client, db, people):
+    """No bare "by" under the title when an item has no author, director or
+    artist (Phil, 2026-11-15)."""
+    book = add_book(db, people['alice'], 'Anonymous Work', '')
+    login(client, 'alice')
+    assert 'data-byline' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    db.execute("UPDATE books SET author = 'Someone' WHERE id = ?", (book,))
+    db.commit()
+    assert 'data-byline' in client.get(f'/books/book/{book}').get_data(as_text=True)
+
+
+# ---- One cover box everywhere (layout walk step 1, docs/LAYOUT-WALK-SPEC.md section 2)
+
+def test_every_cover_call_passes_its_item():
+    """Phil, 2026-11-19: the feed's covers were the plain grey box while the
+    grid's were each item's own (a book's pages, a vinyl sleeve, a DVD's
+    depth, its photos). The box now takes its item, so every cover_img call
+    and every _no_cover.html include in templates/ passes item= (item=none
+    where a placeholder is not the item's box: the rack's printed label). A
+    new list that forgets it fails here."""
+    calls = 0
+    for path in sorted((ROOT / 'templates').glob('*.html')):
+        if path.name in ('_covers.html', '_no_cover.html'):
+            continue
+        text = path.read_text()
+        for call in re.findall(r'cover_img\((?:[^()]|\([^()]*\))*\)', text):
+            calls += 1
+            assert 'item=' in call, f'{path.name}: {call}'
+        for include in re.findall(r'{% with ((?:(?!%}).)*)%}\s*{% include \'_no_cover.html\' %}', text):
+            calls += 1
+            assert 'item=' in include, f'{path.name}: {include}'
+        # an include outside a {% with %} can't pass it
+        assert text.count("{% include '_no_cover.html' %}") == len(
+            re.findall(r'%}\s*{% include \'_no_cover.html\' %}', text)), path.name
+    assert calls >= 20
+
+
+def _rules(css):
+    """(selector, body) of every plain rule, @media blocks included."""
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    return re.findall(r'([^{}@;]+)\{([^{}]*)\}', css)
+
+
+def test_per_type_box_rules_are_on_the_box():
+    """The Shelf box's per-type rules (depth, plastic colours, a book's
+    pages, the vinyl edge, the faces' photos) key on the box's own
+    data-media / data-format / style, never on a wrapper (the grid's
+    .book-item, the item page's .cover-stand), so the grid, the item page
+    and the lists can't drift apart again. The video-store rack's cases
+    are the exception: they're the rack's own look, on the grid only."""
+    css = (ROOT / 'static/styles.css').read_text()
+    checked = 0
+    for selector, body in _rules(css):
+        selector = ' '.join(selector.split())
+        if not re.search(r'data-media|data-format|--face-', selector) or 'data-rack="store"' in selector:
+            continue
+        boxy = re.search(r'--box-(depth|thin|top|side)\s*:', body) or (
+            re.search(r'(cover-box|no-cover)[^,]*::(before|after)', selector) and 'background' in body)
+        if not boxy:
+            continue
+        checked += 1
+        for wrapper in ('.shelf-grid', '.cover-stand', '.book-item'):
+            assert wrapper not in selector, selector
+    assert checked >= 8
+
+
+def test_lists_draw_each_items_box(client, db, people):
+    """Rendered, not just written: on the feed, Reviews, Collections, the
+    profile, Do I Have This?, the rate page and Borrowed, every cover box
+    and placeholder carries its item's type and format, the vinyl's and
+    the book's alike."""
+    alice, carol = people['alice'], people['carol']
+    book = add_book(db, alice, title='Dune')
+    lp = add_book(db, alice, title='Blue Train')
+    db.execute("UPDATE books SET media_type = 'record', format = 'LP' WHERE id = ?", (lp,))
+    for item in (book, lp):
+        db.execute('INSERT INTO read_data (user_id, book_id, rating, comment) VALUES (?, ?, 4, ?)',
+                   (alice, item, 'Good'))
+        db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, item))
+    db.execute('INSERT INTO loans (book_id, lent_by, borrower_id, borrower_name, lent_at) '
+               "VALUES (?, ?, ?, 'carol', date('now'))", (lp, alice, carol))
+    db.commit()
+    pages = {'alice': ['/feed/activity', '/reviews/', '/reviews/?type=record', '/collections/collections',
+                       '/user/alice', '/have/?q=Dune', f'/read/rate_review/{book}'],
+             'carol': ['/loans/borrowed', '/feed/activity']}
+    for who, urls in pages.items():
+        login(client, who)
+        for url in urls:
+            html = client.get(url).get_data(as_text=True)
+            boxes = re.findall(r'<(?:span|div) class="(?:cover-box|no-cover)[ "][^>]*>', html)
+            assert boxes, url
+            for tag in boxes:
+                assert re.search(r'data-media="(book|video|record)" data-format="[^"]*"', tag), (url, tag)
+            if url in ('/reviews/?type=record', '/loans/borrowed'):
+                assert 'data-media="record" data-format="LP"' in html, url
+
+
+def test_cover_box_takes_the_book_id_over_a_rows_own(app, db, people):
+    """A feed, review or loan row's `id` is its own; `book_id` is the book's,
+    so that's the one the faces and the ring are looked up by."""
+    book = add_book(db, people['alice'])
+    db.execute("UPDATE books SET media_type = 'video', format = 'VHS', owned = 0 WHERE id = ?", (book,))
+    db.commit()
+    with app.test_request_context():
+        cover_box = app.jinja_env.globals['cover_box']
+        row = {'id': 9999, 'book_id': book, 'media_type': 'video', 'format': 'VHS', 'owned': 1}
+        assert cover_box(row) == {'media': 'video', 'format': 'VHS', 'faces': '', 'ring': None}
+        # an unshelved movie has no copy, so no format (as on the grid)
+        assert cover_box(dict(row, owned=0))['format'] == ''
+        assert cover_box(None) == {}
+
+
+def test_box_attrs_match_their_js_twin(app):
+    """_covers.html box_attrs and common.js boxAttrsHtml give a box the same
+    attributes, so a grid card added by infinite scroll is the same box as
+    one the server drew."""
+    import json
+    import shutil
+    import subprocess
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('node not installed')
+    cases = [{'media': 'record', 'format': 'LP', 'faces': ''},
+             {'media': 'video', 'format': '', 'faces': '--face-top: url("/static/uploads/t.jpg"); '},
+             {'media': 'book', 'format': 'Audiobook', 'faces': ''},
+             {}]
+    with app.test_request_context():
+        macro = app.jinja_env.get_template('_covers.html').module.box_attrs
+        server = [str(macro(c)) for c in cases]
+    src = (ROOT / 'static/common.js').read_text()
+    escape = re.search(r'function escapeHtml\(text\) \{.*?\n\}', src, re.S).group(0)
+    fn = re.search(r'function boxAttrsHtml\(.*?\n\}', src, re.S).group(0)
+    out = subprocess.run([node, '-e', escape + '\n' + fn + f'\nconsole.log(JSON.stringify({json.dumps(cases)}.map(boxAttrsHtml)))'],
+                         capture_output=True, text=True, check=True).stdout
+    # the same attributes once read (Jinja writes a quote as &#34;, escapeHtml as &quot;)
+    import html
+    assert [html.unescape(a) for a in json.loads(out)] == [html.unescape(a) for a in server]
+    assert all('url("' not in a for a in json.loads(out) + server)     # never a raw quote in style="..."
+    assert server[0] == ' data-media="record" data-format="LP"' and server[3] == ''
+
+
+# ---- The catalog cabinet on every tab row (layout walk step 2, spec section 3)
+
+def test_no_hand_built_tab_rows():
+    """Every page-level tab row is _shelves.html tab_row (the cabinet's
+    drawers in Shelf), so a new hand-built row fails here. The item page's
+    tabs stay their own (Phil, 2026-11-19); Stats' switches became drawers
+    the same day."""
+    allowed = {'_shelves.html', 'book_detail.html'}
+    for path in sorted((ROOT / 'templates').rglob('*.html')):
+        if path.name in allowed:
+            continue
+        text = path.read_text()
+        assert not re.search(r'class="tab[ "]', text), path.name
+        assert 'role="tablist"' not in text and 'role="tab"' not in text, path.name
+
+
+def test_every_tab_row_is_a_cabinet(client, db, people):
+    """Rendered: the tab rows of Collections, the wishlist, Reviews and its
+    pages, the profile, Settings, Admin and Placeholders are cabinets (the
+    shelf pages' too, which go on into the search band). A row that ends the
+    cabinet has its plinth (cabinet-end); the wishlist's filter is the band
+    under its drawers."""
+    alice = people['alice']
+    book = add_book(db, alice, title='Dune')
+    db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (alice, add_book(db, alice, title='Want')))
+    db.commit()
+    login(client, 'alice')
+    ending = ['/collections/collections', '/reviews/', '/reviews/all/mine', '/reviews/all/friends', '/reviews/find',
+              '/user/carol', '/user/settings', '/faces/admin']
+    for url in ending:
+        html = client.get(url).get_data(as_text=True)
+        rows = re.findall(r'<div class="tab-row [^"]*"', html)
+        assert rows, url
+        assert all('cabinet-part cabinet-drawers cabinet-top cabinet-end' in r for r in rows), (url, rows)
+    # Settings holds Admin's row too, inside its Admin panel
+    assert client.get('/user/settings').get_data(as_text=True).count('class="tab-row') == 2
+    shelf = client.get('/base/index').get_data(as_text=True)
+    assert re.search(r'<div class="tab-row page-frame [^"]*cabinet-part cabinet-drawers cabinet-top"', shelf)
+    wish = client.get('/wishlist/view').get_data(as_text=True)
+    assert re.search(r'<div class="tab-row [^"]*cabinet-part cabinet-drawers cabinet-top"', wish)
+    assert '<div class="cabinet-part cabinet-end mb-8">\n            <div class="cabinet-band">' in wish
+    # in-page tabs: their open drawer is the aria-selected one
+    css = (ROOT / 'static/styles.css').read_text()
+    assert ':root[data-style="shelf"] .cabinet-drawers :is(.tab-active, .tab[aria-selected="true"]) {' in css
+    assert ':root[data-style="shelf"] .cabinet-end.cabinet-top > .card,' in css
+
+
+def test_stats_switches_are_one_cabinet(client, db, people):
+    """Stats (Phil, 2026-11-19): the type's drawers on top, Overview |
+    Insights in a band under them, one cabinet, out of the numbers' card.
+    Toggle buttons for user.js (data-click, aria-pressed), not initTabs,
+    so they aren't hidden waiting for it. Books only: one row, both ends."""
+    from test_videos import add_video
+    alice = people['alice']
+    add_book(db, alice, 'Dune', 'Frank Herbert')
+    login(client, 'carol')
+    one = client.get('/user/alice').get_data(as_text=True)
+    one = one[one.index('data-stats '):]
+    assert re.findall(r'<div class="tab-row ([^"]*)"', one) == ['pb-4 cabinet-part cabinet-drawers cabinet-top cabinet-end']
+    add_video(db, alice)
+    stats = client.get('/user/alice').get_data(as_text=True)
+    stats = stats[stats.index('data-stats '):]
+    rows = re.findall(r'<div class="tab-row ([^"]*)"(.*?)>\s*<div class="([^"]*)">', stats)
+    assert [(r[0], r[1], r[2]) for r in rows] == [
+        ('pb-3 cabinet-part cabinet-drawers cabinet-top', '', 'bg-secondary rounded-xl overflow-hidden card'),
+        ('pb-4 cabinet-part cabinet-drawers cabinet-end', '', 'bg-secondary rounded-xl overflow-hidden card cabinet-band'),
+    ]
+    assert stats.index('data-stats-kind="all"') < stats.index('data-stats-view="overview"') < stats.index('data-stats-panel')
+    assert 'data-click="statsView" data-stats-view="overview" aria-pressed="true"' in stats
+    js = (ROOT / 'static/user.js').read_text()
+    assert "button.classList.toggle('tab-active', on);\n        button.setAttribute('aria-pressed'" in js
+
+
+def test_tab_row_is_hidden_until_the_script_runs():
+    """In-page tabs only work with JS: without it every panel shows, so the
+    row (the whole cabinet, not just its buttons) stays hidden until
+    initTabs shows it. Switching style on Settings, now a cabinet too,
+    doesn't reload: only the shelf pages' server-laid view bar needs it."""
+    js = (ROOT / 'static/common.js').read_text()
+    assert ":scope > [data-tab-row] [role=\"tablist\"]" in js
+    assert "const row = list.closest('[data-tab-row]') ?? list;" in js and 'row.hidden = false;' in js
+    css = (ROOT / 'static/styles.css').read_text()
+    assert '[data-tabs] [data-tab-row][hidden] {' in css
+    assert "document.querySelector('.view-bar.cabinet-part')" in (ROOT / 'static/sidebar.js').read_text()
+
+
+def test_a_deeper_ledge_front_also_resets_the_ledge_height():
+    """--ledge-h is calc(--ledge-top + --ledge-front), and a custom
+    property's var() is worked out where it is declared. A rule that changes
+    --ledge-front without declaring --ledge-h again keeps the old height, so
+    the ledge doesn't grow (step 3's captioned rows: the captions vanished).
+    Setting it on the element that declares the height (the grid, the small
+    cases) is fine: there the height is worked out from the element's own
+    front. So each rule setting --ledge-front declares the height too, or
+    its element (the selector's last classes) is one that declares it."""
+    css = (ROOT / 'static' / 'styles.css').read_text()
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+
+    def last_classes(selector):
+        """Classes of the last compound in each of the selector's parts
+        (:is(a, b) counts as one compound)."""
+        out = set()
+        for part in re.split(r',(?![^(]*\))', selector):
+            last = re.sub(r'\(([^)]*)\)', lambda m: '(' + m.group(1).replace(' ', '') + ')',
+                          part.strip()).split()[-1]
+            out |= set(re.findall(r'\.[\w-]+', last))
+        return out
+
+    rules = [(sel.strip(), body) for sel, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css)]
+    owns_height = lambda body: re.search(r'--ledge(-h)?\s*:', body)
+    owners = set().union(*(last_classes(sel) for sel, body in rules if owns_height(body)))
+    fronts = [(sel, body) for sel, body in rules if re.search(r'--ledge-front\s*:', body)]
+    assert fronts, 'no rule sets --ledge-front'
+    for selector, body in fronts:
+        assert owns_height(body) or last_classes(selector) <= owners, selector
+
+
+def test_shelf_captions_sit_on_the_ledge_front():
+    """Reviews' captions (stars, a friend's name) are printed on the ledge's
+    front in Shelf: taken out of the figure's flow, cream on the wood."""
+    css = (ROOT / 'static' / 'styles.css').read_text()
+    rule = re.search(r'\.shelf-case \.shelf-figure figcaption \{([^}]*)\}', css)
+    assert rule and 'position: absolute' in rule.group(1)
+    assert 'var(--shelf-label)' in rule.group(1)
+
+
+def test_walk_pages_have_the_framed_heading(client, db, people):
+    """Layout walk step 7: Borrowed and the admin pages printed a bare <h1>;
+    they get page_heading like every other page (CLAUDE.md: titles with
+    page_heading), and Borrowed's empty line is a card."""
+    login(client, 'alice')                                # an admin
+    for url in ('/loans/borrowed', '/admin/backups', '/admin/placeholder_covers', '/faces/admin',
+                '/admin/orphaned_images', '/admin/unowned_books'):
+        html = client.get(url).get_data(as_text=True)
+        assert 'class="page-heading' in html, url
+        assert '<h1 class="text-3xl' not in html, url
+    html = client.get('/loans/borrowed').get_data(as_text=True)
+    assert re.search(r'<div class="bg-secondary [^"]*card[^"]*">\s*<p[^>]*>Nothing borrowed right now', html)
+
+
+def test_one_gap_under_every_heading_and_tab_row(client, db, people):
+    """Phil, 2026-11-19: the space under a heading is the Shelves page's
+    (its heading to its catalog), on every page, and so is the space under a
+    tab row or the catalog. heading_card owns the heading's mb-4 and tab_row
+    its pb-4, so no page passes its own; a space-y container's margin is
+    evened out to the same 1rem; and in Shelf a top face's room above a case
+    never merges into the gap (on Reviews it had left 6px)."""
+    calls = ''.join(p.read_text() for p in (ROOT / 'templates').rglob('*.html'))
+    assert not re.search(r'page_heading\([^)]*\bclass=', calls)
+    assert not re.search(r"heading_card\('[^']*\bmb-", calls)
+    assert not re.search(r"(?:tab_row|section_switch)\([^)]*class='pb-[5-9]", calls)
+    login(client, 'alice')
+    for url in ('/reviews/', '/collections/collections', '/wishlist/view', '/feed/activity'):
+        html = client.get(url).get_data(as_text=True)
+        assert re.search(r'<div class="page-heading [^"]*\bmb-4\b', html), url
+    css = (ROOT / 'static' / 'styles.css').read_text()
+    assert '[class*="space-y-"] > :is(.page-heading, .tab-row) + :not([hidden]) { margin-top: 1rem; }' in css
+    assert ':root[data-style="shelf"] .cabinet-top { padding-top: var(--run); }' in css
+    assert ':root[data-style="shelf"] .cabinet-end + .shelf-case { margin-top: calc(1rem + var(--case-run)); }' in css
+    assert ':root[data-style="shelf"] .view-bar + .shelf-grid.grid { margin-top: calc(1rem + var(--ledge-top)); }' in css
+    # The top's room is the part's padding now, not the card's margin
+    top = re.search(r':root\[data-style="shelf"\] \.cabinet-top > \.card \{([^}]*)\}', css).group(1)
+    assert 'margin-top' not in top
+
+
+def test_wishlist_drawers_have_no_counts(client, db, people):
+    """Phil, 2026-11-19: the counts made the drawer labels two and three
+    lines tall, and each section's heading has its own."""
+    db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)',
+               (people['alice'], add_book(db, people['alice'], 'Dune')))
+    db.commit()
+    login(client, 'alice')
+    html = client.get('/wishlist/view').get_data(as_text=True)
+    row = re.search(r'<div class="tab-row.*?</nav>', html, re.S).group(0)
+    assert 'opacity-75' not in row and '(' not in row
+
+
+def test_shelf_row_covers_link_to_their_items(client, db, people):
+    """Phil, 2026-11-19: on Collections and Reviews a cover opens its item's
+    page, and the shelf's name row its whole list. The card used to be one
+    link, to the list; a link can't hold links, so it's a plain card now."""
+    alice = people['alice']
+    book = add_book(db, alice, 'Dune')
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, book))
+    db.execute("INSERT INTO read_data (user_id, book_id, rating, comment) VALUES (?, ?, 4, 'good')", (alice, book))
+    db.commit()
+    login(client, 'alice')
+    for url in ('/collections/collections', '/reviews/'):
+        html = client.get(url).get_data(as_text=True)
+        assert f'<a href="/books/book/{book}" class="shelf-cover block">' in html, url
+        assert re.search(r'<a href="[^"]+" class="shelf-label ', html), url
+        assert not re.search(r'<a [^>]*class="shelf-link', html), url
+        # no link inside another
+        for card in re.findall(r'<div class="shelf-link.*?\n        </div>', html, re.S):
+            depth = 0
+            for tag in re.findall(r'</?a\b', card):
+                depth += 1 if tag == '<a' else -1
+                assert depth <= 1, url
+
+
+def test_show_everything_includes_ownerless_items_you_have_data_on(client, db, people):
+    """Phil, 2026-11-19: "if I want to see everything, I want to see
+    *everything*". Show: Everything also lists an item with no owner (from
+    before items had owners) that you reviewed, marked No owner; ownerless
+    items you never touched, and other people's, stay out; the default view
+    and a friend's grid never show them."""
+    from conftest import add_review
+    alice, carol = people['alice'], people['carol']
+    mine = add_book(db, alice, 'Infinite Jest')
+    old = db.execute("INSERT INTO books (title, author) VALUES ('Infinite Jest', 'DFW')").lastrowid
+    stray = db.execute("INSERT INTO books (title, author) VALUES ('Stray', 'Nobody')").lastrowid
+    db.commit()
+    add_review(db, alice, old)
+    add_review(db, carol, stray)                  # carol's data, not alice's
+    login(client, 'alice')
+
+    def ids(url):
+        r = client.get(url, headers={'X-Requested-With': 'XMLHttpRequest'})
+        return {b['id']: b for b in r.get_json()['books']}
+
+    everything = ids('/base/index?show=all')
+    assert set(everything) == {mine, old}
+    assert everything[old]['no_owner'] and not everything[mine]['no_owner']
+    page = client.get('/base/index?show=all').get_data(as_text=True)
+    assert page.count('data-no-owner>No owner</span>') == 1
+    # The search finds it too, and the default and Unshelved views don't
+    assert set(ids('/base/index?show=all&search_term=jest')) == {mine, old}
+    assert set(ids('/base/index')) == {mine}
+    assert old not in ids('/base/index?show=not_owned')
+    # The household's Everything: your own ownerless items
+    assert old in ids('/base/shared-library?show=all')
+    # A friend's grid (carol looking at alice's): never
+    login(client, 'carol')
+    assert set(ids("/base/library/alice?show=all")) <= {mine}

@@ -315,12 +315,65 @@ def create_app():
         return marks_for(get_db(), user_id or _current_user.id, [row['id'] for row in rows])
     app.add_template_global(viewer_marks, 'viewer_marks')
 
-    # An item's top and side faces on the Shelf style's flat cover box
-    # (utils/photos.box_faces): {book_id: style}, for a page of items at once
+    # A cover's box (layout walk step 1, docs/LAYOUT-WALK-SPEC.md section 2):
+    # the Shelf style draws every cover as its item's box, a book with its
+    # pages, a vinyl sleeve as card, a DVD thinner than a VHS, with the
+    # item's top and side photos on the faces. So cover_img(item=) and
+    # _no_cover.html put the item's media type, format and faces on the box
+    # itself, wherever it's shown. Any row with the book's id will do: a
+    # feed, review or loan row's own `id` isn't the book's, so `book_id`
+    # wins when the row has one.
+    def _box_item(row):
+        from utils import media
+        keys = row.keys()
+        return {
+            'id': row['book_id'] if 'book_id' in keys else row['id'],
+            'media_type': media.media_type_of(row),
+            'format': row['format'] if 'format' in keys else None,
+            'owned': row['owned'] if 'owned' in keys else None,
+        }
+
+    def _face_cache():
+        from flask import g
+        if 'box_face_cache' not in g:
+            g.box_face_cache = {}       # {book_id: style, '' for none}
+        return g.box_face_cache
+
+    # The top and side faces (utils/photos.box_faces) for a page of items at
+    # once: {book_id: style}. Kept on g, so the page's covers (cover_box
+    # below) find them there: a list calls this once with its rows, and a
+    # cover it missed still gets its faces, one lookup for itself.
     def box_faces(rows):
         from utils.photos import box_faces as faces_for
-        return faces_for(get_db(), rows) if rows else {}
+        if not rows:
+            return {}
+        items = [_box_item(r) for r in rows]
+        got = faces_for(get_db(), items)
+        cache = _face_cache()
+        for item in items:
+            cache[item['id']] = got.get(item['id'], '')
+        return got
     app.add_template_global(box_faces, 'box_faces')
+
+    # What one cover's box carries: {media, format, faces, ring}, or {} for
+    # no item (a picture that stays a plain box). format is the shown one
+    # (none for an unshelved movie or album, as the grid has it); ring is
+    # the viewer's own Audiobookshelf progress (abs_ring below).
+    def cover_box(row):
+        from utils import media
+        if not row:
+            return {}
+        item = _box_item(row)
+        cache = _face_cache()
+        if item['id'] not in cache:
+            box_faces([item])
+        return {
+            'media': item['media_type'],
+            'format': media.shown_format(item) or '',
+            'faces': cache[item['id']],
+            'ring': abs_ring(item['id']),
+        }
+    app.add_template_global(cover_box, 'cover_box')
 
     # The grids' Lent badge (16.0d, utils/loans.lent_map): {book_id: borrower}
     # for the open loans on the viewer's or their household's shelf only, so

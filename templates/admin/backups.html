@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 {#- Site backups (utils/backups.py): back up now, and per backup restore,
     download the database, delete. -#}
 
@@ -13,7 +13,7 @@
         {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Backups') }}
 
         <div>
-            <h1 class="text-3xl font-display text-content-primary mb-2">Backups</h1>
+            {{ page_heading('settings', 'Backups') }}
             <p class="text-content-secondary text-sm">
                 A backup is the whole site as it was: every user's books, reading history, reviews,
                 collections and settings, and the cover and avatar files. Restoring one puts all of that

@@ -24,9 +24,10 @@ Rule of thumb: **if you'd put it on a shelf, it's in a case; if you'd use it, it
 | Kind of card | Shelf treatment | Examples |
 |---|---|---|
 | Page heading | small bookcase (`.page-heading`, already) | every `page_heading`, plus new: Add page, item title |
-| Covers on display, many items | covers stand on ledges in a case: a grid, or stacked sideways-scrolling shelves | library grids (already); stacked shelves: Reviews, Collections, Wishlist; Do I Have This? results |
-| A card about one item or one person | small bookcase (`.case-card`) with its cover/avatar on the ledge | feed, notifications, item details and reviews (already), Friends cards (new) |
-| Tools and text | plain paper card, never a case | forms, lookups, search, filters, tab bars, settings, stats, empty states, the profile header |
+| Covers on display, many items | covers stand on ledges in a case: a grid, or stacked sideways-scrolling shelves | library grids (already); stacked shelves: Reviews, Collections, Wishlist |
+| A card about one item or one person | small bookcase (`.case-card`) with its cover/avatar on the ledge | feed, notifications, item details and reviews (already), Friends cards (new). Since 2026-11-13 and the layout walk (16.0): none; they are the feed's paper card (`.feed-card`), Do I Have This? matches included, and `.case-card` is gone |
+| Tools and text | plain paper card, never a case | forms, lookups, search, filters, settings, stats, empty states, the profile header |
+| Tab bars (layout walk 16.0, docs/LAYOUT-WALK-SPEC.md) | the catalog cabinet's drawers, on every page-level tab row (`tab_row`) | the shelf pages, Collections, Wishlist, Reviews and its pages, the profile and its Stats, Settings, Admin; not the item page's tabs |
 
 Every place the rule says "case" gets one; the profile rows were the last (step 7).
 
@@ -92,7 +93,7 @@ Audit of 2026-11-12: 32 pages × 7 style/mode pairs × phone and desktop, on a c
 | F3 | Friend's profile | all styles | orange filled "× Remove from Household" (phone: just "Remove") stacked over an outline "Remove Friend": two danger actions, different weights, unclear targets | brief: step 8 |
 | F4 | Profile tabs, every `.tab` bar | Shelf | the active underline makes the open-bottomed neighbour read as the joined tab | brief: step 4 |
 | F5 | Feed | Shelf, worst on phone | cover top-aligned, so it floats above the ledge; text column squeezed by the dismiss X's `pr-6`; large empty band above the ledge (`pb-16`) | brief: step 5 |
-| F6 | Reviews, Collections, profile rows | Shelf | the ledge runs under the star and name captions, not under the covers, so the books don't stand on it | step 6: cased rows put the ledge right under the covers (one row height, `h-28`, makes that a fixed offset); captions hang below the ledge like the grid's badges |
+| F6 | Reviews, Collections, profile rows | Shelf | the ledge runs under the star and name captions, not under the covers, so the books don't stand on it | step 6: cased rows put the ledge right under the covers (one row height, `h-28`, makes that a fixed offset); captions hang below the ledge like the grid's badges (since the layout walk, 16.0 step 3: printed on the ledge's front, which deepens to hold them) |
 | F7 | Wishlist | Shelf | full paper cards with boxed covers floating inside | brief: step 7 |
 | F8 | Do I Have This? matches | Shelf | plain paper cards, cover top-aligned | step 7: each match is a `.case-card` with its cover standing on the ledge; the "You own this" banner stays paper (it's text) |
 | F9 | Notifications, empty | Shelf | the empty "No recent notifications" panel is a case with nothing on its shelf (inconsistent with the rule, not broken) | Moot (2026-11-13): notifications are the rounded Reviews cards again, no case |

@@ -1,7 +1,8 @@
 {% from '_covers.html' import cover_img %}
-{# Shelf cards (ROADMAP 8C/8D): each a link with its name and count over a
-   row of covers that scrolls sideways (.shelf-row) instead of hiding what
-   doesn't fit. Used by Collections, the profile's shelves and the profile's
+{# Shelf cards (ROADMAP 8C/8D): its name and count over a row of covers
+   that scrolls sideways (.shelf-row) instead of hiding what doesn't fit.
+   The name row links to the whole shelf, each cover to its item's page
+   (Phil, 2026-11-19: the card used to be one link, to the shelf). Used by Collections, the profile's shelves and the profile's
    wishlist; the rows come from utils/shelves.py.
 
    shelves:     [{label, url, count, covers: [{cover_image_url, title}],
@@ -20,38 +21,44 @@
 
    In a bookcase (16.0): put `shelf-case` on the element round this partial
    (Reviews, Collections). Shelf then draws it as one bookcase, each shelf
-   its own ledge right under the covers (captions hang below it), the label
+   its own ledge right under the covers (captions printed on its front), the label
    on the back wall; other styles show the usual cards. shelf-item,
-   shelf-link and shelf-label are the hooks for that, and every shelf has a
+   shelf-link (the card), shelf-label (its link) and shelf-cover (each
+   cover's link) are the hooks for that, and every shelf has a
    .shelf-row, empty when it has no covers (hidden, except as a bare ledge
    in the case). #}
 {% set cover_h = cover_h or 'h-28' %}
 <div class="grid {{ shelf_cols or 'grid-cols-1 md:grid-cols-2' }} gap-4">
     {% for shelf in shelves %}
     <div class="shelf-item flex items-center gap-2 min-w-0 group">
-        <a href="{{ shelf.url }}"
-           class="shelf-link flex-1 min-w-0 bg-primary hover:bg-primary-hover p-4 rounded-lg transition-colors">
-            <div class="shelf-label flex items-center justify-between gap-3 {% if shelf.covers %}mb-3{% endif %}">
+        <div class="shelf-link flex-1 min-w-0 bg-primary p-4 rounded-lg">
+            <a href="{{ shelf.url }}" class="shelf-label flex items-center justify-between gap-3 {% if shelf.covers %}mb-3{% endif %}">
                 {# With "See all" beside it a long name would be cut on a phone: let it wrap #}
                 <span class="text-content-primary text-lg {{ 'min-w-0' if shelf.more else 'truncate' }}">{{ shelf.label }}</span>
                 <span class="flex items-center gap-3 shrink-0">
                     {% if shelf.more %}<span class="text-sm text-content-secondary underline">{{ shelf.more }}</span>{% endif %}
                     <span class="bg-accent text-on-accent font-semibold px-3 py-1 rounded-pill text-sm">{{ shelf.count }}</span>
                 </span>
-            </div>
+            </a>
             {% if not shelf.covers and shelf.empty %}
-            <p class="mt-2 text-sm text-content-secondary italic">{{ shelf.empty }}</p>
+            {# shelf-case-note: in Shelf's bookcase it lines up with the labels #}
+            <p class="shelf-case-note mt-2 text-sm text-content-secondary italic">{{ shelf.empty }}</p>
             {% endif %}
             {% if shelf.covers %}
             <div class="shelf-row items-end">
                 {% for c in shelf.covers %}
                     {% set labelled = c.stars or c.by %}
-                    {% if labelled %}<figure class="shelf-figure flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
+                    <a href="{{ item_url(c) }}" class="shelf-cover block">
+                    {# relative: the caption's sr-only "Rated 4 of 5" is absolutely
+                       placed; with no positioned ancestor inside the row it would be
+                       placed outside the scroller, not clipped by it, and widen the
+                       page (the Reviews page was 957 px wide on a phone) #}
+                    {% if labelled %}<figure class="shelf-figure relative flex flex-col items-center gap-1 max-w-[8rem]">{% endif %}
                     {% if c.cover_image_url|upload_exists %}
-                    {{ cover_img(c.cover_image_url, c.title, cover_h ~ ' w-auto max-w-[8rem] rounded shadow-sm', 'shrink-0', lazy=True, ring=abs_ring(c.id)) }}
+                    {{ cover_img(c.cover_image_url, c.title, cover_h ~ ' w-auto max-w-[8rem] rounded shadow-sm', 'shrink-0', lazy=True, item=c) }}
                     {% else %}
                     {# A cover's shape at the row's height (2:3), titled, whatever the row #}
-                    {% with title=c.title, size='sm', box=cover_h ~ ' w-auto aspect-[2/3] shrink-0 rounded', ring=abs_ring(c.id) %}{% include '_no_cover.html' %}{% endwith %}
+                    {% with title=c.title, size='sm', box=cover_h ~ ' w-auto aspect-[2/3] shrink-0 rounded', item=c %}{% include '_no_cover.html' %}{% endwith %}
                     {% endif %}
                     {% if labelled %}
                     <figcaption class="text-xs leading-tight text-center w-full">
@@ -63,12 +70,13 @@
                     </figcaption>
                     </figure>
                     {% endif %}
+                    </a>
                 {% endfor %}
             </div>
             {% else %}
             <div class="shelf-row"></div>
             {% endif %}
-        </a>
+        </div>
         {% if shelf.delete_url %}
         <form action="{{ shelf.delete_url }}" method="POST" class="reveal"
               data-confirm="{{ 'Delete the collection "' ~ shelf.label ~ '"? What is in it stays in your library.' }}"

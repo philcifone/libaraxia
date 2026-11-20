@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% from '_shelves.html' import tab_row %}
 {% from '_icons.html' import page_heading %}
 {# Your wishlist (wishlist.view_wishlist): books, movies and music you want,
    one section per type (`sections`: key, labels, rows), behind
-   Books | Movies | Music | All tabs (`show`). Adding is the shared add page (add_item.html via
-   wishlist.add_to_wishlist), from the + button. The box under the tabs
-   filters the cards (wishlist.js). #}
+   Books | Movies | Music tabs (`show`, Books by default). Adding is the
+   shared add page (add_item.html via wishlist.add_to_wishlist), from the +
+   button. The box under the tabs filters the cards (wishlist.js). #}
 
 {% block title %}Wishlist - libaraxia{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -18,37 +19,33 @@
     {% endwith %}
 
     <div class="page-frame pt-20 pb-32">
-        {{ page_heading('bookmark', 'Wishlist', class='mb-8') }}
+        {{ page_heading('bookmark', 'Wishlist') }}
 
-        {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
+        {# Tabs: one per type (?show=, read by view_wishlist). Plain
            links, so they work without JS and the filter below still applies #}
         {% if total %}
-        <div class="bg-secondary rounded-xl overflow-hidden card mb-8">
-            <nav class="flex items-stretch" aria-label="Wishlist sections">
-                {% for key, label, count in tabs %}
-                <a href="{{ url_for('wishlist.view_wishlist', show=key) }}"
-                   class="tab {% if show == key %}tab-active{% endif %}" {% if show == key %}aria-current="page"{% endif %}>
-                    <span class="text-center">{{ label }} <span class="text-sm opacity-75">({{ count }})</span></span>
-                </a>
-                {% endfor %}
-            </nav>
-        </div>
-        {% endif %}
+        {% set urls = {} %}
+        {% for key, _label in tabs %}{% set _ = urls.update({key: url_for('wishlist.view_wishlist', show=key)}) %}{% endfor %}
+        {{ tab_row(tabs, 'Wishlist sections', active=show, urls=urls, end=False) }}
 
-        <!-- Filter over the cards (wishlist.js) -->
-        {% if total %}
-        <div class="-mt-4 mb-8">
-            <input type="search" id="wishlist-search" aria-label="Filter your wishlist"
-                   placeholder="Filter by title, author, director or artist..."
+        {# Filter over the cards (wishlist.js): in Shelf the cabinet's search
+           band, under its drawers (.cabinet-band) #}
+        <div class="cabinet-part cabinet-end mb-8">
+            <div class="cabinet-band">
+            {# A short placeholder: the long one ("title, author, director or
+               artist") was cut at 390 px; the label says it in full #}
+            <input type="search" id="wishlist-search" aria-label="Filter your wishlist by title, author, director or artist"
+                   placeholder="Filter by title or name..."
                    class="w-full px-4 py-2.5 bg-secondary-bg border border-rule-strong rounded-lg
                           focus:ring-2 focus:ring-accent focus:border-transparent
                           placeholder-gray-400 text-content-primary transition-all">
             <div id="wishlist-search-count" class="text-center text-content-secondary text-sm mt-2 hidden"></div>
+            </div>
         </div>
         {% endif %}
 
         {% for key, m, items in sections %}
-        {% if show in (key, 'all') and items %}
+        {% if show == key and items %}
         <section class="wishlist-section mb-12" aria-labelledby="wishlist-{{ key }}">
             <h2 id="wishlist-{{ key }}" class="scroll-mt-20 text-3xl font-display text-content-primary mb-6">
                 {{ m.plural|capitalize }} <span class="text-content-secondary text-xl">({{ items|length }})</span>

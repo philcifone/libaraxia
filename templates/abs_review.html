@@ -33,7 +33,7 @@
 {% block content %}
 <div class="page-frame-narrow pt-20 pb-16 space-y-6" data-abs-review>
     {{ crumbs([('Settings', url_for('user.settings', _anchor='audiobookshelf'))], 'Audiobookshelf Import', class='') }}
-    {{ page_heading('library', 'Import from Audiobookshelf', class='') }}
+    {{ page_heading('library', 'Import from Audiobookshelf') }}
 
     <form method="POST" action="{{ url_for('abs.choose') }}" class="space-y-6">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

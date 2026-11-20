@@ -24,7 +24,7 @@ from urllib.parse import parse_qsl
 from werkzeug.datastructures import MultiDict
 
 from utils import households, media, search, sorting
-from utils.book_utils import shelf_filter, format_filter
+from utils.book_utils import grid_source, shelf_filter, format_filter
 
 # The views a selection may name: section, then whose shelf. Friends' grids
 # are read-only, so they are deliberately not here.
@@ -88,9 +88,8 @@ def books_query(owner_ids, args, data_user, viewer_id=None, lent_ok=True):
     defaults to `data_user`. `lent_ok=False` on a friend's shelf, where
     Show: Lent out isn't offered (loans are the shelf's people's).
     """
-    marks = ','.join('?' * len(owner_ids))
-    query = f'SELECT b.* FROM library_books b WHERE b.added_by IN ({marks})'
-    params = list(owner_ids)
+    # Show: Everything also brings in ownerless books you have data on (grid_source)
+    query, params = grid_source('library_books', owner_ids, args, viewer_id or data_user, lent_ok)
 
     # Only what's on the shelf unless Show asks for not-owned or removed ones
     query += shelf_filter(args, lent_ok=lent_ok)

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs %}
+{% from '_icons.html' import crumbs, page_heading %}
 {% from '_shelves.html' import section_switch %}
 {# [+ Review] -> Book | Movie | Album lands here (reviews.find, ROADMAP 13):
    a plain GET search (no script) over what you may review: your shelf, your
@@ -15,7 +15,8 @@
 {% block content %}
     <main class="page-frame-narrow pt-20 pb-16">
         {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], 'Review ' ~ m.a ~ ' ' ~ m.noun) }}
-        {{ section_switch(media_type, urls=section_urls, wrap=False, class='mb-6') }}
+        {{ page_heading('star', 'Review ' ~ m.a ~ ' ' ~ m.noun) }}
+        {{ section_switch(media_type, urls=section_urls, wrap=False) }}
 
         <form method="GET" action="{{ url_for('reviews.find') }}" role="search"
               class="bg-secondary rounded-lg p-4 card flex gap-2 sm:gap-4 mb-2">
@@ -37,9 +38,9 @@
                     <a href="{{ url_for('read.rate_review', book_id=r.id, from='reviews') }}"
                        class="flex items-center gap-4 bg-secondary rounded-lg p-3 card card-link">
                         {% if r.cover_image_url|upload_exists %}
-                        {{ cover_img(r.cover_image_url, '', 'w-12 max-h-20 object-contain rounded', 'shrink-0', lazy=True, ring=abs_ring(r.id)) }}
+                        {{ cover_img(r.cover_image_url, '', 'w-12 max-h-20 object-contain rounded', 'shrink-0', lazy=True, item=r) }}
                         {% else %}
-                        {% with title=r.title, size='sm', box='h-16 w-auto aspect-[2/3] shrink-0 rounded', ring=abs_ring(r.id) %}{% include '_no_cover.html' %}{% endwith %}
+                        {% with title=r.title, size='sm', box='h-16 w-auto aspect-[2/3] shrink-0 rounded', item=r %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                         <span class="flex-1 min-w-0">
                             <span class="block text-content-primary font-semibold truncate">{{ r.title }}</span>

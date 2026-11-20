@@ -10,20 +10,26 @@
            choice; list view is CSS on the same markup (styles.css, "List view").
            Its extra columns are .book-meta below, hidden in grid view. #}
         {% set marks = viewer_marks(books, marks_user|default(none)) %}
-        {# Top and side photos on the Shelf style's box faces (photos.box_faces) #}
+        {# Top and side photos on the Shelf style's box faces, read for the
+           whole page at once (app.py box_faces; each cover_img finds its own) #}
         {% set faces = box_faces(books) %}
         {# Lent out (16.0d): your and your household's items only #}
         {% set lent = lent_map(books) %}
         <div id="book-container" data-media="{{ m.type if m else 'book' }}" data-view="grid"{% if remember_grid|default(false) %} data-remember-grid{% endif %}{% if bulk_select|default(false) %} data-bulkable{% if bulk_view is defined %} data-bulk-view="{{ bulk_view }}"{% endif %}{% endif %} class="shelf-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for book in books %}
             {% set mark = marks.get(book.id, {}) %}
-            {# data-format: Shelf draws a DVD's box thinner than a VHS one #}
-            <div class="book-item group" data-format="{{ book|item_format or '' }}"{% if faces.get(book.id) %} style="{{ faces[book.id] }}"{% endif %}>
+            {# data-format: Shelf stands a record smaller by its format (styles.css
+               "Records by size"); the box itself carries its type (cover_img item=) #}
+            <div class="book-item group" data-format="{{ book|item_format or '' }}">
                 <a href="{{ item_url(book) }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
-                        {# Only shown when Show asks for them; marked so they can't pass for owned #}
-                        {% if book.owned == 0 %}
+                        {# Only shown when Show asks for them; marked so they can't pass for owned.
+                           No owner: Show: Everything brings in ownerless items you have data on
+                           (book_utils.grid_source, Phil 2026-11-19) #}
+                        {% if book.added_by is none %}
+                        <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill" title="From before items had owners: on no one's shelf, kept for your review and history" data-no-owner>No owner</span>
+                        {% elif book.owned == 0 %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Unshelved</span>
                         {% elif book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
@@ -35,15 +41,15 @@
                         {% if book.cover_image_url|upload_exists %}
                         {# cover-box: the Shelf style draws the cover as a 3D box on it;
                            display: contents (no box at all) everywhere else #}
-                        {{ cover_img(book['cover_image_url'], book['title'], 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200', author=book['author'] or '', ring=abs_ring(book['id'])) }}
+                        {{ cover_img(book['cover_image_url'], book['title'], 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200', author=book['author'] or '', item=book) }}
                         {% if book['media_type'] == 'video' %}
                         {# The Shelf style's video-store rack prints the title on
                            every case instead of showing the poster; hidden
                            everywhere else (.rack-print in styles.css) #}
-                        {% with title=book['title'], author=book['author'], size='md', box='w-full h-full rack-print' %}{% include '_no_cover.html' %}{% endwith %}
+                        {% with title=book['title'], author=book['author'], size='md', box='w-full h-full rack-print', item=none %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                         {% else %}
-                        {% with title=book['title'], author=book['author'], size='md', box='w-full h-full', ring=abs_ring(book['id']) %}{% include '_no_cover.html' %}{% endwith %}
+                        {% with title=book['title'], author=book['author'], size='md', box='w-full h-full', item=book %}{% include '_no_cover.html' %}{% endwith %}
                         {% endif %}
                     </div>
 

@@ -43,12 +43,27 @@ def test_info_card_is_chips_and_tabs(client, db, people):
     assert re.search(r'data-book-id="(\d+)"', page).group(1) == str(book)
 
 
-def test_item_badge_puts_cover_and_facts_on_one_midline(client, db, people):
-    book = add_book(db, people['alice'], title='Dune')
+def _heading(page):
+    """The item heading card's markup (_item_heading.html)."""
+    start = page.index('<div class="page-heading ')
+    return page[start:page.index('</header>', start)]
+
+
+def test_item_heading_has_the_cover_beside_the_title(client, db, people):
+    """Phil, 2026-11-19: on the item page and Rate & review, the cover sits
+    beside the title and creator inside the heading card, and the format
+    icon is gone from it; the details card under it has no cover of its own."""
+    book = add_book(db, people['alice'], title='Dune', author='Frank Herbert')
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert '<div class="item-cover self-center md:self-start md:row-span-2">' in page
-    assert 'item-facts self-center md:self-start' in page
+    for url in (f'/books/book/{book}', f'/read/rate_review/{book}'):
+        page = client.get(url).get_data(as_text=True)
+        heading = _heading(page)
+        assert 'class="item-heading-grid"' in heading, url
+        assert heading.index('class="cover-stand') < heading.index('<h1') < heading.index('Frank Herbert'), url
+        assert 'role="img"' not in heading, url
+        assert page.count('class="cover-stand') == 1, url
+    item = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert '<div class="item-facts p-3 md:p-4 bg-primary rounded-lg">' in item
 
 
 def test_status_and_collection_taps_come_back_to_the_card(client, db, people):
@@ -111,22 +126,6 @@ def test_household_reviews_follow_your_info_full_width(client, db, people):
     assert 'max-w-4xl mx-auto px-4' not in page
 
 
-def test_a_plain_book_has_the_open_book_icon_like_movies_and_music(client, db, people):
-    """Phil, 2026-11-13: the title card's right-hand icon, as a movie's or an
-    album's format has, for a plain book too; an audiobook keeps its own."""
-    book = add_book(db, people['alice'], title='Dune')
-    login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'role="img"\n                  aria-label="Book" title="Book"' in page
-    assert '<path d="M12 7v14"/>' in page
-    db.execute("UPDATE books SET format = 'Audiobook' WHERE id = ?", (book,))
-    db.commit()
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'aria-label="Audiobook"' in page and '<path d="M12 7v14"/>' not in page
-
-
-# --- Audiobooks and ebooks (16.0e step 1) -----------------------------------
-
 def test_audiobook_narrator_and_length(client, db, people):
     """Add an audiobook with a narrator and length; the item page shows them;
     switching it to a printed book clears both."""
@@ -137,12 +136,15 @@ def test_audiobook_narrator_and_length(client, db, people):
     row = db.execute("SELECT * FROM books WHERE title = 'Project Hail Mary'").fetchone()
     assert (row['format'], row['narrator'], row['runtime_minutes'], row['owned']) == ('Audiobook', 'Ray Porter', 970, 0)
     page = client.get(f"/books/book/{row['id']}").get_data(as_text=True)
-    assert 'data-narrator' in page and 'Narrated by Ray Porter' in page and '16 h 10 min' in page
+    # In the facts, not the heading (Phil, 2026-11-19)
+    assert 'font-medium break-words">Ray Porter</p>' in page and '16 h 10 min' in page
+    heading = page[page.index('<div class="page-heading '):page.index('</header>')]
+    assert 'Ray Porter' not in heading
 
     client.post(f"/books/edit/{row['id']}", data={**form, 'format': 'Book'})
     row = db.execute('SELECT * FROM books WHERE id = ?', (row['id'],)).fetchone()
     assert (row['format'], row['narrator'], row['runtime_minutes']) == (None, None, None)
-    assert 'data-narrator' not in client.get(f"/books/book/{row['id']}").get_data(as_text=True)
+    assert 'Ray Porter' not in client.get(f"/books/book/{row['id']}").get_data(as_text=True)
     # The narrator is found by the Books search (and exported)
     db.execute("UPDATE books SET format = 'Audiobook', narrator = 'Ray Porter' WHERE id = ?", (row['id'],))
     db.commit()

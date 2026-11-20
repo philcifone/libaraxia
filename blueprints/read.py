@@ -119,13 +119,13 @@ def rate_review(book_id):
         # Opened from the Reviews section (?from=reviews, ROADMAP 13): back there
         if request.form.get('from') == 'reviews':
             return redirect(url_for('reviews.index', type=kind))
-        if kind != media.BOOK:
-            return redirect(url_for(media.item_endpoint(kind), id=book_id))
-        return redirect(url_for('base.index', collection_type='read'))
+        # Else the item's page, books too (Phil, 2026-11-19: a book's used to
+        # land on the Library's Read shelf), where Cancel goes as well
+        return redirect(url_for(media.item_endpoint(kind), id=book_id))
 
     # Fetch book details and existing read data
     book_query = '''
-        SELECT id, title, author, cover_image_url, media_type, video_kind FROM books WHERE id = ?
+        SELECT id, title, author, cover_image_url, media_type, video_kind, format, owned FROM books WHERE id = ?
     '''
     book = conn.execute(book_query, (book_id,)).fetchone()
 
@@ -153,12 +153,11 @@ def rate_review(book_id):
     prefill = finish_offer(sessions) if request.args.get('finished') else None
 
 
-    # Convert book data to the format you use (e.g., book[1])
-    books = {1: {"id": book["id"], "title": book["title"], "author": book["author"], "cover_image_url": book["cover_image_url"]}} if book else {}
-
     return render_template(
         'rate_review.html',
-        book=books.get(1),  # Matches book[1] format
+        # The row itself, media_type and all: item_url (crumbs, Cancel) needs
+        # it, and treated a movie or album as a book without it
+        book=book,
         read_data=read_data,
         sessions=sessions,
         prefill=prefill,
