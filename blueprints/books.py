@@ -732,6 +732,9 @@ def render_item_page(conn, book):
     """, (current_user.id, id)).fetchone()
 
     collection_status = collection_status['status'] if collection_status else 'untracked'
+    # Manual reading progress (16.0f): the field on the open session, books only
+    from utils import reading_progress
+    progress = reading_progress.panel(conn, current_user.id, book, collection_status)
 
     can_manage = current_user.is_admin or book['added_by'] == current_user.id
 
@@ -828,6 +831,7 @@ def render_item_page(conn, book):
         latest_session=latest_session,
         reading_sessions=reading_sessions,
         session_prefill=session_prefill,
+        progress=progress,
         collection_status=collection_status,
         custom_collections=custom_collections,
         wishlist_entry=wishlist_entry,

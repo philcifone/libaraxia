@@ -311,15 +311,16 @@ function fillAbsProgress() {
                 line.append(open);
             }
             line.hidden = false;
-            setProgressRing(data.progress);
+            // `ring` is the newer of this and your manual progress (16.0f)
+            setProgressRing('ring' in data ? data.ring : data.progress);
         })
         .catch(() => {});
 }
 
 // The progress ring on the cover's top-right corner (Phil, 2026-11-19):
 // the page draws it from the last saved progress (_covers.html
-// progress_ring); the live answer redraws it, or takes it away when the
-// item is finished or not started there. progressRingHtml is common.js's.
+// progress_ring); the live answer redraws it (its `ring`: Audiobookshelf's
+// or your manual progress, whichever is newer), or takes it away. progressRingHtml is common.js's.
 function setProgressRing(share) {
     const host = document.querySelector('.cover-stand .cover-box, .cover-stand .no-cover');
     if (!host) return;

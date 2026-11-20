@@ -86,11 +86,26 @@ fonts).
 ### 1.5 Scripts per style
 
 `cyberpunk.js` (10 KB) and `shelf.js` load in `<head>` without `defer` on
-every page in every style, and block the first paint. Changing style
-reloads the page (`setAppearance` → `location.reload()`, checked), so
-`base.html` can include each only in its own style:
-`{% if theme_style == 'cyberpunk' %}`. `tilt.js` likewise, only in Shelf.
-Small, but it's on every page.
+every page in every style, and block the first paint.
+
+Correction (2026-11-20, while screenshotting 16.0f): changing style does
+**not** reload the page. `setAppearance` (sidebar.js) swaps `data-style` on
+`<html>` in place and reloads only when a shelf page's catalog cabinet has
+to be laid out again. So a plain `{% if theme_style == 'cyberpunk' %}`
+would leave a page switched to Cyberpunk without its glitch until the next
+page load. Options, in order of preference:
+
+- **`defer` both** and keep loading them everywhere. They're small and
+  cached (1.3); what costs is blocking the paint, and `defer` ends that.
+  `cyberpunk.js` sets `data-boot` before the first paint so the boot screen
+  covers the page; that one line moves into the server's render
+  (`<html data-boot="on">` when the boot meta is present), so deferring the
+  rest is safe.
+- Or include each only in its own style **and** have `setAppearance` reload
+  when switching into or out of Cyberpunk or Shelf (as it already does for
+  the cabinet). Simpler, at the cost of a reload on those switches.
+
+Proposed: the first. `tilt.js` is already deferred.
 
 ### 1.6 Compression and the tunnel
 

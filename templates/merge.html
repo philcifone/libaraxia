@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import crumbs, page_heading %}
+{% from '_covers.html' import cover_img %}
+
+{# Merge two records into one (ROADMAP 16.0f part B, blueprints/merge.py).
+   keep only: find the record to fold into it. keep and fold: the preview,
+   with a choice for everything both records hold (no defaults: Phil,
+   2026-11-20). Neither: what it's for and your recent merges, to undo. #}
+
+{% block title %}Merge records{% endblock %}
+{% block body_class %}bg-primary min-h-screen{% endblock %}
+
+{% macro record(b, role) -%}
+<div class="flex gap-4 items-start min-w-0" data-merge-{{ role }}>
+    <div class="w-16 shrink-0">
+        {% if b.cover_image_url|upload_exists %}
+        {{ cover_img(b.cover_image_url, b.title, 'w-full rounded', item=b) }}
+        {% else %}
+        {% with title=b.title, author=b.author, size='sm', box='w-16 aspect-[2/3]', item=b %}{% include '_no_cover.html' %}{% endwith %}
+        {% endif %}
+    </div>
+    <div class="min-w-0 text-sm">
+        <p class="label text-xs pb-1 mb-1">{{ 'Keep' if role == 'keep' else 'Fold into it, then delete' }}</p>
+        <a href="{{ item_url(b) }}" class="block font-medium text-content-primary hover:text-accent break-words">{{ b.title }}</a>
+        <p class="text-content-secondary">{{ b.author or '' }}</p>
+        <p class="text-content-secondary">#{{ b.id }} · {{ b|item_format or labels_for(b).noun|capitalize }} · {{ ('owned by ' ~ b.owner) if b.owner else 'no owner' }}{% if not b.owned %} · unshelved{% endif %}{% if b.removed_at %} · removed{% endif %}</p>
+    </div>
+</div>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-frame-narrow pt-20 pb-12">
+    {% if keep %}
+    {{ crumbs([(keep.title, item_url(keep))], 'Merge records') }}
+    {% elif current_user.is_admin %}
+    {{ crumbs([('Settings', url_for('user.settings', _anchor='maintenance'))], 'Merge records') }}
+    {% endif %}
+    {{ page_heading('collections', 'Merge records') }}
+
+    {% if not keep %}
+    {# The start page: what it's for, how to begin, and your merges to undo #}
+    <section class="bg-secondary rounded-lg p-6 mb-8 card space-y-3 text-sm text-content-secondary">
+        <p>Two records for one work, where one holds the history: a book from before owners existed with your reviews on it, beside the copy on your shelf; or an Audiobookshelf listen that came in as its own audiobook beside the paper copy.</p>
+        <p>Merging moves every review, status, reading session, tag, collection entry, wishlist entry, photo, loan and import link from one record onto the other, then deletes the empty one. Where both hold something only one can keep, you choose. Duplicates you own on purpose are never merged unless you ask.</p>
+        <p>Start from the record you want to keep: its edit page, <strong class="text-content-primary">Book tools → Merge</strong>.</p>
+        {% if current_user.is_admin %}
+        <form method="GET" action="{{ url_for('merge.index') }}" class="flex flex-wrap items-end gap-3 pt-2">
+            <label class="text-content-primary">Keep record #
+                <input type="number" name="keep" min="1" required inputmode="numeric"
+                       class="ml-2 w-28 bg-primary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"></label>
+            <label class="text-content-primary">Fold record #
+                <input type="number" name="fold" min="1" inputmode="numeric"
+                       class="ml-2 w-28 bg-primary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"></label>
+            <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Preview</button>
+        </form>
+        {% endif %}
+    </section>
+
+    {% if suggested %}
+    <section class="bg-secondary rounded-lg p-6 mb-8 card" data-merge-suggested>
+        <h2 class="label text-sm pb-1 mb-3">Likely pairs</h2>
+        <ul class="divide-y divide-rule text-sm">
+            {% for s in suggested %}
+            <li class="flex flex-wrap items-center gap-3 py-3">
+                <span class="flex-1 min-w-[12rem]">
+                    <span class="block text-content-primary font-medium">{{ s.fold.title }}</span>
+                    <span class="block text-content-secondary">#{{ s.fold.id }} into #{{ s.keep.id }}. {{ s.why }}</span>
+                </span>
+                <a href="{{ url_for('merge.index', keep=s.keep.id, fold=s.fold.id) }}"
+                   class="px-3 py-1.5 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Preview</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% elif not fold %}
+    {# Pick the record to fold into keep #}
+    <section class="bg-secondary rounded-lg p-6 mb-8 card space-y-5">
+        {{ record(keep, 'keep') }}
+        <form method="GET" action="{{ url_for('merge.index') }}" class="flex gap-2" role="search">
+            <input type="hidden" name="keep" value="{{ keep.id }}">
+            <input type="search" name="q" value="{{ query }}" required aria-label="Find the other record by title or author"
+                   placeholder="Find the other record: title or author"
+                   class="flex-1 min-w-0 bg-primary border border-primary-hover rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+            <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Find</button>
+        </form>
+        {% if query %}
+        {% if found %}
+        <ul class="divide-y divide-rule" data-merge-found>
+            {% for b in found %}
+            <li class="flex flex-wrap items-center gap-3 py-3 text-sm">
+                <span class="flex-1 min-w-[12rem]">
+                    <span class="block text-content-primary font-medium">{{ b.title }}</span>
+                    <span class="block text-content-secondary">{{ b.author or '' }} · #{{ b.id }} · {{ b|item_format or labels_for(b).noun|capitalize }} · {{ ('owned by ' ~ b.owner) if b.owner else 'no owner' }}</span>
+                </span>
+                <a href="{{ url_for('merge.index', keep=keep.id, fold=b.id) }}"
+                   class="px-3 py-1.5 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Preview</a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-content-secondary italic">No other {{ m.noun }} matches "{{ query }}".</p>
+        {% endif %}
+        {% endif %}
+    </section>
+
+    {% else %}
+    {# The preview #}
+    <section class="bg-secondary rounded-lg p-6 mb-8 card space-y-6" data-merge-preview>
+        <div class="grid gap-6 sm:grid-cols-2">
+            {{ record(keep, 'keep') }}
+            {{ record(fold, 'fold') }}
+        </div>
+        <p class="text-sm"><a href="{{ url_for('merge.index', keep=fold.id, fold=keep.id) }}" class="text-accent hover:underline">Swap: keep the other one</a></p>
+
+        {% if reason %}
+        <p class="text-sm text-content-primary" data-merge-refused>{{ reason }}</p>
+        {% else %}
+        <form method="POST" action="{{ url_for('merge.merge') }}" class="space-y-6"
+              data-confirm="{{ ('Merge #' ~ fold.id ~ ' into #' ~ keep.id ~ '? A backup is taken first, and you can undo it.') }}"
+              data-confirm-ok="Merge">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="keep" value="{{ keep.id }}">
+            <input type="hidden" name="fold" value="{{ fold.id }}">
+
+            <div>
+                <h2 class="label text-sm pb-1 mb-3">What moves</h2>
+                {% if preview.counts %}
+                <ul class="text-sm text-content-primary space-y-1">
+                    {% for words, n in preview.counts %}<li>{{ n }} {{ words }}</li>{% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-content-secondary italic">Nothing hangs on the folded record.</p>
+                {% endif %}
+                {% if preview.people %}<p class="mt-2 text-sm text-content-secondary">Whose: {{ preview.people|join(', ') }}.</p>{% endif %}
+                {% if preview.drops %}
+                <p class="mt-2 text-sm text-content-secondary">Dropped: {% for words, n in preview.drops %}{{ n }} {{ words }}{{ ', ' if not loop.last }}{% endfor %}.</p>
+                {% endif %}
+                {% if fold.format == 'Audiobook' and keep.format != 'Audiobook' %}
+                <p class="mt-2 text-sm text-content-secondary">The audiobook becomes this copy's listening history: its sessions and review move, and the Audiobook format goes with the folded record.</p>
+                {% endif %}
+            </div>
+
+            {% if preview.fills %}
+            <fieldset>
+                <legend class="label text-sm pb-1 mb-3">Fill in from the folded record</legend>
+                <div class="space-y-2 text-sm">
+                    {% for f in preview.fills %}
+                    <label class="flex gap-2 items-start text-content-primary">
+                        <input type="checkbox" name="fill" value="{{ f.field }}" checked class="mt-1">
+                        <span><strong>{{ f.label }}:</strong>
+                        {% if f.field == 'cover_image_url' %}its cover{% else %}{{ f.value|string|truncate(120) }}{% endif %}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+            {% endif %}
+
+            {% if preview.clashes %}
+            <div class="space-y-4" data-merge-clashes>
+                <h2 class="label text-sm pb-1">Both records have these: choose one each</h2>
+                {% for c in preview.clashes %}
+                <fieldset class="border border-card rounded-lg p-4">
+                    <legend class="px-1 text-sm text-content-primary font-medium">{{ c.what }}{% if c.who %} ({{ c.who }}){% endif %}</legend>
+                    <div class="grid gap-3 sm:grid-cols-2 text-sm">
+                        {% for side, b in (('keep', keep), ('fold', fold)) %}
+                        <label class="flex gap-2 items-start text-content-primary">
+                            <input type="radio" name="choice:{{ c.id }}" value="{{ side }}" required class="mt-1">
+                            <span class="min-w-0"><span class="block text-xs text-content-secondary">#{{ b.id }}</span>
+                            {% if c.table == 'item_photos' %}<img src="{{ url_for('static', filename=c[side]) }}" alt="" class="w-24 rounded" loading="lazy">
+                            {% else %}<span class="block whitespace-pre-line break-words">{{ c[side] }}</span>{% endif %}</span>
+                        </label>
+                        {% endfor %}
+                        {% if c.join %}
+                        <label class="flex gap-2 items-start text-content-primary sm:col-span-2">
+                            <input type="radio" name="choice:{{ c.id }}" value="join" required class="mt-1"> Keep both notes, joined
+                        </label>
+                        {% endif %}
+                    </div>
+                </fieldset>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Merge</button>
+        </form>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if merges %}
+    <section class="bg-secondary rounded-lg p-6 card" data-merge-history>
+        <h2 class="label text-sm pb-1 mb-3">Your merges</h2>
+        <ul class="divide-y divide-rule text-sm">
+            {% for e in merges %}
+            <li class="flex flex-wrap items-center gap-3 py-2">
+                <span class="flex-1 min-w-[12rem] text-content-primary">{{ e.summary }} <span class="text-content-secondary">· {{ e.created_at[:10] }}</span></span>
+                {% if e.undone_at %}
+                <span class="text-content-secondary italic">Undone</span>
+                {% else %}
+                <form method="POST" action="{{ url_for('merge.undo', edit_id=e.id) }}"
+                      data-confirm="Undo this merge? Both records come back as they were.">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="px-3 py-1.5 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Undo</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

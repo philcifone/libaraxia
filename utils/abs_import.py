@@ -32,7 +32,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from utils import audiobookshelf as abs_
 from utils.book_matching import BookIndex
@@ -233,8 +233,9 @@ def sync(conn, user, token, include_unstarted=False):
     # progress for has no ring)
     rings = {item_id: ring_value(_entry(item, progress.get(item_id)))
              for item_id, item in items.items() if item_format(item)}
-    conn.executemany('UPDATE abs_links SET progress = ? WHERE user_id = ? AND abs_item_id = ?',
-                     [(rings.get(item_id), user.id, item_id) for item_id in links])
+    conn.executemany(_STORE_RING,
+                     [(stamp((progress.get(item_id) or {}).get('lastUpdate')), rings.get(item_id),
+                       rings.get(item_id), user.id, item_id) for item_id in links])
     conn.commit()
     return len(staged)
 
@@ -696,16 +697,17 @@ def _link(conn, user, row, outcome, book_id, session_id, params, reopen=False):
     elif row.item_id not in params['updated']:
         params['updated'][row.item_id] = {k: old[k] for k in ('outcome', 'book_id', 'session_id', 'finished_at')}
     conn.execute('''
-        INSERT INTO abs_links (user_id, abs_item_id, book_id, outcome, asin, session_id, finished_at, progress)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO abs_links (user_id, abs_item_id, book_id, outcome, asin, session_id, finished_at, progress,
+                               progress_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
         ON CONFLICT (user_id, abs_item_id) DO UPDATE SET
             book_id = excluded.book_id, outcome = excluded.outcome, asin = excluded.asin,
             session_id = COALESCE(excluded.session_id, abs_links.session_id),
             finished_at = CASE WHEN ? THEN NULL ELSE COALESCE(excluded.finished_at, abs_links.finished_at) END,
-            progress = excluded.progress,
+            progress = excluded.progress, progress_at = excluded.progress_at,
             linked_at = CURRENT_TIMESTAMP
     ''', (user.id, row.item_id, book_id, outcome, d['item'].get('asin') or None, session_id,
-          d['finished_ms'] or None, ring_value(d), reopen))
+          d['finished_ms'] or None, ring_value(d), stamp(d['updated_ms']), reopen))
 
 
 SUMMARY_WORDS = (('created', 'added'), ('attached', 'added to books you have'),
@@ -908,21 +910,42 @@ def _make_action():
 
 # ------------------------------------------------------------------ the item page (step 6)
 
-def rings(conn, user_id):
-    """{book_id: progress 0 to 1} for the user's items in progress on ABS,
-    as the last Sync or item page saw them: the progress ring on covers
-    (app.py abs_ring). Yours only; never another user's."""
-    return {r['book_id']: r['progress'] for r in conn.execute(
-        'SELECT book_id, progress FROM abs_links '
+def dated_rings(conn, user_id):
+    """{book_id: (progress 0 to 1, progress_at)} for the user's items in
+    progress on ABS, as the last Sync or item page saw them. Yours only;
+    never another user's. The cover's ring is reading_progress.ring_map,
+    which weighs these against manual progress by `progress_at`."""
+    return {r['book_id']: (r['progress'], r['progress_at']) for r in conn.execute(
+        'SELECT book_id, progress, progress_at FROM abs_links '
         "WHERE user_id = ? AND book_id IS NOT NULL AND progress IS NOT NULL AND outcome IN ('created', 'attached')",
         (user_id,))}
 
 
-def store_progress(conn, user_id, item_id, value):
+def rings(conn, user_id):
+    """{book_id: progress 0 to 1}: dated_rings without the times."""
+    return {book_id: share for book_id, (share, _at) in dated_rings(conn, user_id).items()}
+
+
+def stamp(ms):
+    """ABS's milliseconds as the 'YYYY-MM-DD HH:MM:SS' UTC text that
+    CURRENT_TIMESTAMP writes, so the two compare as text; None for none."""
+    if not ms:
+        return None
+    return datetime.fromtimestamp(int(ms) / 1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
+
+# Writes a ring value and when it changed (046): ABS's own lastUpdate when
+# it gave one (when you actually listened), else now if the value moved,
+# else the time already there. Params: (stamp, value, value, user, item).
+_STORE_RING = ('UPDATE abs_links SET '
+               'progress_at = COALESCE(?, CASE WHEN progress IS ? THEN progress_at ELSE CURRENT_TIMESTAMP END), '
+               'progress = ? WHERE user_id = ? AND abs_item_id = ?')
+
+
+def store_progress(conn, user_id, item_id, value, updated_ms=None):
     """Keep what the item page's live line just read (None: no ring), so
     the grid's ring matches it. Caller commits."""
-    conn.execute('UPDATE abs_links SET progress = ? WHERE user_id = ? AND abs_item_id = ?',
-                 (value, user_id, item_id))
+    conn.execute(_STORE_RING, (stamp(updated_ms), value, value, user_id, item_id))
 
 
 def link_for(conn, user_id, book_id):

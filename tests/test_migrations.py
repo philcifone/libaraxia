@@ -205,6 +205,10 @@ def test_pre_runner_database_with_broken_collections_fks_migrates(template_db, t
         -- privacy columns from 012, dropped again by 020
         ALTER TABLE wishlist ADD COLUMN privacy TEXT DEFAULT 'friends';
         ALTER TABLE reading_sessions ADD COLUMN privacy TEXT DEFAULT 'friends';
+        -- manual reading progress, added by 046
+        ALTER TABLE reading_sessions DROP COLUMN progress;
+        ALTER TABLE reading_sessions DROP COLUMN progress_page;
+        ALTER TABLE reading_sessions DROP COLUMN progress_at;
         ALTER TABLE user_collections ADD COLUMN privacy TEXT DEFAULT 'friends';
         ALTER TABLE users ADD COLUMN default_privacy TEXT DEFAULT 'friends';
         ALTER TABLE books DROP COLUMN removed_note;
