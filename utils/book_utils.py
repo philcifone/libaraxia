@@ -40,8 +40,38 @@ _google_down_until = 0.0
 
 _session = requests.Session()
 _session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (compatible; Libaraxia/1.0; personal library catalog)'
+    # Open Library asks clients to say who they are (16.0g)
+    'User-Agent': 'Mozilla/5.0 (compatible; Libaraxia/1.0; +https://github.com/philcifone/libaraxia)'
 })
+
+
+# ---------------------------------------------------------------------------
+# Which book sources to ask (ROADMAP 16.0g step 11, BACKEND-POLISH-SPEC 6)
+# ---------------------------------------------------------------------------
+#
+# BOOK_SOURCES in .env, in order: "google,openlibrary" (the default: Google
+# Books first, Open Library for what it lacks or when it's down),
+# "openlibrary,google" (the other way round), or "openlibrary" (Google is
+# never called: search, ISBN lookups, covers, Do I Have This?). Open Library
+# is always on: it's the open-data fallback and needs no key. Movies and
+# music have their own sources and aren't affected.
+
+BOOK_SOURCE_NAMES = ('google', 'openlibrary')
+
+
+def sources() -> List[str]:
+    """The book sources in the order to ask them, from BOOK_SOURCES.
+    Unknown names are ignored; Open Library is added last if left out."""
+    raw = os.getenv('BOOK_SOURCES') or 'google,openlibrary'
+    names = [n for n in (p.strip().lower() for p in raw.split(',')) if n in BOOK_SOURCE_NAMES]
+    names = list(dict.fromkeys(names))
+    if 'openlibrary' not in names:
+        names.append('openlibrary')
+    return names
+
+
+def google_enabled() -> bool:
+    return 'google' in sources()
 
 
 # ---------------------------------------------------------------------------
@@ -106,8 +136,8 @@ def _google_volumes(query: str, max_results: int = 10, start: int = 0) -> Option
     """Query Google Books (from result `start`, for a later page). Returns a
     list of items, or None if the API failed."""
     global _google_down_until
-    if time.time() < _google_down_until:
-        return None
+    if not google_enabled() or time.time() < _google_down_until:
+        return None             # switched off (BOOK_SOURCES), or cooling down after an error
 
     params = {"q": query, "maxResults": max(1, min(max_results, 40))}
     if start:
@@ -169,6 +199,10 @@ def search_google_books(query: str, max_results: int = 15) -> List[Dict[str, Any
 
     Falls back to Open Library search when Google fails or finds nothing.
     """
+    if sources()[0] == 'openlibrary':
+        rows = search_open_library(query, max_results)
+        if rows or not google_enabled():
+            return rows
     items = _google_volumes(query, max_results)
     if not items:
         current_app.logger.info(f"Google Books returned no results for '{query}', trying Open Library")
@@ -215,17 +249,21 @@ def search_books_page(query: str, page: int = 1, by=None, source: str = None):
         v = row.get("volumeInfo") or {}
         return fits(split, f"{v.get('title', '')} {v.get('subtitle', '')}", ' '.join(v.get('authors') or []))
 
-    if source != 'openlibrary':
+    # In BOOK_SOURCES order; `source` (from page 1's answer) keeps "Show
+    # more" on the list it started with
+    runners = {'google': google, 'openlibrary': open_library}
+    order = [source] if source in runners else sources()
+    for i, name in enumerate(order):
+        last = i == len(order) - 1
         try:
-            rows, more, used_by = by_or_plain(query, google, page, by, keep)
-            if rows or page > 1:
-                return rows, more, used_by, 'google'
+            rows, more, used_by = by_or_plain(query, runners[name], page, by, keep)
         except _GoogleDown:
-            if page > 1:
-                return [], False, by, 'google'      # don't switch lists halfway down
-        current_app.logger.info(f"Google Books had nothing for '{query}', trying Open Library")
-    rows, more, used_by = by_or_plain(query, open_library, page, by, keep)
-    return rows, more, used_by, 'openlibrary'
+            if page > 1 or last:
+                return [], False, by, name          # don't switch lists halfway down
+            continue
+        if rows or page > 1 or last:
+            return rows, more, used_by, name
+        current_app.logger.info(f"{name} had nothing for '{query}', trying the next source")
 
 
 def _google_rows(items: List[dict]) -> List[Dict[str, Any]]:
@@ -466,6 +504,8 @@ def cover_search_steps(isbn: str = None, title: str = None, author: str = None) 
                     found.append((urls[0], f"Google Books (search #{i})"))
             return found
         steps.append(("Google Books search", google_search))
+    if not google_enabled():
+        steps = [step for step in steps if not step[0].startswith('Google')]
     return steps
 
 
@@ -506,23 +546,27 @@ def fetch_book_details_from_isbn(isbn: str, staged: bool = False) -> Optional[Di
     if not isbn:
         return None
 
-    google = fetch_google_books(isbn)
-    open_library = fetch_open_library(isbn) if _is_missing_details(google) else None
+    # The first source (BOOK_SOURCES) answers; the second fills what it
+    # left blank (or everything, when the first is down or off)
+    fetchers = {'google': fetch_google_books, 'openlibrary': fetch_open_library}
+    first_name, *rest = sources()
+    first = fetchers[first_name](isbn)
+    second = fetchers[rest[0]](isbn) if rest and _is_missing_details(first) else None
 
-    if google and open_library:
-        book_details = dict(google)
-        for field, value in open_library.items():
+    if first and second:
+        book_details = dict(first)
+        for field, value in second.items():
             if not book_details.get(field) and value:
                 book_details[field] = value
-        book_details["source"] = "Google Books + Open Library"
+        book_details["source"] = f"{first['source']} + {second['source']}"
     else:
-        book_details = google or open_library
+        book_details = first or second
     if not book_details:
         return None
 
     cover_urls = (
-        (google or {}).get("cover_candidates", []) +
-        (open_library or {}).get("cover_candidates", []) +
+        (first or {}).get("cover_candidates", []) +
+        (second or {}).get("cover_candidates", []) +
         fetch_cover_by_isbn_direct(isbn)
     )
     local_cover_url = save_best_cover(cover_urls, staged=staged)

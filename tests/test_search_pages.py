@@ -267,7 +267,7 @@ def test_books_by_author_and_show_more(client, people, monkeypatch):
     login(client, 'alice')
     data = client.get('/books/search_books?q=dune by frank herbert').get_json()
     assert asked[0] == ('intitle:dune inauthor:frank inauthor:herbert', 10, 0)
-    assert len(data['items']) == 10 and data['next'] == {'page': 2, 'by': 1}
+    assert len(data['items']) == 10 and data['next'] == {'page': 2, 'by': 1, 'src': 'g'}
     client.get('/books/search_books?q=dune by frank herbert&page=2&by=1')
     assert asked[-1] == ('intitle:dune inauthor:frank inauthor:herbert', 10, 10)
 
@@ -311,3 +311,49 @@ def test_add_page_offers_show_more_and_album_pressings():
     js = (Path(__file__).resolve().parent.parent / 'static' / 'add_item.js').read_text()
     assert "searchUrl: q => `/records/albums?q=" in js
     assert 'new URLSearchParams(next)' in js and 'data-more' in js and 'data-pressings' in js
+
+
+# --- BOOK_SOURCES (16.0g step 11) ---------------------------------------------
+
+def test_book_sources_setting(monkeypatch):
+    for raw, expected in ((None, ['google', 'openlibrary']), ('openlibrary', ['openlibrary']),
+                          ('OpenLibrary, Google', ['openlibrary', 'google']),
+                          ('google', ['google', 'openlibrary']), ('bing,,google', ['google', 'openlibrary'])):
+        if raw is None:
+            monkeypatch.delenv('BOOK_SOURCES', raising=False)
+        else:
+            monkeypatch.setenv('BOOK_SOURCES', raw)
+        assert book_utils.sources() == expected, raw
+
+
+def test_open_library_only_never_asks_google(client, people, monkeypatch):
+    """Search, an ISBN lookup and the cover finder's steps make no request to
+    a Google host."""
+    monkeypatch.setenv('BOOK_SOURCES', 'openlibrary')
+    asked = []
+
+    def get_json(url, params=None, **kw):
+        asked.append(url)
+        return {'docs': [], 'numFound': 0}
+    monkeypatch.setattr(book_utils, '_get_json', get_json)
+    monkeypatch.setattr(book_utils, '_get_public', lambda url, **kw: asked.append(url))
+    login(client, 'alice')
+    data = client.get('/books/search_books?q=dune').get_json()
+    assert data['items'] == []
+    with client.application.test_request_context():
+        book_utils.fetch_book_details_from_isbn('9780441013593', staged=True)
+        labels = [label for label, _ in book_utils.cover_search_steps(isbn='9780441013593', title='Dune')]
+    assert asked and not [u for u in asked if 'google' in u]
+    assert labels and not [label for label in labels if 'Google' in label]
+
+
+def test_open_library_first_then_google_on_a_miss(client, people, monkeypatch):
+    monkeypatch.setenv('BOOK_SOURCES', 'openlibrary,google')
+    order = []
+    monkeypatch.setattr(book_utils, 'search_open_library',
+                        lambda query=None, max_results=15, title=None, author=None, page=1: order.append('ol') or [])
+    monkeypatch.setattr(book_utils, '_google_volumes',
+                        lambda q, n, start=0: order.append('g') or [{'volumeInfo': {'title': 'Dune'}}] * n)
+    login(client, 'alice')
+    data = client.get('/books/search_books?q=dune').get_json()
+    assert order[0] == 'ol' and 'g' in order and data['next']['src'] == 'g'

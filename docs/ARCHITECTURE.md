@@ -130,7 +130,8 @@ Tables after all migrations:
 ## Environment Variables
 Read via python-dotenv from `.env`:
 - **SECRET_KEY**: required in production. A warning is logged if it's still the `.env.example` placeholder.
-- **GOOGLE_BOOKS_API_KEY**: Google Books lookups.
+- **BOOK_SOURCES**: book sources in order (16.0g step 11, `book_utils.sources()`): `google,openlibrary` (default), `openlibrary,google`, or `openlibrary` (Google never called). Open Library is always on. Gated at `_google_volumes` / `fetch_google_books`; the ISBN lookup, the Search tab, cover steps and Do I Have This? follow the order.
+- **GOOGLE_BOOKS_API_KEY**: optional Google Books key (higher quota).
 - **TMDB_API_KEY**: optional, film details for video lookups (v4 read access token preferred, or v3 key). Without it, UPCitemdb only.
 - **AUDIOBOOKSHELF_URL / AUDIOBOOKSHELF_PUBLIC_URL**: optional, the site's Audiobookshelf server (16.0e). The first is what the server calls (the LAN address); the second only for links a browser follows, defaulting to the first. Unset = the feature is hidden. Users' keys are encrypted under `SECRET_KEY`, so rotating it means reconnecting. `AUDIOBOOKSHELF_API_KEY` in dev's `.env` is not read by the app.
 - **DISCOGS_TOKEN**: optional, Discogs personal access token (discogs.com/settings/developers) for Add Album's search (`utils/discogs_lookup.py`). Without it, MusicBrainz only.
@@ -141,7 +142,7 @@ Read via python-dotenv from `.env`:
 - **BACKUP_DIR**: where `utils/backups.py` keeps site backups (default `backups/` beside the database file). Never under `static/`. On prod, put it on the same filesystem as the uploads folder so covers are hard-linked rather than copied.
 - **DATABASE_PATH**: SQLite file used by `utils/database.py` and `manage.py` (default `library.db` in the project directory).
 - **ALLOW_REGISTRATION**: `False` closes self-registration once the first user exists (default `True`).
-- **TRUSTED_PROXY_COUNT**: number of reverse proxies to trust for `X-Forwarded-*` (default 0 = off).
+- **TRUSTED_PROXY_COUNT**: number of proxies to trust for `X-Forwarded-*` (default 0 = off). Prod is behind a Cloudflare tunnel (`cloudflared` on 127.0.0.1) and must be 1, or every outside visitor shares one rate-limit bucket.
 - **EMAIL_VERIFICATION_REQUIRED** and **MAIL_SERVER / MAIL_PORT / MAIL_USE_TLS / MAIL_USERNAME / MAIL_PASSWORD / MAIL_DEFAULT_SENDER**: email verification.
 - **PORT**: dev server port.
 - **PROFILE_REQUESTS**: `1` logs each request's time and SQL count and sends `Server-Timing` (`utils/profiling.py`). Development only.

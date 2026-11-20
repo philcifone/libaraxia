@@ -173,7 +173,9 @@ def music_by_text(q):
 
 def book_by_isbn(isbn):
     """The book for an ISBN, without downloading its cover."""
-    d = book_utils.fetch_google_books(isbn) or book_utils.fetch_open_library(isbn)
+    first, *rest = book_utils.sources()            # BOOK_SOURCES order (16.0g)
+    fetch = {'google': book_utils.fetch_google_books, 'openlibrary': book_utils.fetch_open_library}
+    d = fetch[first](isbn) or (fetch[rest[0]](isbn) if rest else None)
     if not d:
         return []
     # The second size: Google's 128 px (its first may be a "no image"

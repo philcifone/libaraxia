@@ -50,6 +50,12 @@ sudo systemctl disable --now libaraxia-deploy.timer   # pause deploys
 
 Settings (paths, service name, health URL) are variables at the top of `deploy.sh`. Override them with `Environment=` lines via `sudo systemctl edit libaraxia-deploy.service`.
 
+## Prod's setup, for reference
+
+- **Outside access is a Cloudflare tunnel** (`cloudflared` on the same machine), no reverse proxy. Every outside request reaches gunicorn from 127.0.0.1 with the visitor's address in `X-Forwarded-For`, so prod's `.env` has `TRUSTED_PROXY_COUNT=1` (checked 2026-11-20). At 0, every outside visitor would share one rate-limit bucket. LAN requests carry no such header and are counted by their own address.
+- Cloudflare compresses text at its edge; on the LAN, responses are uncompressed, which costs nothing noticeable. Static files carry a year's cache headers from the app itself (`utils/static_cache.py`), which Cloudflare honours; uploads are `private`, so its edge doesn't keep them.
+- The database is in WAL mode (`manage.py migrate` sets it): `library.db`, `library.db-wal` and `library.db-shm` belong together. The daily ZFS snapshot takes all three at once.
+
 ## Limits
 
 - **Migrations aren't rolled back.** A migration that fails changes nothing, because each one runs in a transaction. One that applied stays applied, even if a later step fails and the code is rolled back. Migrations here only add things, so the old code still runs. If you do need the old data, `manage.py` left `library.db.backup-*` next to the DB, and the daily ZFS snapshot is there too.

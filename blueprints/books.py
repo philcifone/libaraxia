@@ -244,13 +244,14 @@ def search_books():
     if not query:
         return jsonify({"items": [], "next": None})
     page = page_arg(request.args)
-    source = "openlibrary" if request.args.get("src") == "ol" else None
+    # src: the list page 1 came from (BOOK_SOURCES order, 16.0g), kept for "Show more"
+    source = {"ol": "openlibrary", "g": "google"}.get(request.args.get("src"))
     try:
         items, more, by, source = search_books_page(query, page, by_arg(request.args), source)
     except Exception:
         current_app.logger.exception("Book search failed")
         return jsonify({"error": "Search failed. Please try again."}), 500
-    keep = {"by": by, "src": "ol" if source == "openlibrary" else None}
+    keep = {"by": by, "src": "ol" if source == "openlibrary" else "g"}
     return jsonify({"items": items, "next": next_page(page, more, **keep)})
 
 def video_code_response(code):
