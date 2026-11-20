@@ -33,9 +33,9 @@ def test_date_read_newest_first_unread_last(client, db, people):
     finish(db, alice, new, '2025-03-01')
     finish(db, bob, bobs, '2030-01-01')         # someone else's session doesn't
     login(client, 'alice')
-    assert titles(client, '/base/index?sort_by=finished&sort_order=desc') == ['New', 'Old', 'BobRead', 'Unread']
+    assert titles(client, '/books/?sort_by=finished&sort_order=desc') == ['New', 'Old', 'BobRead', 'Unread']
     # Nulls stay last ascending too; ties by title
-    assert titles(client, '/base/index?sort_by=finished&sort_order=asc') == ['Old', 'New', 'BobRead', 'Unread']
+    assert titles(client, '/books/?sort_by=finished&sort_order=asc') == ['Old', 'New', 'BobRead', 'Unread']
 
 
 def test_rating_is_the_viewers_on_the_household_page(client, db, people):
@@ -45,7 +45,7 @@ def test_rating_is_the_viewers_on_the_household_page(client, db, people):
     rate(db, alice, a, 2)
     rate(db, bob, c, 5)                              # bob's rating, not alice's
     login(client, 'alice')
-    assert titles(client, '/base/shared-library?sort_by=rating&sort_order=desc') == ['Bee', 'Ay', 'Cee']
+    assert titles(client, '/books/shared?sort_by=rating&sort_order=desc') == ['Bee', 'Ay', 'Cee']
 
 
 def test_pages_puts_audiobooks_and_unknowns_last(client, db, people):
@@ -55,7 +55,7 @@ def test_pages_puts_audiobooks_and_unknowns_last(client, db, people):
         db.execute('UPDATE books SET page_count = ?, format = ?, owned = 1 WHERE id = ?', (pages, fmt, book))
     db.commit()
     login(client, 'alice')
-    assert titles(client, '/base/index?sort_by=page_count&sort_order=desc&show=all') == ['Long', 'Short', 'Blank', 'Heard']
+    assert titles(client, '/books/?sort_by=page_count&sort_order=desc&show=all') == ['Long', 'Short', 'Blank', 'Heard']
 
 
 def test_unknown_sort_falls_back_to_title(client, db, people):
@@ -64,9 +64,9 @@ def test_unknown_sort_falls_back_to_title(client, db, people):
     add_book(db, alice, title='Alpha')
     login(client, 'alice')
     # Not a column name passed through: an injection attempt is just "title"
-    assert titles(client, '/base/index?sort_by=id;DROP TABLE books&sort_order=sideways') == ['Alpha', 'beta']
+    assert titles(client, '/books/?sort_by=id;DROP TABLE books&sort_order=sideways') == ['Alpha', 'beta']
     # A section's own sort isn't offered elsewhere: books have no runtime
-    assert titles(client, '/base/index?sort_by=runtime_minutes') == ['Alpha', 'beta']
+    assert titles(client, '/books/?sort_by=runtime_minutes') == ['Alpha', 'beta']
 
 
 def test_movies_sort_by_date_watched(client, db, people):
@@ -109,11 +109,11 @@ def test_a_friends_grid_filters_and_sorts_by_their_data(client, db, people):
     rate(db, alice, dune, 5)
     db.commit()
     login(client, 'alice')
-    page = client.get('/base/library/carol?read_status=read').get_data(as_text=True)
+    page = client.get('/books/user/carol?read_status=read').get_data(as_text=True)
     assert 'Dune' in page and 'Emma' not in page
-    assert titles(client, '/base/library/carol?sort_by=rating&sort_order=desc') == ['Zed', 'Dune', 'Emma']
+    assert titles(client, '/books/user/carol?sort_by=rating&sort_order=desc') == ['Zed', 'Dune', 'Emma']
     # Search, filter panel and the grid itself are the regular ones
-    page = client.get('/base/library/carol').get_data(as_text=True)
+    page = client.get('/books/user/carol').get_data(as_text=True)
     assert 'id="search_term"' in page and 'id="sort_by"' in page and 'book-container' in page
     assert '/wishlist/user/carol' in page
     # Movies too
@@ -128,9 +128,9 @@ def test_a_friends_grid_filters_and_sorts_by_their_data(client, db, people):
 def test_a_friends_grid_names_them(client, db, people):
     add_book(db, people['carol'], title='Dune')
     login(client, 'alice')
-    page = client.get('/base/library/carol').get_data(as_text=True)
+    page = client.get('/books/user/carol').get_data(as_text=True)
     assert 'Search carol&#39;s 1 book' in page and '>carol&#39;s rating</option>' in page
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'Search your' in page
     add_book(db, people['alice'], title='Emma')
-    assert '>Your rating</option>' in client.get('/base/index').get_data(as_text=True)
+    assert '>Your rating</option>' in client.get('/books/').get_data(as_text=True)

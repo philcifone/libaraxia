@@ -6,6 +6,7 @@ from models import other_users_with_book_data, can_view_book
 from utils import cover_crop
 from utils.book_utils import process_image, find_duplicates
 from utils.book_matching import own_book_for_wishlist
+from utils.landing import back, came_from
 
 wishlist_blueprint = Blueprint('wishlist', __name__, template_folder='templates')
 
@@ -316,18 +317,11 @@ def remove_from_wishlist(book_id):
     else:
         flash("That isn't on your wishlist.", "error")
 
-    # Determine where to redirect based on context
-    referrer = request.referrer
-
-    # If book was deleted or if we came from wishlist page, go to wishlist
-    if book_was_deleted or (referrer and 'wishlist' in referrer):
+    # From the wishlist, or the entry itself is gone: the wishlist's tab.
+    # Otherwise (the item page) the item, which is still there (16.0g).
+    if book_was_deleted or came_from('/wishlist/'):
         return redirect(_tab_url(m["type"]))
-    # If we came from book detail page or library, go to library
-    elif referrer and ('book' in referrer or 'books' in referrer):
-        return redirect(url_for("base.index"))
-    # Default fallback to wishlist
-    else:
-        return redirect(url_for("wishlist.view_wishlist"))
+    return redirect(url_for(media.item_endpoint(m["type"]), id=book_id))
 
 
 def _keep_as_not_owned(conn, book_id, kind=media.BOOK):
@@ -380,7 +374,7 @@ def update_notes(book_id):
     conn.commit()
     flash("Notes updated!", "success")
 
-    return redirect(request.referrer or url_for("wishlist.view_wishlist"))
+    return back(url_for("wishlist.view_wishlist"))
 
 
 @wishlist_blueprint.route("/quick_add/<int:book_id>", methods=["POST"])
@@ -391,7 +385,7 @@ def quick_add_to_wishlist(book_id):
     # Only books in the user's circle (models.can_view_book)
     if not can_view_book(conn, current_user, book_id):
         flash("Book not found.", "error")
-        return redirect(request.referrer or url_for("base.index"))
+        return back()
     row = conn.execute("SELECT media_type, video_kind FROM books WHERE id = ?", (book_id,)).fetchone()
     noun = (media.item_labels(row) if row else media.media_labels(media.BOOK))["Noun"]
     try:
@@ -409,4 +403,4 @@ def quick_add_to_wishlist(book_id):
             current_app.logger.exception('Error adding to wishlist')
             flash("Couldn't add it to your wishlist.", "error")
 
-    return redirect(request.referrer or url_for("base.index"))
+    return back()

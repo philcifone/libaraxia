@@ -17,6 +17,7 @@ import bcrypt
 import os
 from datetime import datetime
 from PIL import Image
+from utils.landing import back
 
 # Initialize Blueprint
 user_blueprint = Blueprint('user', __name__)
@@ -844,7 +845,7 @@ def household_invite(user_id):
     friend = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
     if not friend:
         flash('User not found', 'error')
-        return redirect(request.referrer or url_for('base.index'))
+        return back()
     try:
         households.invite(conn, current_user.id, user_id)
         conn.commit()
@@ -852,7 +853,7 @@ def household_invite(user_id):
     except households.HouseholdError as e:
         conn.rollback()
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('user.profile', username=friend['username']))
+    return back(url_for('user.profile', username=friend['username']))
 
 
 @user_blueprint.route('/household/accept/<int:invite_id>', methods=['POST'])
@@ -867,7 +868,7 @@ def household_accept(invite_id):
         # accept() deletes the used-up invite before refusing; keep that
         conn.commit()
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('friends.notifications_page'))
+    return back(url_for('friends.notifications_page'))
 
 
 @user_blueprint.route('/household/decline/<int:invite_id>', methods=['POST'])
@@ -881,7 +882,7 @@ def household_decline(invite_id):
         flash('Invite withdrawn.' if request.form.get('cancel') else 'Invite declined.', 'info')
     except households.HouseholdError as e:
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('friends.notifications_page'))
+    return back(url_for('friends.notifications_page'))
 
 
 @user_blueprint.route('/household/remove/<int:user_id>', methods=['POST'])
@@ -893,7 +894,7 @@ def household_remove(user_id):
     user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
     if not user:
         flash('User not found', 'error')
-        return redirect(request.referrer or url_for('base.index'))
+        return back()
     try:
         households.remove(conn, current_user.id, user_id)
         conn.commit()
@@ -903,5 +904,5 @@ def household_remove(user_id):
     except households.HouseholdError as e:
         conn.rollback()
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('user.profile', username=user['username']))
+    return back(url_for('user.profile', username=user['username']))
 

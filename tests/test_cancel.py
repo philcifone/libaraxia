@@ -25,7 +25,7 @@ def test_edit_pages_cancel_to_the_item(client, db, people):
     alice = people['alice']
     book, video, record = add_book(db, alice, 'Dune'), add_video(db, alice), add_record(db, alice)
     login(client, 'alice')
-    for edit, show in ((f'/books/edit/{book}', f'/books/book/{book}'),
+    for edit, show in ((f'/books/edit/{book}', f'/books/{book}'),
                        (f'/videos/edit/{video}', f'/videos/{video}'),
                        (f'/records/edit/{record}', f'/records/{record}')):
         href, rest = cancel(client, edit)
@@ -37,7 +37,7 @@ def test_edit_pages_cancel_to_the_item(client, db, people):
 def test_add_pages_cancel_back_where_they_came_from(client, db, people):
     login(client, 'alice')
     href, rest = cancel(client, '/books/add')
-    assert href == '/base/index' and 'data-grid-crumb="book"' in rest      # the last Books grid, via common.js
+    assert href == '/books/' and 'data-grid-crumb="book"' in rest      # the last Books grid, via common.js
     href, rest = cancel(client, '/videos/add')
     assert href == '/videos/' and 'data-grid-crumb="video"' in rest
     href, rest = cancel(client, '/wishlist/add?type=record')
@@ -57,7 +57,7 @@ def test_review_cancels_where_submit_lands(client, db, people):
     alice = people['alice']
     book, video, record = add_book(db, alice, 'Dune'), add_video(db, alice), add_record(db, alice)
     login(client, 'alice')
-    for item, page in ((book, f'/books/book/{book}'), (video, f'/videos/{video}'), (record, f'/records/{record}')):
+    for item, page in ((book, f'/books/{book}'), (video, f'/videos/{video}'), (record, f'/records/{record}')):
         assert cancel(client, f'/read/rate_review/{item}')[0] == page
         r = client.post(f'/read/rate_review/{item}', data={'rating': '4'})
         assert r.status_code == 302 and r.location == page

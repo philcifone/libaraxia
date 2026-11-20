@@ -194,7 +194,7 @@ def test_find_preview_merge_and_undo_through_the_page(client, db, people):
 
     r = client.post('/merge/', data={'keep': mine, 'fold': old, 'fill': 'page_count',
                                      f'choice:read_data:{bob}:comment': 'fold'})
-    assert r.headers['Location'].endswith(f'/books/book/{mine}')
+    assert r.headers['Location'].endswith(f'/books/{mine}')
     assert not exists(db, old)
     assert scalar(db, 'SELECT comment FROM read_data WHERE book_id = ?', mine) == 'First read'
     assert scalar(db, 'SELECT page_count FROM books WHERE id = ?', mine) == 412

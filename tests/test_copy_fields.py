@@ -141,12 +141,12 @@ def test_condition_is_public_money_is_private(client, db, people):
     db.commit()
     for name in ('carol', 'bob'):
         login(client, name)
-        html = client.get(f'/books/book/{book}').get_data(as_text=True)
+        html = client.get(f'/books/{book}').get_data(as_text=True)
         assert 'data-condition' in html and 'Very Good' in html
         assert 'data-price-paid' not in html and 'data-value' not in html and '$12.50' not in html
         client.get('/auth/logout')
     login(client, 'alice')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    html = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-price-paid' in html and '$12.50' in html and '$40.00' in html
     assert 'Entered by you, 2026-11-14' in html
 

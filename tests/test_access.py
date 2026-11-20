@@ -23,20 +23,20 @@ def test_household_and_friends_can_open_book(client, db, people):
     book = add_book(db, people['alice'], 'Alice book')
     for who in ('bob', 'carol'):
         login(client, who)
-        assert client.get(f'/books/book/{book}').status_code == 200, who
+        assert client.get(f'/books/{book}').status_code == 200, who
 
 
 def test_stranger_gets_404(client, db, people, dave):
     book = add_book(db, people['alice'])
     login(client, 'dave')
-    assert client.get(f'/books/book/{book}').status_code == 404
+    assert client.get(f'/books/{book}').status_code == 404
 
 
 def test_friend_of_a_household_member_is_not_in_the_circle(client, db, people):
     # carol is alice's friend, not bob's
     book = add_book(db, people['bob'], 'Bob book')
     login(client, 'carol')
-    assert client.get(f'/books/book/{book}').status_code == 404
+    assert client.get(f'/books/{book}').status_code == 404
 
 
 def test_circle_activity_opens_the_book(client, db, people):
@@ -44,20 +44,20 @@ def test_circle_activity_opens_the_book(client, db, people):
     book = add_book(db, people['bob'], 'Bob book')
     add_review(db, people['alice'], book)
     login(client, 'carol')
-    assert client.get(f'/books/book/{book}').status_code == 200
+    assert client.get(f'/books/{book}').status_code == 200
 
 
 def test_own_history_keeps_access_to_unowned_book(client, db, people, dave):
     book = add_book(db, None, 'Orphan')
     add_review(db, dave, book)
     login(client, 'dave')
-    assert client.get(f'/books/book/{book}').status_code == 200
+    assert client.get(f'/books/{book}').status_code == 200
 
 
 def test_admin_can_open_any_book(client, db, people, dave):
     book = add_book(db, dave, 'Dave book')
     login(client, 'alice')
-    assert client.get(f'/books/book/{book}').status_code == 200
+    assert client.get(f'/books/{book}').status_code == 200
 
 
 def test_wishlist_notes_only_from_circle(client, db, people, dave):
@@ -67,7 +67,7 @@ def test_wishlist_notes_only_from_circle(client, db, people, dave):
                (people['alice'], book))
     db.commit()
     login(client, 'bob')
-    page = client.get(f'/books/book/{book}?wishlist_owner=dave').get_data(as_text=True)
+    page = client.get(f'/books/{book}?wishlist_owner=dave').get_data(as_text=True)
     assert 'dave secret' not in page
     assert 'alice note' in page
 
@@ -88,7 +88,7 @@ def test_stranger_cannot_attach_data(client, db, people, dave):
     for table in ('collections', 'wishlist', 'reading_sessions', 'read_data', 'book_tags'):
         assert scalar(db, f'SELECT COUNT(*) FROM {table} WHERE user_id = ?', dave) == 0, table
     # and so the page is still closed to them
-    assert client.get(f'/books/book/{book}').status_code == 404
+    assert client.get(f'/books/{book}').status_code == 404
 
 
 def test_stranger_cannot_add_book_to_own_custom_collection(client, db, people, dave):

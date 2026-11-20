@@ -130,7 +130,7 @@ def test_choices_carry_over_a_stale_plan():
 
 
 def test_id_from_a_card_link():
-    assert call('idFromHref', '/books/book/12') == 12
+    assert call('idFromHref', '/books/12') == 12
     assert call('idFromHref', '/videos/7?x=1') == 7
     assert call('idFromHref', '/records/300') == 300
     assert call('idFromHref', '/nothing') is None

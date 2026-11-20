@@ -41,17 +41,17 @@ def test_library_hides_not_owned_unless_asked(client, db, people):
     db.commit()
     login(client, 'alice')
 
-    assert titles(client, '/base/index') == {'On the shelf'}
-    assert titles(client, '/base/index?show=not_owned') == {'Borrowed audiobook'}
-    assert titles(client, '/base/index?show=removed') == {'Given away'}
-    assert titles(client, '/base/index?show=all') == {'On the shelf', 'Borrowed audiobook', 'Given away'}
+    assert titles(client, '/books/') == {'On the shelf'}
+    assert titles(client, '/books/?show=not_owned') == {'Borrowed audiobook'}
+    assert titles(client, '/books/?show=removed') == {'Given away'}
+    assert titles(client, '/books/?show=all') == {'On the shelf', 'Borrowed audiobook', 'Given away'}
     # Old links: "include removed" means everything, "only" means removed
-    assert titles(client, '/base/index?show_removed=only') == {'Given away'}
-    assert 'Borrowed audiobook' in titles(client, '/base/index?show_removed=include')
+    assert titles(client, '/books/?show_removed=only') == {'Given away'}
+    assert 'Borrowed audiobook' in titles(client, '/books/?show_removed=include')
     # A nonsense value falls back to the shelf, never to everything
-    assert titles(client, '/base/index?show=bogus') == {'On the shelf'}
+    assert titles(client, '/books/?show=bogus') == {'On the shelf'}
 
-    rows = client.get('/base/index?show=all', headers=AJAX).get_json()['books']
+    rows = client.get('/books/?show=all', headers=AJAX).get_json()['books']
     flags = {b['title']: (b['not_owned'], b['removed']) for b in rows}
     assert flags == {'On the shelf': (False, False), 'Borrowed audiobook': (True, False),
                      'Given away': (False, True)}
@@ -61,7 +61,7 @@ def test_library_hides_not_owned_unless_asked(client, db, people):
 def test_grid_badges_not_owned(client, db, people):
     not_owned(db, people['alice'], 'Borrowed audiobook')
     login(client, 'alice')
-    page = client.get('/base/index?show=not_owned').get_data(as_text=True)
+    page = client.get('/books/?show=not_owned').get_data(as_text=True)
     assert 'Borrowed audiobook' in page and '>Unshelved</span>' in page
     # The Show choice is in the filter panel, set to what the URL asked
     assert '<option value="not_owned" selected>Unshelved</option>' in page
@@ -73,10 +73,10 @@ def test_search_shared_and_friends_skip_not_owned(client, db, people):
     not_owned(db, alice, 'Dune Messiah')
     add_book(db, alice, title='Dune')
     login(client, 'bob')                       # alice's household
-    assert titles(client, '/base/shared-library?search_term=dune') == {'Dune'}
-    assert titles(client, '/base/shared-library') == {'Dune'}
+    assert titles(client, '/books/shared?search_term=dune') == {'Dune'}
+    assert titles(client, '/books/shared') == {'Dune'}
     login(client, 'carol')                     # alice's friend
-    page = client.get('/base/library/alice').get_data(as_text=True)
+    page = client.get('/books/user/alice').get_data(as_text=True)
     assert 'Dune' in page and 'Dune Messiah' not in page
     assert bob and carol
 
@@ -128,8 +128,8 @@ def test_add_book_not_owned_goes_to_its_page(client, db, people):
     r = client.post('/books/add', data={**BOOK_FORM, 'not_owned': '1'})
     book = scalar(db, "SELECT id FROM books WHERE title = 'Piranesi'")
     assert scalar(db, 'SELECT owned FROM books WHERE id = ?', book) == 0
-    assert r.headers['Location'].endswith(f'/books/book/{book}')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert r.headers['Location'].endswith(f'/books/{book}')
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'Unshelved.' in page and 'I Own It Now' in page
 
 
@@ -145,7 +145,7 @@ def test_add_book_goes_to_it_with_an_add_another_link(client, db, people):
     login(client, 'bob')
     r = client.post('/books/add', data=BOOK_FORM, follow_redirects=True)
     book = scalar(db, "SELECT id FROM books WHERE title = 'Piranesi'")
-    assert r.request.path == f'/books/book/{book}'
+    assert r.request.path == f'/books/{book}'
     page = r.get_data(as_text=True)
     assert '<a href="/books/add" data-flash-link>Add another' in page
     assert 'data-flash-keep' in page
@@ -174,11 +174,11 @@ def test_i_own_it_now_and_back(client, db, people):
     client.post(f'/books/ownership/{book}', data={'owned': '1'})
     row = db.execute('SELECT owned, removed_at FROM books WHERE id = ?', (book,)).fetchone()
     assert (row['owned'], row['removed_at']) == (1, None)
-    assert 'Bought it later' in titles(client, '/base/index')
+    assert 'Bought it later' in titles(client, '/books/')
 
     client.post(f'/books/ownership/{book}', data={'owned': '0'})
     assert scalar(db, 'SELECT owned FROM books WHERE id = ?', book) == 0
-    assert 'Bought it later' not in titles(client, '/base/index')
+    assert 'Bought it later' not in titles(client, '/books/')
 
 
 def test_only_owner_or_admin_changes_ownership(client, db, people):
@@ -266,17 +266,17 @@ def test_grid_badges_audiobooks_and_format_filter(client, db, people):
     audio = add_book(db, alice, title='Spoken')
     login(client, 'alice')
     # No Format filter while there's nothing to tell apart
-    assert 'name="format"' not in client.get('/base/index').get_data(as_text=True)
+    assert 'name="format"' not in client.get('/books/').get_data(as_text=True)
     db.execute("UPDATE books SET format = 'Audiobook' WHERE id = ?", (audio,))
     db.commit()
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'name="format"' in page
     assert 'title="Audiobook"' not in page                   # no grid badge (2026-11-11)
     # The item page names it in its facts (its heading has no format icon since 2026-11-19)
-    assert 'font-medium break-words">Audiobook</p>' in client.get(f'/books/book/{audio}').get_data(as_text=True)
-    assert titles(client, '/base/index?format=Audiobook') == {'Spoken'}
-    assert titles(client, '/base/index?format=Book') == {'Paper'}
-    assert client.get('/base/index', headers=AJAX).get_json()['books'][1]['format'] == 'Audiobook'
+    assert 'font-medium break-words">Audiobook</p>' in client.get(f'/books/{audio}').get_data(as_text=True)
+    assert titles(client, '/books/?format=Audiobook') == {'Spoken'}
+    assert titles(client, '/books/?format=Book') == {'Paper'}
+    assert client.get('/books/', headers=AJAX).get_json()['books'][1]['format'] == 'Audiobook'
 
 
 # --- the search hint (8B.3) ---------------------------------------------------------
@@ -289,18 +289,18 @@ def test_search_hints_at_matches_not_on_the_shelf(client, db, people):
     db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, read))
     db.commit()
     login(client, 'alice')
-    page = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
+    page = client.get('/books/shared?search_term=dune').get_data(as_text=True)
     hint = page[page.index('Not on your shelf:'):]
     hint = hint[:hint.index('</p>')]
-    assert f'/books/book/{read}' in hint and '(read, unshelved)' in hint
-    assert f'/books/book/{owned}"' not in hint                     # it's in the results instead
+    assert f'/books/{read}' in hint and '(read, unshelved)' in hint
+    assert f'/books/{owned}"' not in hint                     # it's in the results instead
     assert 'show=all' in hint and 'Show it' in hint
     # The results themselves still hold only the owned copy
     grid = page[page.index('id="book-container"'):]
     assert 'Dune Messiah' not in grid
     # No hint once Show asks for them, or without a search, or with nothing hidden
-    assert 'Not on your shelf' not in client.get('/base/shared-library?search_term=dune&show=all').get_data(as_text=True)
-    assert 'Not on your shelf' not in client.get('/base/shared-library?search_term=zzz').get_data(as_text=True)
+    assert 'Not on your shelf' not in client.get('/books/shared?search_term=dune&show=all').get_data(as_text=True)
+    assert 'Not on your shelf' not in client.get('/books/shared?search_term=zzz').get_data(as_text=True)
 
 
 def test_section_search_hint_names_household_owner_and_skips_friends(client, db, people):

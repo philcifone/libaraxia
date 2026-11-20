@@ -117,7 +117,7 @@ def test_wishlist_book_page_is_balanced(client, db, people):
     db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (people['bob'], book))
     db.commit()
     login(client, 'bob')
-    r = client.get(f'/books/book/{book}')
+    r = client.get(f'/books/{book}')
     assert r.status_code == 200 and unbalanced_tags(r.get_data(as_text=True)) == []
 
 
@@ -185,7 +185,7 @@ def test_sidebar_has_the_mode_shortcut(client, db, people):
     db.execute("UPDATE users SET color_mode = 'dark' WHERE id = ?", (people['bob'],))
     db.commit()
     login(client, 'bob')
-    html = client.get('/base/index').get_data(as_text=True)
+    html = client.get('/books/').get_data(as_text=True)
     # Since 2026-11-09 one sun/moon toggle under the welcome (sidebar.js picks
     # the other mode; styles.css shows the moon in light mode, the sun in dark)
     head = html[html.index('Welcome,'):html.index('<!-- Navigation -->')]
@@ -219,7 +219,7 @@ def test_book_page_cover_has_no_film_frame(client, db, people):
     in docs/parked/film-frame.css for VHS/DVD, not loaded by the app."""
     book = add_book(db, people['bob'], 'Dune', 'Frank Herbert')
     login(client, 'bob')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    html = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'film-frame' not in html and 'film-edge' not in html
     assert 'film-frame' not in (ROOT / 'static/styles.css').read_text()
     assert '.film-frame' in (ROOT / 'docs/parked/film-frame.css').read_text()
@@ -306,7 +306,7 @@ def test_every_field_and_button_has_a_name(client, db, people):
     announce "edit text" / "button" with no clue what it's for."""
     book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
-    pages = ['/base/index', '/books/add', f'/books/edit/{book}', f'/books/book/{book}', '/wishlist/view',
+    pages = ['/books/', '/books/add', f'/books/edit/{book}', f'/books/{book}', '/wishlist/view',
              '/user/alice', f'/read/rate_review/{book}', '/collections/collections', '/feed/activity',
              '/friends/notifications_page', '/user/settings', '/user/import_goodreads_page']
     problems = {}
@@ -323,16 +323,16 @@ def test_empty_states(client, db, people):
     results each say so (and what to do), instead of a blank page."""
     login(client, 'carol')                       # carol has no books
     text = lambda url: ' '.join(client.get(url).get_data(as_text=True).split())
-    assert 'Your library is empty' in text('/base/index') and '/user/import_goodreads_page' in text('/base/index')
-    assert 'No books match these filters' in text('/base/index?genre=Nope')
-    page = text('/base/index?search_term=zzzz')                 # the grid searches itself (16.0)
+    assert 'Your library is empty' in text('/books/') and '/user/import_goodreads_page' in text('/books/')
+    assert 'No books match these filters' in text('/books/?genre=Nope')
+    page = text('/books/?search_term=zzzz')                 # the grid searches itself (16.0)
     assert 'No books on your shelf match &#34;zzzz&#34;' in page and 'Clear the search' in page
     assert 'Your wishlist is empty' in text('/wishlist/view')
     feed = text('/feed/activity')
     assert 'Nothing in your feed yet' in feed and 'Find friends' not in feed   # link removed 2026-11-07
 
     add_book(db, people['carol'], 'Dune', 'Frank Herbert')
-    assert 'Your library is empty' not in text('/base/index') and 'Dune' in text('/base/index')
+    assert 'Your library is empty' not in text('/books/') and 'Dune' in text('/books/')
 
 
 def test_a_search_hidden_by_filters_says_so(client, db, people):
@@ -343,7 +343,7 @@ def test_a_search_hidden_by_filters_says_so(client, db, people):
     add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
     text = lambda url: ' '.join(client.get(url).get_data(as_text=True).split())
-    for home, whose in (('/base/index', 'your shelf'), ('/base/shared-library', 'the household&#39;s shelves')):
+    for home, whose in (('/books/', 'your shelf'), ('/books/shared', 'the household&#39;s shelves')):
         page = text(home + '?search_term=Dune&genre=Nope')
         assert 'No books match &#34;Dune&#34; with these filters' in page, home
         assert f'href="{home}?search_term=Dune"' in page and 'Clear the filters' in page, home
@@ -404,7 +404,7 @@ def test_one_no_cover_placeholder(client, db, people):
 
     book = add_book(db, people['alice'], 'A Very Particular Book', 'Some Author')
     login(client, 'alice')
-    for url in ('/base/index', f'/books/book/{book}'):
+    for url in ('/books/', f'/books/{book}'):
         page = client.get(url).get_data(as_text=True)
         start = page.index('class="no-cover ')
         assert 'A Very Particular Book' in page[start:start + 400], url
@@ -433,33 +433,33 @@ def test_view_bar_sorts_in_place(client, db, people):
     add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
 
-    page = client.get('/base/index?show_removed=include&sort_by=publish_year').get_data(as_text=True)
+    page = client.get('/books/?show_removed=include&sort_by=publish_year').get_data(as_text=True)
     bar = page[page.index('class="view-bar'):]
     bar = bar[:bar.index('id="book-container"')]
-    assert 'action="/base/index"' in bar and 'id="grid-view-btn"' in bar
+    assert 'action="/books/"' in bar and 'id="grid-view-btn"' in bar
     assert '<input type="hidden" name="show_removed" value="include">' in bar
     assert 'name="sort_by" value=' not in bar                  # the selects carry the sort
     assert 'Oldest first' in bar and 'A–Z' not in bar           # a year isn't A–Z
-    assert 'book' not in bar.replace('book-container', '').replace('Select', '')   # the count isn't in the bar
+    assert 'book' not in re.sub(r'"/books/[^"]*"', '', bar).replace('book-container', '').replace('Select', '')   # the count isn't in the bar
 
     dropdown = page[page.index('search-form-container'):page.index('class="view-bar')]
     assert 'id="sort-form"' not in dropdown and 'grid-view-btn' not in dropdown
     assert '1 book matches' in dropdown                          # it is under the search box
 
-    shared = client.get('/base/shared-library?member=%d' % people['bob']).get_data(as_text=True)
+    shared = client.get('/books/shared?member=%d' % people['bob']).get_data(as_text=True)
     sort_form = shared[shared.index('id="sort-form"') - 80:]
-    assert 'action="/base/shared-library"' in sort_form[:200]
+    assert 'action="/books/shared"' in sort_form[:200]
     assert '<input type="hidden" name="member" value="%d">' % people['bob'] in sort_form
-    assert 'action="/base/shared-library"' in shared[shared.index('id="filter-form"') - 10:][:200]
+    assert 'action="/books/shared"' in shared[shared.index('id="filter-form"') - 10:][:200]
 
-    search = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
+    search = client.get('/books/shared?search_term=dune').get_data(as_text=True)
     filter_form = search[search.index('id="filter-form"'):]
-    assert 'action="/base/shared-library"' in filter_form[:100]
+    assert 'action="/books/shared"' in filter_form[:100]
     assert '<input type="hidden" name="search_term" value="dune">' in filter_form
     # ...and a new search keeps the filters, sort and members in view (16.0)
-    filtered = client.get('/base/shared-library?genre=Fiction&sort_by=author&member=%d' % people['bob']).get_data(as_text=True)
+    filtered = client.get('/books/shared?genre=Fiction&sort_by=author&member=%d' % people['bob']).get_data(as_text=True)
     box = filtered[filtered.index('role="search"') - 200:filtered.index('id="search_term"')]
-    assert 'action="/base/shared-library"' in box
+    assert 'action="/books/shared"' in box
     for kept in ('name="genre" value="Fiction"', 'name="sort_by" value="author"', 'name="member" value="%d"' % people['bob']):
         assert kept in box, kept
 
@@ -478,14 +478,14 @@ def test_search_row_sits_under_the_tabs(client, people):
     """Search and the filter button are one row under the page's tabs (the
     header's magnifying glass is gone), on every grid page and the wishlist."""
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/videos/', '/records/shared'):
+    for url in ('/books/', '/books/shared', '/videos/', '/records/shared'):
         page = client.get(url).get_data(as_text=True)
         assert 'id="search-toggle"' not in page, url
         tabs = page.index('class="tab ')
         row = page.index('search-form-container')
         assert tabs < row, url
         assert 'id="filter-toggle"' in page and 'aria-controls="filter-panel"' in page, url
-    search = client.get('/base/shared-library?search_term=x').get_data(as_text=True)
+    search = client.get('/books/shared?search_term=x').get_data(as_text=True)
     assert 'search-form-container' in search and 'pt-20' in search
     wishlist = client.get('/wishlist/view').get_data(as_text=True)
     assert 'id="search-toggle"' not in wishlist
@@ -495,13 +495,13 @@ def test_accent_colour_is_saved_and_on_every_page(client, db, people):
     """8B.5: Settings -> Account -> Appearance -> Accent. Saved per user, put on <html
     data-accent>, House style only (the picker hides under Classic)."""
     login(client, 'bob')
-    assert 'data-accent="green"' in client.get('/base/index').get_data(as_text=True)
+    assert 'data-accent="green"' in client.get('/books/').get_data(as_text=True)
     page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-accent-picker' in page and page.count('data-kind="accent"') == 7
     r = client.post('/user/update_theme', json={'accent': 'blue'})
     assert r.status_code == 200 and r.get_json()['accent'] == 'blue'
     assert db.execute('SELECT accent FROM users WHERE id = ?', (people['bob'],)).fetchone()[0] == 'blue'
-    assert 'data-accent="blue"' in client.get('/base/index').get_data(as_text=True)
+    assert 'data-accent="blue"' in client.get('/books/').get_data(as_text=True)
     # Style and mode are left alone; nonsense is refused
     assert db.execute('SELECT theme_style, color_mode FROM users WHERE id = ?',
                       (people['bob'],)).fetchone()[:] == ('house', 'system')
@@ -541,10 +541,10 @@ def test_no_back_to_catalog_links():
 def test_item_page_crumbs_follow_the_section(client, db, people):
     book = add_book(db, people['alice'], title='Dune')
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     # The section crumb is marked for common.js, which points it at the
     # grid you were last on (sort and filters kept)
-    assert '<a href="/base/index" class="crumb-link" data-grid-crumb="book">Library</a>' in page
+    assert '<a href="/books/" class="crumb-link" data-grid-crumb="book">Library</a>' in page
     assert '<li aria-current="page" class="crumb-here">Dune</li>' in page
 
 
@@ -559,7 +559,7 @@ def test_library_grids_are_remembered_for_the_crumb(client, db, people):
                    (people['alice'], media))
     db.commit()
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/base/library/carol', '/videos/', '/records/'):
+    for url in ('/books/', '/books/shared', '/books/user/carol', '/videos/', '/records/'):
         page = client.get(url).get_data(as_text=True)
         assert 'data-remember-grid' in page, url
     js = pathlib.Path('static/common.js').read_text()
@@ -659,7 +659,7 @@ def test_shelf_style_bookcase(client, db, people):
     ledge gradient uses the same numbers as the rows it sits under."""
     login(client, 'alice')
     assert client.post('/user/update_theme', json={'style': 'shelf', 'mode': 'dark'}).status_code == 200
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'data-style="shelf"' in page and 'data-mode="dark"' in page
 
     css = pathlib.Path('static/styles.css').read_text()
@@ -681,7 +681,7 @@ def test_font_choice_saved_and_on_the_page(client, db, people):
     assert client.post('/user/update_theme', json={'font': 'comic-sans'}).status_code == 400
     assert client.post('/user/update_theme', json={'font': 'garamond'}).status_code == 200
     assert scalar(db, "SELECT font FROM users WHERE username = 'alice'") == 'garamond'
-    assert 'data-font="garamond"' in client.get('/base/index').get_data(as_text=True)
+    assert 'data-font="garamond"' in client.get('/books/').get_data(as_text=True)
 
     from models import FONTS
     css = pathlib.Path('static/styles.css').read_text()
@@ -714,7 +714,7 @@ def test_shelf_covers_only_and_movie_rack(client, db, people):
     title and author visually hidden but there for screen readers, with a
     focus ring for the keyboard; the Movies grid can be a rack."""
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert "static/shelf.js" in page
     assert 'class="book-title' in pathlib.Path('templates/_book_grid.html').read_text()  # still in the markup
     js = pathlib.Path('static/shelf.js').read_text()
@@ -758,7 +758,7 @@ def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
     assert 'coverBoxHtml(' in pathlib.Path('static/script.js').read_text()
     # The egg: Movies only
     assert 'data-click="toggleRack"' in client.get('/videos/').get_data(as_text=True)
-    assert 'data-click="toggleRack"' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-click="toggleRack"' not in client.get('/books/').get_data(as_text=True)
     assert 'data-click="toggleRack"' not in client.get('/records/').get_data(as_text=True)
     # Every rule in the rack section is scoped to the toggle
     start = css.index('/* ---- Shelf: the movie rack')
@@ -792,10 +792,10 @@ def test_search_box_carries_the_count_and_one_row_view_bar(client, db, people):
     add_book(db, alice, title='One')
     add_book(db, alice, title='Two')
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'placeholder="Search your 2 books"' in page
     assert ' match' not in page[page.index('search-form-container'):page.index('class="view-bar')]
-    page = client.get('/base/index?show=all').get_data(as_text=True)
+    page = client.get('/books/?show=all').get_data(as_text=True)
     assert 'placeholder="Search your books"' in page
     assert '2 books match' in page[page.index('search-form-container'):page.index('class="view-bar')]
     assert '2 books' not in page[page.index('class="view-bar'):page.index('id="book-container"')]
@@ -809,7 +809,7 @@ def test_filter_pills_show_only_applied_filters(client, db, people):
     assert 'function countFilterChanges' in js and 'appliedFilters = readFilterState()' in js
     assert 'updateActiveFilters' not in js
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'data-change="filtersChanged"' in page and 'id="apply-filters"' in page
 
 
@@ -820,7 +820,7 @@ def test_no_status_reads_unread(client, db, people):
         'Unread', 'Unwatched', 'Not listened to']
     book = add_book(db, people['alice'], title='Never opened')
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'name="status" value="untracked" class="chip"' in page and '>Unread</button>' in page and 'Untracked' not in page
 
 
@@ -831,7 +831,7 @@ def test_status_filter_options_use_labels(client, db, people):
                (people['alice'], book))
     db.commit()
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert re.search(r'value="did not finish"[^>]*>\s*Did Not Finish', page)
 
 
@@ -840,30 +840,30 @@ def test_shelves_one_entry_and_section_switch(client, db, people):
     the Books | Movies | Music switch, which keeps the scope; the sidebar link
     returns you to the section you used last."""
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     nav = page[page.index('<!-- Navigation -->'):]
     nav = nav[:nav.index('</nav>')]
     assert 'href="/base/shelves"' in nav and 'Shelves' in nav
     assert 'href="/videos/"' not in nav and 'href="/records/"' not in nav   # no separate entries
     # The switch keeps the scope
     shared = client.get('/videos/shared').get_data(as_text=True)
-    assert 'href="/base/shared-library"' in shared and 'href="/records/shared"' in shared
+    assert 'href="/books/shared"' in shared and 'href="/records/shared"' in shared
     assert 'href="/videos/friends"' not in shared        # no Friends' tab (11.3)
     for old in ('/base/friends-libraries', '/videos/friends', '/records/friends'):
         assert client.get(old).headers['Location'].endswith('/friends/'), old
     # A friend's books link to the same friend's movies and music
-    friend = client.get('/base/library/carol').get_data(as_text=True)
+    friend = client.get('/books/user/carol').get_data(as_text=True)
     assert 'href="/videos/user/carol"' in friend and 'href="/records/user/carol"' in friend
     # Last section used: books at first, then whatever you visited
     client.delete_cookie('shelf_section')
-    assert client.get('/base/shelves').headers['Location'].endswith('/base/index')
+    assert client.get('/base/shelves').headers['Location'].endswith('/books/')
     client.get('/records/')
     assert client.get('/base/shelves').headers['Location'].endswith('/records/')
     client.get('/videos/shared')
     assert client.get('/base/shelves').headers['Location'].endswith('/videos/')
     # A bad cookie falls back to books
     client.set_cookie('shelf_section', 'nonsense')
-    assert client.get('/base/shelves').headers['Location'].endswith('/base/index')
+    assert client.get('/base/shelves').headers['Location'].endswith('/books/')
 
 
 def test_shelf_records_stand_on_the_shelf():
@@ -904,13 +904,13 @@ def test_friends_page_and_notifications_under_the_welcome(client, db, people):
     card = card[:card.index('data-friend-shelf')+200]
     # 16.0: avatar and name open the profile, "See their shelf" the shelves,
     # and the counts are plain text
-    assert card.count('href="/user/carol"') == 2 and 'href="/base/library/carol"' in card
+    assert card.count('href="/user/carol"') == 2 and 'href="/books/user/carol"' in card
     counts = card[card.index('data-friend-counts'):card.index('</p>', card.index('data-friend-counts'))]
     assert '<a ' not in counts and '1 book' in counts
     assert 'bob' not in page.split('id="your-friends"')[1].split('Find friends')[0]   # household, not a friend
     assert 'id="friend-search-input"' in page and 'friends.js' in page
     # A friend's shelves: crumbs back to Friends, no scope tabs
-    shelf = client.get('/base/library/carol').get_data(as_text=True)
+    shelf = client.get('/books/user/carol').get_data(as_text=True)
     assert "carol's Shelves" in shelf and 'aria-label="Whose shelves"' not in shelf
     assert 'href="/friends/"' in shelf
     # Notifications: under the welcome, with a count when something waits
@@ -962,7 +962,7 @@ def test_profile_stats_same_blocks_for_every_type(client, db, people):
     assert 'data-kind="all" data-view="overview">' in stats
     for words in ('Books owned', 'Movies and shows owned', 'Hours watched', 'Pages read', 'Top authors', 'Top directors'):
         assert words in stats
-    assert 'href="/base/library/alice"' in stats and 'href="/videos/user/alice"' in stats
+    assert 'href="/books/user/alice"' in stats and 'href="/videos/user/alice"' in stats
     assert 'tab-library' not in page                     # the old Library tab is gone
 
 
@@ -1019,13 +1019,13 @@ def test_dead_cover_links_get_the_placeholder_everywhere(client, db, people, sta
     put(db, people['alice'], title='Here Book', cover='uploads/here.jpg')
     add_review(db, people['alice'], gone)
     login(client, 'alice')
-    for url in ('/base/index', f'/books/book/{gone}', f'/read/rate_review/{gone}',
+    for url in ('/books/', f'/books/{gone}', f'/read/rate_review/{gone}',
                 '/user/alice', '/reviews/?type=book', '/have/?q=Gone+Book'):
         page = client.get(url).get_data(as_text=True)
         assert 'uploads/gone.jpg' not in page, url
         assert 'no-cover' in page, url
-    assert 'uploads/here.jpg' in client.get('/base/index').get_data(as_text=True)
-    cards = client.get('/base/index?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()['books']
+    assert 'uploads/here.jpg' in client.get('/books/').get_data(as_text=True)
+    cards = client.get('/books/?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()['books']
     covers = {c['title']: c['cover_image_url'] for c in cards}
     assert covers == {'Gone Book': None, 'Here Book': 'uploads/here.jpg'}
 
@@ -1040,7 +1040,7 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     (static_root / 'uploads' / 'c.jpg').write_bytes(b'x')
     book = add_book(db, people['alice'], cover='uploads/c.jpg')
     login(client, 'alice')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    html = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'class="cover-stand w-full">' in html
     # In the heading, beside the title (Phil, 2026-11-19); the facts under it
     assert html.index('class="item-heading-grid"') < html.index('class="cover-stand') < html.index('class="item-facts ')
@@ -1058,7 +1058,7 @@ def test_item_page_cover_opens_bigger(client, db, people, static_root):
     with_cover = add_book(db, people['alice'], cover='uploads/c.jpg')
     without = add_book(db, people['alice'], title='No Cover')
     login(client, 'alice')
-    html = client.get(f'/books/book/{with_cover}').get_data(as_text=True)
+    html = client.get(f'/books/{with_cover}').get_data(as_text=True)
     # openCover (book_detail.js): the zoom, unless there's a gallery or (in
     # the Shelf style) the photos for the 3D view; a cover alone has neither
     assert 'data-click="openCover" data-target="cover-zoom"' in html
@@ -1066,7 +1066,7 @@ def test_item_page_cover_opens_bigger(client, db, people, static_root):
     dialog = html[html.index('<dialog id="cover-zoom"'):]
     dialog = dialog[:dialog.index('</dialog>')]
     assert '<form method="dialog">' in dialog and 'src="/static/uploads/c.jpg"' in dialog
-    html = client.get(f'/books/book/{without}').get_data(as_text=True)
+    html = client.get(f'/books/{without}').get_data(as_text=True)
     assert 'cover-zoom' not in html and 'item-3d' not in html
 
 
@@ -1176,11 +1176,11 @@ def test_item_add_and_edit_pages_have_one_heading_card(client, db, people):
     book = add_book(db, alice, title='Dune')
     db.commit()
     login(client, 'alice')
-    for url in (f'/books/book/{book}', '/books/add', '/videos/add', '/records/add',
+    for url in (f'/books/{book}', '/books/add', '/videos/add', '/records/add',
                 '/wishlist/add?type=book', f'/books/edit/{book}'):
         page = client.get(url).get_data(as_text=True)
         assert page.count('class="page-heading ') == 1, url
-    item = client.get(f'/books/book/{book}').get_data(as_text=True)
+    item = client.get(f'/books/{book}').get_data(as_text=True)
     # the cover and the title are in the heading card, before the details card
     heading = item.index('class="page-heading ')
     assert heading < item.index('cover-stand', heading) < item.index('<h1', heading) < item.index('<span data-fit-title-text>Dune', heading) < item.index('item-facts')
@@ -1316,7 +1316,7 @@ def test_have_matches_are_feed_cards(client, db, people):
     login(client, 'alice')
     page = client.get('/have/?q=dune').get_data(as_text=True)
     assert 'case-card' not in page and 'case-cover' not in page
-    match = re.search(r'<a href="/books/book/\d+" class="feed-card [^"]*card-link[^"]*">(.*?)</a>', page, re.S)
+    match = re.search(r'<a href="/books/\d+" class="feed-card [^"]*card-link[^"]*">(.*?)</a>', page, re.S)
     assert match and 'data-media="book"' in match.group(1) and 'Dune' in match.group(1)
 
 
@@ -1357,7 +1357,7 @@ def test_cover_glare_feed_dates_and_search_crumbs(client, db, people):
     assert '{{ activity.date[:10] }}' in pathlib.Path('templates/activity_feed.html').read_text()
     add_book(db, people['alice'], title='Dune')
     login(client, 'alice')
-    page = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
+    page = client.get('/books/shared?search_term=dune').get_data(as_text=True)
     assert page.index('<h1') < page.index('search-form-container')
 
 
@@ -1415,7 +1415,7 @@ def test_item_page_has_no_pointer_to_the_tools(client, db, people):
     line is gone from the item page (Phil, 2026-11-15)."""
     book = add_book(db, people['alice'])
     login(client, 'alice')
-    assert '#book-tools' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert '#book-tools' not in client.get(f'/books/{book}').get_data(as_text=True)
 
 
 def test_dvd_box_is_thinner_than_vhs(client, db, people):
@@ -1700,14 +1700,14 @@ def test_empty_detail_fields_say_not_set(client, db, people):
     a marked, muted line: it used to print Python's None ("None pages")."""
     book = add_book(db, people['alice'])
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     facts = page.split('item-facts', 1)[1].split('</div>\n                </div>', 1)[0]
     # publisher, year, page count, ISBN and genre are all empty on this book
     assert facts.count('data-unset') == 5
     assert 'None' not in facts
     db.execute("UPDATE books SET page_count = 320, publisher = 'Scribner' WHERE id = ?", (book,))
     db.commit()
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert page.count('data-unset') == 3 and '320 pages' in page
 
 
@@ -1725,7 +1725,7 @@ def test_og_walnut_palette(client, db, people):
     users.palette on <html data-palette>, a picker shown in OG only, and
     CSS that matches OG alone."""
     login(client, 'alice')
-    assert 'data-palette="theme"' in client.get('/base/index').get_data(as_text=True)
+    assert 'data-palette="theme"' in client.get('/books/').get_data(as_text=True)
     assert client.post('/user/update_theme', json={'palette': 'mahogany'}).status_code == 400
     assert client.post('/user/update_theme', json={'style': 'classic', 'palette': 'walnut'}).status_code == 200
     assert scalar(db, 'SELECT palette FROM users WHERE id = ?', people['alice']) == 'walnut'
@@ -1742,10 +1742,10 @@ def test_no_byline_without_a_creator(client, db, people):
     artist (Phil, 2026-11-15)."""
     book = add_book(db, people['alice'], 'Anonymous Work', '')
     login(client, 'alice')
-    assert 'data-byline' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'data-byline' not in client.get(f'/books/{book}').get_data(as_text=True)
     db.execute("UPDATE books SET author = 'Someone' WHERE id = ?", (book,))
     db.commit()
-    assert 'data-byline' in client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'data-byline' in client.get(f'/books/{book}').get_data(as_text=True)
 
 
 # ---- One cover box everywhere (layout walk step 1, docs/LAYOUT-WALK-SPEC.md section 2)
@@ -1914,7 +1914,7 @@ def test_every_tab_row_is_a_cabinet(client, db, people):
         assert all('cabinet-part cabinet-drawers cabinet-top cabinet-end' in r for r in rows), (url, rows)
     # Settings holds Admin's row too, inside its Admin panel
     assert client.get('/user/settings').get_data(as_text=True).count('class="tab-row') == 2
-    shelf = client.get('/base/index').get_data(as_text=True)
+    shelf = client.get('/books/').get_data(as_text=True)
     assert re.search(r'<div class="tab-row page-frame [^"]*cabinet-part cabinet-drawers cabinet-top"', shelf)
     wish = client.get('/wishlist/view').get_data(as_text=True)
     assert re.search(r'<div class="tab-row [^"]*cabinet-part cabinet-drawers cabinet-top"', wish)
@@ -2067,7 +2067,7 @@ def test_shelf_row_covers_link_to_their_items(client, db, people):
     login(client, 'alice')
     for url in ('/collections/collections', '/reviews/'):
         html = client.get(url).get_data(as_text=True)
-        assert f'<a href="/books/book/{book}" class="shelf-cover block">' in html, url
+        assert f'<a href="/books/{book}" class="shelf-cover block">' in html, url
         assert re.search(r'<a href="[^"]+" class="shelf-label ', html), url
         assert not re.search(r'<a [^>]*class="shelf-link', html), url
         # no link inside another
@@ -2098,17 +2098,17 @@ def test_show_everything_includes_ownerless_items_you_have_data_on(client, db, p
         r = client.get(url, headers={'X-Requested-With': 'XMLHttpRequest'})
         return {b['id']: b for b in r.get_json()['books']}
 
-    everything = ids('/base/index?show=all')
+    everything = ids('/books/?show=all')
     assert set(everything) == {mine, old}
     assert everything[old]['no_owner'] and not everything[mine]['no_owner']
-    page = client.get('/base/index?show=all').get_data(as_text=True)
+    page = client.get('/books/?show=all').get_data(as_text=True)
     assert page.count('data-no-owner>No owner</span>') == 1
     # The search finds it too, and the default and Unshelved views don't
-    assert set(ids('/base/index?show=all&search_term=jest')) == {mine, old}
-    assert set(ids('/base/index')) == {mine}
-    assert old not in ids('/base/index?show=not_owned')
+    assert set(ids('/books/?show=all&search_term=jest')) == {mine, old}
+    assert set(ids('/books/')) == {mine}
+    assert old not in ids('/books/?show=not_owned')
     # The household's Everything: your own ownerless items
-    assert old in ids('/base/shared-library?show=all')
+    assert old in ids('/books/shared?show=all')
     # A friend's grid (carol looking at alice's): never
     login(client, 'carol')
-    assert set(ids("/base/library/alice?show=all")) <= {mine}
+    assert set(ids("/books/user/alice?show=all")) <= {mine}

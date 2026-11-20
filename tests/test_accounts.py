@@ -105,7 +105,7 @@ def test_self_deactivate_logs_out(client, db, people):
     login(client, 'bob')
     client.post('/user/delete_account', data={'action': 'deactivate'})
     assert scalar(db, 'SELECT is_active FROM users WHERE id = ?', people['bob']) == 0
-    assert client.get('/base/index').status_code == 302
+    assert client.get('/books/').status_code == 302
 
 
 # --- exports ------------------------------------------------------------------------
@@ -175,6 +175,6 @@ def test_email_change_refuses_taken_address(client, db, people):
 def test_logout_is_post_only(client, db, people):
     login(client, 'bob')
     assert client.get('/auth/logout').status_code == 405
-    assert client.get('/base/index').status_code == 200      # still logged in
+    assert client.get('/books/').status_code == 200      # still logged in
     assert client.post('/auth/logout').status_code == 302
-    assert client.get('/base/index').status_code in (302, 401)
+    assert client.get('/books/').status_code in (302, 401)

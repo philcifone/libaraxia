@@ -39,7 +39,7 @@ def test_someone_elses_wishlist_doesnt_hide_book_from_search(client, db, people)
     book = add_book(db, people['alice'], title='Dune')
     wishlist(db, people['carol'], book)
     login(client, 'alice')
-    r = client.get('/base/shared-library?search_term=Dune')
+    r = client.get('/books/shared?search_term=Dune')
     assert b'Dune' in r.data
 
 
@@ -47,7 +47,7 @@ def test_wishlist_entries_not_in_library_grid_or_friend_counts(client, db, peopl
     add_book(db, people['carol'], title='Carols Real Book')
     wishlist_stub(db, people['carol'], title='Carols Wish')
     login(client, 'alice')
-    r = client.get('/base/library/carol')
+    r = client.get('/books/user/carol')
     assert b'Carols Real Book' in r.data and b'Carols Wish' not in r.data
 
 
@@ -96,7 +96,7 @@ def test_filter_genres_come_from_your_library(client, db, people):
     db.execute("UPDATE books SET genre = 'Carol Genre' WHERE id = ?", (theirs,))
     db.commit()
     login(client, 'alice')
-    r = client.get('/base/index')
+    r = client.get('/books/')
     assert b'Mine Genre' in r.data and b'Carol Genre' not in r.data
 
 
@@ -109,7 +109,7 @@ def test_removed_filter_hide_include_only(client, db, people):
     ajax = {'X-Requested-With': 'XMLHttpRequest'}
 
     def titles(arg):
-        return {b['title'] for b in client.get('/base/index' + arg, headers=ajax).get_json()['books']}
+        return {b['title'] for b in client.get('/books/' + arg, headers=ajax).get_json()['books']}
 
     assert titles('') == {'Still Here'}
     assert titles('?show_removed=include') == {'Still Here', 'Long Gone'}
@@ -123,7 +123,7 @@ def test_minimum_rating_filter_means_and_up(client, db, people):
     add_review(db, people['alice'], four, rating=4)
     add_review(db, people['alice'], five, rating=5)
     login(client, 'alice')
-    r = client.get('/base/index?rating=4', headers={'X-Requested-With': 'XMLHttpRequest'})
+    r = client.get('/books/?rating=4', headers={'X-Requested-With': 'XMLHttpRequest'})
     assert {b['title'] for b in r.get_json()['books']} == {'Four', 'Five'}
 
 
@@ -321,7 +321,7 @@ def test_clear_placeholder_covers_is_admin_only(client, db, people):
     login(client, 'bob')
     r = client.post('/admin/clear_placeholder_covers')
     assert r.status_code in (302, 403)
-    assert b'Cleared' not in client.get('/base/index').data
+    assert b'Cleared' not in client.get('/books/').data
 
 
 # --- Goodreads HTML in reviews (3.4) -------------------------------------------

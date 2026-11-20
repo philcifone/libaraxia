@@ -23,11 +23,10 @@ def _wants_json():
 
 
 def _back():
-    """Where a plain form post returns to: a local path from the form, else the library."""
-    target = request.form.get('next', '')
-    if target.startswith('/') and not target.startswith('//'):
-        return redirect(target)
-    return redirect(url_for('base.index'))
+    """Where a plain form post returns to: the form's `next` (same-site), else
+    where it came from, else the library (utils/landing.py)."""
+    from utils.landing import back
+    return back(url_for('base.index'))
 
 
 @covers_blueprint.route('/start', methods=['POST'])

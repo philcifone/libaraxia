@@ -219,7 +219,7 @@ def create_app():
     
     # Register Blueprints
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
-    app.register_blueprint(base_blueprint, url_prefix='/base')
+    app.register_blueprint(base_blueprint)        # its own paths: /base/... and the Books shelves at /books/...
     app.register_blueprint(books_blueprint, url_prefix='/books')
     app.register_blueprint(collections_blueprint, url_prefix='/collections')
     app.register_blueprint(user_blueprint, url_prefix='/user')

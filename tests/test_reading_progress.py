@@ -137,7 +137,7 @@ def test_the_route_saves_and_lands_on_the_reading_history(client, db, people):
     dune = book_with(db, people['bob'], page_count=400)
     login(client, 'bob')
     r = client.post(f'/read/{dune}/progress', data={'page': '100'})
-    assert r.status_code == 302 and r.headers['Location'].endswith(f'/books/book/{dune}#item-history')
+    assert r.status_code == 302 and r.headers['Location'].endswith(f'/books/{dune}#item-history')
     assert sessions(db, people['bob'], dune) == [(TODAY, None, 0.25, 100)]
     # A refusal flashes and writes nothing
     r = client.post(f'/read/{dune}/progress', data={'page': 'lots'})
@@ -199,19 +199,19 @@ def test_the_grid_shows_your_manual_ring_and_nobody_elses(client, db, people):
     reading_progress.set_progress(db, people['alice'], dune, page='100')
     db.commit()
     login(client, 'alice')
-    assert 'data-abs-ring="25"' in client.get('/base/index?show=all').get_data(as_text=True)
-    r = client.get('/base/index?show=all', headers={'X-Requested-With': 'XMLHttpRequest'})
+    assert 'data-abs-ring="25"' in client.get('/books/?show=all').get_data(as_text=True)
+    r = client.get('/books/?show=all', headers={'X-Requested-With': 'XMLHttpRequest'})
     assert [b['abs_progress'] for b in r.get_json()['books'] if b['id'] == dune] == [0.25]
-    assert 'data-abs-ring="25"' in client.get(f'/books/book/{dune}').get_data(as_text=True)
+    assert 'data-abs-ring="25"' in client.get(f'/books/{dune}').get_data(as_text=True)
     login(client, 'bob')                                             # same household, same shelf
-    assert 'data-abs-ring' not in client.get('/base/shared-library?show=all').get_data(as_text=True)
-    assert 'data-abs-ring' not in client.get(f'/books/book/{dune}').get_data(as_text=True)
+    assert 'data-abs-ring' not in client.get('/books/shared?show=all').get_data(as_text=True)
+    assert 'data-abs-ring' not in client.get(f'/books/{dune}').get_data(as_text=True)
 
 
 # --- the item page ------------------------------------------------------------
 
 def page(client, book_id):
-    return client.get(f'/books/book/{book_id}').get_data(as_text=True)
+    return client.get(f'/books/{book_id}').get_data(as_text=True)
 
 
 def test_the_field_shows_while_you_are_reading(client, db, people):

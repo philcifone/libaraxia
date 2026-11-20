@@ -457,7 +457,7 @@ def test_item_page_note_and_live_line(client, db, people, abs_server, monkeypatc
                         {'progress': 0.5, 'currentTime': 18000, 'duration': 36000, 'isFinished': False})
 
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-abs-note' in page and 'From your Audiobookshelf import' in page
     assert f'data-url="/abs/progress/{book}"' in page
     answer = client.get(f'/abs/progress/{book}').get_json()
@@ -468,7 +468,7 @@ def test_item_page_note_and_live_line(client, db, people, abs_server, monkeypatc
 
     # bob (household) sees the book, never alice's link or progress
     login(client, 'bob')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-abs-note' not in page and 'data-abs-progress' not in page
     assert client.get(f'/abs/progress/{book}').status_code == 404
 
@@ -513,22 +513,22 @@ def test_from_audiobookshelf_filter(client, db, people, abs_server):
     run(db, alice)
 
     login(client, 'alice')
-    assert grid_titles(client, '/base/index?from=audiobookshelf') == ['Paper Copy']          # on the shelf
-    assert grid_titles(client, '/base/index?from=audiobookshelf&show=all') == ['Heard', 'Paper Copy']
-    assert grid_titles(client, '/base/index?from=audiobookshelf&from=goodreads&show=all') == \
+    assert grid_titles(client, '/books/?from=audiobookshelf') == ['Paper Copy']          # on the shelf
+    assert grid_titles(client, '/books/?from=audiobookshelf&show=all') == ['Heard', 'Paper Copy']
+    assert grid_titles(client, '/books/?from=audiobookshelf&from=goodreads&show=all') == \
         ['From Goodreads', 'Heard', 'Paper Copy']                                         # either source
-    page = client.get('/base/index?from=audiobookshelf').get_data(as_text=True)
+    page = client.get('/books/?from=audiobookshelf').get_data(as_text=True)
     assert re.search(r'id="from_audiobookshelf"[^>]*checked', page)
 
     # Always your own imports: bob shares alice's shelf but imported nothing
     login(client, 'bob')
-    assert grid_titles(client, '/base/index?from=audiobookshelf&show=all') == []
+    assert grid_titles(client, '/books/?from=audiobookshelf&show=all') == []
     assert mine
 
 
 def test_from_audiobookshelf_hidden_without_a_server(client, db, people):
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'id="from_goodreads"' in page and 'id="from_audiobookshelf"' not in page
 
 
@@ -738,11 +738,11 @@ def test_ring_on_the_grid_and_lists_is_yours_alone(client, db, people, abs_serve
     book = book_row(db, 'Heard')['id']
 
     login(client, 'alice')
-    page = client.get('/base/index?show=all').get_data(as_text=True)
+    page = client.get('/books/?show=all').get_data(as_text=True)
     assert 'data-abs-ring="50"' in page and 'stroke-dasharray="50 100"' in page
-    r = client.get('/base/index?show=all', headers={'X-Requested-With': 'XMLHttpRequest'})
+    r = client.get('/books/?show=all', headers={'X-Requested-With': 'XMLHttpRequest'})
     assert [b['abs_progress'] for b in r.get_json()['books'] if b['id'] == book] == [0.5]
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-abs-ring="50"' in page                          # before the live line answers
 
     # The live line updates the stored value, so the grid follows it
@@ -750,7 +750,7 @@ def test_ring_on_the_grid_and_lists_is_yours_alone(client, db, people, abs_serve
     monkeypatch.setattr(abs_, 'progress', lambda token, item_id, timeout=None:
                         {'progress': 0.9, 'currentTime': 32400, 'duration': 36000, 'isFinished': False})
     assert client.get(f'/abs/progress/{book}').get_json()['progress'] == 0.9
-    assert 'data-abs-ring="90"' in client.get('/base/index?show=all').get_data(as_text=True)
+    assert 'data-abs-ring="90"' in client.get('/books/?show=all').get_data(as_text=True)
 
     # A page typed on the paper copy afterwards is newer: the live answer's
     # `ring` says so, even from the cache, and so do the grids (16.0f)
@@ -760,15 +760,15 @@ def test_ring_on_the_grid_and_lists_is_yours_alone(client, db, people, abs_serve
     db.commit()
     answer = client.get(f'/abs/progress/{book}').get_json()
     assert (answer['progress'], answer['ring']) == (0.9, 0.25)
-    assert 'data-abs-ring="25"' in client.get('/base/index?show=all').get_data(as_text=True)
+    assert 'data-abs-ring="25"' in client.get('/books/?show=all').get_data(as_text=True)
     db.execute('UPDATE reading_sessions SET progress = NULL')
     db.commit()
 
     # bob shares the shelf: the book, never alice's ring
     login(client, 'bob')
-    shared = client.get('/base/shared-library?show=all').get_data(as_text=True)
-    assert f'/books/book/{book}' in shared and 'data-abs-ring' not in shared
-    r = client.get(f'/books/book/{book}').get_data(as_text=True)
+    shared = client.get('/books/shared?show=all').get_data(as_text=True)
+    assert f'/books/{book}' in shared and 'data-abs-ring' not in shared
+    r = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-abs-ring' not in r
 
     # Finished on ABS: the ring goes
@@ -777,7 +777,7 @@ def test_ring_on_the_grid_and_lists_is_yours_alone(client, db, people, abs_serve
     monkeypatch.setattr(abs_, 'progress', lambda token, item_id, timeout=None:
                         {'progress': 1, 'isFinished': True, 'finishedAt': MS})
     assert 'progress' not in client.get(f'/abs/progress/{book}').get_json()
-    assert 'data-abs-ring' not in client.get('/base/index?show=all').get_data(as_text=True)
+    assert 'data-abs-ring' not in client.get('/books/?show=all').get_data(as_text=True)
 
 
 def test_disconnect_clears_the_rings(client, db, people, abs_server):

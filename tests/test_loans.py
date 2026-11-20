@@ -224,10 +224,10 @@ def test_lend_route_comes_back_to_the_loans_section(client, db, cast):
     dune = add_book(db, cast['alice'], 'Dune')
     login(client, 'bob')
     r = client.post(f'/loans/{dune}/lend', data=lend_form(borrower=str(cast['dave']), due_at='2099-01-01'))
-    assert r.status_code == 302 and r.headers['Location'].endswith(f'/books/book/{dune}#loans')
+    assert r.status_code == 302 and r.headers['Location'].endswith(f'/books/{dune}#loans')
     assert scalar(db, 'SELECT borrower_id FROM loans WHERE book_id = ?', dune) == cast['dave']
 
-    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    page = client.get(f'/books/{dune}').get_data(as_text=True)
     assert 'data-loan-open' in page and 'Lent to dave' in page and 'data-loan-history' in page
     assert f'/loans/' in page and 'Mark returned' in page
 
@@ -266,7 +266,7 @@ def test_a_friend_of_the_owner_sees_nothing_about_loans(client, db, cast):
     loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray')
     db.commit()
     login(client, 'carol')
-    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    page = client.get(f'/books/{dune}').get_data(as_text=True)
     assert 'id="loans"' not in page and 'Ray' not in page
 
 
@@ -274,20 +274,20 @@ def test_a_borrower_outside_the_owners_circle_sees_the_item(client, db, cast):
     """bob lends alice's book to dave, his friend and not alice's."""
     dune = add_book(db, cast['alice'], 'Dune')
     login(client, 'dave')
-    assert client.get(f'/books/book/{dune}').status_code == 404
+    assert client.get(f'/books/{dune}').status_code == 404
     loans.lend(db, who(db, cast['bob']), book(db, dune), borrower_id=cast['dave'])
     db.commit()
-    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    page = client.get(f'/books/{dune}').get_data(as_text=True)
     assert 'Borrowed from bob' in page and 'Mark returned' not in page and 'lend-panel' not in page
 
     notes_page = client.get('/friends/notifications_page').get_data(as_text=True)
-    assert 'data-notification-item' in notes_page and f'/books/book/{dune}' in notes_page
+    assert 'data-notification-item' in notes_page and f'/books/{dune}' in notes_page
 
 
 def test_lend_panel_offers_the_circle_and_someone_else(client, db, cast):
     dune = add_book(db, cast['bob'], 'Dune')
     login(client, 'bob')
-    page = client.get(f'/books/book/{dune}').get_data(as_text=True)
+    page = client.get(f'/books/{dune}').get_data(as_text=True)
     assert 'id="lend-panel"' in page
     assert f'<option value="{cast["alice"]}">alice</option>' in page
     assert f'<option value="{cast["dave"]}">dave</option>' in page
@@ -311,13 +311,13 @@ def test_grid_badge_and_show_lent_on_your_households_grids(client, db, cast):
     loans.lend(db, who(db, cast['bob']), book(db, dune), borrower_name='Ray')
     db.commit()
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert page.count('data-lent') == 1 and 'title="Lent to Ray"' in page
     assert '<option value="lent"' in page
-    lent_only = client.get('/base/index?show=lent').get_data(as_text=True)
+    lent_only = client.get('/books/?show=lent').get_data(as_text=True)
     assert 'Dune' in lent_only and 'Emma' not in lent_only
     # Infinite scroll's JSON carries it too
-    data = client.get('/base/index?show=lent', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
+    data = client.get('/books/?show=lent', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
     assert [(b['title'], b['lent_to']) for b in data['books']] == [('Dune', 'Ray')]
 
 
@@ -327,7 +327,7 @@ def test_a_lent_item_that_was_removed_is_still_lent_out(client, db, cast):
     db.execute("UPDATE books SET removed_at = '2026-11-01' WHERE id = ?", (dune,))
     db.commit()
     login(client, 'alice')
-    assert 'Dune' in client.get('/base/index?show=lent').get_data(as_text=True)
+    assert 'Dune' in client.get('/books/?show=lent').get_data(as_text=True)
 
 
 def test_a_friends_grid_shows_no_badge_and_ignores_show_lent(client, db, cast):
@@ -338,13 +338,13 @@ def test_a_friends_grid_shows_no_badge_and_ignores_show_lent(client, db, cast):
     loans.lend(db, who(db, cast['alice']), book(db, tape), borrower_name='Ray')
     db.commit()
     login(client, 'carol')
-    for url in ('/base/library/alice', '/videos/user/alice'):
+    for url in ('/books/user/alice', '/videos/user/alice'):
         r = client.get(url)
         page = r.get_data(as_text=True)
         assert r.status_code == 200 and 'data-lent' not in page and 'Ray' not in page, url
         assert '<option value="lent"' not in page, url
         assert client.get(url + '?show=lent').status_code == 200
-    data = client.get('/base/library/alice?show=lent', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
+    data = client.get('/books/user/alice?show=lent', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
     assert [(b['title'], b['lent_to']) for b in data['books']] == [('Dune', None)]
 
 
@@ -355,7 +355,7 @@ def test_collections_has_a_lent_out_row_for_the_household(client, db, cast):
     loans.lend(db, who(db, cast['alice']), book(db, dune), borrower_name='Ray')
     db.commit()
     page = client.get('/collections/collections').get_data(as_text=True)
-    assert 'Lent out' in page and '/base/shared-library?show=lent' in page and 'Ray' in page
+    assert 'Lent out' in page and '/books/shared?show=lent' in page and 'Ray' in page
     assert 'Lent out' not in client.get('/collections/collections?type=video').get_data(as_text=True)
 
 

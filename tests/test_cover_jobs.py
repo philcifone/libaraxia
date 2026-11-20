@@ -146,11 +146,11 @@ def test_resume_carries_on_from_the_cursor(app, client, db, people, fake_lookup)
 
 def test_panel_renders_only_with_a_job(client, db, people, fake_lookup):
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert "data-job='null'" in page
     book_with_isbn(db, people['alice'], '9780000000019')
     start(client)
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert '"status": "running"' in page or '"status":"running"' in page
 
 
@@ -160,7 +160,7 @@ def test_profile_button_starts_a_job_and_redirects(client, db, people, fake_look
     r = client.post('/covers/start', data={'scope': 'own', 'next': '/user/alice'})
     assert r.status_code == 302 and r.headers['Location'].endswith('/user/alice')
     r = client.post('/covers/start', data={'scope': 'own', 'next': '//evil.example'})
-    assert r.headers['Location'].endswith('/base/index') or r.headers['Location'].endswith('/base/')
+    assert r.headers['Location'].endswith('/books/') or r.headers['Location'].endswith('/base/')
 
 
 def test_a_cover_whose_file_is_gone_is_fetched_again(app, client, db, people, fake_lookup, static_root):

@@ -18,7 +18,7 @@ def test_match_needs_every_word_somewhere():
     assert match('  --  ', ['title']) == ('1', [])     # nothing searchable: everything
 
 
-def _titles(client, term, path='/base/shared-library'):
+def _titles(client, term, path='/books/shared'):
     page = client.get(path, query_string={'search_term': term}).get_data(as_text=True)
     return page
 
@@ -68,11 +68,11 @@ def test_list_view_columns_and_infinite_scroll_json(client, db, people):
     db.execute("INSERT INTO read_data (user_id, book_id, rating) VALUES (?, ?, 4)", (alice, book))
     db.commit()
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'data-view="grid"' in page and 'class="book-meta"' in page
     assert '<span class="book-year">1965</span>' in page
     assert '<span class="book-status" data-status="read">Read</span>' in page and 'Rated 4 of 5' in page
-    data = client.get('/base/index?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
+    data = client.get('/books/?page=1', headers={'X-Requested-With': 'XMLHttpRequest'}).get_json()
     card = next(b for b in data['books'] if b['title'] == 'Dune')
     assert (card['year'], card['status'], card['status_key'], card['rating']) == (1965, 'Read', 'read', 4)
     css = pathlib.Path('static/styles.css').read_text()
@@ -93,13 +93,13 @@ def test_each_grid_searches_exactly_its_own_shelf(client, db, people):
     add_book(db, alice, title='Dune', author='Frank Herbert')
     add_book(db, bob, title='Dune Messiah', author='Frank Herbert')
     login(client, 'alice')
-    mine = client.get('/base/index?search_term=dune').get_data(as_text=True)
-    household = client.get('/base/shared-library?search_term=dune').get_data(as_text=True)
+    mine = client.get('/books/?search_term=dune').get_data(as_text=True)
+    household = client.get('/books/shared?search_term=dune').get_data(as_text=True)
     assert '>Dune<' in mine and 'Dune Messiah' not in mine
     assert 'Dune Messiah' in household
     # The box searches the page it's on, and says whose books those are
-    assert 'action="/base/index"' in mine and 'aria-label="Search your books"' in mine
-    plain = client.get('/base/shared-library').get_data(as_text=True)
+    assert 'action="/books/"' in mine and 'aria-label="Search your books"' in mine
+    plain = client.get('/books/shared').get_data(as_text=True)
     assert "Search the household&#39;s 2 books" in plain
 
 
@@ -113,5 +113,5 @@ def test_own_grid_search_hints_off_the_shelf_and_the_wishlist(client, db, people
     db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (alice, wish))
     db.commit()
     login(client, 'alice')
-    page = client.get('/base/index?search_term=dune').get_data(as_text=True)
-    assert f'/books/book/{gone}' in page and f'/books/book/{wish}' in page
+    page = client.get('/books/?search_term=dune').get_data(as_text=True)
+    assert f'/books/{gone}' in page and f'/books/{wish}' in page

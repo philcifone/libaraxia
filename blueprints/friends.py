@@ -5,6 +5,7 @@ from utils.rate_limiting import limiter
 from utils.image_utils import upload_exists
 from utils.notifications import unread_counts
 import sqlite3
+from utils.landing import back
 
 friends_blueprint = Blueprint('friends', __name__, url_prefix='/friends')
 
@@ -140,7 +141,7 @@ def accept_request(request_id):
     except sqlite3.IntegrityError:
         flash('Error accepting friend request!', 'danger')
 
-    return redirect(request.referrer or url_for('base.index'))
+    return back(url_for('friends.index'))
 
 
 @friends_blueprint.route('/decline/<int:request_id>', methods=['POST'])
@@ -169,7 +170,7 @@ def decline_request(request_id):
     flash('Friend request declined.', 'info')
 
 
-    return redirect(request.referrer or url_for('base.index'))
+    return back(url_for('friends.index'))
 
 
 @friends_blueprint.route('/remove/<int:friend_id>', methods=['POST'])
@@ -202,7 +203,7 @@ def remove_friend(friend_id):
         flash('Friendship not found!', 'danger')
 
 
-    return redirect(request.referrer or url_for('base.index'))
+    return back(url_for('friends.index'))
 
 
 @friends_blueprint.route('/requests', methods=['GET'])

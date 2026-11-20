@@ -153,7 +153,7 @@ def test_detail_page_shows_record_fields(client, db, people):
 def test_other_urls_redirect_to_the_record_page(client, db, people):
     record = add_record(db, people['alice'])
     login(client, 'alice')
-    for url in (f'/books/book/{record}', f'/videos/{record}'):
+    for url in (f'/books/{record}', f'/videos/{record}'):
         r = client.get(url)
         assert r.status_code == 302 and r.headers['Location'].endswith(f'/records/{record}'), url
     assert client.get(f'/books/edit/{record}').headers['Location'].endswith(f'/records/edit/{record}')
@@ -273,8 +273,8 @@ def test_records_stay_out_of_the_library_and_movies(client, db, people):
     add_book(db, people['alice'], 'Dune')
     add_record(db, people['alice'], title='Hejira')
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/base/shared-library?search_term=e',
-                '/base/library/alice', '/videos/', '/videos/shared'):
+    for url in ('/books/', '/books/shared', '/books/shared?search_term=e',
+                '/books/user/alice', '/videos/', '/videos/shared'):
         assert 'Hejira' not in client.get(url).get_data(as_text=True), url
     login(client, 'carol')
     assert '1 book' in client.get('/friends/').get_data(as_text=True)
@@ -318,7 +318,7 @@ def test_account_removal_counts_records(app, db, people):
 
 def test_sidebar_has_vinyls(client, people):
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'href="/records/"' in page and 'Music' in page
 
 

@@ -87,7 +87,7 @@ def test_every_format_has_a_physical_description():
 def test_the_item_page_carries_the_card(client, db, people):
     book = add_book(db, people['alice'], title='Dune', author='Frank Herbert')
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-catalog-card' in page
     assert 'Herbert, Frank' in page
     assert f'{book:06d}' in page
@@ -105,7 +105,7 @@ def test_the_reading_info_is_a_book_card_with_stamped_reads(client, db, people):
     book = add_book(db, people['alice'], title='Dune', author='Frank Herbert')
     add_review(db, people['alice'], book)              # read on 2024-01-01, reviewed
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'class="library-card book-card' in page
     # The ledger: the read came back on 2024-01-01 (no start date, so one line)
     ledger = page.split('<ol class="ledger">')[1].split('</ol>')[0]
@@ -127,7 +127,7 @@ def test_the_shelf_cabinet_puts_filters_in_the_bottom_row(client, db, people):
     beside the search box."""
     add_book(db, people['alice'], title='Dune')
     login(client, 'alice')
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert page.index('id="filter-toggle"') < page.index('class="view-bar')
     assert 'data-idle="Select"' in page
     # The open panel drops from the search row (z-30) over the view bar,
@@ -137,7 +137,7 @@ def test_the_shelf_cabinet_puts_filters_in_the_bottom_row(client, db, people):
 
     db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (people['alice'],))
     db.commit()
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert page.count('id="filter-toggle"') == 1 and page.count('id="filter-panel"') == 1
     assert page.index('class="view-bar') < page.index('id="filter-toggle"')
     assert 'data-idle="Batch"' in page

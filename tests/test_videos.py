@@ -193,10 +193,10 @@ def test_detail_page_shows_video_fields(client, db, people):
 def test_book_url_redirects_to_video_page(client, db, people):
     video = add_video(db, people['alice'])
     login(client, 'alice')
-    r = client.get(f'/books/book/{video}')
+    r = client.get(f'/books/{video}')
     assert r.status_code == 302 and r.headers['Location'].endswith(f'/videos/{video}')
     book = add_book(db, people['alice'], 'Dune')
-    assert client.get(f'/videos/{book}').headers['Location'].endswith(f'/books/book/{book}')
+    assert client.get(f'/videos/{book}').headers['Location'].endswith(f'/books/{book}')
 
 
 def test_grid_search_and_filters(client, db, people):
@@ -310,7 +310,7 @@ def test_filter_options_per_section(db, people):
 
 def test_add_button_menus(client, db, people):
     login(client, 'alice')
-    library = client.get('/base/index').get_data(as_text=True)
+    library = client.get('/books/').get_data(as_text=True)
     assert '>Library</a>' in library and '>Wishlist</a>' in library
     movies = client.get('/videos/').get_data(as_text=True)
     assert 'href="/videos/add?format=VHS"' in movies and '>Cartridge</a>' in movies
@@ -361,7 +361,7 @@ def test_statuses_are_checked_against_the_type(client, db, people):
     client.post('/collections/collections/status/add', data={'id': video, 'status': 'read'},
                 headers={'Referer': '/videos/'})
     client.post('/collections/collections/status/add', data={'id': book, 'status': 'watched'},
-                headers={'Referer': '/base/index'})
+                headers={'Referer': '/books/'})
     assert scalar(db, 'SELECT COUNT(*) FROM collections') == 0
 
 
@@ -372,7 +372,7 @@ def test_untracked_clears_the_status(client, db, people):
     db.commit()
     login(client, 'alice')
     client.post('/collections/collections/status/add', data={'id': book, 'status': 'untracked'},
-                headers={'Referer': '/base/index'})
+                headers={'Referer': '/books/'})
     assert scalar(db, 'SELECT COUNT(*) FROM collections') == 0
 
 
@@ -405,8 +405,8 @@ def test_videos_stay_out_of_the_library(client, db, people):
     add_book(db, people['alice'], 'Dune')
     add_video(db, people['alice'], title='Jaws')
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/base/shared-library?search_term=a',
-                '/base/library/alice'):
+    for url in ('/books/', '/books/shared', '/books/shared?search_term=a',
+                '/books/user/alice'):
         page = client.get(url).get_data(as_text=True)
         assert 'Dune' in page and 'Jaws' not in page, url
     login(client, 'carol')
@@ -800,7 +800,7 @@ def test_edit_book_saves_isbn_and_genre_is_optional(client, db, people):
     assert not re.search(r'id="genre"[^>]*required', page)
     r = client.post(f'/books/edit/{book}', data={'title': 'Dune', 'author': 'Frank Herbert',
                                                  'isbn': '9780441013593', 'genre': ''})
-    assert r.headers['Location'].endswith(f'/books/book/{book}')
+    assert r.headers['Location'].endswith(f'/books/{book}')
     assert scalar(db, 'SELECT isbn FROM books WHERE id = ?', book) == '9780441013593'
 
 
@@ -854,4 +854,4 @@ def test_rack_prints_a_label_on_every_case(client, db, people, static_root):
     page = client.get('/videos/').get_data(as_text=True)
     assert page.count('rack-print') == 1
     assert re.search(r'rack-print[^>]*>\s*<span class="no-cover-title">Jaws<', page)
-    assert 'rack-print' not in client.get('/base/index').get_data(as_text=True)
+    assert 'rack-print' not in client.get('/books/').get_data(as_text=True)

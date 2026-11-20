@@ -390,7 +390,7 @@ def test_bulk_menu_offers_kind_on_movies_and_tv_only(client, db, people):
     add_video(db, people['alice'], 'Heat')
     login(client, 'alice')
     assert 'data-action="kind"' in client.get('/videos/').get_data(as_text=True)
-    assert 'data-action="kind"' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-action="kind"' not in client.get('/books/').get_data(as_text=True)
     assert 'data-action="kind"' not in client.get('/records/').get_data(as_text=True)
 
 

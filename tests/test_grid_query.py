@@ -20,7 +20,7 @@ from utils.database import get_db_connection
 
 # (section, URL of its own grid, URL of its household grid, view keys)
 SECTIONS = {
-    media.BOOK: ('/base/index', '/base/shared-library', 'book:mine', 'book:household'),
+    media.BOOK: ('/books/', '/books/shared', 'book:mine', 'book:household'),
     media.VIDEO: ('/videos/', '/videos/shared', 'video:mine', 'video:household'),
     media.RECORD: ('/records/', '/records/shared', 'record:mine', 'record:household'),
 }
@@ -207,7 +207,7 @@ def test_books_grid_order(client, db, people):
     seed(db, people, media.BOOK)
     login(client, 'alice')
     for query, expected in BOOKS_PINNED.items():
-        got = titles_of(db, rendered_ids(client, '/base/index?' + query))
+        got = titles_of(db, rendered_ids(client, '/books/?' + query))
         assert got == expected, query
 
 
@@ -303,8 +303,8 @@ def test_old_search_links_go_to_the_grid(client, db, people):
     login(client, 'alice')                                     # alice and bob share a household
     r = client.get('/books/search?search_term=dune&genre=Fiction&tags[]=sf')
     assert r.status_code == 302
-    assert r.headers['Location'].startswith('/base/shared-library?')
+    assert r.headers['Location'].startswith('/books/shared?')
     assert 'search_term=dune' in r.headers['Location'] and 'genre=Fiction' in r.headers['Location']
     assert 'tags%5B%5D=sf' in r.headers['Location']
     login(client, 'carol')                                     # no household
-    assert client.get('/books/search?search_term=dune').headers['Location'].startswith('/base/index?')
+    assert client.get('/books/search?search_term=dune').headers['Location'].startswith('/books/?')

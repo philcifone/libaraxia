@@ -138,7 +138,7 @@ def test_member_row_on_every_household_page(client, db, people):
     add_record(db, alice, 'Alices Album'); add_record(db, bob, 'Bobs Album')
     add_video(db, carol, 'Carols Film')            # a friend, not household
     login(client, 'alice')
-    for url, mine, bobs, daves in (('/base/shared-library', 'Alices Book', 'Bobs Book', 'Daves Book'),
+    for url, mine, bobs, daves in (('/books/shared', 'Alices Book', 'Bobs Book', 'Daves Book'),
                                    ('/videos/shared', 'Alices Film', 'Bobs Film', 'Daves Film'),
                                    ('/records/shared', 'Alices Album', 'Bobs Album', 'Daves Album')):
         html = client.get(url).get_data(as_text=True)
@@ -169,6 +169,6 @@ def test_member_row_without_a_household(client, db, people):
 
 def test_member_row_label_per_section(client, db, people):
     login(client, 'alice')
-    for url, word in (('/base/shared-library', 'books'), ('/videos/shared', 'movies and TV'), ('/records/shared', 'music')):
+    for url, word in (('/books/shared', 'books'), ('/videos/shared', 'movies and TV'), ('/records/shared', 'music')):
         html = client.get(url).get_data(as_text=True)
         assert f'Your shared {word} with</p>' in html

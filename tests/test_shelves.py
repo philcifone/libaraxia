@@ -154,7 +154,7 @@ def test_house_icon_toggles_mine_and_household(client, db, people):
     to the other.
     A friend's shelves have none."""
     login(client, 'alice')
-    for url, other, on in (('/base/index', '/base/shared-library', False),
+    for url, other, on in (('/books/', '/books/shared', False),
                            ('/videos/shared', '/videos/', True)):
         html = client.get(url).get_data(as_text=True)
         heading = html[html.index('page-heading'):]
@@ -164,5 +164,5 @@ def test_house_icon_toggles_mine_and_household(client, db, people):
         assert ('heading-toggle text-accent shrink-0 is-on' in heading) == on
         # One visible title, "Shelves"; screen readers hear "Household" too
         assert ('<span class="sr-only">Household </span>Shelves' in heading) == on
-    friend = client.get('/base/library/carol').get_data(as_text=True)
+    friend = client.get('/books/user/carol').get_data(as_text=True)
     assert 'heading-toggle' not in friend

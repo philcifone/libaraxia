@@ -33,7 +33,7 @@ def test_scripts_do_not_generate_inline_handlers():
 
 def test_pages_send_a_strict_csp(client, people):
     login(client, 'alice')
-    for url in ['/base/index', '/auth/login']:
+    for url in ['/books/', '/auth/login']:
         policy = client.get(url).headers['Content-Security-Policy']
         directives = dict(d.strip().split(' ', 1) for d in policy.split(';'))
         assert directives['script-src'] == "'self'"
@@ -85,6 +85,6 @@ def test_vendored_scripts_match_their_listed_hash():
 def test_csp_starts_no_blob_workers(client, people):
     """The scanner decodes on the main thread, so workers stay 'self' only."""
     login(client, 'alice')
-    csp = client.get('/base/index').headers['Content-Security-Policy']
+    csp = client.get('/books/').headers['Content-Security-Policy']
     directives = dict(d.strip().split(' ', 1) for d in csp.split(';'))
     assert directives['worker-src'] == "'self'"

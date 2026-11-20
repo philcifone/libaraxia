@@ -215,11 +215,11 @@ def test_item_page_more_photos_for_a_friend(client, db, people, static_root):
     client.post(f'/photos/photo/{photo}/caption', data={'caption': '<b>Scuff</b> on side B'})
     client.get('/auth/logout')
     login(client, 'carol')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    html = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-click="openGallery"' in html and 'More photos (2)' in html
     assert html.count('data-slide') == 2
     assert '&lt;b&gt;Scuff&lt;/b&gt; on side B' in html and '<b>Scuff' not in html
-    assert 'openGallery' not in client.get(f'/books/book/{bare}').get_data(as_text=True)
+    assert 'openGallery' not in client.get(f'/books/{bare}').get_data(as_text=True)
 
 
 def real_cover(static_root, name='c.jpg', size=(400, 600)):
@@ -246,13 +246,13 @@ def test_3d_only_with_every_photo_its_shape_needs(client, db, people, static_roo
     still missing. The box's proportions come from the photos."""
     book = add_book(db, people['bob'], cover=real_cover(static_root))
     login(client, 'bob')
-    assert 'item-3d' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'item-3d' not in client.get(f'/books/{book}').get_data(as_text=True)
     upload(client, book, 'back', jpeg_bytes((400, 600)))
-    assert 'item-3d' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'item-3d' not in client.get(f'/books/{book}').get_data(as_text=True)
     edit = client.get(f'/books/edit/{book}').get_data(as_text=True)
     assert 'data-3d-status="needs"' in edit and 'still needs: spine.' in edit
     upload(client, book, 'spine', jpeg_bytes((60, 600)))
-    box = box_of(client.get(f'/books/book/{book}').get_data(as_text=True))
+    box = box_of(client.get(f'/books/{book}').get_data(as_text=True))
     assert 'item3d-book' in box and box.count('/static/uploads/photos/') == 2
     assert '--a: 0.6667; --dr: 0.1;' in box
     assert 'item3d-spine-print' not in box
@@ -404,7 +404,7 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     half = add_book(db, bob, cover=real_cover(static_root, 'b.jpg'))
     gone = add_book(db, bob, cover=real_cover(static_root, 'c2.jpg'))
     login(client, 'bob')
-    assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-heading-books' not in client.get('/books/').get_data(as_text=True)
 
     for book in (ready, gone):
         upload(client, book, 'back', jpeg_bytes((400, 600)))
@@ -412,7 +412,7 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     upload(client, half, 'back', jpeg_bytes((400, 600)))
     db.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP WHERE id = ?", (gone,))
     db.commit()
-    html = client.get('/base/index').get_data(as_text=True)
+    html = client.get('/books/').get_data(as_text=True)
     assert heading_books_of(html) == ['/static/uploads/a.jpg']
     start = html.index('<div class="heading-books')
     group = html[start:html.index('<h1', start)]
@@ -420,18 +420,18 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     assert 'heading-books-right' not in group      # one book: one side
 
     upload(client, half, 'spine', jpeg_bytes((60, 600)))
-    first = heading_books_of(client.get('/base/index').get_data(as_text=True))
+    first = heading_books_of(client.get('/books/').get_data(as_text=True))
     assert sorted(first) == ['/static/uploads/a.jpg', '/static/uploads/b.jpg']
-    assert heading_books_of(client.get('/base/index').get_data(as_text=True)) == first
+    assert heading_books_of(client.get('/books/').get_data(as_text=True)) == first
 
     # The household's Shelves keep the same books of yours standing, so the
     # house toggle doesn't empty the ledge (Phil, 2026-11-16); a friend's
     # Shelves have none, nor any style without a shelf
-    assert heading_books_of(client.get('/base/shared-library').get_data(as_text=True)) == first
-    assert 'data-heading-books' not in client.get('/base/library/bob').get_data(as_text=True)
+    assert heading_books_of(client.get('/books/shared').get_data(as_text=True)) == first
+    assert 'data-heading-books' not in client.get('/books/user/bob').get_data(as_text=True)
     db.execute("UPDATE users SET theme_style = 'house' WHERE id = ?", (bob,))
     db.commit()
-    assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-heading-books' not in client.get('/books/').get_data(as_text=True)
 
 
 def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
@@ -461,7 +461,7 @@ def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
     db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (bob,))
     db.commit()
     login(client, 'bob')
-    html = client.get('/base/index').get_data(as_text=True)
+    html = client.get('/books/').get_data(as_text=True)
     left = html[html.index('heading-books-left'):html.index('heading-books-right')]
     right = html[html.index('heading-books-right'):html.index('<h1', html.index('heading-books-right'))]
     assert left.count('class="heading-book"') == right.count('class="heading-book"') == 5

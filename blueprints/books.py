@@ -619,6 +619,13 @@ def _book_tools_context(conn, book):
     }
 
 @books_blueprint.route("/book/<int:id>")
+def old_show_book(id):
+    """Where a book's page was before 16.0g step 7: a 301 to /books/<id>."""
+    from blueprints.base import moved
+    return moved('books.show_book', id=id)
+
+
+@books_blueprint.route("/<int:id>")
 @login_required
 def show_book(id):
     conn = get_db()
@@ -855,7 +862,7 @@ def remove_book(id):
     reviews, ratings and reading history. Owner or admin; reversible.
     """
     conn = get_db()
-    book = conn.execute("SELECT title, added_by FROM books WHERE id = ?", (id,)).fetchone()
+    book = conn.execute("SELECT title, added_by, media_type FROM books WHERE id = ?", (id,)).fetchone()
     if not book or not (current_user.is_admin or book['added_by'] == current_user.id):
         flash("You don't have permission to remove this book.", "error")
         return redirect(url_for('base.index'))
@@ -863,7 +870,7 @@ def remove_book(id):
     conn.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP, removed_note = ? WHERE id = ?", (note, id))
     conn.commit()
     flash(f"'{book['title']}' removed. Reviews and history are kept.", "success")
-    return redirect(url_for('books.show_book', id=id))
+    return redirect(url_for(media.item_endpoint(book['media_type']), id=id))     # one hop, any type
 
 
 @books_blueprint.route("/restore/<int:id>", methods=["POST"])
@@ -871,14 +878,14 @@ def remove_book(id):
 def restore_book(id):
     """Undo a removal: the book is back on the shelf."""
     conn = get_db()
-    book = conn.execute("SELECT title, added_by FROM books WHERE id = ?", (id,)).fetchone()
+    book = conn.execute("SELECT title, added_by, media_type FROM books WHERE id = ?", (id,)).fetchone()
     if not book or not (current_user.is_admin or book['added_by'] == current_user.id):
         flash("You don't have permission to restore this book.", "error")
         return redirect(url_for('base.index'))
     conn.execute("UPDATE books SET removed_at = NULL, removed_note = NULL WHERE id = ?", (id,))
     conn.commit()
     flash(f"'{book['title']}' is back on the shelf.", "success")
-    return redirect(url_for('books.show_book', id=id))
+    return redirect(url_for(media.item_endpoint(book['media_type']), id=id))
 
 
 @books_blueprint.route("/ownership/<int:id>", methods=["POST"])
@@ -935,7 +942,7 @@ def delete_book(id):
     if others:
         flash("Can't delete this book: " + ", ".join(others) +
               " has reviews or reading history on it, and deleting would erase them.", "error")
-        return redirect(url_for('books.show_book', id=id))
+        return redirect(url_for(media.item_endpoint(book['media_type']), id=id))
 
     conn.execute("DELETE FROM books WHERE id = ?", (id,))
     conn.commit()
@@ -972,7 +979,7 @@ def transfer_book(book_id):
 
     if not new_owner_id:
         flash("Please select a user to transfer the book to", "error")
-        return redirect(request.referrer or url_for('base.index'))
+        return _to_item(book_id)
 
     conn = get_db()
     try:
@@ -989,12 +996,12 @@ def transfer_book(book_id):
         # Only the book's owner (or an admin) can give it away
         if book['added_by'] != current_user.id and not current_user.is_admin:
             flash("You don't have permission to transfer this book", "error")
-            return redirect(request.referrer or url_for('base.index'))
+            return _to_item(book_id)
 
         # Owners can only give books within their household; admins to anyone
         if not current_user.is_admin and not shares_library_with(current_user.id, new_owner_id):
             flash("You can only transfer books to users in your library group", "error")
-            return redirect(request.referrer or url_for('base.index'))
+            return _to_item(book_id)
 
         # Get new owner's username for flash message
         new_owner = conn.execute(
@@ -1004,7 +1011,7 @@ def transfer_book(book_id):
 
         if not new_owner:
             flash("Invalid user selected", "error")
-            return redirect(request.referrer or url_for('base.index'))
+            return _to_item(book_id)
 
         # Transfer the book
         conn.execute(
@@ -1018,8 +1025,18 @@ def transfer_book(book_id):
             f"User {current_user.username} transferred book '{book['title']}' to {new_owner['username']}"
         )
 
-    except Exception as e:
-        current_app.logger.error(f"Error transferring book: {str(e)}")
+    except Exception:
+        current_app.logger.exception("Error transferring book")
         flash("Error transferring book", "error")
 
-    return redirect(request.referrer or url_for('base.index'))
+    return _to_item(book_id)
+
+
+def _to_item(book_id):
+    """An item's own page (its type's route), or the Books shelf if it's
+    gone: where the Book tools forms land (16.0g step 7), rather than
+    wherever the browser came from."""
+    row = get_db().execute('SELECT media_type FROM books WHERE id = ?', (book_id,)).fetchone()
+    if not row:
+        return redirect(url_for('base.index'))
+    return redirect(url_for(media.item_endpoint(row['media_type']), id=book_id))

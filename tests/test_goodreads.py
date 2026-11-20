@@ -216,7 +216,7 @@ def test_read_count_becomes_sessions(client, db, people):
     assert scalar(db, 'SELECT COUNT(*) FROM reading_sessions WHERE book_id = ?', undated) == 1
 
     # an undated read shows as "Date unknown", not "Currently Reading"
-    page = client.get(f'/books/book/{twice}').get_data(as_text=True)
+    page = client.get(f'/books/{twice}').get_data(as_text=True)
     assert 'Date unknown' in page and 'Currently Reading</span>' not in page
 
 
@@ -301,7 +301,7 @@ def test_wishlist_add_refuses_a_book_in_your_library(client, db, people):
     db.commit()
     login(client, 'alice')
     r = client.post('/wishlist/add', data={'title': 'Mine', 'author': 'X', 'isbn': '9780143129554'})
-    assert r.status_code == 302 and f'/books/book/{mine}' in r.headers['Location']
+    assert r.status_code == 302 and f'/books/{mine}' in r.headers['Location']
     assert scalar(db, 'SELECT COUNT(*) FROM wishlist') == 0
     assert scalar(db, 'SELECT COUNT(*) FROM library_books WHERE id = ?', mine) == 1
 
@@ -312,7 +312,7 @@ def test_review_without_rating_can_be_saved_and_shown(client, db, people):
     r = client.post(f'/read/rate_review/{book}', data={'comment': 'No stars, just thoughts'})
     assert r.status_code == 302
     assert scalar(db, 'SELECT rating FROM read_data WHERE book_id = ?', book) is None
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'No stars, just thoughts' in page and 'None / 5' not in page
     # neither a rating nor a review: refused
     other = add_book(db, people['alice'], 'Empty', 'X')
@@ -511,14 +511,14 @@ def test_from_goodreads_filter_shows_what_your_imports_touched(client, db, peopl
     run(client, 'alice', row('Already Mine', my_rating='4'), row('Read Elsewhere'),
         row('Mine After All'), choices=[([4], 'library')])
     # Owned and on the shelf: the default Show
-    assert grid_titles(client, '/base/index?from=goodreads') == ['Already Mine', 'Mine After All']
+    assert grid_titles(client, '/books/?from=goodreads') == ['Already Mine', 'Mine After All']
     # Read Elsewhere came in unshelved: under Show: Unshelved / Everything
-    assert grid_titles(client, '/base/index?from=goodreads&show=not_owned') == ['Read Elsewhere']
-    assert grid_titles(client, '/base/index?from=goodreads&show=all') == \
+    assert grid_titles(client, '/books/?from=goodreads&show=not_owned') == ['Read Elsewhere']
+    assert grid_titles(client, '/books/?from=goodreads&show=all') == \
            ['Already Mine', 'Mine After All', 'Read Elsewhere']
-    assert 'Never Imported' in grid_titles(client, '/base/index')
+    assert 'Never Imported' in grid_titles(client, '/books/')
     # It counts as a filter (the match count, not "Search your N books")
-    page = client.get('/base/index?from=goodreads').get_data(as_text=True)
+    page = client.get('/books/?from=goodreads').get_data(as_text=True)
     assert '2 books match' in page and 'id="from_goodreads"' in page
 
     # Bulk edit's "select all in this view" names the same books
@@ -538,15 +538,15 @@ def test_from_goodreads_is_only_ever_your_own_imports(client, db, people, monkey
     client.post('/auth/logout')
     # bob shares alice's shelf but has imported nothing
     login(client, 'bob')
-    assert grid_titles(client, '/base/shared-library?from=goodreads') == []
-    assert 'Shared Shelf' in grid_titles(client, '/base/shared-library')
+    assert grid_titles(client, '/books/shared?from=goodreads') == []
+    assert 'Shared Shelf' in grid_titles(client, '/books/shared')
     client.post('/auth/logout')
 
     # An undone import no longer counts
     report = run(client, 'alice', row('Undone Later'))
-    assert 'Undone Later' in grid_titles(client, '/base/index?from=goodreads&show=all')
+    assert 'Undone Later' in grid_titles(client, '/books/?from=goodreads&show=all')
     client.post(f"/bulk/{report['edit_id']}/undo", json={'banner': False})
-    assert grid_titles(client, '/base/index?from=goodreads&show=all') == ['Shared Shelf']
+    assert grid_titles(client, '/books/?from=goodreads&show=all') == ['Shared Shelf']
     assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', shared) == 1
 
 
@@ -565,14 +565,14 @@ def test_book_page_says_what_your_import_did_and_only_to_you(client, db, people,
     from datetime import datetime
     day = datetime.strptime(day, '%Y-%m-%d').strftime('%-d %b %Y')
 
-    page = client.get(f'/books/book/{filled}').get_data(as_text=True)
+    page = client.get(f'/books/{filled}').get_data(as_text=True)
     assert f'From your Goodreads import, {day}: status, rating, review, 2 reading sessions.' in page
-    page = client.get(f'/books/book/{matched}').get_data(as_text=True)
+    page = client.get(f'/books/{matched}').get_data(as_text=True)
     assert f'Matched by your Goodreads import, {day}; nothing added.' in page
     client.post('/auth/logout')
     for other in ('bob', 'carol'):              # household, friend
         login(client, other)
-        page = client.get(f'/books/book/{filled}')
+        page = client.get(f'/books/{filled}')
         assert page.status_code == 200 and 'Goodreads import' not in page.get_data(as_text=True)
         client.post('/auth/logout')
 
