@@ -384,7 +384,7 @@ def test_find_a_better_cover_streams_progress_and_covers(client, db, people, mon
     # Each URL is downloaded as its own candidate list (a Google link would
     # become two sizes, google_cover_candidates; these aren't Google's)
     monkeypatch.setattr(books_bp, 'save_best_cover',
-                        lambda urls: None if urls[0].endswith('2.jpg') else 'uploads/' + urls[0].rsplit('/', 1)[1])
+                        lambda urls, staged=False: None if urls[0].endswith('2.jpg') else 'uploads/' + urls[0].rsplit('/', 1)[1])
     login(client, 'alice')
     r = client.post('/books/fetch_cover', json={'title': 'Dune', 'author': 'Herbert'})
     assert r.mimetype == 'application/x-ndjson'
@@ -506,7 +506,7 @@ def test_picking_a_search_result_tries_large_google_then_open_library(client, db
     ISBN, and saves the best (save_best_cover keeps the largest)."""
     import blueprints.books as books_bp
     tried = []
-    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls: tried.extend(urls) or 'uploads/best.jpg')
+    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls, staged=False: tried.extend(urls) or 'uploads/best.jpg')
     login(client, 'alice')
     r = client.post('/books/select_search_result', json={'bookData': {
         'title': 'Atomic Habits', 'isbn': '9780735211292',
@@ -527,7 +527,7 @@ def test_find_a_better_cover_for_movies_and_albums(client, db, people, monkeypat
         asked.append((media_type, kw))
         return [('Discogs', lambda: [('https://d.test/blue.jpg', 'Discogs: LP, US, 1971')])]
     monkeypatch.setattr(media_covers, 'cover_search_steps', steps)
-    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls: 'uploads/blue.jpg')
+    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls, staged=False: 'uploads/blue.jpg')
     login(client, 'alice')
     r = client.post('/books/fetch_cover', json={'type': 'record', 'title': 'Blue', 'author': 'Joni Mitchell',
                                                 'barcode': '0012345678905', 'year': '1971', 'format': 'LP'})

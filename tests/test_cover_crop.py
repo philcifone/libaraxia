@@ -473,7 +473,7 @@ def test_crop_source_naming_another_cover_is_refused_and_not_deleted(client, app
 
 def test_crop_source_may_be_a_fetched_cover(client, app, db, people, made):
     old = put_cover(app)
-    fetched = track(app, made, put_cover(app, size=(200, 300)))
+    fetched = track(app, made, put_cover(app, size=(200, 300), subdir='staged/'))    # what a lookup saves (16.0g)
     book = add_book(db, people['bob'], cover=old)
     login(client, 'bob')
     client.post(f'/books/edit/{book}', data={**BOOK, 'existing_cover_url': fetched,
@@ -481,7 +481,7 @@ def test_crop_source_may_be_a_fetched_cover(client, app, db, people, made):
     new = track(app, made, scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book))
     assert new not in (old, fetched) and exists(app, new)
     assert not exists(app, old)
-    assert exists(app, fetched)              # not staged: left for the orphan cleanup
+    assert exists(app, fetched)              # unused now: left for the day's sweep
 
 
 def test_non_owner_cannot_crop_someone_elses_book(client, app, db, people, made):
@@ -627,3 +627,41 @@ def test_crop_tool_opens_in_perspective(client, db, people):
     assert modes.index('data-crop-mode="quad" aria-pressed="true"') < modes.index('data-crop-mode="rect" aria-pressed="false"')
     js = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'cover_crop.js')).read()
     assert "const DEFAULT_MODE = 'quad';" in js and "mode = 'rect';" not in js
+
+
+# --- fetched covers are staged (16.0g step 8) --------------------------------
+
+def test_fetched_covers_are_staged_swept_and_never_orphans(app, db, static_root):
+    import time
+    from utils import book_utils
+    with app.test_request_context():
+        path = book_utils.save_cover_image(Image.new('RGB', (300, 450), 'navy'), staged=True)
+        assert book_utils.is_staged_cover(path) and (static_root / path).exists()
+        old = book_utils.save_cover_image(Image.new('RGB', (300, 450), 'red'), staged=True)
+        a_day_ago = time.time() - book_utils.STAGED_COVER_MAX_AGE - 60
+        os.utime(static_root / old, (a_day_ago, a_day_ago))
+        book_utils.sweep_staged_covers()
+        assert (static_root / path).exists() and not (static_root / old).exists()
+        # A right-looking path outside staged/ isn't staged
+        assert not book_utils.is_staged_cover('uploads/' + path.rsplit('/', 1)[1])
+        assert not book_utils.is_staged_cover('uploads/staged/../cover_x.jpg')
+
+
+def test_an_expired_staged_cover_saves_the_item_without_it(client, db, people, static_root):
+    login(client, 'bob')
+    gone = 'uploads/staged/' + 'c' * 22 + '.jpg'
+    r = client.post('/books/add', data={**BOOK, 'submit_book': '1', 'existing_cover_url': gone},
+                    follow_redirects=True)
+    assert 'The cover you picked expired' in r.get_data(as_text=True)
+    assert scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Piranesi'") is None
+
+
+def test_a_bad_upload_on_edit_keeps_the_cover(client, app, db, people, made):
+    """It used to delete the file first and keep the path: a dead cover."""
+    from io import BytesIO
+    old = track(app, made, put_cover(app))
+    book = add_book(db, people['bob'], cover=old)
+    login(client, 'bob')
+    client.post(f'/books/edit/{book}', data={**BOOK, 'image': (BytesIO(b'x'), 'notes.txt')},
+                content_type='multipart/form-data')
+    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) == old and exists(app, old)

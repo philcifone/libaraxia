@@ -445,7 +445,7 @@ def fake_mb(monkeypatch):
             return FakeResponse(200, json.dumps(RELEASE).encode())
         return FakeResponse(404)
 
-    def fake_save(urls):
+    def fake_save(urls, staged=False):
         covers.extend(urls)
         return 'uploads/cover_vinyl.jpg'
     monkeypatch.setattr(music_lookup.book_utils, '_get_public', fake_get_public)

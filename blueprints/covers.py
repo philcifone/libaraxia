@@ -11,7 +11,8 @@ from flask_login import current_user, login_required
 
 from models import can_view_book
 from utils import cover_crop, cover_jobs
-from utils.image_utils import delete_image_file, is_safe_upload_path
+from utils.image_utils import delete_image_file
+from utils.book_utils import is_staged_cover
 from utils.database import get_db
 from utils.rate_limiting import limiter
 
@@ -159,7 +160,7 @@ def crop_save(book_id):
     try:
         new_path = cover_crop.apply_form_crop(
             {'cover_crop': json.dumps(data.get('geometry')), 'crop_source': source or ''},
-            [old, fetched if isinstance(fetched, str) and is_safe_upload_path(fetched) else None])
+            [old, fetched if is_staged_cover(fetched) else None])
     except ValueError as err:
         return _crop_error(str(err))
     except Exception:

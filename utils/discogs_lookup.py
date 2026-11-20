@@ -435,5 +435,5 @@ def lookup(release_id):
     details, covers = release_details(release_id)
     if not details:
         return {'found': False, 'details': {}, 'sources': [], 'cover': None}
-    cover = book_utils.save_best_cover(covers)
+    cover = book_utils.save_best_cover(covers, staged=True)
     return {'found': True, 'details': details, 'sources': ['Discogs'], 'cover': cover}

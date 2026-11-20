@@ -554,7 +554,7 @@ def fake_sources(monkeypatch):
             return TMDB_MOVIE
         return None
 
-    def fake_save(urls):
+    def fake_save(urls, staged=False):
         covers.extend(urls)
         return 'uploads/cover_test.jpg'
     monkeypatch.setattr(media_lookup, '_get_json', fake_json)
@@ -636,12 +636,20 @@ def test_lookup_route(client, people, monkeypatch, fake_sources):
     assert client.get(f'/videos/lookup?barcode={OTHER_EAN}').get_json()['found'] is False
 
 
-def test_add_uses_the_looked_up_cover_but_not_arbitrary_paths(client, db, people):
+def test_add_uses_the_looked_up_cover_but_not_arbitrary_paths(client, db, people, static_root):
+    """The lookup's cover is staged; adding moves it into place (16.0g step 8).
+    Any other path, someone else's cover included, is refused."""
+    staged = 'uploads/staged/' + 'a' * 22 + '.jpg'
+    (static_root / 'uploads' / 'staged').mkdir(parents=True)
+    (static_root / staged).write_bytes(b'jpeg')
     login(client, 'alice')
-    client.post('/videos/add', data=form(existing_cover_url='uploads/cover_x.jpg'))
-    assert scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Jaws'") == 'uploads/cover_x.jpg'
-    client.post('/videos/add', data=form(title='Evil', barcode='', existing_cover_url='../app.py'))
-    assert scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Evil'") is None
+    client.post('/videos/add', data=form(existing_cover_url=staged))
+    stored = scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Jaws'")
+    assert stored.startswith('uploads/cover_') and (static_root / stored).read_bytes() == b'jpeg'
+    assert not (static_root / staged).exists()
+    for title, path in (('Evil', '../app.py'), ('Theirs', stored)):
+        client.post('/videos/add', data=form(title=title, barcode='', existing_cover_url=path))
+        assert scalar(db, 'SELECT cover_image_url FROM books WHERE title = ?', title) is None
 
 
 # --- the shared add page (Phase 8.5) -----------------------------------------
@@ -804,14 +812,24 @@ def test_edit_book_saves_isbn_and_genre_is_optional(client, db, people):
     assert scalar(db, 'SELECT isbn FROM books WHERE id = ?', book) == '9780441013593'
 
 
-def test_edit_book_takes_a_picked_cover_but_not_other_paths(client, db, people):
+def test_edit_book_takes_a_picked_cover_but_not_other_paths(client, db, people, static_root):
+    """Find a better cover stages its candidates; saving moves the picked one
+    into place. Any other path, another item's cover included, is refused
+    (16.0g step 8: before, any upload path was taken)."""
+    theirs = add_book(db, people['bob'], 'Theirs', cover='uploads/cover_bobs.jpg')
     book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
     base = {'title': 'Dune', 'author': 'Frank Herbert'}
-    client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': '../library.db'})
-    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) is None
-    client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': 'uploads/cover_new.jpg'})
-    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) == 'uploads/cover_new.jpg'
+    for path in ('../library.db', 'uploads/cover_bobs.jpg'):
+        client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': path})
+        assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) is None
+    staged = 'uploads/staged/' + 'b' * 22 + '.jpg'
+    (static_root / 'uploads' / 'staged').mkdir(parents=True)
+    (static_root / staged).write_bytes(b'jpeg')
+    client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': staged})
+    stored = scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book)
+    assert stored.startswith('uploads/cover_') and (static_root / stored).exists()
+    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', theirs) == 'uploads/cover_bobs.jpg'
 
 
 def test_wishlist_tabs_show_books_movies_or_music(client, db, people):

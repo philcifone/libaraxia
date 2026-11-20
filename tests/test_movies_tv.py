@@ -277,7 +277,7 @@ def tmdb(monkeypatch):
         return None
     monkeypatch.setenv('TMDB_API_KEY', 'k' * 32)
     monkeypatch.setattr(media_lookup, '_get_json', fake_json)
-    monkeypatch.setattr(media_lookup.book_utils, 'save_best_cover', lambda urls: None)
+    monkeypatch.setattr(media_lookup.book_utils, 'save_best_cover', lambda urls, staged=False: None)
     media_lookup._cache.clear()
     return calls
 

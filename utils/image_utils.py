@@ -210,6 +210,11 @@ def delete_image_file(image_path, static_root=None):
         return False
 
 
+# Folders under uploads/ that sweep themselves (cover_crop.STAGE_DIR,
+# book_utils.STAGED_COVER_DIR)
+SELF_CLEANING = {'crop', 'staged'}
+
+
 def find_orphaned_images(db_connection):
     """
     Find image files that exist on disk but are not referenced in the database
@@ -264,6 +269,10 @@ def find_orphaned_images(db_connection):
 
     # Walk through all files in uploads directory and subdirectories
     for root, dirs, files in os.walk(upload_dir):
+        # The crop tool's and the cover fetchers' staging clean themselves
+        # (swept after a day, 16.0g): not orphans
+        if root == upload_dir:
+            dirs[:] = [d for d in dirs if d not in SELF_CLEANING]
         for file in files:
             # Skip hidden files and system files
             if file.startswith('.'):

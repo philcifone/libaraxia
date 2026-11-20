@@ -491,7 +491,7 @@ def _is_missing_details(details: Optional[dict]) -> bool:
         return True
     return any(not details.get(field) for field in ("author", "publisher", "year", "page_count", "description"))
 
-def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
+def fetch_book_details_from_isbn(isbn: str, staged: bool = False) -> Optional[Dict[str, Any]]:
     """Look a book up by ISBN across Google Books and Open Library.
 
     Google is tried first; Open Library fills in anything Google is missing
@@ -521,10 +521,11 @@ def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
         (open_library or {}).get("cover_candidates", []) +
         fetch_cover_by_isbn_direct(isbn)
     )
-    local_cover_url = save_best_cover(cover_urls)
+    local_cover_url = save_best_cover(cover_urls, staged=staged)
     if not local_cover_url and book_details.get("title"):
         current_app.logger.info(f"No ISBN cover for {isbn}, searching by title/author")
-        local_cover_url = save_best_cover(_title_cover_urls(book_details["title"], book_details.get("author")))
+        local_cover_url = save_best_cover(_title_cover_urls(book_details["title"], book_details.get("author")),
+                                          staged=staged)
 
     book_details.pop("cover_candidates", None)
     if local_cover_url:
@@ -546,19 +547,18 @@ def fetch_book_details_from_isbn(isbn: str) -> Optional[Dict[str, Any]]:
 def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def process_image(image_file, existing_url: Optional[str] = None) -> Optional[str]:
-    """Process and save uploaded image."""
-    # existing_url comes from a hidden form field, so only accept paths inside uploads/
-    if not is_safe_upload_path(existing_url):
-        existing_url = None
-
-    if not image_file or image_file.filename == '':
-        return existing_url
+def process_image(image_file, existing_url: Optional[str] = None, allowed=()) -> Optional[str]:
+    """Save an uploaded cover; without one, the cover the form named
+    (existing_url, from a hidden field: through accept_cover, so a staged
+    fetch or one of `allowed`, never any other upload)."""
+    if not image_file or image_file.filename == '' or not allowed_file(image_file.filename):
+        return accept_cover(existing_url, allowed)
 
     if image_file and allowed_file(image_file.filename):
         filename = secure_filename(image_file.filename)
-        timestamp = int(time.time())
-        unique_filename = f"{filename.split('.')[0]}_{timestamp}.{filename.split('.')[-1]}"
+        # A fresh random name: a name from the upload plus the second could
+        # collide, and covers are cached for a year by path (16.0g)
+        unique_filename = f"cover_{uuid.uuid4().hex}.{filename.rsplit('.', 1)[-1].lower()}"
 
         # Use absolute path for saving but return relative path for database
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
@@ -573,7 +573,6 @@ def process_image(image_file, existing_url: Optional[str] = None) -> Optional[st
 
         # Return relative path for database storage
         return os.path.join('uploads', unique_filename)
-    return existing_url
 
 MAX_REDIRECTS = 3
 
@@ -759,19 +758,109 @@ def thumbnail_jpeg(url: str) -> Optional[bytes]:
     img.save(out, 'JPEG', quality=80)
     return out.getvalue()
 
-def save_cover_image(img: Image.Image, keep_alpha: bool = False) -> str:
+# ------------------------------------------------------------ fetched covers, staged
+# (ROADMAP 16.0g step 8, docs/BACKEND-POLISH-SPEC.md section 3)
+#
+# A cover fetched for a form (a lookup, a search result, "Find a better
+# cover") is saved to uploads/staged/ under a random name. Saving the item
+# moves the one it uses to uploads/cover_<uuid> (promote_cover); the rest,
+# candidates nobody picked and adds never finished, are swept after a day.
+# So nothing a form fetched outlives the form unless an item uses it.
+#
+# It also closes a hole: a form may name a staged file or the item's own
+# cover (accept_cover), never any other upload. Before, any path under
+# uploads/ was taken, so a crafted post could point a book at someone
+# else's cover, and deleting that book deleted their file.
+
+STAGED_COVER_DIR = 'uploads/staged'
+STAGED_COVER_MAX_AGE = 24 * 3600            # seconds
+_STAGED_COVER_RE = re.compile(r'^uploads/staged/[A-Za-z0-9_-]{20,}\.(?:jpg|webp)$')
+
+
+def is_staged_cover(path) -> bool:
+    """A file save_cover_image(staged=True) made: an exact pattern, never a prefix."""
+    return isinstance(path, str) and bool(_STAGED_COVER_RE.match(path))
+
+
+def sweep_staged_covers(max_age=STAGED_COVER_MAX_AGE):
+    """Delete staged covers older than `max_age` seconds."""
+    from utils.image_utils import delete_image_file
+    folder = os.path.join(_static_root(), STAGED_COVER_DIR)
+    if not os.path.isdir(folder):
+        return
+    cutoff = time.time() - max_age
+    for name in os.listdir(folder):
+        relative = f'{STAGED_COVER_DIR}/{name}'
+        try:
+            if is_staged_cover(relative) and os.path.getmtime(os.path.join(folder, name)) < cutoff:
+                delete_image_file(relative, static_root=_static_root())
+        except OSError:
+            continue
+
+
+def _static_root():
+    """static/, as image_utils resolves it (tests point it at a temp folder)."""
+    from utils import image_utils
+    return image_utils.STATIC_ROOT
+
+
+class CoverExpired(Exception):
+    """The staged cover a form named was swept (the form sat open a day)."""
+
+
+def promote_cover(path) -> str:
+    """Move a staged cover to uploads/cover_<uuid>.<ext> and return the
+    new path. Raises CoverExpired if it's gone."""
+    static = _static_root()
+    ext = os.path.splitext(path)[1]
+    new = f'uploads/cover_{uuid.uuid4().hex}{ext}'
+    try:
+        os.replace(os.path.join(static, path), os.path.join(static, new))   # same filesystem
+    except FileNotFoundError:
+        raise CoverExpired(path)
+    return new
+
+
+def accept_cover(path, allowed=()) -> Optional[str]:
+    """The cover a form named, as a path to store: a staged one moved into
+    place, or one of `allowed` (the item's own cover) as it is; None for
+    anything else. Flashes when a staged one has expired."""
+    if is_staged_cover(path):
+        try:
+            return promote_cover(path)
+        except CoverExpired:
+            from flask import flash
+            flash('The cover you picked expired, so the item was saved without it. Find it again on the Edit page.',
+                  'warning')
+            return None
+    if path and path in {a for a in allowed if a}:
+        return path
+    return None
+
+
+def save_cover_image(img: Image.Image, keep_alpha: bool = False, staged: bool = False) -> str:
     """Normalize, resize and save a cover image. Returns the path relative to static/.
     Covers are flattened onto white JPEG, except with `keep_alpha` for an
-    RGBA image (a disc cut by the crop tool), which is kept transparent."""
+    RGBA image (a disc cut by the crop tool), which is kept transparent.
+    staged: into uploads/staged/ for a form to pick (see above)."""
     img = ImageOps.exif_transpose(img)
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    os.makedirs(upload_folder, exist_ok=True)
+    if staged:
+        sweep_staged_covers()
+        import secrets
+        folder, prefix = 'uploads/staged', ''
+        stem = secrets.token_urlsafe(16)
+    else:
+        folder, prefix = 'uploads', 'cover_'
+        stem = uuid.uuid4().hex
+    target = os.path.join(_static_root(), folder) if staged else upload_folder
+    os.makedirs(target, exist_ok=True)
     if keep_alpha and img.mode == 'RGBA':
         img = img.copy()
         img.thumbnail(MAX_IMAGE_SIZE)
-        filename = f"cover_{uuid.uuid4().hex}{ALPHA_FORMAT[1]}"
-        img.save(os.path.join(upload_folder, filename), ALPHA_FORMAT[0], quality=85)
-        return os.path.join('uploads', filename)
+        filename = f"{prefix}{stem}{ALPHA_FORMAT[1]}"
+        img.save(os.path.join(target, filename), ALPHA_FORMAT[0], quality=85)
+        return f'{folder}/{filename}'
     if img.mode in ('RGBA', 'LA', 'P'):
         img = img.convert('RGBA')
         background = Image.new('RGB', img.size, (255, 255, 255))
@@ -781,14 +870,16 @@ def save_cover_image(img: Image.Image, keep_alpha: bool = False) -> str:
         img = img.convert('RGB')
     img.thumbnail(MAX_IMAGE_SIZE)
 
-    filename = f"cover_{uuid.uuid4().hex}.jpg"
-    img.save(os.path.join(upload_folder, filename), 'JPEG', quality=85, optimize=True)
-    return os.path.join('uploads', filename)
+    filename = f"{prefix}{stem}.jpg"
+    img.save(os.path.join(target, filename), 'JPEG', quality=85, optimize=True)
+    return f'{folder}/{filename}'
 
 _save_cover_image = save_cover_image   # the old private name, still used by callers
 
-def save_best_cover(urls: Iterable[str]) -> Optional[str]:
-    """Download candidate cover URLs in order and save the best one.
+def save_best_cover(urls: Iterable[str], staged: bool = False) -> Optional[str]:
+    """Download candidate cover URLs in order and save the best one
+    (staged: for a form to pick, see accept_cover; else stored for good, as
+    the background cover jobs and imports do).
 
     Stops at the first cover that is at least GOOD_COVER_WIDTH wide; otherwise
     keeps the largest valid image seen. Placeholders and broken images are
@@ -811,7 +902,7 @@ def save_best_cover(urls: Iterable[str]) -> Optional[str]:
 
     if best is None:
         return None
-    relative_path = _save_cover_image(best)
+    relative_path = _save_cover_image(best, staged=staged)
     current_app.logger.info(f"Saved {best.width}x{best.height} cover at: {relative_path}")
     return relative_path
 

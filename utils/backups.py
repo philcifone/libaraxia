@@ -44,7 +44,7 @@ NAME_RE = re.compile(r'^\d{8}-\d{6}(-\d+)?$')
 DB_FILE = 'library.db'
 META_FILE = 'meta.json'
 # Not covers: crop previews waiting to be saved (utils/cover_crop.py)
-SKIP_UPLOADS = {'crop'}
+SKIP_UPLOADS = {'crop', 'staged'}      # staging: swept after a day, never worth keeping
 
 
 class BackupError(Exception):
