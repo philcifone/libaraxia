@@ -582,7 +582,7 @@ def test_tmdb_logo_with_the_notice(client, db, people, monkeypatch):
     monkeypatch.setenv('TMDB_API_KEY', 'not-a-real-key')
     login(client, 'alice')
     page = client.get('/videos/add').get_data(as_text=True)
-    assert 'src="/static/logos/tmdb.svg"' in page and 'not endorsed or certified by TMDB' in page
+    assert re.search(r'src="/static/logos/tmdb\.svg\?v=\w+"', page) and 'not endorsed or certified by TMDB' in page
     svg = pathlib.Path('static/logos/tmdb.svg').read_text()
     assert '<script' not in svg.lower()
 
@@ -1541,7 +1541,7 @@ def test_cyberpunk_boot_screen_once_per_login(client, people):
     head = page[:page.index('</head>')]
     assert '<meta name="login-mark" content="' in head
     assert head.index('name="login-mark"') < head.index('cyberpunk.js')
-    assert '<script src="/static/cyberpunk.js"></script>' in head        # not deferred
+    assert re.search(r'<script src="/static/cyberpunk\.js\?v=\w+"></script>', head)   # not deferred
     js = pathlib.Path('static/cyberpunk.js').read_text()
     assert "prefers-reduced-motion: reduce" in js and 'localStorage' in js and 'catch' in js
     # Five seconds (Phil, 2026-11-18), the last line ending in the cursor;

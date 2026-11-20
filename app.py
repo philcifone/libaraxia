@@ -201,6 +201,9 @@ def create_app():
     # Dev only: per-request time and SQL count (PROFILE_REQUESTS=1, ROADMAP 16.0g)
     from utils import profiling
     profiling.init_app(app)
+    # Versioned static URLs and a year's caching (ROADMAP 16.0g)
+    from utils import static_cache
+    static_cache.init_app(app)
 
     # Say which database this process opens (the "which library.db?" trap).
     db_path = database_path()

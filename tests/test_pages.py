@@ -299,3 +299,37 @@ def test_book_grid_uses_named_columns(client, db, people):
     login(client, 'alice')
     html = client.get('/base/index').get_data(as_text=True)
     assert f'href="/books/book/{book}"' in html and 'by Frank Herbert' in html
+
+
+def test_static_files_are_versioned_and_cached_for_a_year(client, db, people, tmp_path):
+    """16.0g step 3 (utils/static_cache.py): scripts and CSS carry ?v=<hash>
+    and are kept a year; uploads are kept a year by path, privately; an
+    unversioned script keeps the default."""
+    import re
+    login(client, 'alice')
+    page = client.get('/base/index').get_data(as_text=True)
+    css = re.search(r'href="(/static/css/output\.css\?v=[0-9a-f]{10})"', page).group(1)
+    r = client.get(css)
+    assert r.status_code == 200
+    assert r.headers['Cache-Control'] == 'public, max-age=31536000, immutable'
+    assert 'immutable' not in client.get('/static/common.js').headers.get('Cache-Control', '')
+    font = '/static/fonts/courier-prime/courier-prime-latin-400-normal.woff2'
+    assert 'max-age=31536000' in client.get(font).headers['Cache-Control']
+    # uploads: no ?v= on the URL, a year's private caching
+    from utils.static_cache import version_of
+    from flask import url_for
+    with client.application.test_request_context():
+        assert 'v=' not in url_for('static', filename='uploads/x.jpg')
+        assert 'v=' in url_for('static', filename='common.js')
+    assert version_of(client.application.static_folder, 'missing.js') is None
+
+
+def test_a_changed_file_gets_a_new_version(tmp_path):
+    import os
+    from utils.static_cache import version_of
+    f = tmp_path / 'a.js'
+    f.write_text('one')
+    first = version_of(str(tmp_path), 'a.js')
+    f.write_text('two')
+    os.utime(f, ns=(1, 1))                  # a different mtime, as an edit has
+    assert version_of(str(tmp_path), 'a.js') != first

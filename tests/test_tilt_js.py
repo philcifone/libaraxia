@@ -2,6 +2,7 @@
 static/tilt.js runs under node (skipped without it); the sensor, the
 iPhone permission prompt and the feel are checked by hand on a phone over
 HTTPS. The switch is in Settings -> Appearance, Shelf only."""
+import re
 import json
 import pathlib
 import shutil
@@ -47,7 +48,7 @@ def test_tilt_switch_is_in_appearance_and_the_script_on_every_page(client, db, p
     assert 'data-tilt-picker' in page and 'data-tilt-note' in page
     assert page.count('data-click="setTilt"') == 2
     assert 'tilt-opt' in page and 'theme-opt" data-click="setTilt"' not in page   # not saved with the theme
-    assert '/static/tilt.js" defer></script>' in page
+    assert re.search(r'/static/tilt\.js\?v=\w+" defer></script>', page)
     css = pathlib.Path('static/styles.css').read_text()
     assert ':root:not([data-style="shelf"]) [data-tilt-picker] { display: none; }' in css
     js = SCRIPT.read_text()
