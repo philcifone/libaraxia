@@ -2,7 +2,7 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from utils.database import get_db
 from models import can_view_book
-from utils import media
+from utils import media, reading_progress
 from datetime import date, datetime
 
 # Define the blueprint
@@ -255,6 +255,28 @@ def manage_session(book_id):
     # Redirect based on preference
     if redirect_to == 'rate_review':
         return redirect(url_for('read.rate_review', book_id=book_id))
+    return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
+
+
+@read_blueprint.route('/<int:book_id>/progress', methods=['POST'])
+@login_required
+def set_progress(book_id):
+    """How far you are in a book (ROADMAP 16.0f): a page, or a percent for a
+    book without a page count. Goes on your open session, opening one today
+    if there isn't one. Back to the item page's reading history."""
+    conn = get_db()
+    if not can_view_book(conn, current_user, book_id):
+        abort(404)
+    try:
+        done = reading_progress.set_progress(conn, current_user.id, book_id,
+                                             page=request.form.get('page'),
+                                             percent=request.form.get('percent'))
+    except reading_progress.ProgressError as e:
+        flash(str(e), 'error')
+    else:
+        conn.commit()
+        flash('Started a reading session and saved your progress.' if done['opened']
+              else 'Progress saved.', 'success')
     return redirect(url_for('books.show_book', id=book_id, _anchor='item-history'))
 
 

@@ -379,6 +379,7 @@ CREATE TABLE abs_links (
     linked_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     -- 0 to 1 while in progress, for the cover's ring; NULL otherwise (045)
     progress    REAL CHECK (progress IS NULL OR (progress > 0 AND progress <= 1)),
+    progress_at TIMESTAMP,              -- when progress last changed (046)
     UNIQUE (user_id, abs_item_id)
 );
 CREATE INDEX idx_abs_links_book ON abs_links(book_id);
@@ -401,6 +402,11 @@ CREATE TABLE reading_sessions (
     date_started DATE,
     date_completed DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Manual progress on an open session (046, ROADMAP 16.0f): 0 to 1 for
+    -- the cover's ring, the page typed if one was, and when it was set
+    progress REAL CHECK (progress IS NULL OR (progress >= 0 AND progress <= 1)),
+    progress_page INTEGER CHECK (progress_page IS NULL OR progress_page >= 0),
+    progress_at TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
@@ -680,4 +686,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('042_loans.sql'),
     ('043_audiobook_fields.sql'),
     ('044_audiobookshelf.sql'),
-    ('045_abs_progress.sql');
+    ('045_abs_progress.sql'),
+    ('046_reading_progress.sql');
