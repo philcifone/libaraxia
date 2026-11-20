@@ -107,6 +107,16 @@ page load. Options, in order of preference:
 
 Proposed: the first. `tilt.js` is already deferred.
 
+**Decided at step 5 (2026-11-20): neither; both stay as they are.** Step 3
+made the cost go away: both scripts now carry `?v=` and are cached for a
+year, so after the first visit "blocking" is a 10 KB read from the
+browser's own cache. Deferring would add risk for nothing measurable:
+`shelf.js` must set the rack before the first paint (or it flashes in),
+and moving the boot screen's cover into the server's render would need the
+server to guess whether this browser boots (storage blocked, reduced
+motion, already booted in another tab); a wrong guess leaves the page
+covered.
+
 ### 1.6 Compression and the tunnel
 
 - **Through the tunnel:** Cloudflare compresses text responses (gzip or
