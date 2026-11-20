@@ -674,12 +674,21 @@ def cover_dhash(img: Image.Image) -> int:
     return bits
 
 
-def placeholder_reason(img: Image.Image) -> Optional[str]:
-    """Why this image isn't a real cover, or None if it looks like one."""
-    if img.width < MIN_COVER_DIMENSION or img.height < MIN_COVER_DIMENSION:
-        return f"tiny ({img.width}x{img.height})"
-    if img.height < img.width * MIN_COVER_ASPECT:
-        return f"a strip, not a cover ({img.width}x{img.height})"
+# The smallest side a cover is decoded at for the placeholder scan
+QUICK_SCAN_SIDE = 128
+
+
+def placeholder_reason(img: Image.Image, size=None) -> Optional[str]:
+    """Why this image isn't a real cover, or None if it looks like one.
+
+    `size` is the image's real (width, height) when `img` was decoded
+    smaller (find_placeholder_covers): the size rules use it, the content
+    checks (blank, page scan, hash) work as well on the smaller copy."""
+    width, height = size or img.size
+    if width < MIN_COVER_DIMENSION or height < MIN_COVER_DIMENSION:
+        return f"tiny ({width}x{height})"
+    if height < width * MIN_COVER_ASPECT:
+        return f"a strip, not a cover ({width}x{height})"
     if ImageStat.Stat(img.convert('L')).stddev[0] < BLANK_STDDEV:
         return "blank"
     if looks_like_page_scan(img):
@@ -1179,7 +1188,12 @@ def find_placeholder_covers(conn) -> List[Dict[str, Any]]:
             if is_safe_upload_path(path):
                 try:
                     with Image.open(os.path.join(static_root, path)) as img:
-                        verdicts[path] = placeholder_reason(img)
+                        # A JPEG decodes at 1/2 to 1/8 scale for this: the
+                        # page read every cover at full size (1.3 s on
+                        # 400 covers, ROADMAP 16.0g); same verdicts (test)
+                        size = img.size
+                        img.draft('RGB', (QUICK_SCAN_SIDE, QUICK_SCAN_SIDE))
+                        verdicts[path] = placeholder_reason(img, size)
                 except (OSError, ValueError):
                     pass   # missing or unreadable: not this tool's job
         if verdicts[path]:

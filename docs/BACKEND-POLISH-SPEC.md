@@ -403,3 +403,25 @@ Movies (TMDb) and music (Discogs, MusicBrainz) aren't part of this.
    choice should be easy to find, not buried.
 
 Approved by Phil, 2026-11-20 ("go ahead").
+
+---
+
+## Appendix A: the page walk (step 1, 2026-11-20)
+
+`PROFILE_REQUESTS=1`, every GET page as Phil on a copy of dev's DB, the
+second (warm) load of each, outside routes that call other services. 56
+pages. Before the fixes, everything over 50 statements or 150 ms:
+
+| Page | Before | After | Cause |
+|---|---|---|---|
+| `/admin/placeholder_covers` | 1300 ms, 8 sql | about 500 ms | Decoded every cover at full size; JPEGs now decode at 1/2 to 1/8 scale for the check (same verdicts on all 465 dev images, and a test) |
+| `/wishlist/view` | 35 ms, 514 sql | 25 ms, 9 sql | Two face queries per cover: a list that doesn't batch its faces. `cover_box` now knows which items have any face (one query per request) and skips the rest |
+| `/reviews/all/mine` | 11 ms, 260 sql | under 20 sql | The same |
+| `/feed/activity` | 5 ms, 166 sql | under 33 sql | One like query and one friendship query per activity; now one each per page |
+| `/user/Phil` | 14 ms, 165 sql | 13 ms, 74 sql | The face queries; the rest are the profile's own sections, each a different query |
+| `/user/settings` | 4 ms, 108 sql | the same | Many distinct small queries (each section's own); 4 ms, left alone |
+
+Every other page is under 12 ms and 40 statements. Nothing needed an
+index: on a catalogue this size SQLite is not where the time goes. The
+time a person feels is the network and the static files (1.2, 1.3).
+

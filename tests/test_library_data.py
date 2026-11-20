@@ -222,6 +222,28 @@ def test_white_covers_with_colour_are_kept():
     assert placeholder_reason(grey_photo) is None
 
 
+def test_the_quick_scan_keeps_every_verdict():
+    """The admin scan decodes JPEGs small (find_placeholder_covers, 16.0g):
+    a big page scan, a blank, a strip, a real cover and a white jacket with
+    a little colour get the same verdict as at full size."""
+    from io import BytesIO
+    from PIL import Image
+    from utils.book_utils import placeholder_reason, QUICK_SCAN_SIDE
+    images = [_page().resize((1200, 1800)), Image.new('RGB', (1200, 1700), 'white'),
+              _cover_like(size=(1500, 200)), _cover_like(seed=5).resize((1000, 1500)),
+              _page(accent='#2255cc', accent_share=0.012).resize((1200, 1800))]
+    for img in images:
+        buf = BytesIO()
+        img.save(buf, 'JPEG', quality=85)
+        full = placeholder_reason(Image.open(BytesIO(buf.getvalue())))
+        quick = Image.open(BytesIO(buf.getvalue()))
+        size = quick.size
+        quick.draft('RGB', (QUICK_SCAN_SIDE, QUICK_SCAN_SIDE))
+        if min(size) >= 2 * QUICK_SCAN_SIDE:
+            assert quick.size != size               # it really was decoded smaller
+        assert placeholder_reason(quick, size) == full
+
+
 def test_dhash_survives_resize_and_reencode():
     """Why a perceptual hash and not SHA-256: the saved copy is resized and
     re-encoded, and must still match."""

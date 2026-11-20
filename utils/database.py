@@ -49,6 +49,10 @@ def get_db():
     from flask import g
     if 'db' not in g:
         g.db = get_db_connection()
+        # Dev only (PROFILE_REQUESTS=1, utils/profiling.py): count statements
+        from utils import profiling
+        if profiling.enabled():
+            g.db.set_trace_callback(profiling.count_statement)
     return g.db
 
 
