@@ -3,6 +3,8 @@ import io
 import os
 import re
 
+import pytest
+
 from PIL import Image
 
 from conftest import add_book, add_user, login, scalar
@@ -42,7 +44,8 @@ def test_save_photo_strips_metadata_and_turns_upright(app, static_root):
     # 600 wide x 400 high pixels, tagged "rotate 90 CW to view" (6)
     with app.app_context():
         path = save_photo(jpeg_bytes((600, 400), exif=gps_exif(orientation=6)), 7)
-    assert path.startswith('uploads/photos/7/') and path.endswith('.jpg')
+    from utils.image_utils import IMAGE_FORMAT
+    assert path.startswith('uploads/photos/7/') and path.endswith(IMAGE_FORMAT[1])
     with Image.open(static_root / path) as img:
         assert img.size == (400, 600)               # upright: portrait now
         assert not img.getexif()                    # no EXIF, so no GPS
@@ -215,11 +218,11 @@ def test_item_page_more_photos_for_a_friend(client, db, people, static_root):
     client.post(f'/photos/photo/{photo}/caption', data={'caption': '<b>Scuff</b> on side B'})
     client.get('/auth/logout')
     login(client, 'carol')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
+    html = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'data-click="openGallery"' in html and 'More photos (2)' in html
     assert html.count('data-slide') == 2
     assert '&lt;b&gt;Scuff&lt;/b&gt; on side B' in html and '<b>Scuff' not in html
-    assert 'openGallery' not in client.get(f'/books/book/{bare}').get_data(as_text=True)
+    assert 'openGallery' not in client.get(f'/books/{bare}').get_data(as_text=True)
 
 
 def real_cover(static_root, name='c.jpg', size=(400, 600)):
@@ -246,13 +249,13 @@ def test_3d_only_with_every_photo_its_shape_needs(client, db, people, static_roo
     still missing. The box's proportions come from the photos."""
     book = add_book(db, people['bob'], cover=real_cover(static_root))
     login(client, 'bob')
-    assert 'item-3d' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'item-3d' not in client.get(f'/books/{book}').get_data(as_text=True)
     upload(client, book, 'back', jpeg_bytes((400, 600)))
-    assert 'item-3d' not in client.get(f'/books/book/{book}').get_data(as_text=True)
+    assert 'item-3d' not in client.get(f'/books/{book}').get_data(as_text=True)
     edit = client.get(f'/books/edit/{book}').get_data(as_text=True)
     assert 'data-3d-status="needs"' in edit and 'still needs: spine.' in edit
     upload(client, book, 'spine', jpeg_bytes((60, 600)))
-    box = box_of(client.get(f'/books/book/{book}').get_data(as_text=True))
+    box = box_of(client.get(f'/books/{book}').get_data(as_text=True))
     assert 'item3d-book' in box and box.count('/static/uploads/photos/') == 2
     assert '--a: 0.6667; --dr: 0.1;' in box
     assert 'item3d-spine-print' not in box
@@ -381,7 +384,8 @@ def test_crop_a_photo_to_a_disc_keeps_it_see_through(client, db, people, static_
     geom = {'v': 1, 'rotate': 0, 'mask': 'disc', 'mode': 'rect', 'box': [0, 0, 1, 1]}
     assert client.post(f'/photos/photo/{photo}/crop', json={'geometry': geom, 'source': old}).get_json()['success']
     new = scalar(db, 'SELECT path FROM item_photos WHERE id = ?', photo)
-    assert new.endswith('.webp')
+    from utils.image_utils import ALPHA_FORMAT
+    assert new.endswith(ALPHA_FORMAT[1])               # AVIF keeps alpha (16.0g)
     with Image.open(static_root / new) as img:
         assert img.mode == 'RGBA' and img.getpixel((0, 0))[3] == 0
 
@@ -404,7 +408,7 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     half = add_book(db, bob, cover=real_cover(static_root, 'b.jpg'))
     gone = add_book(db, bob, cover=real_cover(static_root, 'c2.jpg'))
     login(client, 'bob')
-    assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-heading-books' not in client.get('/books/').get_data(as_text=True)
 
     for book in (ready, gone):
         upload(client, book, 'back', jpeg_bytes((400, 600)))
@@ -412,7 +416,7 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     upload(client, half, 'back', jpeg_bytes((400, 600)))
     db.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP WHERE id = ?", (gone,))
     db.commit()
-    html = client.get('/base/index').get_data(as_text=True)
+    html = client.get('/books/').get_data(as_text=True)
     assert heading_books_of(html) == ['/static/uploads/a.jpg']
     start = html.index('<div class="heading-books')
     group = html[start:html.index('<h1', start)]
@@ -420,18 +424,18 @@ def test_your_3d_books_stand_on_the_shelves_heading(client, db, people, static_r
     assert 'heading-books-right' not in group      # one book: one side
 
     upload(client, half, 'spine', jpeg_bytes((60, 600)))
-    first = heading_books_of(client.get('/base/index').get_data(as_text=True))
+    first = heading_books_of(client.get('/books/').get_data(as_text=True))
     assert sorted(first) == ['/static/uploads/a.jpg', '/static/uploads/b.jpg']
-    assert heading_books_of(client.get('/base/index').get_data(as_text=True)) == first
+    assert heading_books_of(client.get('/books/').get_data(as_text=True)) == first
 
     # The household's Shelves keep the same books of yours standing, so the
     # house toggle doesn't empty the ledge (Phil, 2026-11-16); a friend's
     # Shelves have none, nor any style without a shelf
-    assert heading_books_of(client.get('/base/shared-library').get_data(as_text=True)) == first
-    assert 'data-heading-books' not in client.get('/base/library/bob').get_data(as_text=True)
+    assert heading_books_of(client.get('/books/shared').get_data(as_text=True)) == first
+    assert 'data-heading-books' not in client.get('/books/user/bob').get_data(as_text=True)
     db.execute("UPDATE users SET theme_style = 'house' WHERE id = ?", (bob,))
     db.commit()
-    assert 'data-heading-books' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-heading-books' not in client.get('/books/').get_data(as_text=True)
 
 
 def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
@@ -461,7 +465,7 @@ def test_heading_shelf_is_never_crammed(client, app, db, people, static_root):
     db.execute("UPDATE users SET theme_style = 'shelf' WHERE id = ?", (bob,))
     db.commit()
     login(client, 'bob')
-    html = client.get('/base/index').get_data(as_text=True)
+    html = client.get('/books/').get_data(as_text=True)
     left = html[html.index('heading-books-left'):html.index('heading-books-right')]
     right = html[html.index('heading-books-right'):html.index('<h1', html.index('heading-books-right'))]
     assert left.count('class="heading-book"') == right.count('class="heading-book"') == 5
@@ -485,3 +489,47 @@ def test_records_stand_at_their_real_sizes(client, db, people):
     # and only there: no other style sizes records by format
     assert css.count('--size: ') == 5
     assert 'max-height: calc(var(--cover-h) * var(--size, 1))' in css
+
+
+# --- AVIF (16.0g step 9) ------------------------------------------------------
+
+def test_new_images_are_avif_without_metadata(app, static_root):
+    """Covers and photos are saved in the site's format (AVIF where Pillow
+    has it), with no EXIF however the upload came."""
+    from utils import image_utils
+    from utils.book_utils import save_cover_image
+    if not image_utils.AVIF:
+        pytest.skip('this Pillow has no AVIF')
+    with app.test_request_context():
+        photo = image_utils.save_photo(jpeg_bytes((600, 400), exif=gps_exif()), 3)
+        img = Image.open(jpeg_bytes((900, 1400), exif=gps_exif()))
+        img.load()
+        cover = save_cover_image(img, staged=True)
+    for path in (photo, cover):
+        assert path.endswith('.avif')
+        with Image.open(static_root / path) as saved:
+            assert saved.format == 'AVIF' and not saved.getexif()
+    with Image.open(static_root / cover) as saved:
+        assert saved.size == (800, 1244)          # 800 px wide now (16.0g step 10), not scaled up
+
+
+def test_an_avif_upload_is_a_cover_and_a_fake_one_is_refused(client, db, people, static_root, monkeypatch):
+    import io
+    from utils import image_utils
+    if not image_utils.AVIF:
+        pytest.skip('this Pillow has no AVIF')
+    monkeypatch.setitem(client.application.config, 'UPLOAD_FOLDER', str(static_root / 'uploads'))
+    book = add_book(db, people['alice'], 'Dune')
+    login(client, 'alice')
+    avif = io.BytesIO()
+    Image.new('RGB', (300, 450), 'navy').save(avif, 'AVIF')
+    avif.seek(0)
+    client.post(f'/books/edit/{book}', data={'title': 'Dune', 'author': 'An Author', 'image': (avif, 'scan.avif')},
+                content_type='multipart/form-data')
+    cover = scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book)
+    assert cover.startswith('uploads/cover_') and cover.endswith('.avif')
+    r = client.post(f'/books/edit/{book}', data={'title': 'Dune', 'author': 'An Author',
+                                                  'image': (io.BytesIO(b'not an image'), 'notes.avif')},
+                    content_type='multipart/form-data', follow_redirects=True)
+    assert 'an image this site can read' in r.get_data(as_text=True)
+    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) == cover

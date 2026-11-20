@@ -27,8 +27,8 @@ def shelves(db, people):
     return {'book': book, 'movie': movie, 'album': album, 'jazz': jazz}
 
 
-@pytest.mark.parametrize('url', ['/base/index', '/base/shared-library', '/videos/', '/videos/shared',
-                                 '/records/', '/records/shared', '/base/shared-library?search_term=Dune',
+@pytest.mark.parametrize('url', ['/books/', '/books/shared', '/videos/', '/videos/shared',
+                                 '/records/', '/records/shared', '/books/shared?search_term=Dune',
                                  '/collections/collections/status/read'])
 def test_select_is_on_the_grids_you_can_edit_from(client, people, shelves, url):
     login(client, 'alice')
@@ -43,7 +43,7 @@ def test_select_is_on_a_custom_collection(client, people, shelves):
     assert SELECT in html and 'data-bulkable' in html
 
 
-@pytest.mark.parametrize('url', ['/base/library/alice', '/videos/user/alice', '/records/user/alice',
+@pytest.mark.parametrize('url', ['/books/user/alice', '/videos/user/alice', '/records/user/alice',
                                  '/collections/collections/status/read?username=alice'])
 def test_no_select_on_a_friends_grids(client, people, shelves, url):
     """carol is alice's friend: she sees the grids, read-only."""
@@ -73,7 +73,7 @@ def test_profile_lists_recent_bulk_edits_with_undo(client, db, people, shelves):
                      ).get_json()['plan']['fingerprint']
     edit_id = client.post('/bulk/apply', json={'action': 'genre', 'params': {'genre': 'SF'}, 'ids': ids,
                                                'fingerprint': fp}).get_json()['edit_id']
-    client.get('/base/index')                       # the banner takes the result out of the session
+    client.get('/books/')                       # the banner takes the result out of the session
     html = client.get('/user/settings').get_data(as_text=True)
     assert 'Recent bulk edits' in html and 'Genre set to SF on 1 item' in html
     assert f'data-edit-id="{edit_id}"' in html and 'just now' in html
@@ -81,7 +81,7 @@ def test_profile_lists_recent_bulk_edits_with_undo(client, db, people, shelves):
     # Undo from the profile: no banner left waiting for the next grid
     r = client.post(f'/bulk/{edit_id}/undo', json={'banner': False})
     assert r.status_code == 200 and r.get_json()['restored'] == 1
-    assert 'data-bulk-banner' not in client.get('/base/index').get_data(as_text=True)
+    assert 'data-bulk-banner' not in client.get('/books/').get_data(as_text=True)
     html = client.get('/user/settings').get_data(as_text=True)
     assert f'data-edit-id="{edit_id}"' not in html and 'Undone' in html
 
@@ -147,7 +147,7 @@ def test_grid_covers_carry_the_author_for_the_missing_file_fallback(client, db, 
     (static_root / 'uploads' / 'flaky.jpg').write_bytes(b'x')
     put(db, people['alice'], title='Gone', author='Nobody', cover='uploads/flaky.jpg')
     login(client, 'alice')
-    assert 'alt="Gone" data-author="Nobody"' in client.get('/base/index').get_data(as_text=True)
+    assert 'alt="Gone" data-author="Nobody"' in client.get('/books/').get_data(as_text=True)
 
 
 def test_collection_page_heading_and_empty_shelf(client, db, people, shelves):

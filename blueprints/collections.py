@@ -8,6 +8,7 @@ from flask_login import login_required, current_user
 from models import can_view_book
 from utils import bulk, goodreads, media, shelves, sorting
 from utils.rate_limiting import limiter
+from utils.landing import back_url, same_site
 
 collections_blueprint = Blueprint('collections', __name__, template_folder='templates')
 
@@ -19,7 +20,7 @@ ITEM_ANCHORS = {'your-info'}
 
 
 def _back(fallback=None):
-    url = request.referrer or fallback or url_for('base.index')
+    url = back_url(fallback)
     anchor = request.form.get('anchor')
     if anchor in ITEM_ANCHORS:
         url = url.split('#')[0] + '#' + anchor
@@ -29,7 +30,7 @@ def _back_finished():
     """_back() for an item just marked done: the same page with ?finished=1,
     at its History (#item-history), where the item page offers today as
     the finished date."""
-    url = (request.referrer or url_for('base.index')).split('#')[0]
+    url = back_url().split('#')[0]
     parts = urlsplit(url)
     query = [(k, v) for k, v in parse_qsl(parts.query) if k != 'finished'] + [('finished', '1')]
     return redirect(urlunsplit(parts._replace(query=urlencode(query), fragment='item-history')))
@@ -168,7 +169,7 @@ def create_custom_collection():
         flash('Error creating collection.', 'error')
 
     # From an item page's "Create Collection" box: back to that page
-    if request.form.get('next') == 'item' and request.referrer:
+    if request.form.get('next') == 'item' and same_site(request.referrer):
         return _back()
     return redirect(back)
 
@@ -279,14 +280,14 @@ def add_to_status_collection():
     
     if not book_id or not status:
         flash('Missing book ID or status.', 'danger')
-        return redirect(request.referrer)
+        return _back()
     
     conn = get_db()
     try:
         # Only books in the user's circle (models.can_view_book)
         if not can_view_book(conn, current_user, book_id):
             flash('Book not found.', 'danger')
-            return redirect(request.referrer or url_for('base.index'))
+            return _back()
 
         # Books and videos have their own statuses (utils/media.py)
         media_type = media.media_type_of(conn.execute(
@@ -299,7 +300,7 @@ def add_to_status_collection():
             return _back()
         if not media.is_valid_status(media_type, status):
             flash('That status is not available here.', 'danger')
-            return redirect(request.referrer or url_for('base.index'))
+            return _back()
 
         cursor = conn.execute('''
             SELECT 1 FROM collections
@@ -397,7 +398,7 @@ def manage_book_collections():
     
     if not book_id or not collection_id:
         flash('Missing required information', 'error')
-        return redirect(request.referrer)
+        return _back()
 
     conn = get_db()
     try:
@@ -408,10 +409,10 @@ def manage_book_collections():
         ''', (collection_id, current_user.id)).fetchone()
         if not owns_collection:
             flash('Collection not found', 'error')
-            return redirect(request.referrer or url_for('collections.view_collections'))
+            return _back(url_for('collections.view_collections'))
         if not can_view_book(conn, current_user, book_id):
             flash('Book not found', 'error')
-            return redirect(request.referrer or url_for('collections.view_collections'))
+            return _back(url_for('collections.view_collections'))
 
         # Check if book is already in collection
         existing = conn.execute('''

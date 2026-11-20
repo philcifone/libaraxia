@@ -39,7 +39,7 @@ def test_someone_elses_wishlist_doesnt_hide_book_from_search(client, db, people)
     book = add_book(db, people['alice'], title='Dune')
     wishlist(db, people['carol'], book)
     login(client, 'alice')
-    r = client.get('/base/shared-library?search_term=Dune')
+    r = client.get('/books/shared?search_term=Dune')
     assert b'Dune' in r.data
 
 
@@ -47,7 +47,7 @@ def test_wishlist_entries_not_in_library_grid_or_friend_counts(client, db, peopl
     add_book(db, people['carol'], title='Carols Real Book')
     wishlist_stub(db, people['carol'], title='Carols Wish')
     login(client, 'alice')
-    r = client.get('/base/library/carol')
+    r = client.get('/books/user/carol')
     assert b'Carols Real Book' in r.data and b'Carols Wish' not in r.data
 
 
@@ -96,7 +96,7 @@ def test_filter_genres_come_from_your_library(client, db, people):
     db.execute("UPDATE books SET genre = 'Carol Genre' WHERE id = ?", (theirs,))
     db.commit()
     login(client, 'alice')
-    r = client.get('/base/index')
+    r = client.get('/books/')
     assert b'Mine Genre' in r.data and b'Carol Genre' not in r.data
 
 
@@ -109,7 +109,7 @@ def test_removed_filter_hide_include_only(client, db, people):
     ajax = {'X-Requested-With': 'XMLHttpRequest'}
 
     def titles(arg):
-        return {b['title'] for b in client.get('/base/index' + arg, headers=ajax).get_json()['books']}
+        return {b['title'] for b in client.get('/books/' + arg, headers=ajax).get_json()['books']}
 
     assert titles('') == {'Still Here'}
     assert titles('?show_removed=include') == {'Still Here', 'Long Gone'}
@@ -123,7 +123,7 @@ def test_minimum_rating_filter_means_and_up(client, db, people):
     add_review(db, people['alice'], four, rating=4)
     add_review(db, people['alice'], five, rating=5)
     login(client, 'alice')
-    r = client.get('/base/index?rating=4', headers={'X-Requested-With': 'XMLHttpRequest'})
+    r = client.get('/books/?rating=4', headers={'X-Requested-With': 'XMLHttpRequest'})
     assert {b['title'] for b in r.get_json()['books']} == {'Four', 'Five'}
 
 
@@ -222,6 +222,28 @@ def test_white_covers_with_colour_are_kept():
     assert placeholder_reason(grey_photo) is None
 
 
+def test_the_quick_scan_keeps_every_verdict():
+    """The admin scan decodes JPEGs small (find_placeholder_covers, 16.0g):
+    a big page scan, a blank, a strip, a real cover and a white jacket with
+    a little colour get the same verdict as at full size."""
+    from io import BytesIO
+    from PIL import Image
+    from utils.book_utils import placeholder_reason, QUICK_SCAN_SIDE
+    images = [_page().resize((1200, 1800)), Image.new('RGB', (1200, 1700), 'white'),
+              _cover_like(size=(1500, 200)), _cover_like(seed=5).resize((1000, 1500)),
+              _page(accent='#2255cc', accent_share=0.012).resize((1200, 1800))]
+    for img in images:
+        buf = BytesIO()
+        img.save(buf, 'JPEG', quality=85)
+        full = placeholder_reason(Image.open(BytesIO(buf.getvalue())))
+        quick = Image.open(BytesIO(buf.getvalue()))
+        size = quick.size
+        quick.draft('RGB', (QUICK_SCAN_SIDE, QUICK_SCAN_SIDE))
+        if min(size) >= 2 * QUICK_SCAN_SIDE:
+            assert quick.size != size               # it really was decoded smaller
+        assert placeholder_reason(quick, size) == full
+
+
 def test_dhash_survives_resize_and_reencode():
     """Why a perceptual hash and not SHA-256: the saved copy is resized and
     re-encoded, and must still match."""
@@ -299,7 +321,7 @@ def test_clear_placeholder_covers_is_admin_only(client, db, people):
     login(client, 'bob')
     r = client.post('/admin/clear_placeholder_covers')
     assert r.status_code in (302, 403)
-    assert b'Cleared' not in client.get('/base/index').data
+    assert b'Cleared' not in client.get('/books/').data
 
 
 # --- Goodreads HTML in reviews (3.4) -------------------------------------------
@@ -362,7 +384,7 @@ def test_find_a_better_cover_streams_progress_and_covers(client, db, people, mon
     # Each URL is downloaded as its own candidate list (a Google link would
     # become two sizes, google_cover_candidates; these aren't Google's)
     monkeypatch.setattr(books_bp, 'save_best_cover',
-                        lambda urls: None if urls[0].endswith('2.jpg') else 'uploads/' + urls[0].rsplit('/', 1)[1])
+                        lambda urls, staged=False: None if urls[0].endswith('2.jpg') else 'uploads/' + urls[0].rsplit('/', 1)[1])
     login(client, 'alice')
     r = client.post('/books/fetch_cover', json={'title': 'Dune', 'author': 'Herbert'})
     assert r.mimetype == 'application/x-ndjson'
@@ -484,7 +506,7 @@ def test_picking_a_search_result_tries_large_google_then_open_library(client, db
     ISBN, and saves the best (save_best_cover keeps the largest)."""
     import blueprints.books as books_bp
     tried = []
-    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls: tried.extend(urls) or 'uploads/best.jpg')
+    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls, staged=False: tried.extend(urls) or 'uploads/best.jpg')
     login(client, 'alice')
     r = client.post('/books/select_search_result', json={'bookData': {
         'title': 'Atomic Habits', 'isbn': '9780735211292',
@@ -505,7 +527,7 @@ def test_find_a_better_cover_for_movies_and_albums(client, db, people, monkeypat
         asked.append((media_type, kw))
         return [('Discogs', lambda: [('https://d.test/blue.jpg', 'Discogs: LP, US, 1971')])]
     monkeypatch.setattr(media_covers, 'cover_search_steps', steps)
-    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls: 'uploads/blue.jpg')
+    monkeypatch.setattr(books_bp, 'save_best_cover', lambda urls, staged=False: 'uploads/blue.jpg')
     login(client, 'alice')
     r = client.post('/books/fetch_cover', json={'type': 'record', 'title': 'Blue', 'author': 'Joni Mitchell',
                                                 'barcode': '0012345678905', 'year': '1971', 'format': 'LP'})

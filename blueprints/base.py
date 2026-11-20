@@ -8,15 +8,41 @@ from datetime import datetime
 from models import get_library_members, is_friends_with
 from utils.book_utils import get_filter_options, card_json, show_choice, off_shelf_matches, wishlist_matches
 
+# No url_prefix (app.py): the Books shelves live under /books/ like Movies'
+# under /videos/ and Music's under /records/ (ROADMAP 16.0g step 7), while
+# home and the Shelves hub stay at /base/. Endpoint names didn't change.
 base_blueprint = Blueprint('base', __name__, template_folder='templates')
 
-@base_blueprint.route("/")
+
+def moved(endpoint, **values):
+    """A 301 to where a page lives now, query string kept: old bookmarks
+    and the links in notifications sent before the move."""
+    url = url_for(endpoint, **values)
+    query = request.query_string.decode()
+    return redirect(f'{url}?{query}' if query else url, code=301)
+
+
+@base_blueprint.route("/base/index")
+def old_index():
+    return moved('base.index')
+
+
+@base_blueprint.route("/base/shared-library")
+def old_shared_library():
+    return moved('base.shared_library')
+
+
+@base_blueprint.route("/base/library/<username>")
+def old_friend_library(username):
+    return moved('base.friend_library', username=username)
+
+@base_blueprint.route("/base/")
 def home():
     if current_user.is_authenticated:
         return redirect(url_for('base.index'))
     return redirect(url_for('auth.login'))
 
-@base_blueprint.route("/shelves")
+@base_blueprint.route("/base/shelves")
 @login_required
 def shelves():
     """The sidebar's Shelves link (ROADMAP 11.1): your shelf in the section
@@ -76,7 +102,7 @@ def library_page(template, owner_ids, data_user, **extra):
                            has_more=has_more, current_page=page, marks_user=data_user, **extra)
 
 
-@base_blueprint.route("/index")
+@base_blueprint.route("/books/")
 @login_required
 def index():
     """Your Library: the books you own. In the Shelf style a few of your
@@ -96,7 +122,7 @@ def _standing_books():
     return item3d.heading_books(get_db(), current_user.id, seed)
 
 
-@base_blueprint.route("/shared-library")
+@base_blueprint.route("/books/shared")
 @login_required
 def shared_library():
     """The household's books (everyone in your library group), or chosen
@@ -108,14 +134,14 @@ def shared_library():
                         heading_books=_standing_books())
 
 
-@base_blueprint.route("/friends-libraries")
+@base_blueprint.route("/base/friends-libraries")
 @login_required
 def friends_libraries():
     """Old Friends' Libraries tab: friends are their own page now (11.3)."""
     return redirect(url_for('friends.index'))
 
 
-@base_blueprint.route("/library/<username>")
+@base_blueprint.route("/books/user/<username>")
 @login_required
 def friend_library(username):
     """A friend's books (11.3): the same grid as yours, filtered and sorted

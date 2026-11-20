@@ -21,7 +21,7 @@ def test_your_book_by_either_isbn_form(client, db, people):
     login(client, 'alice')
     for q in ('9780441172719', '0441172717', '0-441-17271-7'):
         html = page(client, q)
-        assert 'You own this' in html and 'On your shelf' in html and f'/books/book/{dune}' in html, q
+        assert 'You own this' in html and 'On your shelf' in html and f'/books/{dune}' in html, q
 
 
 def test_household_copy_and_movie_barcode(client, db, people):
@@ -109,7 +109,7 @@ def test_local_check_by_isbn_and_barcode(client, db, people):
     login(client, 'alice')
     data = client.get('/have/local', query_string={'q': '0141439580'}).get_json()   # ISBN-10 form
     assert data['best'] == 'yours'
-    assert data['matches'][0]['url'] == f'/books/book/{book}'
+    assert data['matches'][0]['url'] == f'/books/{book}'
     assert data['matches'][0]['label'] == 'On your shelf'
     data = client.get('/have/local', query_string={'q': UPC}).get_json()
     assert data['best'] == 'household' and data['matches'][0]['label'] == "On the shelf: bob's"

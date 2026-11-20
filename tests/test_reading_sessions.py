@@ -48,7 +48,7 @@ def test_clearing_both_dates_on_edit_also_asks(client, db, people):
 def test_pages_carry_the_question(client, db, people):
     book = add_book(db, people['alice'])
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'Add a reading session with no dates?' in page
     assert 'data-submit="saveSession"' in page
     review = client.get(f'/read/rate_review/{book}').get_data(as_text=True)

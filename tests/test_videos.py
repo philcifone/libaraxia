@@ -193,10 +193,10 @@ def test_detail_page_shows_video_fields(client, db, people):
 def test_book_url_redirects_to_video_page(client, db, people):
     video = add_video(db, people['alice'])
     login(client, 'alice')
-    r = client.get(f'/books/book/{video}')
+    r = client.get(f'/books/{video}')
     assert r.status_code == 302 and r.headers['Location'].endswith(f'/videos/{video}')
     book = add_book(db, people['alice'], 'Dune')
-    assert client.get(f'/videos/{book}').headers['Location'].endswith(f'/books/book/{book}')
+    assert client.get(f'/videos/{book}').headers['Location'].endswith(f'/books/{book}')
 
 
 def test_grid_search_and_filters(client, db, people):
@@ -310,7 +310,7 @@ def test_filter_options_per_section(db, people):
 
 def test_add_button_menus(client, db, people):
     login(client, 'alice')
-    library = client.get('/base/index').get_data(as_text=True)
+    library = client.get('/books/').get_data(as_text=True)
     assert '>Library</a>' in library and '>Wishlist</a>' in library
     movies = client.get('/videos/').get_data(as_text=True)
     assert 'href="/videos/add?format=VHS"' in movies and '>Cartridge</a>' in movies
@@ -361,7 +361,7 @@ def test_statuses_are_checked_against_the_type(client, db, people):
     client.post('/collections/collections/status/add', data={'id': video, 'status': 'read'},
                 headers={'Referer': '/videos/'})
     client.post('/collections/collections/status/add', data={'id': book, 'status': 'watched'},
-                headers={'Referer': '/base/index'})
+                headers={'Referer': '/books/'})
     assert scalar(db, 'SELECT COUNT(*) FROM collections') == 0
 
 
@@ -372,7 +372,7 @@ def test_untracked_clears_the_status(client, db, people):
     db.commit()
     login(client, 'alice')
     client.post('/collections/collections/status/add', data={'id': book, 'status': 'untracked'},
-                headers={'Referer': '/base/index'})
+                headers={'Referer': '/books/'})
     assert scalar(db, 'SELECT COUNT(*) FROM collections') == 0
 
 
@@ -405,8 +405,8 @@ def test_videos_stay_out_of_the_library(client, db, people):
     add_book(db, people['alice'], 'Dune')
     add_video(db, people['alice'], title='Jaws')
     login(client, 'alice')
-    for url in ('/base/index', '/base/shared-library', '/base/shared-library?search_term=a',
-                '/base/library/alice'):
+    for url in ('/books/', '/books/shared', '/books/shared?search_term=a',
+                '/books/user/alice'):
         page = client.get(url).get_data(as_text=True)
         assert 'Dune' in page and 'Jaws' not in page, url
     login(client, 'carol')
@@ -554,7 +554,7 @@ def fake_sources(monkeypatch):
             return TMDB_MOVIE
         return None
 
-    def fake_save(urls):
+    def fake_save(urls, staged=False):
         covers.extend(urls)
         return 'uploads/cover_test.jpg'
     monkeypatch.setattr(media_lookup, '_get_json', fake_json)
@@ -636,12 +636,20 @@ def test_lookup_route(client, people, monkeypatch, fake_sources):
     assert client.get(f'/videos/lookup?barcode={OTHER_EAN}').get_json()['found'] is False
 
 
-def test_add_uses_the_looked_up_cover_but_not_arbitrary_paths(client, db, people):
+def test_add_uses_the_looked_up_cover_but_not_arbitrary_paths(client, db, people, static_root):
+    """The lookup's cover is staged; adding moves it into place (16.0g step 8).
+    Any other path, someone else's cover included, is refused."""
+    staged = 'uploads/staged/' + 'a' * 22 + '.jpg'
+    (static_root / 'uploads' / 'staged').mkdir(parents=True)
+    (static_root / staged).write_bytes(b'jpeg')
     login(client, 'alice')
-    client.post('/videos/add', data=form(existing_cover_url='uploads/cover_x.jpg'))
-    assert scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Jaws'") == 'uploads/cover_x.jpg'
-    client.post('/videos/add', data=form(title='Evil', barcode='', existing_cover_url='../app.py'))
-    assert scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Evil'") is None
+    client.post('/videos/add', data=form(existing_cover_url=staged))
+    stored = scalar(db, "SELECT cover_image_url FROM books WHERE title = 'Jaws'")
+    assert stored.startswith('uploads/cover_') and (static_root / stored).read_bytes() == b'jpeg'
+    assert not (static_root / staged).exists()
+    for title, path in (('Evil', '../app.py'), ('Theirs', stored)):
+        client.post('/videos/add', data=form(title=title, barcode='', existing_cover_url=path))
+        assert scalar(db, 'SELECT cover_image_url FROM books WHERE title = ?', title) is None
 
 
 # --- the shared add page (Phase 8.5) -----------------------------------------
@@ -800,18 +808,28 @@ def test_edit_book_saves_isbn_and_genre_is_optional(client, db, people):
     assert not re.search(r'id="genre"[^>]*required', page)
     r = client.post(f'/books/edit/{book}', data={'title': 'Dune', 'author': 'Frank Herbert',
                                                  'isbn': '9780441013593', 'genre': ''})
-    assert r.headers['Location'].endswith(f'/books/book/{book}')
+    assert r.headers['Location'].endswith(f'/books/{book}')
     assert scalar(db, 'SELECT isbn FROM books WHERE id = ?', book) == '9780441013593'
 
 
-def test_edit_book_takes_a_picked_cover_but_not_other_paths(client, db, people):
+def test_edit_book_takes_a_picked_cover_but_not_other_paths(client, db, people, static_root):
+    """Find a better cover stages its candidates; saving moves the picked one
+    into place. Any other path, another item's cover included, is refused
+    (16.0g step 8: before, any upload path was taken)."""
+    theirs = add_book(db, people['bob'], 'Theirs', cover='uploads/cover_bobs.jpg')
     book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
     base = {'title': 'Dune', 'author': 'Frank Herbert'}
-    client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': '../library.db'})
-    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) is None
-    client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': 'uploads/cover_new.jpg'})
-    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) == 'uploads/cover_new.jpg'
+    for path in ('../library.db', 'uploads/cover_bobs.jpg'):
+        client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': path})
+        assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) is None
+    staged = 'uploads/staged/' + 'b' * 22 + '.jpg'
+    (static_root / 'uploads' / 'staged').mkdir(parents=True)
+    (static_root / staged).write_bytes(b'jpeg')
+    client.post(f'/books/edit/{book}', data={**base, 'existing_cover_url': staged})
+    stored = scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book)
+    assert stored.startswith('uploads/cover_') and (static_root / stored).exists()
+    assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', theirs) == 'uploads/cover_bobs.jpg'
 
 
 def test_wishlist_tabs_show_books_movies_or_music(client, db, people):
@@ -854,4 +872,4 @@ def test_rack_prints_a_label_on_every_case(client, db, people, static_root):
     page = client.get('/videos/').get_data(as_text=True)
     assert page.count('rack-print') == 1
     assert re.search(r'rack-print[^>]*>\s*<span class="no-cover-title">Jaws<', page)
-    assert 'rack-print' not in client.get('/base/index').get_data(as_text=True)
+    assert 'rack-print' not in client.get('/books/').get_data(as_text=True)

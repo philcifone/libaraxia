@@ -5,6 +5,8 @@ from typing import Optional, Dict, Any
 from utils.database import get_db
 from utils.book_utils import (
     card_json,
+    accept_cover,
+    is_staged_cover,
     get_filter_options,
     show_choice,
     off_shelf_matches,
@@ -22,7 +24,7 @@ from utils.book_utils import (
     MAX_IMAGE_SIZE
 )
 from utils import photos, item3d, condition, copy_fields, cover_crop, media_covers, faces, catalog_card, loans
-from utils.image_utils import delete_image_file, is_safe_upload_path, delete_photo_folder, upload_exists
+from utils.image_utils import delete_image_file, delete_photo_folder, upload_exists
 from utils.rate_limiting import limiter
 from models import (admin_required, shares_library_with, get_library_members,
                     other_users_with_book_data, can_view_book, circle_ids)
@@ -92,7 +94,7 @@ def add_book():
             values = request.form.to_dict()
             # Keep a looked-up cover only if it's one of ours (an upload is
             # lost on the re-render, as on any refused form)
-            if not is_safe_upload_path(values.get("existing_cover_url")):
+            if not is_staged_cover(values.get("existing_cover_url")):
                 values["existing_cover_url"] = ""
             return render_add_book(values=values, duplicates=on_shelf, status=400)
 
@@ -183,7 +185,7 @@ def render_add_book(destination="shelf", values=None, duplicates=(), status=200)
             barcode = media.normalize_barcode(isbn)
             return redirect(url_for("wishlist.add_to_wishlist", type=media.VIDEO, barcode=barcode)
                             if to_wishlist else url_for("videos.add_video", barcode=barcode))
-        book_details = fetch_book_details_from_isbn(isbn)
+        book_details = fetch_book_details_from_isbn(isbn, staged=True)    # for the form (16.0g)
         if book_details:
             flash(f"Book details fetched from {book_details['source']}", "success")
         else:
@@ -242,13 +244,14 @@ def search_books():
     if not query:
         return jsonify({"items": [], "next": None})
     page = page_arg(request.args)
-    source = "openlibrary" if request.args.get("src") == "ol" else None
+    # src: the list page 1 came from (BOOK_SOURCES order, 16.0g), kept for "Show more"
+    source = {"ol": "openlibrary", "g": "google"}.get(request.args.get("src"))
     try:
         items, more, by, source = search_books_page(query, page, by_arg(request.args), source)
     except Exception:
         current_app.logger.exception("Book search failed")
         return jsonify({"error": "Search failed. Please try again."}), 500
-    keep = {"by": by, "src": "ol" if source == "openlibrary" else None}
+    keep = {"by": by, "src": "ol" if source == "openlibrary" else "g"}
     return jsonify({"items": items, "next": next_page(page, more, **keep)})
 
 def video_code_response(code):
@@ -287,7 +290,7 @@ def fetch_barcode_details():
         current_app.logger.debug(f"Fetching book details for ISBN: {isbn}")
 
         # Use existing ISBN fetch function
-        book_details = fetch_book_details_from_isbn(isbn)
+        book_details = fetch_book_details_from_isbn(isbn, staged=True)    # for the form (16.0g)
 
         if book_details:
             current_app.logger.info(f"Successfully fetched book: {book_details.get('title')}")
@@ -350,7 +353,7 @@ def select_search_result():
         candidates = google_cover_candidates(thumbnail_url) if thumbnail_url else []
         if isbn:
             candidates += fetch_cover_by_isbn_direct(isbn)
-        local_cover_url = save_best_cover(candidates) if candidates else None
+        local_cover_url = save_best_cover(candidates, staged=True) if candidates else None
         if candidates and not local_cover_url:
             current_app.logger.warning("Failed to download cover image")
 
@@ -448,7 +451,7 @@ def fetch_cover():
             for i, (url, source) in enumerate(candidates):
                 yield line(type="step", phase="download", label=source, done=i, total=len(candidates))
                 # A Google link becomes its large size, then the 128 px one (8F)
-                local = save_best_cover(google_cover_candidates(url))
+                local = save_best_cover(google_cover_candidates(url), staged=True)   # a candidate: staged
                 if local:
                     count += 1
                     yield line(type="cover", url=local, source=source)
@@ -508,24 +511,23 @@ def edit_book(id):
         # Priority: crop > uploaded image > fetched cover > existing cover.
         # The crop may start from this cover, a fetched one or a staged photo.
         cropped = cover_crop.crop_or_flash(
-            request.form, [current_cover, fetched_cover if is_safe_upload_path(fetched_cover) else None])
+            request.form, [current_cover, fetched_cover if is_staged_cover(fetched_cover) else None])
+        upload = request.files.get("image")
+        promoted = None if cropped or (upload and upload.filename) else accept_cover(fetched_cover)
         if cropped:
-            if current_cover and current_cover != cropped:
-                delete_image_file(current_cover)
             cover_image_url = cropped
-        elif request.files.get("image") and request.files.get("image").filename != '':
-            # User uploaded a new image - delete old cover first
-            if current_cover:
-                delete_image_file(current_cover)
-            cover_image_url = process_image(request.files.get("image"), current_cover)
-        elif fetched_cover and is_safe_upload_path(fetched_cover):
-            # User fetched a new cover - delete old cover first
-            if current_cover and current_cover != fetched_cover:
-                delete_image_file(current_cover)
-            cover_image_url = fetched_cover
+        elif upload and upload.filename:
+            # A bad file keeps the cover it had (16.0g: the old code deleted
+            # the file first, leaving the row pointing at nothing)
+            cover_image_url = process_image(upload, current_cover, allowed=(current_cover,))
+        elif promoted:
+            # "Find a better cover": the staged one, moved into place
+            cover_image_url = promoted
         else:
-            # Keep existing cover
             cover_image_url = current_cover
+        # The old file goes once the new one is in place
+        if current_cover and cover_image_url != current_cover:
+            delete_image_file(current_cover)
 
         # Sanitize page_count: convert to integer or default to 0 if invalid
         page_count_raw = request.form.get("page_count", "").strip()
@@ -619,6 +621,13 @@ def _book_tools_context(conn, book):
     }
 
 @books_blueprint.route("/book/<int:id>")
+def old_show_book(id):
+    """Where a book's page was before 16.0g step 7: a 301 to /books/<id>."""
+    from blueprints.base import moved
+    return moved('books.show_book', id=id)
+
+
+@books_blueprint.route("/<int:id>")
 @login_required
 def show_book(id):
     conn = get_db()
@@ -855,7 +864,7 @@ def remove_book(id):
     reviews, ratings and reading history. Owner or admin; reversible.
     """
     conn = get_db()
-    book = conn.execute("SELECT title, added_by FROM books WHERE id = ?", (id,)).fetchone()
+    book = conn.execute("SELECT title, added_by, media_type FROM books WHERE id = ?", (id,)).fetchone()
     if not book or not (current_user.is_admin or book['added_by'] == current_user.id):
         flash("You don't have permission to remove this book.", "error")
         return redirect(url_for('base.index'))
@@ -863,7 +872,7 @@ def remove_book(id):
     conn.execute("UPDATE books SET removed_at = CURRENT_TIMESTAMP, removed_note = ? WHERE id = ?", (note, id))
     conn.commit()
     flash(f"'{book['title']}' removed. Reviews and history are kept.", "success")
-    return redirect(url_for('books.show_book', id=id))
+    return redirect(url_for(media.item_endpoint(book['media_type']), id=id))     # one hop, any type
 
 
 @books_blueprint.route("/restore/<int:id>", methods=["POST"])
@@ -871,14 +880,14 @@ def remove_book(id):
 def restore_book(id):
     """Undo a removal: the book is back on the shelf."""
     conn = get_db()
-    book = conn.execute("SELECT title, added_by FROM books WHERE id = ?", (id,)).fetchone()
+    book = conn.execute("SELECT title, added_by, media_type FROM books WHERE id = ?", (id,)).fetchone()
     if not book or not (current_user.is_admin or book['added_by'] == current_user.id):
         flash("You don't have permission to restore this book.", "error")
         return redirect(url_for('base.index'))
     conn.execute("UPDATE books SET removed_at = NULL, removed_note = NULL WHERE id = ?", (id,))
     conn.commit()
     flash(f"'{book['title']}' is back on the shelf.", "success")
-    return redirect(url_for('books.show_book', id=id))
+    return redirect(url_for(media.item_endpoint(book['media_type']), id=id))
 
 
 @books_blueprint.route("/ownership/<int:id>", methods=["POST"])
@@ -935,7 +944,7 @@ def delete_book(id):
     if others:
         flash("Can't delete this book: " + ", ".join(others) +
               " has reviews or reading history on it, and deleting would erase them.", "error")
-        return redirect(url_for('books.show_book', id=id))
+        return redirect(url_for(media.item_endpoint(book['media_type']), id=id))
 
     conn.execute("DELETE FROM books WHERE id = ?", (id,))
     conn.commit()
@@ -972,7 +981,7 @@ def transfer_book(book_id):
 
     if not new_owner_id:
         flash("Please select a user to transfer the book to", "error")
-        return redirect(request.referrer or url_for('base.index'))
+        return _to_item(book_id)
 
     conn = get_db()
     try:
@@ -989,12 +998,12 @@ def transfer_book(book_id):
         # Only the book's owner (or an admin) can give it away
         if book['added_by'] != current_user.id and not current_user.is_admin:
             flash("You don't have permission to transfer this book", "error")
-            return redirect(request.referrer or url_for('base.index'))
+            return _to_item(book_id)
 
         # Owners can only give books within their household; admins to anyone
         if not current_user.is_admin and not shares_library_with(current_user.id, new_owner_id):
             flash("You can only transfer books to users in your library group", "error")
-            return redirect(request.referrer or url_for('base.index'))
+            return _to_item(book_id)
 
         # Get new owner's username for flash message
         new_owner = conn.execute(
@@ -1004,7 +1013,7 @@ def transfer_book(book_id):
 
         if not new_owner:
             flash("Invalid user selected", "error")
-            return redirect(request.referrer or url_for('base.index'))
+            return _to_item(book_id)
 
         # Transfer the book
         conn.execute(
@@ -1018,8 +1027,18 @@ def transfer_book(book_id):
             f"User {current_user.username} transferred book '{book['title']}' to {new_owner['username']}"
         )
 
-    except Exception as e:
-        current_app.logger.error(f"Error transferring book: {str(e)}")
+    except Exception:
+        current_app.logger.exception("Error transferring book")
         flash("Error transferring book", "error")
 
-    return redirect(request.referrer or url_for('base.index'))
+    return _to_item(book_id)
+
+
+def _to_item(book_id):
+    """An item's own page (its type's route), or the Books shelf if it's
+    gone: where the Book tools forms land (16.0g step 7), rather than
+    wherever the browser came from."""
+    row = get_db().execute('SELECT media_type FROM books WHERE id = ?', (book_id,)).fetchone()
+    if not row:
+        return redirect(url_for('base.index'))
+    return redirect(url_for(media.item_endpoint(row['media_type']), id=book_id))

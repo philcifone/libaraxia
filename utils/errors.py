@@ -1,5 +1,3 @@
-from urllib.parse import urlparse
-
 from flask import flash, jsonify, redirect, request, url_for
 
 
@@ -13,15 +11,8 @@ STALE_PAGE_MESSAGE = 'That page was out of date, try again.'
 
 def _same_site_referrer():
     """The Referer if it points at this site, else None (never an open redirect)."""
-    ref = request.referrer
-    if not ref:
-        return None
-    parsed = urlparse(ref)
-    if parsed.netloc and parsed.netloc != request.host:
-        return None
-    if parsed.scheme not in ('', 'http', 'https'):
-        return None
-    return ref
+    from utils.landing import same_site
+    return same_site(request.referrer)
 
 
 def csrf_error(error):

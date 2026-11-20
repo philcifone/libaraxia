@@ -418,6 +418,6 @@ def lookup(mbid):
     if not details:
         return {'found': False, 'details': {}, 'sources': [], 'cover': None}
     # Covers are downloaded per call (a cached path could have been cleaned up)
-    cover = book_utils.save_best_cover(covers)
+    cover = book_utils.save_best_cover(covers, staged=True)
     sources = ['MusicBrainz'] + (['Cover Art Archive'] if cover else [])
     return {'found': True, 'details': details, 'sources': sources, 'cover': cover}

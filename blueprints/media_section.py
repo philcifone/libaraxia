@@ -28,10 +28,10 @@ from models import can_view_book, get_library_members, is_friends_with
 from utils import households, media, search, sorting
 from utils.reviews import then_review_values
 from utils.book_utils import (process_image, grid_source, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
-                              _normalise, get_filter_options)
+                              _normalise, get_filter_options, is_staged_cover)
 from utils.database import get_db
 from utils import copy_fields, cover_crop, faces, item3d
-from utils.image_utils import delete_image_file, is_safe_upload_path
+from utils.image_utils import delete_image_file
 
 
 @dataclass(frozen=True)
@@ -261,7 +261,7 @@ class Section:
         values['face_set'] = (form.get('face_set') or '').strip()    # kept if the form comes back
         # A cover saved by the lookup, kept across a re-shown form
         cover = form.get('existing_cover_url')
-        values['existing_cover_url'] = cover if is_safe_upload_path(cover) else ''
+        values['existing_cover_url'] = cover if is_staged_cover(cover) else ''
         return values, errors
 
     def duplicates_for(self, conn, values, exclude_id=None):

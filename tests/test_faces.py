@@ -329,3 +329,17 @@ def test_bulk_edit_applies_a_set_and_undoes_it(client, db, people, static_root):
     client.post(f'/bulk/{r["edit_id"]}/undo')
     assert picked(tapes[0]) == {'bottom': placeholder_id(db, 'Orange tape')}
     assert picked(tapes[1]) == {}
+
+
+def test_a_list_that_doesnt_batch_still_draws_faces_and_skips_the_rest(client, db, people, static_root):
+    """cover_box answers an item with no face without a query (16.0g: the
+    wishlist ran two per cover); one with a face still gets it there."""
+    login(client, 'bob')
+    faced = add_item(db, people['bob'], 'book', None, real_cover(static_root, 'a.jpg', (500, 750)))
+    plain = add_item(db, people['bob'], 'book', None, real_cover(static_root, 'b.jpg', (500, 750)))
+    upload(client, faced, 'top', jpeg_bytes((500, 60)))
+    for book in (faced, plain):
+        db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)', (people['bob'], book))
+    db.commit()
+    page = client.get('/wishlist/view').get_data(as_text=True)
+    assert page.count('--face-top: url(&#34;/static/uploads/photos/') == 1

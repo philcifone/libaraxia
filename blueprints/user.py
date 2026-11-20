@@ -17,12 +17,14 @@ import bcrypt
 import os
 from datetime import datetime
 from PIL import Image
+from utils.landing import back
+from utils.image_utils import UPLOAD_EXTENSIONS, write_image
 
 # Initialize Blueprint
 user_blueprint = Blueprint('user', __name__)
 
 # Allowed extensions for profile pictures
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_EXTENSIONS = UPLOAD_EXTENSIONS          # the same list as covers (16.0g)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -446,8 +448,8 @@ def upload_avatar():
         if file and allowed_file(file.filename):
             # Secure the filename and create a unique name
             filename = secure_filename(file.filename)
-            file_ext = filename.rsplit('.', 1)[1].lower()
-            unique_filename = f"user_{current_user.id}_{int(os.urandom(4).hex(), 16)}.{file_ext}"
+            # The extension is the site's format's, added on save (16.0g: AVIF)
+            unique_filename = f"user_{current_user.id}_{int(os.urandom(4).hex(), 16)}"
             logger.info(f"Generated unique filename: {unique_filename}")
 
             # Create uploads/avatars directory if it doesn't exist
@@ -485,7 +487,7 @@ def upload_avatar():
                 logger.info(f"Image resized to: {img.size}")
 
                 # Save the image
-                img.save(filepath, quality=85, optimize=True)
+                unique_filename += write_image(img, filepath)
                 logger.info(f"Image saved to: {filepath}")
 
             except Exception as e:
@@ -844,7 +846,7 @@ def household_invite(user_id):
     friend = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
     if not friend:
         flash('User not found', 'error')
-        return redirect(request.referrer or url_for('base.index'))
+        return back()
     try:
         households.invite(conn, current_user.id, user_id)
         conn.commit()
@@ -852,7 +854,7 @@ def household_invite(user_id):
     except households.HouseholdError as e:
         conn.rollback()
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('user.profile', username=friend['username']))
+    return back(url_for('user.profile', username=friend['username']))
 
 
 @user_blueprint.route('/household/accept/<int:invite_id>', methods=['POST'])
@@ -867,7 +869,7 @@ def household_accept(invite_id):
         # accept() deletes the used-up invite before refusing; keep that
         conn.commit()
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('friends.notifications_page'))
+    return back(url_for('friends.notifications_page'))
 
 
 @user_blueprint.route('/household/decline/<int:invite_id>', methods=['POST'])
@@ -881,7 +883,7 @@ def household_decline(invite_id):
         flash('Invite withdrawn.' if request.form.get('cancel') else 'Invite declined.', 'info')
     except households.HouseholdError as e:
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('friends.notifications_page'))
+    return back(url_for('friends.notifications_page'))
 
 
 @user_blueprint.route('/household/remove/<int:user_id>', methods=['POST'])
@@ -893,7 +895,7 @@ def household_remove(user_id):
     user = conn.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
     if not user:
         flash('User not found', 'error')
-        return redirect(request.referrer or url_for('base.index'))
+        return back()
     try:
         households.remove(conn, current_user.id, user_id)
         conn.commit()
@@ -903,5 +905,5 @@ def household_remove(user_id):
     except households.HouseholdError as e:
         conn.rollback()
         flash(str(e), 'error')
-    return redirect(request.referrer or url_for('user.profile', username=user['username']))
+    return back(url_for('user.profile', username=user['username']))
 

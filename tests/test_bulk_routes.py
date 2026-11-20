@@ -69,10 +69,10 @@ def test_apply_writes_and_sets_the_banner(client, db, people):
     assert [genre_of(db, i) for i in ids] == ['Cookbooks', 'Cookbooks', 'Reference']
 
     # The next page shows the banner once, with Undo
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'Genre set to Cookbooks on 2 items' in page
     assert f'/bulk/{body["edit_id"]}/undo' in page or f'data-edit-id="{body["edit_id"]}"' in page
-    assert 'Genre set to Cookbooks on 2 items' not in client.get('/base/index').get_data(as_text=True)
+    assert 'Genre set to Cookbooks on 2 items' not in client.get('/books/').get_data(as_text=True)
 
 
 def test_stale_apply_is_409_with_the_new_plan(client, db, people):
@@ -87,7 +87,7 @@ def test_stale_apply_is_409_with_the_new_plan(client, db, people):
     assert r.status_code == 409 and body['stale'] is True and body['success'] is False
     assert body['plan']['fingerprint'] != fp and body['plan']['groups'][0]['key'] == 'Elsewhere'
     assert [genre_of(db, i) for i in ids] == ['Elsewhere', 'Cookbook']
-    assert client.get('/base/index').get_data(as_text=True).count('Genre set') == 0
+    assert client.get('/books/').get_data(as_text=True).count('Genre set') == 0
 
 
 def test_apply_without_a_matching_fingerprint_changes_nothing(client, db, people):
@@ -103,11 +103,11 @@ def test_undo_route_and_its_banner(client, db, people):
     params = {'genre': 'Food'}
     fp = post(client, '/bulk/plan', action='genre', params=params, ids=ids).get_json()['plan']['fingerprint']
     edit = post(client, '/bulk/apply', action='genre', params=params, ids=ids, fingerprint=fp).get_json()['edit_id']
-    client.get('/base/index')                                       # the apply banner is shown and gone
+    client.get('/books/')                                       # the apply banner is shown and gone
     r = client.post(f'/bulk/{edit}/undo')
     assert r.status_code == 200 and r.get_json()['summary'] == 'Undone: 1 restored.'
     assert genre_of(db, ids[0]) == 'Cooking'
-    page = client.get('/base/index').get_data(as_text=True)
+    page = client.get('/books/').get_data(as_text=True)
     assert 'Undone: 1 restored.' in page and f'/bulk/{edit}/undo' not in page   # no Undo on an undo
     again = client.post(f'/bulk/{edit}/undo')
     assert again.status_code == 400 and 'Already undone' in again.get_json()['error']

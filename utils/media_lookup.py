@@ -396,5 +396,5 @@ def lookup(barcode=None, title=None, year=None, tmdb_id=None, kind=None):
 
     result = dict(_cached(key, compute))
     # Covers are downloaded per call (a cached path could have been cleaned up)
-    result['cover'] = book_utils.save_best_cover(result.pop('covers')) if result['found'] else None
+    result['cover'] = book_utils.save_best_cover(result.pop('covers'), staged=True) if result['found'] else None
     return result

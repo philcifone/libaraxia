@@ -41,7 +41,7 @@ def test_card_shows_on_books_tab_only(client, db, people):
     login(client, 'alice')
     html = client.get('/collections/collections?type=book').get_data(as_text=True)
     assert 'Goodreads Shelves' in html and 'audiobook' in html
-    assert '/base/index?gr_shelf=audiobook&amp;show=all' in html
+    assert '/books/?gr_shelf=audiobook&amp;show=all' in html
     assert 'Goodreads Shelves' not in client.get('/collections/collections?type=video').get_data(as_text=True)
 
 
@@ -106,5 +106,5 @@ def test_grid_filters_to_one_shelf(client, db, people):
     assert grid_query.view_ids(db, alice, 'book:mine', 'gr_shelf=picture_book&show=all') == [c]
     assert grid_query.view_ids(db, alice, 'book:mine', 'gr_shelf=picture-book&show=all') == []
     login(client, 'alice')
-    html = client.get('/base/index?gr_shelf=audiobook&show=all').get_data(as_text=True)
+    html = client.get('/books/?gr_shelf=audiobook&show=all').get_data(as_text=True)
     assert 'On the Goodreads shelf "audiobook"' in html

@@ -14,7 +14,7 @@ def test_stale_form_post_flashes_and_goes_back(app, client, db, people, monkeypa
     login(client, 'alice')
     monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
 
-    page = f'http://localhost/books/book/{book}'
+    page = f'http://localhost/books/{book}'
     r = client.post(f'/read/delete_reading_session/{session_id}',
                     data={'csrf_token': 'stale'}, headers={'Referer': page})
     assert r.status_code == 302

@@ -64,7 +64,7 @@ No per-item privacy settings. Household members who aren't friends see each othe
 ## Security conventions (follow in new code)
 
 - **No inline JS** (CSP `script-src 'self'`): no `<script>` without `src`, no `onclick=` etc., in templates or JS-built HTML. Use `data-click` / `data-change` / `data-submit` with `registerActions`, `data-confirm`, `data-fallback-src` (`common.js`). Pass server values in `data-` attributes. No CDNs; third-party JS goes in `static/vendor/` with hashes. `tests/test_csp.py` enforces this.
-- **State-changing routes are POST-only** with CSRF (global `CSRFProtect`; fetch sends `X-CSRFToken` via `getCSRFToken()`). Check ownership in the SQL (`WHERE ... AND user_id = ?`).
+- **State-changing routes are POST-only** with CSRF (global `CSRFProtect`; fetch sends `X-CSRFToken` via `getCSRFToken()`). Check ownership in the SQL (`WHERE ... AND user_id = ?`). New ones are `/<thing>/<id>/<verb>` and land on a fixed page, or go back through `utils/landing.back` (never `request.referrer` directly).
 - **Image paths from the browser** must pass `is_safe_upload_path()`. Never `os.remove` a DB path except through `delete_image_file()`.
 - **Server-side URL fetches** go through `book_utils._get_public()` / `_fetch_image()` (public-IP check on every redirect). **Remote images** in the browser go through `coverSrc(url)`.
 - **Escape everything** put into `innerHTML` (`escapeHtml()` or `textContent`; `encodeURIComponent` for URL segments).

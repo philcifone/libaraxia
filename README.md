@@ -75,11 +75,24 @@ Edit `.env`:
 | Variable | What it does |
 |---|---|
 | `SECRET_KEY` | **Required.** Session signing key. Use the random value above. |
-| `GOOGLE_BOOKS_API_KEY` | Book lookups. Get one at [console.cloud.google.com](https://console.cloud.google.com). |
+| `BOOK_SOURCES` | Where book details and covers come from, in order. See [Book sources](#book-sources) below. |
+| `GOOGLE_BOOKS_API_KEY` | Optional. A higher quota for Google Books lookups; without it Google is still asked, anonymously. Get one at [console.cloud.google.com](https://console.cloud.google.com). |
 | `FLASK_ENV` | `development` or `production`. Production makes cookies `Secure`, so it needs HTTPS. |
 | `ALLOW_REGISTRATION` | Set to `False` once your accounts exist, so strangers can't sign up. |
-| `TRUSTED_PROXY_COUNT` | Set to `1` if you run behind nginx/Caddy, so rate limits see real client IPs. |
+| `TRUSTED_PROXY_COUNT` | Set to `1` behind a Cloudflare tunnel, nginx, Caddy or any other single proxy, so rate limits and logs see each visitor's real IP. Left at `0` behind a proxy, every outside visitor looks like one address, and one stranger guessing passwords locks the login for all of them. |
 | `EMAIL_VERIFICATION_REQUIRED`, `MAIL_*` | Optional email verification. |
+
+#### Book sources
+
+Movies and music have their own sources (TMDb, Discogs, MusicBrainz). For books, `BOOK_SOURCES` picks between two, in order:
+
+| Value | What happens |
+|---|---|
+| `google,openlibrary` | The default. Google Books first, Open Library for whatever Google lacks or when it's down. Google has the better covers and descriptions for recent books. |
+| `openlibrary,google` | Open Library first, Google only when Open Library has nothing. |
+| `openlibrary` | Google is never contacted: search, ISBN lookups, covers and "Do I have this?" all use Open Library. |
+
+Open Library is open data run by the Internet Archive: no account, no key, and it only sees the ISBN or title you look up. If keeping your catalogue away from big tech is why you're self-hosting, use `openlibrary`; you give up some covers and descriptions for newer books. Open Library is always available as a fallback and can't be switched off.
 
 > **Note:** every setting can go in `.env` or be a real environment variable (e.g. in a systemd unit); a real environment variable wins. The database defaults to `library.db` in the project directory, and the app logs which file it opened at startup.
 
@@ -90,6 +103,8 @@ python3 manage.py migrate
 ```
 
 This builds `library.db` from `create_database.sql`. Later, after `git pull`, the same command backs up the database and applies any new migrations. `python3 manage.py status` shows where you are. See [`migrations/README.md`](migrations/README.md).
+
+**Copying the database:** it runs in SQLite's WAL mode, so recent writes can sit in `library.db-wal` beside it. Use `python3 manage.py backup`, Admin → Backups, or a filesystem snapshot that takes all three files at once (ZFS, LVM). A plain `cp library.db` while the app runs can miss the latest changes.
 
 **Upgrading an install from before `manage.py` existed:** run `python3 manage.py migrate --baseline` once, then `python3 manage.py migrate`.
 

@@ -107,6 +107,16 @@ page load. Options, in order of preference:
 
 Proposed: the first. `tilt.js` is already deferred.
 
+**Decided at step 5 (2026-11-20): neither; both stay as they are.** Step 3
+made the cost go away: both scripts now carry `?v=` and are cached for a
+year, so after the first visit "blocking" is a 10 KB read from the
+browser's own cache. Deferring would add risk for nothing measurable:
+`shelf.js` must set the rack before the first paint (or it flashes in),
+and moving the boot screen's cover into the server's render would need the
+server to guess whether this browser boots (storage blocked, reduced
+motion, already booted in another tab); a wrong guess leaves the page
+covered.
+
 ### 1.6 Compression and the tunnel
 
 - **Through the tunnel:** Cloudflare compresses text responses (gzip or
@@ -315,6 +325,10 @@ about what a JPEG cover costs today once it's AVIF. Photos stay at 2000 px.
 Existing covers keep their size; a new fetch or upload gets the new one.
 Sources often have less than 800 px; a cover is never scaled up.
 
+Built (step 10): `MAX_IMAGE_SIZE = (800, 1600)`, so 800 px is the width: a
+2:3 cover is 800x1200. "800 px tall" above would have been smaller than
+today's 1000, so the box is what was meant.
+
 ---
 
 ## 6. Book metadata sources: Google, Open Library, or both
@@ -403,3 +417,158 @@ Movies (TMDb) and music (Discogs, MusicBrainz) aren't part of this.
    choice should be easy to find, not buried.
 
 Approved by Phil, 2026-11-20 ("go ahead").
+
+---
+
+## Appendix A: the page walk (step 1, 2026-11-20)
+
+`PROFILE_REQUESTS=1`, every GET page as Phil on a copy of dev's DB, the
+second (warm) load of each, outside routes that call other services. 56
+pages. Before the fixes, everything over 50 statements or 150 ms:
+
+| Page | Before | After | Cause |
+|---|---|---|---|
+| `/admin/placeholder_covers` | 1300 ms, 8 sql | about 500 ms | Decoded every cover at full size; JPEGs now decode at 1/2 to 1/8 scale for the check (same verdicts on all 465 dev images, and a test) |
+| `/wishlist/view` | 35 ms, 514 sql | 25 ms, 9 sql | Two face queries per cover: a list that doesn't batch its faces. `cover_box` now knows which items have any face (one query per request) and skips the rest |
+| `/reviews/all/mine` | 11 ms, 260 sql | under 20 sql | The same |
+| `/feed/activity` | 5 ms, 166 sql | under 33 sql | One like query and one friendship query per activity; now one each per page |
+| `/user/Phil` | 14 ms, 165 sql | 13 ms, 74 sql | The face queries; the rest are the profile's own sections, each a different query |
+| `/user/settings` | 4 ms, 108 sql | the same | Many distinct small queries (each section's own); 4 ms, left alone |
+
+Every other page is under 12 ms and 40 statements. Nothing needed an
+index: on a catalogue this size SQLite is not where the time goes. The
+time a person feels is the network and the static files (1.2, 1.3).
+
+## Appendix B: where every POST lands (step 7, 2026-11-20)
+
+Generated from `app.url_map` and each view's source, then checked by hand
+where a module has its own helper. "back (`landing.back`)" is the form's
+same-site `next`, else the same-site Referer, else the listed fallback: the
+actions done in place from more than one page (a status from a grid card or
+the item page, a friend request from Notifications or a profile). Everything
+else lands on a fixed page. Several listed endpoints are only the error
+path (`base.index` when an item is gone).
+
+| POST | Lands on |
+|---|---|
+| `/abs/apply` | Settings, Audiobookshelf card; the review page |
+| `/abs/choose` | the review page (JSON to fetch) |
+| `/abs/connect` | Settings, Audiobookshelf card |
+| `/abs/discard` | Settings, Audiobookshelf card |
+| `/abs/disconnect` | Settings, Audiobookshelf card |
+| `/abs/sync` | the review page; Settings on an error |
+| `/admin/add_library_member` | `user.settings` |
+| `/admin/backups/<name>/delete` | `admin.backups_page` |
+| `/admin/backups/<name>/restore` | `admin.backups_page` |
+| `/admin/backups/create` | `admin.backups_page` |
+| `/admin/cleanup_orphaned_images` | `admin.orphaned_images` |
+| `/admin/clear_placeholder_covers` | `admin.placeholder_covers` |
+| `/admin/create_user` | `user.settings` |
+| `/admin/delete_user` | `user.settings` |
+| `/admin/reassign_books` | `admin.unowned_books` |
+| `/admin/remove_library_member` | `user.settings` |
+| `/admin/remove_user_avatar` | JSON |
+| `/admin/reset_user_password` | `user.settings` |
+| `/admin/toggle_admin` | `user.settings` |
+| `/admin/toggle_user` | `user.settings` |
+| `/admin/update_user_email` | `user.settings` |
+| `/admin/upload_user_avatar` | JSON |
+| `/auth/login` | `base.index`, a page |
+| `/auth/logout` | `auth.login` |
+| `/auth/register` | `auth.login`, a page |
+| `/auth/resend_verification` | `auth.login`, a page |
+| `/books/add` | `books.add_book`, `books.show_book`, `read.rate_review` |
+| `/books/check_duplicates` | JSON |
+| `/books/delete/<int:id>` | the item's page, `base.index` |
+| `/books/edit/<int:id>` | the item's page, `base.index`, `books.show_book`, a page |
+| `/books/fetch_cover` | JSON, a file |
+| `/books/ownership/<int:id>` | the item's page, `base.index` |
+| `/books/remove/<int:id>` | the item's page, `base.index` |
+| `/books/restore/<int:id>` | the item's page, `base.index` |
+| `/books/select_search_result` | JSON |
+| `/books/transfer/<int:book_id>` | the item's page, `base.index` |
+| `/bulk/<int:edit_id>/undo` | JSON |
+| `/bulk/apply` | JSON |
+| `/bulk/plan` | JSON |
+| `/bulk/selection` | JSON |
+| `/collections/collections/<int:collection_id>/add` | JSON |
+| `/collections/collections/<int:collection_id>/remove` | JSON |
+| `/collections/collections/create` | back (`landing.back`), `collections.view_collections` |
+| `/collections/collections/status/add` | back (`landing.back`) |
+| `/collections/delete_collection/<int:collection_id>` | `collections.view_collections` |
+| `/collections/goodreads_shelf` | `collections.view_collections`, `collections.view_custom_collection` |
+| `/collections/manage_book_collections` | back (`landing.back`) |
+| `/covers/<int:job_id>/dismiss` | JSON |
+| `/covers/<int:job_id>/stop` | JSON |
+| `/covers/crop/preview` | a file |
+| `/covers/crop/save/<int:book_id>` | JSON |
+| `/covers/crop/source` | JSON |
+| `/covers/start` | JSON; without fetch, back (`landing.back`) |
+| `/faces/admin/<int:placeholder_id>/crop` | JSON |
+| `/faces/admin/<int:placeholder_id>/delete` | Admin → Faces, that medium's tab |
+| `/faces/admin/<int:placeholder_id>/rename` | Admin → Faces, that medium's tab |
+| `/faces/admin/add` | Admin → Faces, that medium's tab |
+| `/faces/admin/sets/<int:set_id>/delete` | Admin → Faces, that medium's tab |
+| `/faces/admin/sets/<int:set_id>/update` | Admin → Faces, that medium's tab |
+| `/faces/admin/sets/add` | Admin → Faces, that medium's tab |
+| `/faces/item/<int:book_id>/choose` | JSON; without fetch, the item's edit page #photos |
+| `/faces/item/<int:book_id>/set` | JSON; without fetch, the item's edit page #photos |
+| `/feed/dismiss_activity` | `feed.activity_feed` |
+| `/feed/like_activity` | JSON |
+| `/feed/unlike_activity` | JSON |
+| `/friends/accept/<int:request_id>` | back (`landing.back`), `base.index`, `friends.index` |
+| `/friends/decline/<int:request_id>` | back (`landing.back`), `base.index`, `friends.index` |
+| `/friends/dismiss_notification/<int:notification_id>` | `friends.notifications_page` |
+| `/friends/mark_all_read` | `friends.notifications_page` |
+| `/friends/remove/<int:friend_id>` | back (`landing.back`), `base.index`, `friends.index` |
+| `/friends/send_request/<username>` | `base.index`, `user.profile` |
+| `/loans/<int:book_id>/lend` | the item's page #loans |
+| `/loans/<int:loan_id>/delete` | the item's page #loans |
+| `/loans/<int:loan_id>/return` | the item's page #loans |
+| `/merge/` | the item's page, `merge.index` |
+| `/merge/<int:edit_id>/undo` | `merge.index` |
+| `/photos/<int:book_id>/<kind>` | JSON; without fetch, the item's edit page #photos |
+| `/photos/photo/<int:photo_id>/caption` | JSON; without fetch, the item's edit page #photos |
+| `/photos/photo/<int:photo_id>/crop` | JSON |
+| `/photos/photo/<int:photo_id>/delete` | JSON; without fetch, the item's edit page #photos |
+| `/read/<int:book_id>/progress` | the item's page, `books.show_book` |
+| `/read/delete_reading_session/<int:session_id>` | the item's page, `base.index`, `books.show_book`, `read.rate_review` |
+| `/read/manage_session/<int:book_id>` | the item's page, `books.show_book`, `read.rate_review` |
+| `/read/rate_review/<int:book_id>` | the item's page, `reviews.index`, a page |
+| `/records/add` | `read.rate_review` |
+| `/records/check_duplicates` | JSON |
+| `/records/edit/<int:id>` | the item's page, a page |
+| `/tags/add` | JSON |
+| `/tags/remove` | JSON |
+| `/user/backups/<name>/delete` | Settings, backups card (or the Goodreads page it came from) |
+| `/user/backups/<name>/restore` | Settings, backups card (or the Goodreads page it came from) |
+| `/user/backups/create` | Settings, backups card (or the Goodreads page it came from) |
+| `/user/delete_account` | `auth.login`, `user.settings` |
+| `/user/household/accept/<int:invite_id>` | back (`landing.back`) |
+| `/user/household/decline/<int:invite_id>` | back (`landing.back`) |
+| `/user/household/invite/<int:user_id>` | back (`landing.back`) |
+| `/user/household/remove/<int:user_id>` | back (`landing.back`) |
+| `/user/import_goodreads/apply` | JSON |
+| `/user/import_goodreads/choose` | JSON |
+| `/user/import_goodreads/discard` | `user.import_goodreads_page` |
+| `/user/import_goodreads/plan` | JSON, `user.import_goodreads_page`, `user.import_goodreads_review` |
+| `/user/update_bio` | JSON |
+| `/user/update_email` | JSON |
+| `/user/update_password` | JSON |
+| `/user/update_reading_goal` | `user.profile` |
+| `/user/update_theme` | JSON |
+| `/user/update_username` | JSON |
+| `/user/upload_avatar` | JSON |
+| `/values/fetch/<int:book_id>` | JSON |
+| `/values/start` | JSON, `user.settings` |
+| `/values/test` | `user.settings` |
+| `/videos/add` | `read.rate_review` |
+| `/videos/check_duplicates` | JSON |
+| `/videos/edit/<int:id>` | the item's page, a page |
+| `/wishlist/add` | the wishlist's tab for the type; the item if it's yours already |
+| `/wishlist/check_duplicates` | JSON |
+| `/wishlist/move_to_library/<int:book_id>` | the item's page, `wishlist.view_wishlist` |
+| `/wishlist/quick_add/<int:book_id>` | back (`landing.back`) |
+| `/wishlist/remove/<int:book_id>` | the item's page |
+| `/wishlist/update_notes/<int:book_id>` | back (`landing.back`) |
+| `/wishlist/view` | a page |

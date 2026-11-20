@@ -80,18 +80,18 @@ def test_remove_and_restore_keeps_reviews(client, db, people):
     login(client, 'alice')
 
     client.post(f'/books/remove/{book}', data={'removed_note': 'Left at the LFL'})
-    client.get(f'/books/book/{book}')  # shows (and uses up) the "removed" flash, which names the book
+    client.get(f'/books/{book}')  # shows (and uses up) the "removed" flash, which names the book
     row =db.execute('SELECT removed_at, removed_note FROM books WHERE id = ?', (book,)).fetchone()
     assert row['removed_at'] and row['removed_note'] == 'Left at the LFL'
     assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE book_id = ?', book) == 1
 
-    library = client.get('/base/index').get_data(as_text=True)
+    library = client.get('/books/').get_data(as_text=True)
     assert 'Little Free Library' not in library
-    assert 'Little Free Library' in client.get('/base/index?show_removed=1').get_data(as_text=True)
+    assert 'Little Free Library' in client.get('/books/?show_removed=1').get_data(as_text=True)
 
     client.post(f'/books/restore/{book}')
     assert scalar(db, 'SELECT removed_at FROM books WHERE id = ?', book) is None
-    assert 'Little Free Library' in client.get('/base/index').get_data(as_text=True)
+    assert 'Little Free Library' in client.get('/books/').get_data(as_text=True)
 
 
 # --- hard delete --------------------------------------------------------------
@@ -133,7 +133,7 @@ def test_delete_refused_while_someone_else_has_reviews(client, db, people):
     add_review(db, people['bob'], book)
     login(client, 'alice')
     r = client.post(f'/books/delete/{book}')
-    assert r.status_code == 302 and f'/books/book/{book}' in r.location
+    assert r.status_code == 302 and f'/books/{book}' in r.location
     assert scalar(db, 'SELECT COUNT(*) FROM books WHERE id = ?', book) == 1
     assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE book_id = ?', book) == 1
 
@@ -173,7 +173,7 @@ def test_wishlist_remove_keeps_rated_book_out_of_library(client, db, people):
 
     assert scalar(db, 'SELECT COUNT(*) FROM read_data WHERE book_id = ?', book) == 1      # review kept
     assert scalar(db, 'SELECT owned = 0 AND removed_at IS NULL FROM books WHERE id = ?', book) == 1   # unshelved, not removed (8B.3)
-    assert 'Read it, never bought it' not in client.get('/base/index').get_data(as_text=True)
+    assert 'Read it, never bought it' not in client.get('/books/').get_data(as_text=True)
     assert scalar(db, """SELECT COUNT(*) FROM collection_books cb
                          JOIN user_collections uc ON uc.collection_id = cb.collection_id
                          WHERE uc.user_id = ? AND uc.name = 'Read, unshelved' AND cb.book_id = ?""",
@@ -288,7 +288,7 @@ def test_book_tools_live_on_the_edit_page(client, db, people):
     # Ownership: the not-owned switch sits with transfer (Phil, 2026-11-11)
     assert f'action="/books/ownership/{book}"' in edit and 'Mark It Unshelved' in edit
 
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert f'/books/delete/{book}' not in page and f'/books/transfer/{book}' not in page
     assert f'/books/ownership/{book}' not in page               # owned: the switch is in the tools
     # Remove from shelf sits beside its look-alike in the tools (Phil, 2026-11-20)
@@ -320,7 +320,7 @@ def test_household_reviews_are_cards_with_read_more(client, db, people):
     book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     add_review(db, people['bob'], book)             # bob shares alice's household
     login(client, 'alice')
-    page = client.get(f'/books/book/{book}').get_data(as_text=True)
+    page = client.get(f'/books/{book}').get_data(as_text=True)
     assert 'Household Reviews' in page and 'Friend Reviews' not in page
     assert '<article class="bg-primary rounded-lg p-4 card">' in page
     assert 'toggleFriendReview' not in page and 'max-h-[600px]' not in page

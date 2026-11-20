@@ -1,7 +1,7 @@
 from flask import render_template, Blueprint, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from utils.database import get_db
-from models import is_friends_with
+from models import friend_ids
 
 feed_blueprint = Blueprint('feed', __name__, template_folder='templates')
 
@@ -148,14 +148,22 @@ def activity_feed():
     # Combine and sort all activities by date
     activities = []
 
+    # Every like on these activities in one query, not one per row (16.0g)
+    book_ids = {r['id'] for r in recent_books} | {r['book_id'] for rows in
+                (recent_wishlist, recent_collections, recent_reviews) for r in rows}
+    marks = ','.join('?' * len(book_ids)) or 'NULL'
+    likes = {(r[0], r[1], r[2]): (r[3], r[4]) for r in conn.execute(f'''
+        SELECT activity_type, book_id, activity_user_id, COUNT(*),
+               COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0)
+        FROM activity_likes WHERE book_id IN ({marks})
+        GROUP BY activity_type, book_id, activity_user_id''', [current_user.id, *book_ids])}
+
+    def like_of(activity_type, book_id, user_id):
+        count, mine = likes.get((activity_type, book_id, user_id), (0, 0))
+        return {'like_count': count, 'user_liked': mine}
+
     for book in recent_books:
-        # Get like count for this activity
-        like_data = conn.execute("""
-            SELECT COUNT(*) as like_count,
-                   COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
-            FROM activity_likes
-            WHERE activity_type = 'book_added' AND book_id = ? AND activity_user_id = ?
-        """, (current_user.id, book['id'], book['added_by'])).fetchone()
+        like_data = like_of('book_added', book['id'], book['added_by'])
 
         activities.append({
             'type': 'book_added',
@@ -176,13 +184,7 @@ def activity_feed():
         })
 
     for wishlist_item in recent_wishlist:
-        # Get like count for this activity
-        like_data = conn.execute("""
-            SELECT COUNT(*) as like_count,
-                   COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
-            FROM activity_likes
-            WHERE activity_type = 'wishlist_added' AND book_id = ? AND activity_user_id = ?
-        """, (current_user.id, wishlist_item['book_id'], wishlist_item['user_id'])).fetchone()
+        like_data = like_of('wishlist_added', wishlist_item['book_id'], wishlist_item['user_id'])
 
         activities.append({
             'type': 'wishlist_added',
@@ -203,13 +205,7 @@ def activity_feed():
         })
 
     for collection in recent_collections:
-        # Get like count for this activity
-        like_data = conn.execute("""
-            SELECT COUNT(*) as like_count,
-                   COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
-            FROM activity_likes
-            WHERE activity_type = 'collection_added' AND book_id = ? AND activity_user_id = ?
-        """, (current_user.id, collection['book_id'], collection['user_id'])).fetchone()
+        like_data = like_of('collection_added', collection['book_id'], collection['user_id'])
 
         activities.append({
             'type': 'collection_added',
@@ -231,13 +227,7 @@ def activity_feed():
         })
 
     for review in recent_reviews:
-        # Get like count for this activity
-        like_data = conn.execute("""
-            SELECT COUNT(*) as like_count,
-                   COALESCE(SUM(CASE WHEN liker_user_id = ? THEN 1 ELSE 0 END), 0) as user_liked
-            FROM activity_likes
-            WHERE activity_type = 'review_added' AND book_id = ? AND activity_user_id = ?
-        """, (current_user.id, review['book_id'], review['user_id'])).fetchone()
+        like_data = like_of('review_added', review['book_id'], review['user_id'])
 
         activities.append({
             'type': 'review_added',
@@ -259,13 +249,14 @@ def activity_feed():
         })
 
     # Filter to only show activities from friends or own activities
+    visible = {current_user.id, *friend_ids(conn, current_user.id)}
     friend_activities = []
     for activity in activities:
         activity_user_id = activity.get('user_id')
         # Show if it's your own activity or if you're friends with the user
         if activity_user_id is None:
             continue
-        if activity_user_id == current_user.id or is_friends_with(current_user.id, activity_user_id):
+        if activity_user_id in visible:
             friend_activities.append(activity)
 
     # Sort by date, most recent first

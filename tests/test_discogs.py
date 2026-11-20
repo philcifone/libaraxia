@@ -53,7 +53,7 @@ def fake_discogs(monkeypatch):
             return FakeResponse(200, json.dumps(RELEASE).encode())
         return FakeResponse(404)
 
-    def fake_save(urls):
+    def fake_save(urls, staged=False):
         covers.extend(urls)
         return 'uploads/cover_discogs.jpg'
     monkeypatch.setenv('DISCOGS_TOKEN', TOKEN)

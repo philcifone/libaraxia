@@ -198,6 +198,17 @@ def create_app():
 
     # Close the per-request connection from utils.database.get_db()
     app.teardown_appcontext(close_db)
+    # Dev only: per-request time and SQL count (PROFILE_REQUESTS=1, ROADMAP 16.0g)
+    from utils import profiling
+    profiling.init_app(app)
+    # Versioned static URLs and a year's caching (ROADMAP 16.0g)
+    from utils import static_cache
+    static_cache.init_app(app)
+    # Images are saved as AVIF (16.0g); a Pillow build without it falls back to JPEG
+    from utils import image_utils
+    if not image_utils.AVIF:
+        app.logger.warning('Pillow has no AVIF support: new images are saved as JPEG. '
+                           'Install the Pillow wheel from PyPI to get it.')
 
     # Say which database this process opens (the "which library.db?" trap).
     db_path = database_path()
@@ -213,7 +224,7 @@ def create_app():
     
     # Register Blueprints
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
-    app.register_blueprint(base_blueprint, url_prefix='/base')
+    app.register_blueprint(base_blueprint)        # its own paths: /base/... and the Books shelves at /books/...
     app.register_blueprint(books_blueprint, url_prefix='/books')
     app.register_blueprint(collections_blueprint, url_prefix='/collections')
     app.register_blueprint(user_blueprint, url_prefix='/user')
@@ -335,6 +346,18 @@ def create_app():
             'owned': row['owned'] if 'owned' in keys else None,
         }
 
+    # The ids of every item with a face to draw: a top, side or spine photo,
+    # or a placeholder its owner picked (utils/photos.box_faces reads only
+    # these). Once per request: two small queries, however many covers.
+    def _faced_ids():
+        from flask import g
+        if 'faced_ids' not in g:
+            from utils.photos import SIDE, SPINE, TOP
+            g.faced_ids = {r[0] for r in get_db().execute(
+                'SELECT book_id FROM item_photos WHERE kind IN (?, ?, ?) UNION SELECT book_id FROM item_faces',
+                (TOP, SIDE, SPINE))}
+        return g.faced_ids
+
     def _face_cache():
         from flask import g
         if 'box_face_cache' not in g:
@@ -368,7 +391,12 @@ def create_app():
         item = _box_item(row)
         cache = _face_cache()
         if item['id'] not in cache:
-            box_faces([item])
+            # Most items have no face at all: answer those without a query
+            # (ROADMAP 16.0g: the wishlist and Reviews ran two per cover)
+            if item['id'] in _faced_ids():
+                box_faces([item])
+            else:
+                cache[item['id']] = ''
         return {
             'media': item['media_type'],
             'format': media.shown_format(item) or '',

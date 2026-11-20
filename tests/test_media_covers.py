@@ -46,7 +46,7 @@ def saved(monkeypatch):
     import utils.book_utils as bu
     tried = []
 
-    def save(urls):
+    def save(urls, staged=False):
         urls = list(urls)
         tried.append(urls)
         return f'uploads/saved-{len(tried)}.jpg' if urls else None

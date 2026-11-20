@@ -62,6 +62,19 @@ def connect(path):
     return conn
 
 
+def use_wal(conn):
+    """Put the database in WAL mode (ROADMAP 16.0g, BACKEND-POLISH-SPEC 1.4):
+    readers carry on while something writes, so a bulk edit or an import no
+    longer stalls every page across gunicorn's workers. The mode is stored
+    in the file, so this sticks; `migrate` sets it every run, which costs
+    nothing once it's on. Two files then sit beside the DB (-wal, -shm):
+    copy the DB with `manage.py backup` or a ZFS snapshot, never a plain cp
+    while the app runs."""
+    if conn.execute('PRAGMA journal_mode').fetchone()[0].lower() != 'wal':
+        conn.execute('PRAGMA journal_mode = WAL')
+        print('Journal mode: WAL')
+
+
 def has_table(conn, name):
     return conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (name,)
@@ -250,6 +263,8 @@ def cmd_migrate(args):
                  f'If it was set up by hand and is at migration {BASELINE}, run `manage.py migrate --baseline` once.')
 
     pending = [f for f in files if f not in applied(conn)]
+    if not args.dry_run:
+        use_wal(conn)
     if not pending:
         print('Up to date.')
         return

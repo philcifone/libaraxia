@@ -25,7 +25,7 @@ def test_first_user_becomes_admin_and_can_log_in(client, db):
 
     r = client.post('/auth/login', data={'email': 'second@example.test', 'password': 'long-enough-pw'})
     assert r.status_code == 302
-    assert client.get('/base/index').status_code == 200
+    assert client.get('/books/').status_code == 200
 
 
 @pytest.mark.parametrize('username', ['<script>', 'ab', 'has space', 'x' * 31])
@@ -43,21 +43,21 @@ def test_register_rejects_short_password(client, db):
 def test_wrong_password_does_not_log_in(client, people):
     r = client.post('/auth/login', data={'email': 'alice@example.test', 'password': 'wrong-password'})
     assert r.status_code == 200
-    assert client.get('/base/index').status_code == 302  # back to login
+    assert client.get('/books/').status_code == 302  # back to login
 
 
 def test_deactivated_user_cannot_log_in_and_is_logged_out(client, db, people):
     login(client, 'bob')
-    assert client.get('/base/index').status_code == 200
+    assert client.get('/books/').status_code == 200
     db.execute('UPDATE users SET is_active = 0 WHERE id = ?', (people['bob'],))
     db.commit()
-    assert client.get('/base/index').status_code == 302  # existing session ends
+    assert client.get('/books/').status_code == 302  # existing session ends
     r = client.post('/auth/login', data={'email': 'bob@example.test', 'password': 'correct-horse-battery'})
-    assert client.get('/base/index').status_code == 302
+    assert client.get('/books/').status_code == 302
 
 
 def test_pages_need_login(client, people):
-    for url in ['/base/index', '/books/add', '/admin/settings', '/user/export_data']:
+    for url in ['/books/', '/books/add', '/admin/settings', '/user/export_data']:
         r = client.get(url)
         assert r.status_code == 302 and '/auth/login' in r.location, url
 
@@ -192,8 +192,8 @@ def test_every_page_loads(app, client, db, people):
                        "VALUES ('Jaws', 'Steven Spielberg', 124, '0012345678905', 'VHS', ?, 'video')",
                        (alice,)).lastrowid
     db.commit()
-    extra = ['/base/index?show_removed=1', f'/books/book/{removed}', '/user/alice', '/user/bob',
-             '/base/library/carol', '/wishlist/user/carol', '/base/shared-library?q=dune',
+    extra = ['/books/?show_removed=1', f'/books/{removed}', '/user/alice', '/user/bob',
+             '/books/user/carol', '/wishlist/user/carol', '/books/shared?q=dune',
              '/admin/users/%d/removal' % alice,
              f'/videos/{video}', f'/videos/edit/{video}', f'/read/rate_review/{video}',
              '/videos/?q=jaws&format=VHS&sort_by=runtime_minutes&sort_order=desc',
@@ -234,13 +234,13 @@ def test_pages_render_the_shared_layout(client, people):
     assert html.count('<html') == 1 and 'name="csrf-token"' in html and 'common.js' in html
     assert 'id="hamburger"' not in html
     login(client, 'alice')
-    html = client.get('/base/index').get_data(as_text=True)
+    html = client.get('/books/').get_data(as_text=True)
     assert html.count('<html') == 1 and 'id="hamburger"' in html and 'sidebar.js' in html
 
 
 def test_missing_book_is_404(client, people):
     login(client, 'alice')
-    assert client.get('/books/book/99999').status_code == 404
+    assert client.get('/books/99999').status_code == 404
 
 
 def test_orphaned_images_page_without_uploads_folder(app, client, people, tmp_path, monkeypatch):
@@ -260,7 +260,7 @@ def test_no_global_rate_limit_but_login_is_limited(client, db, people, monkeypat
     try:
         login(client, 'bob')
         for _ in range(60):
-            assert client.get('/base/index').status_code == 200
+            assert client.get('/books/').status_code == 200
         client.post('/auth/logout')
         codes = [client.post('/auth/login', data={'email': 'x@example.test', 'password': 'no'}).status_code
                  for _ in range(12)]
@@ -297,5 +297,82 @@ def test_book_grid_uses_named_columns(client, db, people):
     """Templates read rows by column name, so the grid links to the right book."""
     book = add_book(db, people['alice'], 'Dune', 'Frank Herbert')
     login(client, 'alice')
-    html = client.get('/base/index').get_data(as_text=True)
-    assert f'href="/books/book/{book}"' in html and 'by Frank Herbert' in html
+    html = client.get('/books/').get_data(as_text=True)
+    assert f'href="/books/{book}"' in html and 'by Frank Herbert' in html
+
+
+def test_static_files_are_versioned_and_cached_for_a_year(client, db, people, tmp_path):
+    """16.0g step 3 (utils/static_cache.py): scripts and CSS carry ?v=<hash>
+    and are kept a year; uploads are kept a year by path, privately; an
+    unversioned script keeps the default."""
+    import re
+    login(client, 'alice')
+    page = client.get('/books/').get_data(as_text=True)
+    css = re.search(r'href="(/static/css/output\.css\?v=[0-9a-f]{10})"', page).group(1)
+    r = client.get(css)
+    assert r.status_code == 200
+    assert r.headers['Cache-Control'] == 'public, max-age=31536000, immutable'
+    assert 'immutable' not in client.get('/static/common.js').headers.get('Cache-Control', '')
+    font = '/static/fonts/courier-prime/courier-prime-latin-400-normal.woff2'
+    assert 'max-age=31536000' in client.get(font).headers['Cache-Control']
+    # uploads: no ?v= on the URL, a year's private caching
+    from utils.static_cache import version_of
+    from flask import url_for
+    with client.application.test_request_context():
+        assert 'v=' not in url_for('static', filename='uploads/x.jpg')
+        assert 'v=' in url_for('static', filename='common.js')
+    assert version_of(client.application.static_folder, 'missing.js') is None
+
+
+def test_a_changed_file_gets_a_new_version(tmp_path):
+    import os
+    from utils.static_cache import version_of
+    f = tmp_path / 'a.js'
+    f.write_text('one')
+    first = version_of(str(tmp_path), 'a.js')
+    f.write_text('two')
+    os.utime(f, ns=(1, 1))                  # a different mtime, as an edit has
+    assert version_of(str(tmp_path), 'a.js') != first
+
+
+def test_old_book_urls_redirect_permanently(client, db, people):
+    """16.0g step 7: Books moved to the shape Movies and Music have. Old
+    bookmarks and the links in older notifications still work, in one hop,
+    query string kept."""
+    book = add_book(db, people['alice'], 'Dune')
+    login(client, 'alice')
+    for old, new in ((f'/books/book/{book}', f'/books/{book}'),
+                     ('/base/index?sort_by=title&q=dune', '/books/?sort_by=title&q=dune'),
+                     ('/base/shared-library', '/books/shared'),
+                     ('/base/library/carol?show=all', '/books/user/carol?show=all')):
+        r = client.get(old)
+        assert r.status_code == 301 and r.headers['Location'] == new, old
+        assert client.get(new).status_code == 200, new
+
+
+def test_book_tools_land_on_the_items_own_page_in_one_hop(client, db, people):
+    """16.0g step 7: Remove, Restore, Ownership, Transfer and a refused
+    Delete land on the item's own page (its type's route), not via
+    /books/<id>; Delete lands on that type's shelf."""
+    alice = people['alice']
+    page = {'book': '/books/{}', 'video': '/videos/{}', 'record': '/records/{}'}
+    shelf = {'book': '/books/', 'video': '/videos/', 'record': '/records/'}
+    login(client, 'alice')
+    for kind in ('book', 'video', 'record'):
+        item = add_book(db, alice, f'A {kind}')
+        db.execute('UPDATE books SET media_type = ? WHERE id = ?', (kind, item))
+        db.commit()
+        here = page[kind].format(item)
+        for url, data in ((f'/books/remove/{item}', {}), (f'/books/restore/{item}', {}),
+                          (f'/books/ownership/{item}', {'owned': '0'}),
+                          (f'/books/transfer/{item}', {'new_owner_id': people['bob']})):
+            r = client.post(url, data=data, headers={'Referer': 'http://localhost/feed/activity'})
+            assert r.status_code == 302 and r.headers['Location'] == here, (kind, url)
+        db.execute('UPDATE books SET added_by = ? WHERE id = ?', (alice, item))
+        add_review(db, people['bob'], item)                     # someone else's data: refused
+        assert client.post(f'/books/delete/{item}').headers['Location'] == here
+        db.execute('DELETE FROM read_data WHERE book_id = ?', (item,))
+        db.execute('DELETE FROM collections WHERE book_id = ?', (item,))
+        db.execute('DELETE FROM reading_sessions WHERE book_id = ?', (item,))
+        db.commit()
+        assert client.post(f'/books/delete/{item}').headers['Location'] == shelf[kind]
