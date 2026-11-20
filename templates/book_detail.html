@@ -217,9 +217,12 @@
                     {% elif collection_status == 'untracked' %}
                     {% endif %}
 
-                    <!-- Owner / admin actions -->
+                    <!-- Owner / admin actions. Edit, plus the undo for an
+                         unshelved or removed item beside the note that says
+                         so; marking it unshelved or removing it is in Edit's
+                         tools (Phil, 2026-11-20). -->
                     {% if can_manage %}
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid gap-4 {{ 'grid-cols-2' if not book['owned'] or book['removed_at'] }}">
                         <a href="{{ item_url(book, 'edit') }}"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-accent text-on-accent text-sm rounded-lg hover:bg-accent-hover btn">
                             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -244,27 +247,8 @@
                                 Put Back {{ 'in Library' if m.type == 'book' else 'on the Shelf' }}
                             </button>
                         </form>
-                        {% elif not in_wishlist %}
-                        <button type="button" data-click="toggleHidden" data-target="remove-book-panel"
-                                class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-content-primary text-sm rounded-lg hover:bg-primary-hover btn btn-outline">
-                            Remove from shelf
-                        </button>
                         {% endif %}
                     </div>
-
-                    {% if book['owned'] and not book['removed_at'] and not in_wishlist %}
-                    <form id="remove-book-panel" action="{{ url_for('books.remove_book', id=book['id']) }}" method="POST"
-                          class="hidden mt-4 p-4 bg-primary border border-card rounded-lg space-y-3">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <p class="text-sm text-content-primary">For a {{ m.noun }} that's gone (given away, sold, lost): it leaves your shelves, but its record stays, with everyone's reviews, ratings and {{ m.history|lower }}. You can put it back any time.</p>
-                        <label for="removed_note" class="block text-xs text-content-secondary">Where did it go? (optional)</label>
-                        <input type="text" name="removed_note" id="removed_note" maxlength="200" placeholder="e.g. Little Free Library"
-                               class="w-full bg-primary-bg border border-card rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                        <button type="submit" class="w-full px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg btn">
-                            Remove from shelf
-                        </button>
-                    </form>
-                    {% endif %}
 
                     {# No pointer to Edit -> tools here (Phil, 2026-11-15: where they
                        live is obvious, the line was clutter) #}

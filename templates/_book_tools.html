@@ -1,6 +1,5 @@
-{# Owner/admin "Book tools" on the edit page: ownership (owned or not, and
-   transfer within a household) and permanent delete. (Remove from Library / Put Back stays on the book page: it's the
-   everyday action.) The edit route only renders for the owner or an admin;
+{# Owner/admin "Book tools" on the edit page: ownership (unshelved, removed
+   from the shelf, transfer within a household) and permanent delete. The edit route only renders for the owner or an admin;
    the transfer and delete routes check again on POST.
    Needs: book, library_members, owner_username, others_with_data, in_wishlist. #}
 {% set noun = m.noun if m else 'book' %}
@@ -15,14 +14,27 @@
     <div class="mt-6 space-y-8">
         <section class="space-y-3">
             <h2 class="label text-sm pb-1">Ownership</h2>
-            {# Owned or not (8B.3): never had it (an audiobook, an ebook, a
-               library copy) vs. on your shelf. Not for a wishlist entry. #}
+            {# The two ways off the shelf sit together, each saying when it
+               applies (Phil, 2026-11-20: Remove from shelf used to be on the
+               item page, a step away from its look-alike, Mark It Unshelved).
+               Unshelved (8B.3) = never had it; removed = had it, it left.
+               Neither applies to a wishlist entry. The undo buttons (I Own It
+               Now, Put Back) are here and also on the item page, beside the
+               state they undo. #}
             {% if not in_wishlist %}
+            {% if book['removed_at'] %}
+            <form action="{{ url_for('books.restore_book', id=book['id']) }}" method="POST"
+                  class="flex flex-col sm:flex-row sm:items-center gap-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <p class="flex-1 text-sm text-content-secondary"><strong class="text-content-primary">Removed</strong> from the {{ m.shelf }} on {{ book['removed_at'][:10] }}{% if book['removed_note'] %} ({{ book['removed_note'] }}){% endif %}.</p>
+                <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Put Back {{ 'in Library' if m.type == 'book' else 'on the Shelf' }}</button>
+            </form>
+            {% else %}
             <form action="{{ url_for('books.set_ownership', id=book['id']) }}" method="POST"
                   class="flex flex-col sm:flex-row sm:items-center gap-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if book['owned'] %}
-                <p class="flex-1 text-sm text-content-secondary">Not on your shelf (an audiobook, an ebook, a library copy, or one you haven't catalogued yet)? It leaves your shelf; your status, review and history stay.</p>
+                <p class="flex-1 text-sm text-content-secondary"><strong class="text-content-primary">Never had it?</strong> An audiobook, an ebook, a library copy, or one you haven't catalogued yet. It leaves your shelf; your status, review and history stay.</p>
                 <input type="hidden" name="owned" value="0">
                 <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Mark It Unshelved</button>
                 {% else %}
@@ -31,6 +43,21 @@
                 <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">I Own It Now</button>
                 {% endif %}
             </form>
+            {% if book['owned'] %}
+            <form action="{{ url_for('books.remove_book', id=book['id']) }}" method="POST" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <p class="text-sm text-content-secondary"><strong class="text-content-primary">Had it, but it's gone?</strong> Given away, sold, lost. It leaves your shelf, but its record stays, with everyone's reviews, ratings and {{ m.history|lower }}. You can put it back any time.</p>
+                <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                    <div class="flex-1">
+                        <label for="removed_note" class="block text-xs text-content-secondary mb-1">Where did it go? (optional)</label>
+                        <input type="text" name="removed_note" id="removed_note" maxlength="200" placeholder="e.g. Little Free Library"
+                               class="w-full bg-primary border border-rule-strong rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline">Remove from Shelf</button>
+                </div>
+            </form>
+            {% endif %}
+            {% endif %}
             {% endif %}
 
         {# Transfer: household members (admins: anyone) #}
@@ -68,10 +95,10 @@
             <p class="text-sm text-content-secondary">
                 Can't delete: {{ others_with_data|join(', ') }} {{ 'has' if others_with_data|length == 1 else 'have' }}
                 reviews or reading history on this {{ noun }}, and deleting would erase them.
-                {% if not in_wishlist %}Use <em>Remove from shelf</em> on the {{ noun }} page instead.{% endif %}
+                {% if not in_wishlist %}Use <em>Remove from Shelf</em> above instead.{% endif %}
             </p>
             {% else %}
-            <p class="text-sm text-content-secondary">For mistakes only: erases the {{ noun }} and your status, review and history for it. If it just left the house, use <em>Remove from shelf</em> on its page instead.</p>
+            <p class="text-sm text-content-secondary">For mistakes only: erases the {{ noun }} and your status, review and history for it. If it just left the house, use <em>Remove from Shelf</em> above instead.</p>
             <form action="{{ url_for('books.delete_book', id=book['id']) }}" method="POST"
                   data-confirm="{{ ("Permanently delete \"" ~ book["title"] ~ "\"? This cannot be undone.") }}"
                   data-confirm-ok="Yes, delete">

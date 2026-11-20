@@ -291,7 +291,9 @@ def test_book_tools_live_on_the_edit_page(client, db, people):
     page = client.get(f'/books/book/{book}').get_data(as_text=True)
     assert f'/books/delete/{book}' not in page and f'/books/transfer/{book}' not in page
     assert f'/books/ownership/{book}' not in page               # owned: the switch is in the tools
-    assert f'/books/remove/{book}' in page                      # the everyday action stays
+    # Remove from shelf sits beside its look-alike in the tools (Phil, 2026-11-20)
+    assert f'action="/books/remove/{book}"' in edit and 'name="removed_note"' in edit
+    assert f'/books/remove/{book}' not in page
     # No line pointing at the tools under Edit (Phil, 2026-11-15)
     assert '#book-tools' not in page
 
@@ -337,3 +339,14 @@ def test_read_more_is_one_shared_helper():
     for template in ('book_detail.html', 'user.html'):
         text = (root / 'templates' / template).read_text()
         assert 'data-click="toggleReadMore"' in text
+
+
+def test_removed_item_puts_back_from_the_tools(client, db, people):
+    """A removed item's tools offer Put Back, not a second Remove."""
+    book = add_book(db, people['bob'], 'Dune', 'Frank Herbert')
+    db.execute("UPDATE books SET removed_at = '2026-11-01 10:00:00', removed_note = 'LFL' WHERE id = ?", (book,))
+    db.commit()
+    login(client, 'bob')
+    edit = client.get(f'/books/edit/{book}').get_data(as_text=True)
+    assert f'action="/books/restore/{book}"' in edit and '2026-11-01 (LFL)' in edit
+    assert f'action="/books/remove/{book}"' not in edit
