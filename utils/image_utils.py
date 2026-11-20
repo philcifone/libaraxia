@@ -6,7 +6,7 @@ import shutil
 import uuid
 
 from flask import current_app
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError, features
 
 
 def is_safe_upload_path(image_path):
@@ -69,21 +69,50 @@ class PhotoError(ValueError):
     """An upload that isn't a usable image; the message is safe to show."""
 
 
-# How an image that must keep its transparency is stored: a disc cut by
-# the crop tool (utils/cover_crop.py). Everything else is flattened to JPEG.
-# WebP rather than PNG (a tenth the size for a photo) or AVIF (a little
-# smaller again, but slower to encode and fewer tools open it).
-ALPHA_FORMAT = ('WEBP', '.webp', 'image/webp')
+# How the site stores every image it saves: covers, item photos,
+# placeholder faces, avatars (ROADMAP 16.0g step 9,
+# docs/BACKEND-POLISH-SPEC.md section 4). AVIF: about half a JPEG's size at
+# the same look, and every current browser shows it (Safari since 16,
+# 2022), so no fallback copy. It keeps transparency too, so a disc cut by
+# the crop tool is the same format. Pillow's wheels bundle libavif; a build
+# without it falls back to JPEG (and WebP for transparency) with a warning
+# at startup (app.py). Change your mind here, in one place.
+# Existing files keep their format: re-encoding a JPEG loses twice.
+AVIF = features.check('avif')
+IMAGE_FORMAT = ('AVIF', '.avif', 'image/avif') if AVIF else ('JPEG', '.jpg', 'image/jpeg')
+ALPHA_FORMAT = IMAGE_FORMAT if AVIF else ('WEBP', '.webp', 'image/webp')
+IMAGE_QUALITY = 60 if AVIF else 85          # AVIF 60 looks like JPEG 85 (measured, spec 4.1)
+
+# What an upload may be, covers and avatars alike
+UPLOAD_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif'}
+
+
+def allowed_upload(filename):
+    """An upload's name has an image extension this site takes. Pillow
+    opening it is the real test; this only turns away the obvious."""
+    return '.' in (filename or '') and filename.rsplit('.', 1)[1].lower() in UPLOAD_EXTENSIONS
+
+
+def write_image(img, full_stem):
+    """Save `img` at <full_stem><ext> in the site's format (IMAGE_FORMAT,
+    or ALPHA_FORMAT for an RGBA image) and return the extension. Flatten
+    first if transparency isn't wanted. No metadata: `info` (EXIF with a
+    phone's GPS, XMP, comments) is dropped before the encode."""
+    fmt = ALPHA_FORMAT if img.mode == 'RGBA' else IMAGE_FORMAT
+    img = img.copy()
+    img.info = {}
+    os.makedirs(os.path.dirname(full_stem), exist_ok=True)
+    options = {'quality': IMAGE_QUALITY if fmt[0] == IMAGE_FORMAT[0] else 85}
+    if fmt[0] == 'JPEG':
+        options['optimize'] = True
+    img.save(full_stem + fmt[1], fmt[0], **options)
+    return fmt[1]
 
 
 def save_alpha(img, rel):
     """Save an RGBA image at static/<rel>; `rel` is given without its extension.
     Returns the stored path. A fresh encode carries no metadata."""
-    rel += ALPHA_FORMAT[1]
-    full = os.path.join(STATIC_ROOT, rel)
-    os.makedirs(os.path.dirname(full), exist_ok=True)
-    img.save(full, ALPHA_FORMAT[0], quality=85)
-    return rel
+    return rel + write_image(img, os.path.join(STATIC_ROOT, rel))
 
 
 # The admin's placeholder face images (ROADMAP 16.0c, utils/faces.py)
@@ -97,7 +126,7 @@ def photo_folder(book_id):
 
 def save_photo(file, book_id, folder=None, shape=None):
     """Save an uploaded photo of an item; returns its stored path
-    ('uploads/photos/<book_id>/<random>.jpg').
+    ('uploads/photos/<book_id>/<random>.avif', IMAGE_FORMAT).
 
     Turned upright (phones store sideways pixels plus an EXIF rotation),
     resized to PHOTO_MAX_SIDE on the long side keeping its aspect (a spine is
@@ -147,11 +176,8 @@ def save_photo_image(img, book_id, folder=None, keep_alpha=False):
     clean = Image.new('RGB', img.size)
     clean.paste(img)
 
-    rel = f'{folder or photo_folder(book_id)}/{uuid.uuid4().hex}.jpg'
-    full = os.path.join(STATIC_ROOT, rel)
-    os.makedirs(os.path.dirname(full), exist_ok=True)
-    clean.save(full, 'JPEG', quality=85, optimize=True)
-    return rel
+    rel = f'{folder or photo_folder(book_id)}/{uuid.uuid4().hex}'
+    return rel + write_image(clean, os.path.join(STATIC_ROOT, rel))
 
 
 def delete_photo_folder(book_id):

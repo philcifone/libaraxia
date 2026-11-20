@@ -133,7 +133,7 @@ async function uploadUserAvatar(event) {
     console.log('Uploading avatar for user', currentEditUserId, file);
 
     // Validate file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/avif'];
     if (!allowedTypes.includes(file.type)) {
         showFlashMessage('error', 'Please upload a valid image file (PNG, JPG, GIF, or WebP)');
         return;

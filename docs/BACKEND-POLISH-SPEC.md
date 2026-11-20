@@ -325,6 +325,10 @@ about what a JPEG cover costs today once it's AVIF. Photos stay at 2000 px.
 Existing covers keep their size; a new fetch or upload gets the new one.
 Sources often have less than 800 px; a cover is never scaled up.
 
+Built (step 10): `MAX_IMAGE_SIZE = (800, 1600)`, so 800 px is the width: a
+2:3 cover is 800x1200. "800 px tall" above would have been smaller than
+today's 1000, so the box is what was meant.
+
 ---
 
 ## 6. Book metadata sources: Google, Open Library, or both

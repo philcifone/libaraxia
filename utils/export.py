@@ -139,6 +139,27 @@ def library_csv(conn, user_id):
     return _csv(LIBRARY_HEADER, library_rows(conn, user_id))
 
 
+# What the zip holds, for whoever opens it years from now
+EXPORT_README = """Your Libaraxia data
+
+library.csv          everything you own or have read, watched or heard
+profile.csv          your account
+reviews.csv          your ratings and reviews
+reading_sessions.csv each time you read, watched or listened
+collections.csv      your statuses and collections
+wishlist.csv         your wishlist
+loans.csv            what you lent and to whom
+reading_goals.csv    your yearly goals
+photos.csv           the photos of your items, and where each file is
+photos/<id>/         the photo files, by item id (the Book ID column)
+
+Photos taken since November 2026 are AVIF images (.avif): about half the
+size of a JPEG. Current browsers and most photo tools open them; an older
+Windows may need the free "AV1 Video Extension" from the Microsoft Store.
+Older photos are JPEG.
+"""
+
+
 def data_zip(conn, user_id):
     """Everything of one user's, as a ZIP of CSVs. Returns bytes."""
     user = conn.execute('SELECT username, email, bio FROM users WHERE id = ?',
@@ -211,7 +232,7 @@ def data_zip(conn, user_id):
                          (user_id,)).fetchall()),
     }
     # Photos of your own items (16.0a): photos.csv lists them, photos/
-    # holds the files as photos/<book id>/<file>. JPEGs are stored, not
+    # holds the files as photos/<book id>/<file>. Images are stored, not
     # deflated again (they don't shrink).
     photo_rows = conn.execute('''
         SELECT b.id, b.title, p.kind, p.caption, p.path
@@ -227,6 +248,7 @@ def data_zip(conn, user_id):
                                [[r['id'], r['title'], r['kind'], r['caption'] or '', arc]
                                 for r, _, arc in photo_files])
 
+    files['README.txt'] = EXPORT_README
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
         for name, text in files.items():

@@ -18,12 +18,13 @@ import os
 from datetime import datetime
 from PIL import Image
 from utils.landing import back
+from utils.image_utils import UPLOAD_EXTENSIONS, write_image
 
 # Initialize Blueprint
 user_blueprint = Blueprint('user', __name__)
 
 # Allowed extensions for profile pictures
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_EXTENSIONS = UPLOAD_EXTENSIONS          # the same list as covers (16.0g)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -447,8 +448,8 @@ def upload_avatar():
         if file and allowed_file(file.filename):
             # Secure the filename and create a unique name
             filename = secure_filename(file.filename)
-            file_ext = filename.rsplit('.', 1)[1].lower()
-            unique_filename = f"user_{current_user.id}_{int(os.urandom(4).hex(), 16)}.{file_ext}"
+            # The extension is the site's format's, added on save (16.0g: AVIF)
+            unique_filename = f"user_{current_user.id}_{int(os.urandom(4).hex(), 16)}"
             logger.info(f"Generated unique filename: {unique_filename}")
 
             # Create uploads/avatars directory if it doesn't exist
@@ -486,7 +487,7 @@ def upload_avatar():
                 logger.info(f"Image resized to: {img.size}")
 
                 # Save the image
-                img.save(filepath, quality=85, optimize=True)
+                unique_filename += write_image(img, filepath)
                 logger.info(f"Image saved to: {filepath}")
 
             except Exception as e:

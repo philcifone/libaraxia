@@ -132,6 +132,12 @@ def test_data_export_zip(client, db, people):
     assert {'library.csv', 'reviews.csv', 'reading_sessions.csv', 'collections.csv', 'wishlist.csv',
             'profile.csv'} <= set(z.namelist())
     assert 'Five stars' in z.read('reviews.csv').decode()
+    # The README names every CSV the zip holds (16.0g: it says photos are AVIF)
+    readme = z.read('README.txt').decode()
+    assert 'AVIF' in readme
+    for name in z.namelist():
+        if name.endswith('.csv'):
+            assert name in readme, name
 
 
 def test_only_admins_export_someone_else(client, db, people):

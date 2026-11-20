@@ -10,6 +10,7 @@ from utils.book_utils import missing_cover_sql
 from models import admin_required, username_error
 from utils.accounts import removal_context, deactivate_account, delete_account, AccountError
 from PIL import Image
+from utils.image_utils import allowed_upload, write_image
 
 admin_blueprint = Blueprint('admin', __name__, template_folder='templates')
 
@@ -391,15 +392,13 @@ def upload_user_avatar():
             return jsonify({'success': False, 'message': f'File size must be less than {max_size_mb:.0f}MB'}), 400
 
         # Validate file type
-        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-        if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+        if not allowed_upload(file.filename):
             return jsonify({'success': False, 'message': 'Invalid file type'}), 400
 
         if file:
             # Secure the filename and create a unique name
             filename = secure_filename(file.filename)
-            file_ext = filename.rsplit('.', 1)[1].lower()
-            unique_filename = f"user_{user_id}_{int(os.urandom(4).hex(), 16)}.{file_ext}"
+            unique_filename = f"user_{user_id}_{int(os.urandom(4).hex(), 16)}"     # + the format's extension on save
 
             # Create uploads/avatars directory if it doesn't exist
             avatar_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'avatars')
@@ -431,7 +430,7 @@ def upload_user_avatar():
                 img.thumbnail((400, 400), Image.Resampling.LANCZOS)
 
                 # Save the image
-                img.save(filepath, quality=85, optimize=True)
+                unique_filename += write_image(img, filepath)
                 logger.info(f"Image saved to: {filepath}")
 
             except Exception as e:

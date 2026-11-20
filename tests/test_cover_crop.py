@@ -588,7 +588,8 @@ def test_crop_save_of_a_disc_keeps_its_transparency(client, app, db, people, mad
                     json={'source': old, 'geometry': geom(mask='disc', box=[0, 0, 1, 1])})
     assert r.get_json()['success']
     path = track(app, made, scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book))
-    assert path.endswith('.webp') and not exists(app, old)
+    from utils.image_utils import ALPHA_FORMAT
+    assert path.endswith(ALPHA_FORMAT[1]) and not exists(app, old)
     with Image.open(os.path.join(app.root_path, 'static', path)) as img:
         assert img.mode == 'RGBA' and img.getpixel((0, 0))[3] == 0 and img.getpixel((150, 150))[3] == 0
         assert img.getpixel((150, 60))[3] == 255

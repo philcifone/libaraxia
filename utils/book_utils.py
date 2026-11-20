@@ -13,13 +13,17 @@ from typing import Optional, Dict, Any, List, Iterable
 from utils.database import get_db
 from flask_login import current_user
 from urllib.parse import urljoin, urlparse, parse_qs, quote
-from utils.image_utils import ALPHA_FORMAT, is_safe_upload_path
+from utils import image_utils
+from utils.image_utils import is_safe_upload_path
 from utils.search import by_or_plain, fits
 from models import get_library_members
 
 # Constants
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-MAX_IMAGE_SIZE = (500, 1000)
+# Covers and avatars take the same uploads (16.0g; covers didn't take WebP or AVIF)
+ALLOWED_EXTENSIONS = image_utils.UPLOAD_EXTENSIONS
+# Up to 800 px wide (16.0g step 10, was 500x1000): sharp on a phone's
+# high-DPI screen, about a JPEG cover's size once it's AVIF. Never scaled up.
+MAX_IMAGE_SIZE = (800, 1600)
 
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 OPEN_LIBRARY_URL = "https://openlibrary.org"
@@ -554,25 +558,17 @@ def process_image(image_file, existing_url: Optional[str] = None, allowed=()) ->
     if not image_file or image_file.filename == '' or not allowed_file(image_file.filename):
         return accept_cover(existing_url, allowed)
 
-    if image_file and allowed_file(image_file.filename):
-        filename = secure_filename(image_file.filename)
-        # A fresh random name: a name from the upload plus the second could
-        # collide, and covers are cached for a year by path (16.0g)
-        unique_filename = f"cover_{uuid.uuid4().hex}.{filename.rsplit('.', 1)[-1].lower()}"
-
-        # Use absolute path for saving but return relative path for database
-        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
-
-        # Ensure upload directory exists
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
+    # Re-encoded like any cover (save_cover_image: upright, flattened,
+    # resized, the site's format, a fresh random name, no metadata). Before
+    # 16.0g the file was saved as sent, EXIF and all, named from the upload.
+    try:
         img = Image.open(image_file)
-        img.thumbnail(MAX_IMAGE_SIZE)
-        img = ImageOps.exif_transpose(img)
-        img.save(save_path)
-
-        # Return relative path for database storage
-        return os.path.join('uploads', unique_filename)
+        img.load()
+    except (OSError, ValueError, Image.DecompressionBombError):
+        from flask import flash
+        flash("That file isn't an image this site can read, so the cover wasn't changed.", 'error')
+        return accept_cover(existing_url, allowed)
+    return save_cover_image(img)
 
 MAX_REDIRECTS = 3
 
@@ -774,7 +770,7 @@ def thumbnail_jpeg(url: str) -> Optional[bytes]:
 
 STAGED_COVER_DIR = 'uploads/staged'
 STAGED_COVER_MAX_AGE = 24 * 3600            # seconds
-_STAGED_COVER_RE = re.compile(r'^uploads/staged/[A-Za-z0-9_-]{20,}\.(?:jpg|webp)$')
+_STAGED_COVER_RE = re.compile(r'^uploads/staged/[A-Za-z0-9_-]{20,}\.(?:avif|jpg|webp)$')
 
 
 def is_staged_cover(path) -> bool:
@@ -858,9 +854,8 @@ def save_cover_image(img: Image.Image, keep_alpha: bool = False, staged: bool = 
     if keep_alpha and img.mode == 'RGBA':
         img = img.copy()
         img.thumbnail(MAX_IMAGE_SIZE)
-        filename = f"{prefix}{stem}{ALPHA_FORMAT[1]}"
-        img.save(os.path.join(target, filename), ALPHA_FORMAT[0], quality=85)
-        return f'{folder}/{filename}'
+        ext = image_utils.write_image(img, os.path.join(target, f'{prefix}{stem}'))
+        return f'{folder}/{prefix}{stem}{ext}'
     if img.mode in ('RGBA', 'LA', 'P'):
         img = img.convert('RGBA')
         background = Image.new('RGB', img.size, (255, 255, 255))
@@ -870,9 +865,8 @@ def save_cover_image(img: Image.Image, keep_alpha: bool = False, staged: bool = 
         img = img.convert('RGB')
     img.thumbnail(MAX_IMAGE_SIZE)
 
-    filename = f"{prefix}{stem}.jpg"
-    img.save(os.path.join(target, filename), 'JPEG', quality=85, optimize=True)
-    return f'{folder}/{filename}'
+    ext = image_utils.write_image(img, os.path.join(target, f'{prefix}{stem}'))
+    return f'{folder}/{prefix}{stem}{ext}'
 
 _save_cover_image = save_cover_image   # the old private name, still used by callers
 

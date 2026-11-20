@@ -41,7 +41,11 @@ from flask import current_app
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
 from utils.book_utils import MAX_IMAGE_SIZE, allowed_file, save_cover_image
-from utils.image_utils import ALPHA_FORMAT, delete_image_file, is_safe_upload_path
+from utils.image_utils import delete_image_file, is_safe_upload_path
+
+# The live preview of a disc: WebP, fast to encode and thrown away (the
+# saved cover is the site's format, image_utils.ALPHA_FORMAT)
+PREVIEW_ALPHA = ('WEBP', '.webp', 'image/webp')
 
 GEOMETRY_VERSION = 1
 STAGE_MAX = (2400, 2400)            # staged originals are shrunk to this
@@ -298,8 +302,8 @@ def render_preview(img, geom, quality=80):
     out = BytesIO()
     result = render(img, geom)
     if result.mode == 'RGBA':
-        result.save(out, ALPHA_FORMAT[0], quality=quality)
-        return out.getvalue(), ALPHA_FORMAT[2]
+        result.save(out, PREVIEW_ALPHA[0], quality=quality)
+        return out.getvalue(), PREVIEW_ALPHA[2]
     result.save(out, 'JPEG', quality=quality)
     return out.getvalue(), 'image/jpeg'
 
@@ -379,7 +383,7 @@ def stage_upload(file_storage):
     a staged file (and the cover made from it) never carries the location.
     """
     if not file_storage or not file_storage.filename or not allowed_file(file_storage.filename):
-        raise ValueError('Pick a PNG, JPG or GIF image.')
+        raise ValueError('Pick a JPEG, PNG, WebP, AVIF or GIF image.')
     try:
         with Image.open(file_storage.stream) as img:
             img.load()

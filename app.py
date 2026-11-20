@@ -204,6 +204,11 @@ def create_app():
     # Versioned static URLs and a year's caching (ROADMAP 16.0g)
     from utils import static_cache
     static_cache.init_app(app)
+    # Images are saved as AVIF (16.0g); a Pillow build without it falls back to JPEG
+    from utils import image_utils
+    if not image_utils.AVIF:
+        app.logger.warning('Pillow has no AVIF support: new images are saved as JPEG. '
+                           'Install the Pillow wheel from PyPI to get it.')
 
     # Say which database this process opens (the "which library.db?" trap).
     db_path = database_path()
