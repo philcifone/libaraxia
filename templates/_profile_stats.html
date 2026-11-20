@@ -101,9 +101,9 @@
     {% if multi %}
     {% set kinds = [('all', 'All')] %}{% for m, s in type_stats %}{% set _ = kinds.append((m.type, SECTION_NAMES[m.type])) %}{% endfor %}
     {{ tab_row(kinds, 'Section', active='all', action='statsKind', data='stats-kind', end=False, class='pb-3') }}
-    {{ tab_row(views, 'Statistics view', active='overview', action='statsView', data='stats-view', lower=True, class='pb-6') }}
+    {{ tab_row(views, 'Statistics view', active='overview', action='statsView', data='stats-view', lower=True) }}
     {% else %}
-    {{ tab_row(views, 'Statistics view', active='overview', action='statsView', data='stats-view', class='pb-6') }}
+    {{ tab_row(views, 'Statistics view', active='overview', action='statsView', data='stats-view') }}
     {% endif %}
 
     <div class="bg-secondary rounded-xl overflow-hidden card p-4 sm:p-6">

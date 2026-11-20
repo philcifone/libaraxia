@@ -51,9 +51,16 @@ def test_add_pages_cancel_back_where_they_came_from(client, db, people):
 
 
 def test_review_cancels_where_submit_lands(client, db, people):
-    """Opened from Reviews, Cancel goes back there (where Submit lands too,
-    read.rate_review); otherwise to the item page."""
-    book = add_book(db, people['alice'], 'Dune')
+    """Cancel and Submit land in the same place (read.rate_review): Reviews
+    when opened from there, else the item's page, a book's too (Phil,
+    2026-11-19: it used to be the Library's Read shelf)."""
+    alice = people['alice']
+    book, video, record = add_book(db, alice, 'Dune'), add_video(db, alice), add_record(db, alice)
     login(client, 'alice')
-    assert cancel(client, f'/read/rate_review/{book}')[0] == f'/books/book/{book}'
+    for item, page in ((book, f'/books/book/{book}'), (video, f'/videos/{video}'), (record, f'/records/{record}')):
+        assert cancel(client, f'/read/rate_review/{item}')[0] == page
+        r = client.post(f'/read/rate_review/{item}', data={'rating': '4'})
+        assert r.status_code == 302 and r.location == page
     assert cancel(client, f'/read/rate_review/{book}?from=reviews')[0] == '/reviews/?type=book'
+    r = client.post(f'/read/rate_review/{book}?from=reviews', data={'rating': '4', 'from': 'reviews'})
+    assert r.location == '/reviews/?type=book'

@@ -14,7 +14,7 @@
     {# One column, like every other settings-like page: the heading card is as
        wide as the tabs and panes under it (16.0 F12) #}
     <div class="page-frame-narrow pt-20 pb-12">
-        {{ page_heading('settings', 'Settings', class='mb-6') }}
+        {{ page_heading('settings', 'Settings') }}
 
         {% set tabs = [('library', 'Library'), ('account', 'Account')] %}
         {% if current_user.is_admin %}{% set tabs = tabs + [('admin', 'Admin')] %}{% endif %}

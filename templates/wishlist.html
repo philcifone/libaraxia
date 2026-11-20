@@ -19,14 +19,14 @@
     {% endwith %}
 
     <div class="page-frame pt-20 pb-32">
-        {{ page_heading('bookmark', 'Wishlist', class='mb-8') }}
+        {{ page_heading('bookmark', 'Wishlist') }}
 
         {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
            links, so they work without JS and the filter below still applies #}
         {% if total %}
         {% set urls = {} %}
-        {% for key, _label, _count in tabs %}{% set _ = urls.update({key: url_for('wishlist.view_wishlist', show=key)}) %}{% endfor %}
-        {{ tab_row(tabs, 'Wishlist sections', active=show, urls=urls, end=False, class='pb-4') }}
+        {% for key, _label in tabs %}{% set _ = urls.update({key: url_for('wishlist.view_wishlist', show=key)}) %}{% endfor %}
+        {{ tab_row(tabs, 'Wishlist sections', active=show, urls=urls, end=False) }}
 
         {# Filter over the cards (wishlist.js): in Shelf the cabinet's search
            band, under its drawers (.cabinet-band) #}

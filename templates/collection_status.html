@@ -19,7 +19,7 @@
            bookcase; no books stand on it) #}
         {% if is_custom or is_own_profile %}{% set heading_name = shelf_name %}
         {% else %}{% set heading_name = target_username ~ ': ' ~ shelf_name %}{% endif %}
-        {{ page_heading('collections', heading_name, class='mb-8') }}
+        {{ page_heading('collections', heading_name) }}
         </div>
 
         {% if is_own_profile %}{% include '_bulk_result.html' %}{% endif %}

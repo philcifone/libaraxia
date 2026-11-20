@@ -40,10 +40,12 @@
    end:    the cabinet ends with this row (its plinth); False when another
            band follows it (the shelf pages' search, the wishlist's filter)
    wrap:   its own .page-frame (the shelf pages); else in the page's frame
-   class:  the space under it, as padding: the cabinet takes it off in
-           Shelf, where its own margin does
+   class:  the space under it, as padding: pb-4, the gap under the
+           heading too (Phil, 2026-11-19); the cabinet takes it off in
+           Shelf, where its own margin does. '' in a space-y container,
+           whose margin it would add to (styles.css evens that to 1rem)
    nav_class: the row's layout (a long row can be a grid on a phone) #}
-{% macro tab_row(tabs, label, active=none, urls=none, cabinet=True, end=True, wrap=False, class='pb-8',
+{% macro tab_row(tabs, label, active=none, urls=none, cabinet=True, end=True, wrap=False, class='pb-4',
                  tab_id='tab-', panel='', nav_class='flex items-stretch', action=none, data=none, lower=False) -%}
 {%- set in_page = urls is none and action is none -%}
 <div class="tab-row{{ ' page-frame' if wrap }} {{ class }}
@@ -109,8 +111,8 @@
      'url': shelf_url(section, 'mine' if household else 'shared'),
      'icon': 'library-house', 'on': household,
      'label': 'Showing the household: show only mine' if household else 'Show the household'} %}
-<div class="page-frame {{ 'pt-2' if scope == 'friend' else 'pt-20' }} pb-4">
-    {{ page_heading('library', names[scope], class='', toggle=toggle,
+<div class="page-frame {{ 'pt-2' if scope == 'friend' else 'pt-20' }}">
+    {{ page_heading('library', names[scope], toggle=toggle,
                     sr_prefix='Household' if household else none, books=heading_books) }}
 </div>
 {# Called with {% call shelf_header(...) %}: what the call wraps goes right

@@ -81,8 +81,10 @@ def view_wishlist():
     show = show if show in WISHLIST_TABS.values() or show == "all" else "all"
     sections = _wishlist_sections(_wishlist_rows(get_db(), current_user.id))
     total = sum(len(items) for _, _, items in sections)
-    tabs = [(key, "Books" if m["type"] == media.BOOK else m["section"], len(items))
-            for key, m, items in sections] + [("all", "All", total)]
+    # No counts on the tabs (Phil, 2026-11-19): each section's heading has
+    # its own, and a count made the drawer labels two and three lines tall
+    tabs = [(key, "Books" if m["type"] == media.BOOK else m["section"])
+            for key, m, items in sections] + [("all", "All")]
     return render_template("wishlist.html", show=show, sections=sections, tabs=tabs, total=total)
 
 

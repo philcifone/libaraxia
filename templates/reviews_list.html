@@ -14,8 +14,8 @@
 {% block content %}
     <main class="page-frame pt-20 pb-24">
         {{ crumbs([('Reviews', url_for('reviews.index', type=media_type))], heading) }}
-        {{ page_heading('star', heading, class='mb-4') }}
-        {{ section_switch(media_type, urls=section_urls, wrap=False, class='pb-8') }}
+        {{ page_heading('star', heading) }}
+        {{ section_switch(media_type, urls=section_urls, wrap=False) }}
 
         {% if rows %}
         <ul class="grid grid-cols-1 lg:grid-cols-2 gap-4">

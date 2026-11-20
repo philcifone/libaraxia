@@ -2944,7 +2944,6 @@ html:has(.item3d[open]) { overflow: hidden; }
 /* The top: the frame's top rail, room above for the top face, the face */
 :root[data-style="shelf"] .cabinet-top > .card {
     --bt: var(--stile);
-    margin-top: var(--run);
 }
 :root[data-style="shelf"] .cabinet-top > .card::after {
     content: '';
@@ -2977,9 +2976,20 @@ html:has(.item3d[open]) { overflow: hidden; }
 :root[data-style="shelf"] .cabinet-end > .cabinet-band:last-child::before {
     height: calc(100% + var(--bt) + var(--bb) + var(--run));
 }
-:root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base { margin-bottom: 2.25rem; }
 :root[data-style="shelf"] .cabinet-slip { margin-bottom: 0; }
-:root[data-style="shelf"] .cabinet-end { margin-bottom: 1.5rem; }
+/* One gap (Phil, 2026-11-19): the cabinet is 1rem from the heading above it
+   and from what's under it, as every heading is from what's under it
+   (heading_card's mb-4). A case's top face stands in the room above its box,
+   and when that room is a margin it merges with the margin above (the
+   heading's mb-4, the cabinet's foot) and the face eats the gap: on Reviews
+   it was 6px. So the room for the cabinet's top face is padding, and a case
+   under the cabinet asks for the gap plus its own top face, which then wins
+   the merge. */
+:root[data-style="shelf"] .cabinet-top { padding-top: var(--run); }
+:root[data-style="shelf"] .cabinet-end { margin-bottom: 1rem; }
+:root[data-style="shelf"] .cabinet-end + .shelf-case { margin-top: calc(1rem + var(--case-run)); }
+:root[data-style="shelf"] .view-bar.cabinet-part.cabinet-base { margin-bottom: 1rem; }
+:root[data-style="shelf"] .view-bar + .shelf-grid.grid { margin-top: calc(1rem + var(--ledge-top)); }
 /* The matches line and the filter pills: typed on the wood, in cream */
 :root[data-style="shelf"] .search-form-container.cabinet-part > :not(.relative) { padding-top: 0; color: rgb(var(--shelf-label)); }
 :root[data-style="shelf"] .search-form-container.cabinet-part > :not(.relative) :is(p, span) { color: rgb(var(--shelf-label)); }
@@ -4345,6 +4355,13 @@ and to the right for its faces */
 /* A page heading's toggle (Shelves: Mine / Household): an outlined button.
    Off: grey outline and icon, an unpressed button. On: lit in the accent,
    outline and icon. The corners come from the style (rounded-lg). */
+/* One gap under the heading and under a tab row (Phil, 2026-11-19), in every
+   style: heading_card's mb-4, tab_row's pb-4. A space-y container sets its
+   own: the next sibling's margin-top, and no margin-bottom on any child but
+   the first (the heading's mb-4 included). So after either, that margin-top
+   is the same 1rem (Tailwind's space-y rule is as specific, and earlier in
+   the file). */
+[class*="space-y-"] > :is(.page-heading, .tab-row) + :not([hidden]) { margin-top: 1rem; }
 /* The Shelves heading's icon is the Mine / Household toggle (_icons.html
    page_heading, library-house): the books keep the accent, the house
    outline round them is grey until the household is showing. */

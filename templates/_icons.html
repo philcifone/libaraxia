@@ -193,9 +193,9 @@
 {%- endmacro %}
 
 {# Every page's heading (8B.6): a card with the page's icon and name side by
-   side in the middle, the same on the grids (section_heading) and on Feed,
-   Notifications, Wishlist, Collections and Admin. `subtitle` is an optional
-   line under it. The caller spaces it (mb-6 or the grid wrapper below). #}
+   side in the middle, the same on the grids and on Feed, Notifications,
+   Wishlist, Collections and Admin. `subtitle` is an optional line under it.
+   The space under it is heading_card's, one size on every page. #}
 {# toggle: the heading's own icon becomes a link, {url, icon, on, label}:
    `icon` replaces icon_name and should draw a .house-outline (library-house)
    that is grey when off and the accent when on; the books in it are always
@@ -205,9 +205,14 @@
 {# The heading card itself, for a page whose heading isn't an icon and a name
    (the item page: title, subtitle, creator, format icon). One place for its
    classes, so every heading card matches (and Shelf sets each in a small
-   bookcase, .page-heading). Use: {% call heading_card('mb-8') %}...{% endcall %} #}
-{% macro heading_card(class='mb-6') -%}
-<div class="page-heading bg-secondary rounded-xl card px-4 py-3 {{ class }}">{{ caller() }}</div>
+   bookcase, .page-heading). Use: {% call heading_card() %}...{% endcall %}
+   mb-4: the gap under every heading is one size, the Shelves page's heading
+   to its catalog (Phil, 2026-11-19), so callers don't pass a margin
+   (tests/test_layout.py). A space-y container's margins are evened out to
+   it, and in Shelf a cabinet under it keeps its top face's room out of this
+   gap (styles.css, "One gap"). #}
+{% macro heading_card(class='') -%}
+<div class="page-heading bg-secondary rounded-xl card px-4 py-3 mb-4 {{ class }}">{{ caller() }}</div>
 {%- endmacro %}
 
 {# books: 3D models (utils/item3d.heading_books) on the heading's shelf,
@@ -217,8 +222,8 @@
    screen readers, and only the Shelf style has a shelf to put them on
    (styles.css "Books on the heading"). Each holder carries its book's
    proportions too, so it takes the room the turned book takes. #}
-{% macro page_heading(icon_name, name, subtitle=none, class='mb-6', toggle=none, sr_prefix=none, books=none) -%}
-{% call heading_card(('relative ' if toggle else '') ~ class) %}
+{% macro page_heading(icon_name, name, subtitle=none, toggle=none, sr_prefix=none, books=none) -%}
+{% call heading_card('relative' if toggle else '') %}
     {% if books %}
     {% from '_item3d.html' import item3d_box %}
     {% set half = (books|length + 1) // 2 %}
@@ -244,18 +249,9 @@
 {% endcall %}
 {%- endmacro %}
 
-{# A grid page's heading: page_heading the width of the tabs and search row
-   ("My Music", "alice's Movies"), 24px from each (the tabs' pb-4 plus pt-2
-   above, pb-6 below). #}
-{# Each section's icon, by media type: the grids' headings and the Add and
-   Edit pages' (import it beside page_heading) #}
+{# Each section's icon, by media type: the Add and Edit pages' headings
+   (import it beside page_heading) #}
 {% set section_icons = {'book': 'library', 'video': 'vhs', 'record': 'disc'} %}
-{% macro section_heading(media_type, name) -%}
-<div class="page-frame pt-2 pb-6">
-    {{ page_heading(section_icons[media_type], name, class='') }}
-</div>
-{%- endmacro %}
-
 {# A full-page form's Cancel (layout walk 16.0, step 5): a plain link, not
    history.back(), so it works without JS and always lands somewhere known:
    where the form came from (the item page, the shelf, the wishlist,

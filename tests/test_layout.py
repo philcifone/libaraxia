@@ -1914,14 +1914,14 @@ def test_stats_switches_are_one_cabinet(client, db, people):
     login(client, 'carol')
     one = client.get('/user/alice').get_data(as_text=True)
     one = one[one.index('data-stats '):]
-    assert re.findall(r'<div class="tab-row ([^"]*)"', one) == ['pb-6 cabinet-part cabinet-drawers cabinet-top cabinet-end']
+    assert re.findall(r'<div class="tab-row ([^"]*)"', one) == ['pb-4 cabinet-part cabinet-drawers cabinet-top cabinet-end']
     add_video(db, alice)
     stats = client.get('/user/alice').get_data(as_text=True)
     stats = stats[stats.index('data-stats '):]
     rows = re.findall(r'<div class="tab-row ([^"]*)"(.*?)>\s*<div class="([^"]*)">', stats)
     assert [(r[0], r[1], r[2]) for r in rows] == [
         ('pb-3 cabinet-part cabinet-drawers cabinet-top', '', 'bg-secondary rounded-xl overflow-hidden card'),
-        ('pb-6 cabinet-part cabinet-drawers cabinet-end', '', 'bg-secondary rounded-xl overflow-hidden card cabinet-band'),
+        ('pb-4 cabinet-part cabinet-drawers cabinet-end', '', 'bg-secondary rounded-xl overflow-hidden card cabinet-band'),
     ]
     assert stats.index('data-stats-kind="all"') < stats.index('data-stats-view="overview"') < stats.index('data-stats-panel')
     assert 'data-click="statsView" data-stats-view="overview" aria-pressed="true"' in stats
@@ -1994,3 +1994,40 @@ def test_walk_pages_have_the_framed_heading(client, db, people):
         assert '<h1 class="text-3xl' not in html, url
     html = client.get('/loans/borrowed').get_data(as_text=True)
     assert re.search(r'<div class="bg-secondary [^"]*card[^"]*">\s*<p[^>]*>Nothing borrowed right now', html)
+
+
+def test_one_gap_under_every_heading_and_tab_row(client, db, people):
+    """Phil, 2026-11-19: the space under a heading is the Shelves page's
+    (its heading to its catalog), on every page, and so is the space under a
+    tab row or the catalog. heading_card owns the heading's mb-4 and tab_row
+    its pb-4, so no page passes its own; a space-y container's margin is
+    evened out to the same 1rem; and in Shelf a top face's room above a case
+    never merges into the gap (on Reviews it had left 6px)."""
+    calls = ''.join(p.read_text() for p in (ROOT / 'templates').rglob('*.html'))
+    assert not re.search(r'page_heading\([^)]*\bclass=', calls)
+    assert not re.search(r"heading_card\('[^']*\bmb-", calls)
+    assert not re.search(r"(?:tab_row|section_switch)\([^)]*class='pb-[5-9]", calls)
+    login(client, 'alice')
+    for url in ('/reviews/', '/collections/collections', '/wishlist/view', '/feed/activity'):
+        html = client.get(url).get_data(as_text=True)
+        assert re.search(r'<div class="page-heading [^"]*\bmb-4\b', html), url
+    css = (ROOT / 'static' / 'styles.css').read_text()
+    assert '[class*="space-y-"] > :is(.page-heading, .tab-row) + :not([hidden]) { margin-top: 1rem; }' in css
+    assert ':root[data-style="shelf"] .cabinet-top { padding-top: var(--run); }' in css
+    assert ':root[data-style="shelf"] .cabinet-end + .shelf-case { margin-top: calc(1rem + var(--case-run)); }' in css
+    assert ':root[data-style="shelf"] .view-bar + .shelf-grid.grid { margin-top: calc(1rem + var(--ledge-top)); }' in css
+    # The top's room is the part's padding now, not the card's margin
+    top = re.search(r':root\[data-style="shelf"\] \.cabinet-top > \.card \{([^}]*)\}', css).group(1)
+    assert 'margin-top' not in top
+
+
+def test_wishlist_drawers_have_no_counts(client, db, people):
+    """Phil, 2026-11-19: the counts made the drawer labels two and three
+    lines tall, and each section's heading has its own."""
+    db.execute('INSERT INTO wishlist (user_id, book_id) VALUES (?, ?)',
+               (people['alice'], add_book(db, people['alice'], 'Dune')))
+    db.commit()
+    login(client, 'alice')
+    html = client.get('/wishlist/view').get_data(as_text=True)
+    row = re.search(r'<div class="tab-row.*?</nav>', html, re.S).group(0)
+    assert 'opacity-75' not in row and '(' not in row

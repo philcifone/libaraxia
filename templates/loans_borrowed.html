@@ -11,7 +11,7 @@
 {% block content %}
     <main class="page-frame-narrow pt-20 pb-24">
         {{ crumbs([('Profile', url_for('user.profile', username=current_user.username))], 'Borrowed') }}
-        {{ page_heading('book-open', 'Borrowed', class='mb-6') }}
+        {{ page_heading('book-open', 'Borrowed') }}
 
         {% if rows %}
         <ul class="space-y-4">

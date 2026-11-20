@@ -35,7 +35,7 @@
         {% if not format_icon and m.type == 'book' %}{% set format_icon, format_name = 'book-open', 'Book' %}{% endif %}
         {# (set out here: a {% call %} block's own sets don't reach the details below) #}
         {# heading-lit: the flashlight trial (styles.css, Shelf only) #}
-        {% call heading_card('mb-8 heading-lit') %}
+        {% call heading_card('heading-lit') %}
         {# px: the title and icon sit well in from the card's sides #}
         <header class="py-2 px-3 md:px-6 {{ 'flex items-center justify-between gap-6' if format_icon else 'text-center' }}">
             <div class="min-w-0">

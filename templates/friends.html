@@ -11,7 +11,7 @@
 
 {% block content %}
 <main class="page-frame pt-20 pb-16 space-y-8">
-    {{ page_heading('users', 'Friends', class='') }}
+    {{ page_heading('users', 'Friends') }}
 
     {% if friend_requests %}
     <a href="{{ url_for('friends.notifications_page') }}"
