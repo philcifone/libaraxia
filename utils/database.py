@@ -23,6 +23,12 @@ def get_db_connection():
     # SQLite only enforces foreign keys (and their ON DELETE rules) when each
     # connection asks for it. Needs migrations 014/015 (manage.py migrate).
     conn.execute('PRAGMA foreign_keys = ON')
+    # WAL (set on the file by manage.py migrate, ROADMAP 16.0g): NORMAL is
+    # safe there (a power cut can lose the last commit, never corrupt the
+    # file) and saves an fsync per commit. busy_timeout: wait up to 5 s for
+    # another worker's write instead of failing with "database is locked".
+    conn.execute('PRAGMA synchronous = NORMAL')
+    conn.execute('PRAGMA busy_timeout = 5000')
     register_functions(conn)
     return conn
 

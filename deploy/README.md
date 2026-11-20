@@ -53,5 +53,5 @@ Settings (paths, service name, health URL) are variables at the top of `deploy.s
 ## Limits
 
 - **Migrations aren't rolled back.** A migration that fails changes nothing, because each one runs in a transaction. One that applied stays applied, even if a later step fails and the code is rolled back. Migrations here only add things, so the old code still runs. If you do need the old data, `manage.py` left `library.db.backup-*` next to the DB, and the daily ZFS snapshot is there too.
-- Migrations that are risky on prod's data (prod's schema has surprised us before) should still be rehearsed on a copy of the prod DB before merging: `cp library.db /tmp/x.db && venv/bin/python manage.py --db /tmp/x.db migrate`.
+- Migrations that are risky on prod's data (prod's schema has surprised us before) should still be rehearsed on a copy of the prod DB before merging: `sqlite3 library.db ".backup /tmp/x.db" && venv/bin/python manage.py --db /tmp/x.db migrate`. Not `cp`: the DB is in WAL mode (16.0g), so a plain copy can miss what's still in `library.db-wal`. The ZFS snapshot is fine, since it takes the `-wal` and `-shm` files in the same instant.
 - CI checks syntax, that the app starts, and the test suite. It can't catch everything, which is why the script health-checks after the restart.

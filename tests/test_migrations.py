@@ -648,3 +648,29 @@ def test_photo_kinds_match_utils_photos(db):
     assert [r[0] for r in rows] == list(photos.KINDS)
     assert {r[0]: r[1] for r in rows} == photos.LABELS
     assert tuple(r[0] for r in rows if r[2]) == photos.SINGLE
+
+
+def test_migrate_puts_the_database_in_wal(tmp_path):
+    """16.0g step 4: readers don't wait on a writer. Set on the file by
+    migrate (fresh and existing databases alike), and the app's connections
+    wait for a lock rather than failing at once."""
+    path = tmp_path / 'wal.db'
+    run_manage('--db', str(path), 'migrate', '-y')
+    conn = sqlite3.connect(path)
+    assert conn.execute('PRAGMA journal_mode').fetchone()[0] == 'wal'
+    conn.execute('PRAGMA journal_mode = DELETE')        # an older file
+    conn.close()
+    run_manage('--db', str(path), 'migrate', '-y')     # up to date, still switched
+    conn = sqlite3.connect(path)
+    assert conn.execute('PRAGMA journal_mode').fetchone()[0] == 'wal'
+    conn.close()
+
+
+def test_app_connections_wait_for_locks(db_path):
+    from utils.database import get_db_connection
+    conn = get_db_connection()
+    try:
+        assert conn.execute('PRAGMA busy_timeout').fetchone()[0] == 5000
+        assert conn.execute('PRAGMA synchronous').fetchone()[0] == 1      # NORMAL
+    finally:
+        conn.close()

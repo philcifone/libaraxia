@@ -91,6 +91,8 @@ python3 manage.py migrate
 
 This builds `library.db` from `create_database.sql`. Later, after `git pull`, the same command backs up the database and applies any new migrations. `python3 manage.py status` shows where you are. See [`migrations/README.md`](migrations/README.md).
 
+**Copying the database:** it runs in SQLite's WAL mode, so recent writes can sit in `library.db-wal` beside it. Use `python3 manage.py backup`, Admin → Backups, or a filesystem snapshot that takes all three files at once (ZFS, LVM). A plain `cp library.db` while the app runs can miss the latest changes.
+
 **Upgrading an install from before `manage.py` existed:** run `python3 manage.py migrate --baseline` once, then `python3 manage.py migrate`.
 
 ### 4. Run
