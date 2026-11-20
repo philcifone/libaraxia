@@ -38,6 +38,7 @@ from utils.database import database_path
 
 KINDS = {
     'manual': 'Backed up by hand',
+    'merge': 'Before a merge',            # utils/merge.py (16.0f)
 }
 NAME_RE = re.compile(r'^\d{8}-\d{6}(-\d+)?$')
 DB_FILE = 'library.db'
