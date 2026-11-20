@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% from '_covers.html' import cover_img %}
-{% from '_icons.html' import crumbs, icon, heading_card %}
+{% from '_icons.html' import crumbs, icon %}
+{% from '_item_heading.html' import item_heading %}
 {% from '_item3d.html' import item3d_box %}
 
 {% block title %}{{ book['title'] }} - Details{% endblock %}
@@ -20,87 +20,19 @@
         {{ crumbs([(m.section, url_for(m.home))], book['title'], grid=m.type) }}
         {% endif %}
 
-        <!-- Item heading: its own heading card above the details (16.0), as on every page -->
-        {# A format with an icon (utils/media.FORMAT_ICONS: VHS, DVD,
-           audiobook, LP, CD, cassette): title on the left, the icon on
-           the right, since no grid shows a format badge. A plain book (no
-           stored format) gets Lucide's open book (Phil, 2026-11-13), in the
-           accent like every page heading's icon.
-           Anything else (an EP, a 7"): the title centred. An unshelved
-           movie or album has no format (media.shown_format): no copy, no
-           icon. #}
+        <!-- Item heading: the cover beside the title and creator (_item_heading.html), as on Rate & review -->
         {% set shown_format = book|item_format %}
-        {% set format_icon = shown_format|format_icon %}
-        {% set format_name = shown_format|format_label if shown_format else '' %}
-        {% if not format_icon and m.type == 'book' %}{% set format_icon, format_name = 'book-open', 'Book' %}{% endif %}
-        {# (set out here: a {% call %} block's own sets don't reach the details below) #}
-        {# heading-lit: the flashlight trial (styles.css, Shelf only) #}
-        {% call heading_card('heading-lit') %}
-        {# px: the title and icon sit well in from the card's sides #}
-        <header class="py-2 px-3 md:px-6 {{ 'flex items-center justify-between gap-6' if format_icon else 'text-center' }}">
-            <div class="min-w-0">
-                {# data-fit-title: a long title steps down a size until it
-                   wraps to three lines at most (book_detail.js fitTitle) #}
-                <h1 class="detail-title text-4xl font-display text-content-primary mb-2" data-fit-title>
-                    <span data-fit-title-text>{{ book['title'] }}</span>
-                    {% if book['subtitle'] %}
-                        <span class="block text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
-                    {% endif %}
-                </h1>
-                {# No "by" line without a creator (Phil, 2026-11-15) #}
-                {% if book['author'] %}<p class="text-xl text-content-secondary italic" data-byline>{{ m.by }} {{ book['author'] }}</p>{% endif %}
-                {% if book['narrator'] and book['format'] == 'Audiobook' %}<p class="text-base text-content-secondary italic" data-narrator>Narrated by {{ book['narrator'] }}</p>{% endif %}
-            </div>
-            {% if format_icon %}
-            <span class="shrink-0 text-accent" role="img"
-                  aria-label="{{ format_name }}" title="{{ format_name }}">{{ icon(format_icon, 'w-16 h-16') }}</span>
-            {% endif %}
-        </header>
-        {% endcall %}
+        {{ item_heading(book, m, zoom=true, more_photos=extra_photos,
+                        gallery_start=1 if extra_photos and photo_slides[0].label == 'Cover' else 0) }}
 
         <!-- Main Book Content Section -->
         <div class="bg-secondary rounded-xl p-4 md:p-8 mb-8 card">
 
-            {# An ID badge (Phil, 2026-11-13): the cover with the facts beside it
-               at every width, two columns of facts on a phone. Below md the
-               description and the rest run full width under the badge; from md
-               they stand beside the cover, under the facts (the cover spans
-               both rows; the second row is 1fr, so the cover's height never
-               stretches the facts' row). #}
-            <div class="grid grid-cols-[7rem_minmax(0,1fr)] sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[300px_minmax(0,1fr)] md:grid-rows-[auto_1fr] gap-x-4 gap-y-6 md:gap-8">
-                <!-- Book Cover Section -->
-                <div class="item-cover self-center md:self-start md:row-span-2">
-                    {# cover-stand: in the Shelf style the cover is a 3D box (no bookcase of its own)
-                       like the grid's (.cover-box, display: contents elsewhere; 14c) #}
-                    {# The box is the item's (cover_img item=): its type, format and
-                       top and right side photos on the faces (Phil, 2026-11-15;
-                       styles.css "Box faces"); the cover stays flat and facing you #}
-                    <div class="cover-stand w-full max-w-[300px]">
-                        {% if book.cover_image_url|upload_exists %}
-                            {# A tap shows it bigger (#cover-zoom, below) #}
-                            {# openCover (book_detail.js): in the Shelf style the item in 3D
-                               (#item-3d, when it has the photos for it); else the gallery,
-                               cover first, when there are more photos; else the zoom #}
-                            <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
-                                    aria-label="Show the cover bigger">
-                                {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'detail-cover w-full rounded-lg shadow-lg', item=book) }}
-                            </button>
-                        {% else %}
-                            {# An album's placeholder is square, as on the grid (Phil, 2026-11-14) #}
-                            {% with title=book['title'], author=book['author'], size='lg', box='w-full ' ~ ('aspect-square' if m.type == 'record' else 'aspect-[2/3]') ~ ' rounded-lg', item=book %}{% include '_no_cover.html' %}{% endwith %}
-                        {% endif %}
-                    </div>
-                    {# More photos (16.0a): only when there's a back, spine or gallery #}
-                    {% if extra_photos %}
-                    <button type="button" class="mt-3 text-sm underline text-content-secondary hover:text-content-primary"
-                            data-click="openGallery" data-start="{{ 1 if photo_slides[0].label == 'Cover' else 0 }}">
-                        More photos ({{ extra_photos }})
-                    </button>
-                    {% endif %}
-                </div>
-
-                <!-- The facts, beside the cover -->
-                <div class="item-facts self-center md:self-start p-3 md:p-4 bg-primary rounded-lg">
+            {# The facts (in Shelf the catalog card instead), then the rest, one
+               column: the cover is in the heading now (Phil, 2026-11-19) #}
+            <div class="grid grid-cols-1 gap-6 md:gap-8">
+                <!-- The facts -->
+                <div class="item-facts p-3 md:p-4 bg-primary rounded-lg">
                         <div class="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 md:gap-6">
                             {% if m.type == 'record' %}
                             {% set details = [
@@ -181,8 +113,8 @@
                 {# The facts as a catalog card, in the Shelf style instead of the badge #}
                 {% include '_catalog_card.html' %}
 
-                <!-- The rest: under the badge on a phone, beside the cover from md -->
-                <div class="col-span-2 md:col-span-1 md:col-start-2 space-y-6">
+                <!-- The rest -->
+                <div class="space-y-6">
                     <!-- Description Section -->
                     <div class="bg-primary rounded-lg p-4">
                         <h2 class="text-xl font-display text-content-primary mb-4">{{ m.about }}</h2>

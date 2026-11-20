@@ -2018,6 +2018,17 @@ textarea {
   scroll-snap-align: start;
 }
 
+/* The shelf's name is its link (_shelf_rows.html), the covers each their own */
+
+.shelf-label:hover > :first-child {
+  color: rgb(var(--accent-text));
+}
+
+.shelf-cover:focus-visible {
+  outline: 2px solid rgb(var(--accent-text));
+  outline-offset: 2px;
+}
+
 /* A shelf with no covers (_shelf_rows.html renders the row anyway):
        nothing to show, except a bare ledge in Shelf's bookcase */
 
@@ -3184,10 +3195,6 @@ summary.chip::-webkit-details-marker {
   height: 2rem;
 }
 
-.h-auto {
-  height: auto;
-}
-
 .h-full {
   height: 100%;
 }
@@ -3356,10 +3363,6 @@ summary.chip::-webkit-details-marker {
   max-width: 2.5rem;
 }
 
-.max-w-\[300px\] {
-  max-width: 300px;
-}
-
 .max-w-\[3rem\] {
   max-width: 3rem;
 }
@@ -3515,10 +3518,6 @@ summary.chip::-webkit-details-marker {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.grid-cols-\[7rem_minmax\(0\2c 1fr\)\] {
-  grid-template-columns: 7rem minmax(0,1fr);
-}
-
 .flex-col {
   flex-direction: column;
 }
@@ -3622,10 +3621,6 @@ summary.chip::-webkit-details-marker {
 
 .gap-y-3 {
   row-gap: 0.75rem;
-}
-
-.gap-y-6 {
-  row-gap: 1.5rem;
 }
 
 .space-x-2 > :not([hidden]) ~ :not([hidden]) {
@@ -4181,10 +4176,6 @@ summary.chip::-webkit-details-marker {
 
 .pt-6 {
   padding-top: 1.5rem;
-}
-
-.pt-8 {
-  padding-top: 2rem;
 }
 
 .text-left {
@@ -5455,46 +5446,40 @@ html:has(.item3d[open]) {
   background: rgb(var(--black) / .8);
 }
 
-/* ---------- Rate & review (templates/rate_review.html) ----------
-   One grid, two layouts (layout walk 16.0, step 4). Phone: a small cover
-   (6rem, as the review list's cards) beside the title and author, the form
-   under both, so the stars are on the first screen; the cover used to fill
-   it. From md: the title across the top, then the 300px cover and the form. */
+/* ---------- An item's heading (_item_heading.html) ----------
+   The item page's and Rate & review's: the cover beside the title and
+   creator, inside the heading card (Phil, 2026-11-19, from the rate page's
+   phone layout, layout walk step 4). A small cover on the left (Phil: "I
+   want the cover smaller to the left of the title"), a little bigger on a
+   wide screen; a tap on the item page's still opens it big. */
 
-.review-layout {
+.item-heading-grid {
   display: grid;
   grid-template-columns: 6rem minmax(0, 1fr);
-  grid-template-areas: "cover head" "main main";
   align-items: center;
-  gap: 1.5rem 1rem;
+  gap: 1rem;
+  text-align: left;
 }
 
-.review-head  {
-  grid-area: head;
+.item-heading-cover {
   min-width: 0;
-}
-
-.review-cover {
-  grid-area: cover;
-}
-
-.review-main  {
-  grid-area: main;
-  min-width: 0;
+  text-align: center;
 }
 
 @media (min-width: 768px) {
-  .review-layout {
-    grid-template-columns: 300px minmax(0, 1fr);
-    grid-template-areas: "head head" "cover main";
-    align-items: start;
-    gap: 2rem;
+  .item-heading-grid {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: .25rem 1rem;
   }
+}
 
-  .review-head {
-    text-align: center;
-    margin-bottom: 1rem;
-  }
+/* ---------- Rate & review (templates/rate_review.html) ----------
+   The item's heading (above), then the form, a reading width. */
+
+.review-layout {
+  max-width: 48rem;
+  margin-inline: auto;
 }
 
 /* ---------- Star rating (templates/rate_review.html) ---------- */
@@ -6576,20 +6561,10 @@ html:has(.item3d[open]) {
   content: 'Acc. no. ';
 }
 
-/* On a phone the card is too wide to stand beside the cover: the cover
-   stands alone, centred, and the card runs full width under it */
+/* Centred in the details card (the cover is in the heading, Phil 2026-11-19) */
 
-@media (max-width: 639px) {
-  :root[data-style="shelf"] .item-cover:has(~ .entry-card) {
-    grid-column: span 2;
-    justify-self: center;
-    width: 9rem;
-  }
-
-  :root[data-style="shelf"] .catalog-card.entry-card {
-    grid-column: span 2;
-    justify-self: center;
-  }
+:root[data-style="shelf"] .catalog-card.entry-card {
+  justify-self: center;
 }
 
 /* -- The library card -- */
@@ -7416,6 +7391,14 @@ html:has(.item3d[open]) {
   font-family: "Courier Prime", "Courier New", monospace;
 }
 
+/* Bold on every label card, for legibility (Phil, 2026-11-19): the drawers,
+   Filters and the view bar's. Not the fields, whose words are yours. */
+
+:root[data-style="shelf"] :is(.cabinet-drawers .tab > span, .cabinet-part #filter-toggle, .view-bar.cabinet-base select,
+                              .view-bar.cabinet-base > div[role="group"] > *, .view-bar.cabinet-base > #bulk-select-btn) {
+  font-weight: 700;
+}
+
 /* The Shelf form-field rule ("Form fields", below) outranks the above with
    the id in its list: the cabinet's fields take the rim back by id */
 
@@ -7472,21 +7455,16 @@ html:has(.item3d[open]) {
   }
 }
 
-/* On a phone a drawer with a count ("Movies & TV (3)", Collections and the
-   wishlist) didn't fit its share of the row and pushed the page 4px wide:
-   the drawers may shrink, and the count goes under the name on the card */
+/* On a phone the drawers may shrink to their share of the row (a long
+   label pushed the page 4px wide)... */
 
 @media (max-width: 639px) {
   :root[data-style="shelf"] .cabinet-drawers .tab {
     min-width: 0;
   }
 
-  :root[data-style="shelf"] .cabinet-drawers .tab > span > span {
-    display: block;
-  }
-
-  /* ...and with four drawers (the wishlist's All) "Movies & TV" breaks
-       onto two lines rather than standing out of its drawer */
+  /* ...and a label too long for a narrow drawer breaks onto two lines
+       rather than standing out of it */
 
   :root[data-style="shelf"] .cabinet-drawers .tab > span {
     max-width: calc(100% - .5rem);
@@ -8478,7 +8456,7 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) {
   padding: 0 var(--row-pad);
 }
 
-:root[data-style="shelf"] .shelf-case .shelf-link:hover .shelf-label > :first-child {
+:root[data-style="shelf"] .shelf-case .shelf-label:hover > :first-child {
   color: rgb(var(--accent-text));
 }
 
@@ -12237,10 +12215,6 @@ html[data-gr-bar="on"] body {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .sm\:grid-cols-\[10rem_minmax\(0\2c 1fr\)\] {
-    grid-template-columns: 10rem minmax(0,1fr);
-  }
-
   .sm\:flex-row {
     flex-direction: row;
   }
@@ -12329,27 +12303,16 @@ html[data-gr-bar="on"] body {
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
+
+  .sm\:text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
 }
 
 @media (min-width: 768px) {
-  .md\:col-span-1 {
-    grid-column: span 1 / span 1;
-  }
-
   .md\:col-span-2 {
     grid-column: span 2 / span 2;
-  }
-
-  .md\:col-start-2 {
-    grid-column-start: 2;
-  }
-
-  .md\:row-span-2 {
-    grid-row: span 2 / span 2;
-  }
-
-  .md\:mb-2 {
-    margin-bottom: 0.5rem;
   }
 
   .md\:mb-8 {
@@ -12376,14 +12339,6 @@ html[data-gr-bar="on"] body {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .md\:grid-cols-\[300px_minmax\(0\2c 1fr\)\] {
-    grid-template-columns: 300px minmax(0,1fr);
-  }
-
-  .md\:grid-rows-\[auto_1fr\] {
-    grid-template-rows: auto 1fr;
-  }
-
   .md\:gap-6 {
     gap: 1.5rem;
   }
@@ -12404,24 +12359,9 @@ html[data-gr-bar="on"] body {
     padding: 2rem;
   }
 
-  .md\:px-6 {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-
-  .md\:text-4xl {
-    font-size: 2.25rem;
-    line-height: 2.5rem;
-  }
-
   .md\:text-base {
     font-size: 1rem;
     line-height: 1.5rem;
-  }
-
-  .md\:text-lg {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
   }
 }
 

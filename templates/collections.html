@@ -12,9 +12,9 @@
     <main class="page-frame pt-20 pb-16">
         {{ page_heading('collections', 'Collections') }}
 
-        {# Books | Movies | Music, with their counts: the catalog's drawers in Shelf #}
+        {# Books | Movies | Music: the catalog's drawers in Shelf #}
         {% set urls = {} %}
-        {% for key, _label, _count in tabs %}{% set _ = urls.update({key: url_for('collections.view_collections', type=key)}) %}{% endfor %}
+        {% for key, _label in tabs %}{% set _ = urls.update({key: url_for('collections.view_collections', type=key)}) %}{% endfor %}
         {{ tab_row(tabs, 'Collection sections', active=media_type, urls=urls) }}
 
         {# The section's shelves (16.0): its status shelves, then its custom

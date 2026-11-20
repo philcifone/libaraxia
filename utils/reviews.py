@@ -133,11 +133,6 @@ def shelves(conn, user_id, media_type):
     return out
 
 
-def section_counts(conn, user_id):
-    """{media_type: reviews you wrote + friends' + waiting} for the tabs."""
-    return {t: sum(_count(conn, user_id, t, w) for w in LISTS) for t in media.MEDIA_TYPES}
-
-
 # --- [+ Review]: what you may review --------------------------------------
 
 FIND_LIMIT = 50

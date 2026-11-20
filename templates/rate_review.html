@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from '_covers.html' import cover_img %}
+{% from '_item_heading.html' import item_heading %}
 {% from '_icons.html' import cancel_link, crumbs %}
 
 {% block title %}{{ book.title }} - Rate & Review{% endblock %}
@@ -16,24 +16,11 @@
         {{ crumbs([(m.section, url_for(m.home)), (book.title, item_url(book))], 'Review', class='mb-8', grid=m.type) }}
         {% endif %}
 
-        {# review-layout (styles.css): on a phone a small cover beside the
-           title and author, the form (review-main) under both, so the stars are on the
-           first screen; from md the title over two columns, cover and form
-           (layout walk 16.0, step 4) #}
+        {# The item's heading, as on its page: the cover beside the title
+           (_item_heading.html, Phil 2026-11-19); the form under it #}
+        {{ item_heading(book, m) }}
+
         <div class="review-layout">
-            <div class="review-head">
-                <h1 class="font-display text-2xl md:text-4xl mb-1 md:mb-2">{{ book.title }}</h1>
-                {% if book.author %}<p class="text-content-secondary italic md:text-lg">{{ m.by }} {{ book.author }}</p>{% endif %}
-            </div>
-
-            <div class="review-cover">
-                {% if book.cover_image_url|upload_exists %}
-                    {{ cover_img(book['cover_image_url'], m.Noun ~ ' cover', 'w-full h-auto rounded-lg shadow-lg', item=book) }}
-                {% else %}
-                    {% with title=book['title'], author=book['author'], size='lg', box='w-full aspect-[2/3] rounded-lg', item=book %}{% include '_no_cover.html' %}{% endwith %}
-                {% endif %}
-            </div>
-
             <!-- Review Form -->
             <div class="review-main bg-secondary-bg rounded-lg p-4 sm:p-6 md:p-8 card">
                 <h2 class="font-display text-2xl mb-6 md:mb-8 text-center">Rate & Review</h2>

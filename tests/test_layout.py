@@ -335,6 +335,24 @@ def test_empty_states(client, db, people):
     assert 'Your library is empty' not in text('/base/index') and 'Dune' in text('/base/index')
 
 
+def test_a_search_hidden_by_filters_says_so(client, db, people):
+    """Phil, 2026-11-19: "Infinite jest" with From: Goodreads on said "No
+    books on your shelf match", though the book was on it; the household's
+    shelves drew an empty bookcase instead of anything. Both pages now say
+    when it's the filters, with a link that keeps the search and drops them."""
+    add_book(db, people['alice'], 'Dune', 'Frank Herbert')
+    login(client, 'alice')
+    text = lambda url: ' '.join(client.get(url).get_data(as_text=True).split())
+    for home, whose in (('/base/index', 'your shelf'), ('/base/shared-library', 'the household&#39;s shelves')):
+        page = text(home + '?search_term=Dune&genre=Nope')
+        assert 'No books match &#34;Dune&#34; with these filters' in page, home
+        assert f'href="{home}?search_term=Dune"' in page and 'Clear the filters' in page, home
+        assert 'Dune' in text(home + '?search_term=Dune')       # without the filter it's there
+        page = text(home + '?search_term=zzzz')
+        assert f'No books on {whose} match &#34;zzzz&#34;' in page and 'Clear the search' in page, home
+        assert 'No books match these filters' in text(home + '?genre=Nope'), home
+
+
 def test_reading_chart_months(db, people):
     """7.3: books finished per month for the profile chart. Twelve months
     ending now; a quiet year falls back to the twelve months ending at the
@@ -685,7 +703,7 @@ def test_shelf_style_reaches_every_cover_grid():
     js = pathlib.Path('static/script.js').read_text()
     # switchView keeps shelf-grid and only drops .grid in list view
     assert "container.classList.toggle('grid', !list)" in js
-    assert 'cover-stand' in pathlib.Path('templates/book_detail.html').read_text()
+    assert 'cover-stand' in pathlib.Path('templates/_item_heading.html').read_text()
     css = pathlib.Path('static/styles.css').read_text()
     assert ':root:not([data-style="classic"]):not([data-style="shelf"]):not([data-style="cyberpunk"]) :is(' in css
     assert '#book-container.grid' not in css
@@ -1023,9 +1041,9 @@ def test_item_page_cover_is_a_shelf_box(client, db, people, static_root):
     book = add_book(db, people['alice'], cover='uploads/c.jpg')
     login(client, 'alice')
     html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    assert 'class="cover-stand w-full max-w-[300px]">' in html
-    # An ID badge at every width: the facts beside the cover, two columns on a phone
-    assert 'grid-cols-[7rem_minmax(0,1fr)]' in html and 'class="item-facts ' in html
+    assert 'class="cover-stand w-full">' in html
+    # In the heading, beside the title (Phil, 2026-11-19); the facts under it
+    assert html.index('class="item-heading-grid"') < html.index('class="cover-stand') < html.index('class="item-facts ')
     assert '<span class="cover-box" data-media="book" data-format=""><img src="/static/uploads/c.jpg"' in html
 
 
@@ -1051,16 +1069,6 @@ def test_item_page_cover_opens_bigger(client, db, people, static_root):
     html = client.get(f'/books/book/{without}').get_data(as_text=True)
     assert 'cover-zoom' not in html and 'item-3d' not in html
 
-
-def test_item_page_format_icon_is_accent(client, db, people):
-    """The item heading's format icon is in the accent, as every page
-    heading's icon is (page_heading in _icons.html)."""
-    from conftest import add_book, login
-    book = add_book(db, people['alice'])
-    login(client, 'alice')
-    html = client.get(f'/books/book/{book}').get_data(as_text=True)
-    import re
-    assert re.search(r'<span class="shrink-0 text-accent" role="img"\s+aria-label="Book"', html)
 
 def test_shelf_chips_recessed_until_chosen():
     """Shelf style (Phil, 2026-11-13): an unchosen chip is a well (inset
@@ -1160,9 +1168,9 @@ def test_item_add_and_edit_pages_have_one_heading_card(client, db, people):
         page = client.get(url).get_data(as_text=True)
         assert page.count('class="page-heading ') == 1, url
     item = client.get(f'/books/book/{book}').get_data(as_text=True)
-    # the title is in the heading card, before the details card
+    # the cover and the title are in the heading card, before the details card
     heading = item.index('class="page-heading ')
-    assert heading < item.index('<h1', heading) < item.index('Dune', heading) < item.index('cover-stand', heading)
+    assert heading < item.index('cover-stand', heading) < item.index('<h1', heading) < item.index('<span data-fit-title-text>Dune', heading) < item.index('item-facts')
 
 
 def test_shelf_site_title_stays_cream():
@@ -1463,7 +1471,8 @@ def test_wishlist_covers_show_the_format(client, db, people):
         items[title] = book
     db.commit()
     login(client, 'alice')
-    page = client.get('/wishlist/view').get_data(as_text=True)
+    page = ''.join(client.get(f'/wishlist/view?show={tab}').get_data(as_text=True)
+                   for tab in ('books', 'movies', 'music'))
     for fmt in ('VHS', 'DVD', 'LP', '7in', 'Audiobook'):
         assert f'data-format-badge="{fmt}"' in page, fmt
     assert page.count('data-format-badge=') == 5               # not the plain book
@@ -1582,7 +1591,7 @@ def test_cyberpunk_glitch_is_timed_not_on_hover_or_tap(client):
     # Covers, item page titles and headings; never a grid card's title (Phil)
     pool = re.search(r"const POOL = '([^']*)'", glitch).group(1)
     assert '.detail-title' in pool and '.book-cover' in pool and 'book-title' not in pool
-    assert 'class="detail-title ' in pathlib.Path('templates/book_detail.html').read_text()
+    assert 'class="detail-title ' in pathlib.Path('templates/_item_heading.html').read_text()
     assert not re.search(r"addEventListener\('(mouse|pointer|touch|click)", glitch)
     css = pathlib.Path('static/styles.css').read_text()
     rules = css[css.index('/* ---- Cyberpunk glitch'):]
@@ -2031,3 +2040,26 @@ def test_wishlist_drawers_have_no_counts(client, db, people):
     html = client.get('/wishlist/view').get_data(as_text=True)
     row = re.search(r'<div class="tab-row.*?</nav>', html, re.S).group(0)
     assert 'opacity-75' not in row and '(' not in row
+
+
+def test_shelf_row_covers_link_to_their_items(client, db, people):
+    """Phil, 2026-11-19: on Collections and Reviews a cover opens its item's
+    page, and the shelf's name row its whole list. The card used to be one
+    link, to the list; a link can't hold links, so it's a plain card now."""
+    alice = people['alice']
+    book = add_book(db, alice, 'Dune')
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'read')", (alice, book))
+    db.execute("INSERT INTO read_data (user_id, book_id, rating, comment) VALUES (?, ?, 4, 'good')", (alice, book))
+    db.commit()
+    login(client, 'alice')
+    for url in ('/collections/collections', '/reviews/'):
+        html = client.get(url).get_data(as_text=True)
+        assert f'<a href="/books/book/{book}" class="shelf-cover block">' in html, url
+        assert re.search(r'<a href="[^"]+" class="shelf-label ', html), url
+        assert not re.search(r'<a [^>]*class="shelf-link', html), url
+        # no link inside another
+        for card in re.findall(r'<div class="shelf-link.*?\n        </div>', html, re.S):
+            depth = 0
+            for tag in re.findall(r'</?a\b', card):
+                depth += 1 if tag == '<a' else -1
+                assert depth <= 1, url

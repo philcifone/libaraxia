@@ -66,13 +66,6 @@ def view_collections():
     custom = shelves.custom_shelves(conn, current_user.id, media_type)
     for shelf in custom:
         shelf['delete_url'] = url_for('collections.delete_collection', collection_id=shelf['id'])
-    # Tab counts: statuses plus custom shelf entries, per section
-    counts = shelves.section_counts(conn, current_user.id)
-    for t, n in conn.execute('''
-        SELECT uc.media_type, COUNT(cb.book_id) FROM user_collections uc
-        JOIN collection_books cb ON cb.collection_id = uc.collection_id
-        WHERE uc.user_id = ? GROUP BY uc.media_type''', (current_user.id,)).fetchall():
-        counts[t] = counts.get(t, 0) + n
     # Goodreads shelves card (14c): Books only, your own imports
     gr_shelves = goodreads.custom_shelves(conn, current_user.id) if media_type == media.BOOK else []
     taken = {s['label'] for s in custom}
@@ -83,7 +76,8 @@ def view_collections():
                            gr_shelves=gr_shelves,
                            media_type=media_type,
                            m=media.media_labels(media_type),
-                           tabs=[(t, shelves.SECTION_NAMES[t], counts.get(t, 0)) for t in TABS],
+                           # No counts on the drawers (Phil, 2026-11-19): each row has its own
+                           tabs=[(t, shelves.SECTION_NAMES[t]) for t in TABS],
                            # Lent out (16.0d) reads as one more shelf after the statuses
                            status_shelves=shelves.status_shelves(conn, current_user.id, media_type)
                            + [s for s in [shelves.lent_shelf(conn, current_user.id, media_type)] if s],

@@ -70,26 +70,32 @@ def _wishlist_sections(rows):
 @login_required
 def view_wishlist():
     """Your wishlist: books, movies and music, in separate sections, with
-    tabs on top (?show=books|movies|music, default all). Adding happens on
+    tabs on top (?show=books|movies|music, default books). Adding happens on
     the shared add page (add_to_wishlist), opened from the + button; a POST
     here is the old form's address and is handled the same way."""
     if request.method == "POST":
         return add_to_wishlist()
     show = request.args.get("show")
-    # Old tab names still work: "both" (before Vinyls), "vinyls" (before Music)
-    show = {"both": "all", "vinyls": "music"}.get(show, show)
-    show = show if show in WISHLIST_TABS.values() or show == "all" else "all"
+    # Old tab names still work: "vinyls" (before Music). There's no All tab
+    # any more (Phil, 2026-11-19): "all" and "both" open Books, the first.
+    show = {"vinyls": "music"}.get(show, show)
+    show = show if show in WISHLIST_TABS.values() else WISHLIST_TABS[media.BOOK]
     sections = _wishlist_sections(_wishlist_rows(get_db(), current_user.id))
     total = sum(len(items) for _, _, items in sections)
-    # No counts on the tabs (Phil, 2026-11-19): each section's heading has
-    # its own, and a count made the drawer labels two and three lines tall
+    # One tab per type, no counts and no All (Phil, 2026-11-19): each
+    # section's heading has its count, and the labels stay one line
     tabs = [(key, "Books" if m["type"] == media.BOOK else m["section"])
-            for key, m, items in sections] + [("all", "All")]
+            for key, m, items in sections]
     return render_template("wishlist.html", show=show, sections=sections, tabs=tabs, total=total)
 
 
-# The wishlist page's tabs, in order (then "All"): ?show= value by media type
+# The wishlist page's tabs, in order: ?show= value by media type
 WISHLIST_TABS = {media.BOOK: "books", media.VIDEO: "movies", media.RECORD: "music"}
+
+
+def _tab_url(media_type):
+    """Your wishlist on the tab for this type: where adding one lands."""
+    return url_for("wishlist.view_wishlist", show=WISHLIST_TABS.get(media_type, "books"))
 
 
 @wishlist_blueprint.route("/add", methods=["GET", "POST"])
@@ -178,7 +184,7 @@ def _add_media(section):
         for row in mine:
             if row["wished"]:
                 flash(f"This {noun} is already on your wishlist!", "error")
-                return redirect(url_for("wishlist.view_wishlist"))
+                return redirect(_tab_url(section.media_type))
             if row["owned"] and row["removed_at"] is None:
                 flash(f"That {noun} is already in your collection.", "error")
                 return redirect(url_for(section.endpoint("show"), id=row["id"]))
@@ -201,7 +207,8 @@ def _add_wishlist_row(conn, book_id, noun):
         else:
             current_app.logger.exception('Error adding to wishlist')
             flash("Couldn't add it to your wishlist.", "error")
-    return redirect(url_for("wishlist.view_wishlist"))
+    kind = media.media_type_of(conn.execute("SELECT media_type FROM books WHERE id = ?", (book_id,)).fetchone())
+    return redirect(_tab_url(kind))
 
 
 @wishlist_blueprint.route("/check_duplicates", methods=["POST"])
@@ -314,7 +321,7 @@ def remove_from_wishlist(book_id):
 
     # If book was deleted or if we came from wishlist page, go to wishlist
     if book_was_deleted or (referrer and 'wishlist' in referrer):
-        return redirect(url_for("wishlist.view_wishlist"))
+        return redirect(_tab_url(m["type"]))
     # If we came from book detail page or library, go to library
     elif referrer and ('book' in referrer or 'books' in referrer):
         return redirect(url_for("base.index"))

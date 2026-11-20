@@ -989,6 +989,9 @@
         flex: none;
         scroll-snap-align: start;
     }
+    /* The shelf's name is its link (_shelf_rows.html), the covers each their own */
+    .shelf-label:hover > :first-child { color: rgb(var(--accent-text)); }
+    .shelf-cover:focus-visible { outline: 2px solid rgb(var(--accent-text)); outline-offset: 2px; }
     /* A shelf with no covers (_shelf_rows.html renders the row anyway):
        nothing to show, except a bare ledge in Shelf's bookcase */
     .shelf-row:empty { display: none; }
@@ -1686,30 +1689,27 @@ html:has(.item3d[open]) { overflow: hidden; }
 /* Darker than the zoom's: the item is the only thing to look at */
 .item3d::backdrop { background: rgb(var(--black) / .8); }
 
-/* ---------- Rate & review (templates/rate_review.html) ----------
-   One grid, two layouts (layout walk 16.0, step 4). Phone: a small cover
-   (6rem, as the review list's cards) beside the title and author, the form
-   under both, so the stars are on the first screen; the cover used to fill
-   it. From md: the title across the top, then the 300px cover and the form. */
-.review-layout {
+/* ---------- An item's heading (_item_heading.html) ----------
+   The item page's and Rate & review's: the cover beside the title and
+   creator, inside the heading card (Phil, 2026-11-19, from the rate page's
+   phone layout, layout walk step 4). A small cover on the left (Phil: "I
+   want the cover smaller to the left of the title"), a little bigger on a
+   wide screen; a tap on the item page's still opens it big. */
+.item-heading-grid {
     display: grid;
     grid-template-columns: 6rem minmax(0, 1fr);
-    grid-template-areas: "cover head" "main main";
     align-items: center;
-    gap: 1.5rem 1rem;
+    gap: 1rem;
+    text-align: left;
 }
-.review-head  { grid-area: head; min-width: 0; }
-.review-cover { grid-area: cover; }
-.review-main  { grid-area: main; min-width: 0; }
+.item-heading-cover { min-width: 0; text-align: center; }
 @media (min-width: 768px) {
-    .review-layout {
-        grid-template-columns: 300px minmax(0, 1fr);
-        grid-template-areas: "head head" "cover main";
-        align-items: start;
-        gap: 2rem;
-    }
-    .review-head { text-align: center; margin-bottom: 1rem; }
+    .item-heading-grid { grid-template-columns: 7.5rem minmax(0, 1fr); gap: 1.5rem; padding: .25rem 1rem; }
 }
+
+/* ---------- Rate & review (templates/rate_review.html) ----------
+   The item's heading (above), then the form, a reading width. */
+.review-layout { max-width: 48rem; margin-inline: auto; }
 
 /* ---------- Star rating (templates/rate_review.html) ---------- */
 .rating-group { isolation: isolate; }
@@ -2461,12 +2461,8 @@ html:has(.item3d[open]) { overflow: hidden; }
     color: rgb(var(--faint));
 }
 :root[data-style="shelf"] .entry-card .entry-accession::before { content: 'Acc. no. '; }
-/* On a phone the card is too wide to stand beside the cover: the cover
-   stands alone, centred, and the card runs full width under it */
-@media (max-width: 639px) {
-    :root[data-style="shelf"] .item-cover:has(~ .entry-card) { grid-column: span 2; justify-self: center; width: 9rem; }
-    :root[data-style="shelf"] .catalog-card.entry-card { grid-column: span 2; justify-self: center; }
-}
+/* Centred in the details card (the cover is in the heading, Phil 2026-11-19) */
+:root[data-style="shelf"] .catalog-card.entry-card { justify-self: center; }
 
 /* -- The library card -- */
 :root[data-style="shelf"] .library-card {
@@ -3007,6 +3003,12 @@ html:has(.item3d[open]) { overflow: hidden; }
     color: rgb(var(--card-ink));
     font-family: "Courier Prime", "Courier New", monospace;
 }
+/* Bold on every label card, for legibility (Phil, 2026-11-19): the drawers,
+   Filters and the view bar's. Not the fields, whose words are yours. */
+:root[data-style="shelf"] :is(.cabinet-drawers .tab > span, .cabinet-part #filter-toggle, .view-bar.cabinet-base select,
+                              .view-bar.cabinet-base > div[role="group"] > *, .view-bar.cabinet-base > #bulk-select-btn) {
+    font-weight: 700;
+}
 /* The Shelf form-field rule ("Form fields", below) outranks the above with
    the id in its list: the cabinet's fields take the rim back by id */
 :root[data-style="shelf"] :is(.cabinet-part #search_term, .cabinet-part #filter-toggle, .cabinet-part #wishlist-search,
@@ -3049,14 +3051,12 @@ html:has(.item3d[open]) { overflow: hidden; }
 @media (min-width: 640px) {
     :root[data-style="shelf"] .cabinet-drawers .tab > span { font-size: .9375rem; min-width: 55%; }
 }
-/* On a phone a drawer with a count ("Movies & TV (3)", Collections and the
-   wishlist) didn't fit its share of the row and pushed the page 4px wide:
-   the drawers may shrink, and the count goes under the name on the card */
+/* On a phone the drawers may shrink to their share of the row (a long
+   label pushed the page 4px wide)... */
 @media (max-width: 639px) {
     :root[data-style="shelf"] .cabinet-drawers .tab { min-width: 0; }
-    :root[data-style="shelf"] .cabinet-drawers .tab > span > span { display: block; }
-    /* ...and with four drawers (the wishlist's All) "Movies & TV" breaks
-       onto two lines rather than standing out of its drawer */
+    /* ...and a label too long for a narrow drawer breaks onto two lines
+       rather than standing out of it */
     :root[data-style="shelf"] .cabinet-drawers .tab > span {
         max-width: calc(100% - .5rem);
         padding-inline: .3rem;
@@ -3748,7 +3748,7 @@ html:root:is([data-style="outrun"], [data-style="cyberpunk"]) { --tab-recess: rg
     margin-bottom: .75rem;
     padding: 0 var(--row-pad);
 }
-:root[data-style="shelf"] .shelf-case .shelf-link:hover .shelf-label > :first-child { color: rgb(var(--accent-text)); }
+:root[data-style="shelf"] .shelf-case .shelf-label:hover > :first-child { color: rgb(var(--accent-text)); }
 /* A custom collection's delete button: in the label's corner, not beside
    the shelf (which would stop it short of the case's side) */
 :root[data-style="shelf"] .shelf-case .shelf-item { position: relative; }

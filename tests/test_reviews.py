@@ -237,16 +237,15 @@ def test_empty_row_line_lines_up_in_the_bookcase(client, db, people):
 
 
 def test_rate_review_page_layout(client, db, people):
-    """Rate & review (layout walk 16.0, step 4): one grid, the head, the cover
-    and the form in that order (styles.css .review-layout puts a small cover
-    beside the title on a phone), each star a 44 px tap target, and the
-    session row free to wrap."""
+    """Rate & review (layout walk 16.0, step 4): the item's heading (its cover
+    beside the title, as on the item page since 2026-11-19), then the form,
+    each star a 44 px tap target, and the session row free to wrap."""
     alice = people['alice']
     book = add_book(db, alice, 'Layout Pick')
     add_review(db, alice, book)
     login(client, 'alice')
     html = page(client, f'/read/rate_review/{book}')
-    spots = [html.find(f'class="{c}') for c in ('review-layout', 'review-head', 'review-cover', 'review-main')]
+    spots = [html.find(f'class="{c}') for c in ('item-heading-grid', 'cover-stand', 'review-layout', 'review-main')]
     assert -1 < spots[0] < spots[1] < spots[2] < spots[3]
     stars = re.findall(r'<label for="star\d"\s+class="rating-star ([^"]*)"', html)
     assert len(stars) == 5 and all({'w-11', 'h-11'} <= set(c.split()) for c in stars)

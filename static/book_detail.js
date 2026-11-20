@@ -280,38 +280,6 @@ registerActions({
     item3dTurn: el => item3d.turnTo(Number(el.dataset.angle)),
 });
 
-// A long title (Dr. Strangelove's 69 characters) wraps to six lines at
-// text-4xl on a phone and pushes the details off the screen. Step the
-// heading down a Tailwind size at a time until the title itself (not the
-// subtitle, which has its own size) wraps to MAX_TITLE_LINES or fewer.
-// Most titles never leave text-4xl. getClientRects() on an inline span
-// returns one rect per line box, so it counts the rendered lines directly.
-const TITLE_SIZES = ['text-4xl', 'text-3xl', 'text-2xl'];
-const MAX_TITLE_LINES = 3;
-
-function fitTitle() {
-    const heading = document.querySelector('[data-fit-title]');
-    const text = heading && heading.querySelector('[data-fit-title-text]');
-    if (!text) return;
-    for (const size of TITLE_SIZES) {
-        heading.classList.remove(...TITLE_SIZES);
-        heading.classList.add(size);
-        if (text.getClientRects().length <= MAX_TITLE_LINES) return;
-    }
-    // Still over at the smallest size: leave it there rather than shrink further.
-}
-
-fitTitle();
-// Wrapping depends on the web font (Young Serif is wider than the fallback)
-// and on the width, so fit again once fonts load and after a resize or rotation.
-if (document.fonts) document.fonts.ready.then(fitTitle);
-let fitTitleFrame = 0;
-window.addEventListener('resize', () => {
-    cancelAnimationFrame(fitTitleFrame);
-    fitTitleFrame = requestAnimationFrame(fitTitle);
-});
-
-
 // Audiobookshelf (ROADMAP 16.0e): your progress there on an item you
 // imported, asked for after the page has loaded (GET /abs/progress), so a
 // slow or sleeping server never holds the page up. Silent on any failure.

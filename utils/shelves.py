@@ -106,17 +106,6 @@ def borrowed_shelf(conn, user_id):
     }
 
 
-def section_counts(conn, user_id):
-    """{media_type: number of statuses + custom shelf items} for the tabs."""
-    counts = {t: 0 for t in media.MEDIA_TYPES}
-    for t, n in conn.execute('''
-        SELECT b.media_type, COUNT(*) FROM collections c JOIN books b ON b.id = c.book_id
-        WHERE c.user_id = ? GROUP BY b.media_type
-    ''', (user_id,)).fetchall():
-        counts[t] = counts.get(t, 0) + n
-    return counts
-
-
 def wishlist_shelves(conn, user_id, username=None):
     """One row per section that has wishlist entries (8D), linked to the
     wishlist page on that section's tab (yours) or to the friend's wishlist."""

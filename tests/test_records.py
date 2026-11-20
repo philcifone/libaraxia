@@ -175,9 +175,9 @@ def test_grid_tabs_and_search(client, db, people):
 
 
 def test_format_badges_use_icons_for_lp_cd_and_cassette(client, db, people):
-    # LP, CD and Cassette get a Lucide icon (turntable, disc-2, cassette-tape)
-    # beside the title on the album's page, named for screen readers. The
-    # grid shows no format badge (Phil, 2026-11-11).
+    # LP, CD and Cassette have a Lucide icon (turntable, disc-2, cassette-tape),
+    # but the grid shows no format badge (Phil, 2026-11-11) and the album's
+    # heading no icon (Phil, 2026-11-19: the cover is there): its facts say it.
     ids = {name: add_record(db, people['alice'], title=title, catno=catno, fmt=name)
            for name, title, catno in (('LP', 'Blue', 'MS 2038'), ('CD', 'Court and Spark', '7E-1001'),
                                       ('Cassette', 'Hissing', '7E-1051'))}
@@ -187,7 +187,9 @@ def test_format_badges_use_icons_for_lp_cd_and_cassette(client, db, people):
                        ('CD', '<circle cx="12" cy="12" r="4"/>'),   # disc-2
                        ('Cassette', 'M8 12h8')):                    # cassette-tape
         page = client.get(f'/records/{ids[name]}').get_data(as_text=True)
-        assert path in page and f'aria-label="{name}"' in page
+        heading = page[page.index('<div class="page-heading '):page.index('</header>')]
+        assert path not in heading
+        assert f'font-medium break-words">{name}</p>' in page
 
 
 def test_household_and_friends_see_records(client, db, people):
@@ -327,11 +329,11 @@ def test_vinyl_on_the_wishlist_then_onto_the_shelf(client, db, people):
     page = client.get('/wishlist/add?type=record').get_data(as_text=True)
     assert 'page-title min-w-0">Add an Album to your Wishlist</span>' in page and 'id="notes"' in page
     r = client.post('/wishlist/add', data=form(media_type='record', notes='first pressing'))
-    assert r.headers['Location'].endswith('/wishlist/view')
+    assert r.headers['Location'].endswith('/wishlist/view?show=music')       # its tab
     record = scalar(db, "SELECT id FROM books WHERE title = 'Blue'")
     assert scalar(db, 'SELECT media_type FROM books WHERE id = ?', record) == 'record'
     assert scalar(db, 'SELECT COUNT(*) FROM library_records WHERE id = ?', record) == 0   # wished
-    page = client.get('/wishlist/view').get_data(as_text=True)
+    page = client.get('/wishlist/view?show=music').get_data(as_text=True)
     assert 'Music' in page and 'Add to Music' in page and 'first pressing' in page
     # The item's own link, not the word: "Blue" is also an accent in the sidebar
     assert f'/records/{record}' in client.get('/wishlist/view?show=music').get_data(as_text=True)
@@ -575,14 +577,6 @@ def test_data_export_has_type_and_format(app, db, people):
     for name in ('collections.csv', 'wishlist.csv'):
         header = next(csv.reader(io.StringIO(z.read(name).decode())))
         assert header[-2:] == ['Type', 'Format'], name
-
-
-def test_vinyl_sizes_have_no_icon_and_a_centred_title(client, db, people):
-    """An EP or 7" has no format icon, so its page keeps the centred title."""
-    rid = add_record(db, people['alice'], title='Small', fmt='7in')
-    login(client, 'alice')
-    page = client.get(f'/records/{rid}').get_data(as_text=True)
-    assert '<header class="py-2 px-3 md:px-6 text-center">' in page and 'role="img"' not in page
 
 
 def test_album_placeholder_is_square_on_the_item_page(client, db, people):

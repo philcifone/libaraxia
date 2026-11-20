@@ -1,0 +1,64 @@
+{% from '_covers.html' import cover_img %}
+{% from '_icons.html' import heading_card, icon %}
+{# An item's heading (Phil, 2026-11-19): its cover beside its title and
+   creator, in the heading card (Shelf's small bookcase), on the item page
+   and on Rate & review, so the two read as one. The cover lives here, not in
+   the details card under it, and there's no format icon (the facts say the
+   format); the section headings keep their icons.
+
+   book:        the item's row (item_url, cover_img item= need its media_type)
+   m:           media.item_labels(book), for "by" / "directed by"
+   zoom:        the cover opens bigger on a tap (the item page: openCover,
+                book_detail.js, with #cover-zoom and #item-3d on that page)
+   more_photos: how many more photos it has (the item page's gallery), and
+   gallery_start: the gallery slide "More photos" opens at
+
+   The cover keeps the item page's hooks: .cover-stand (Shelf's deeper box,
+   the Audiobookshelf ring, book_detail.js setProgressRing) and
+   .cover-zoom-open. data-fit-title: common.js fitTitle steps a long title
+   down a size until it wraps to three lines at most. heading-lit: the
+   flashlight trial (styles.css, Shelf only; off for now). #}
+{% macro item_heading(book, m, zoom=false, more_photos=0, gallery_start=0) -%}
+{% call heading_card('item-heading heading-lit') %}
+<header class="item-heading-grid">
+    <div class="item-heading-cover">
+        <div class="cover-stand w-full">
+            {% if book['cover_image_url']|upload_exists %}
+                {% if zoom %}
+                <button type="button" class="cover-zoom-open" data-click="openCover" data-target="cover-zoom"
+                        aria-label="Show the cover bigger">
+                    {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'detail-cover w-full rounded-lg shadow-lg', item=book) }}
+                </button>
+                {% else %}
+                    {{ cover_img(book['cover_image_url'], book['title'] ~ ' Cover', 'detail-cover w-full rounded-lg shadow-lg', item=book) }}
+                {% endif %}
+            {% else %}
+                {# An album's placeholder is square, as on the grid (Phil, 2026-11-14) #}
+                {% with title=book['title'], author=none, size='sm', box='w-full ' ~ ('aspect-square' if m.type == 'record' else 'aspect-[2/3]') ~ ' rounded-lg', item=book %}{% include '_no_cover.html' %}{% endwith %}
+            {% endif %}
+        </div>
+        {# More photos (16.0a): only when there's a back, spine or gallery.
+           A stack-of-photos icon and the count, one line under the small
+           cover (Phil, 2026-11-19: the words wrapped); the words are its name #}
+        {% if more_photos %}
+        <button type="button" class="more-photos mt-2 inline-flex items-center gap-1 text-sm text-content-secondary hover:text-content-primary"
+                data-click="openGallery" data-start="{{ gallery_start }}"
+                aria-label="More photos ({{ more_photos }})" title="More photos">
+            {{ icon('images', 'w-4 h-4') }}<span aria-hidden="true">({{ more_photos }})</span>
+        </button>
+        {% endif %}
+    </div>
+    <div class="min-w-0">
+        <h1 class="detail-title text-4xl font-display text-content-primary mb-2" data-fit-title>
+            <span data-fit-title-text>{{ book['title'] }}</span>
+            {% if book['subtitle'] %}
+                <span class="block text-lg sm:text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
+            {% endif %}
+        </h1>
+        {# No "by" line without a creator (Phil, 2026-11-15) #}
+        {% if book['author'] %}<p class="text-base sm:text-xl text-content-secondary italic" data-byline>{{ m.by }} {{ book['author'] }}</p>{% endif %}
+        {% if book['narrator'] and book['format'] == 'Audiobook' %}<p class="text-sm sm:text-base text-content-secondary italic" data-narrator>Narrated by {{ book['narrator'] }}</p>{% endif %}
+    </div>
+</header>
+{% endcall %}
+{%- endmacro %}

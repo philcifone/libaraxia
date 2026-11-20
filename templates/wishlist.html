@@ -3,9 +3,9 @@
 {% from '_icons.html' import page_heading %}
 {# Your wishlist (wishlist.view_wishlist): books, movies and music you want,
    one section per type (`sections`: key, labels, rows), behind
-   Books | Movies | Music | All tabs (`show`). Adding is the shared add page (add_item.html via
-   wishlist.add_to_wishlist), from the + button. The box under the tabs
-   filters the cards (wishlist.js). #}
+   Books | Movies | Music tabs (`show`, Books by default). Adding is the
+   shared add page (add_item.html via wishlist.add_to_wishlist), from the +
+   button. The box under the tabs filters the cards (wishlist.js). #}
 
 {% block title %}Wishlist - libaraxia{% endblock %}
 {% block body_class %}bg-primary min-h-screen{% endblock %}
@@ -21,7 +21,7 @@
     <div class="page-frame pt-20 pb-32">
         {{ page_heading('bookmark', 'Wishlist') }}
 
-        {# Tabs: one per type, or all (?show=, read by view_wishlist). Plain
+        {# Tabs: one per type (?show=, read by view_wishlist). Plain
            links, so they work without JS and the filter below still applies #}
         {% if total %}
         {% set urls = {} %}
@@ -45,7 +45,7 @@
         {% endif %}
 
         {% for key, m, items in sections %}
-        {% if show in (key, 'all') and items %}
+        {% if show == key and items %}
         <section class="wishlist-section mb-12" aria-labelledby="wishlist-{{ key }}">
             <h2 id="wishlist-{{ key }}" class="scroll-mt-20 text-3xl font-display text-content-primary mb-6">
                 {{ m.plural|capitalize }} <span class="text-content-secondary text-xl">({{ items|length }})</span>

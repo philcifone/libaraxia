@@ -27,7 +27,15 @@
     {% include '_book_grid.html' %}
     {% include '_bulk_select.html' %}
     {% else %}
-    {% include '_book_grid.html' %}
+    {# Nothing to show (it drew an empty bookcase before): a search or filters
+       that match nothing, or a household with no books yet #}
+    {% with home=request.path, whose="the household's shelves",
+            scope='This searches titles, authors, publishers, ISBNs, years and tags on everyone\'s shelves in the household.',
+            empty_title='No books on the household\'s shelves yet',
+            empty_text='Books anyone in the household adds show here.',
+            empty_links=[(url_for('books.add_book'), 'Add a book')] %}
+        {% include '_shelf_empty.html' %}
+    {% endwith %}
     {% endif %}
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

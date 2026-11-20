@@ -12,9 +12,11 @@
    username: the friend, for scope 'friend' #}
 {% from '_icons.html' import page_heading, crumbs %}
 
-{# A tab's words: its label (the drawer's typed card in Shelf), and its count #}
+{# A tab's words: its label (the drawer's typed card in Shelf). No counts
+   (Phil, 2026-11-19: they made the drawers' cards two and three lines tall,
+   and the rows under them have their own) #}
 {% macro _tab_text(tab) -%}
-<span class="text-center">{{ tab[1] }}{% if tab|length > 2 and tab[2] is not none %} <span class="text-sm opacity-75">({{ tab[2] }})</span>{% endif %}</span>
+<span class="text-center">{{ tab[1] }}</span>
 {%- endmacro %}
 
 {# A page's row of tabs (layout walk step 2, docs/LAYOUT-WALK-SPEC.md
@@ -24,7 +26,7 @@
    its Stats, Settings, Admin. The item page's tabs are their own
    (tests/test_layout.py allows those and no other hand-built row).
 
-   tabs:   [(key, label)] or [(key, label, count)]: the count in brackets
+   tabs:   [(key, label)]
    label:  the row's aria-label
    urls:   {key: url}: link tabs, `active` the open one's key.
    action: a data-click action (registerActions): toggle buttons, each

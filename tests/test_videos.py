@@ -236,11 +236,11 @@ def test_vhs_shows_as_cartridge_dvd_as_dvd(client, db, people):
     # No format badge on the grid (Phil, 2026-11-11); the filter names VHS Cartridge
     assert 'title="Cartridge"' not in page and 'title="DVD"' not in page
     assert '<option value="VHS"' in page and '>Cartridge</option>' in page
-    # The item page: the icon beside the title, named for screen readers
+    # The item page names it in its facts (no icon in its heading since 2026-11-19)
     page = client.get(f'/videos/{tape}').get_data(as_text=True)
-    assert 'aria-label="Cartridge"' in page and 'aria-label="VHS"' not in page
+    assert 'break-words">Cartridge</p>' in page and 'break-words">VHS</p>' not in page
     page = client.get(f'/videos/{disc}').get_data(as_text=True)
-    assert 'aria-label="DVD"' in page
+    assert 'break-words">DVD</p>' in page
 
 
 def test_add_dvd_filter_and_count(client, db, people):
@@ -740,12 +740,12 @@ def test_movie_on_the_wishlist_then_onto_the_shelf(client, db, people):
     login(client, 'alice')
     r = client.post('/wishlist/add', data=form(media_type='video', title='Alien', barcode=UPC,
                                                format='DVD', notes='the director\'s cut'))
-    assert r.status_code == 302 and r.headers['Location'].endswith('/wishlist/view')
+    assert r.status_code == 302 and r.headers['Location'].endswith('/wishlist/view?show=movies')   # its tab
     movie = scalar(db, "SELECT id FROM books WHERE title = 'Alien'")
     assert scalar(db, 'SELECT media_type FROM books WHERE id = ?', movie) == 'video'
     assert scalar(db, 'SELECT notes FROM wishlist WHERE book_id = ?', movie) == "the director's cut"
     assert scalar(db, 'SELECT COUNT(*) FROM library_videos WHERE id = ?', movie) == 0   # wished, unshelved
-    page = client.get('/wishlist/view').get_data(as_text=True)
+    page = client.get('/wishlist/view?show=movies').get_data(as_text=True)
     assert 'Movies and shows <span' in page and 'Alien' in page and 'Add to Movies &amp; TV' in page
     assert client.get('/videos/').get_data(as_text=True).count('>Alien<') == 0
 
@@ -814,8 +814,9 @@ def test_edit_book_takes_a_picked_cover_but_not_other_paths(client, db, people):
     assert scalar(db, 'SELECT cover_image_url FROM books WHERE id = ?', book) == 'uploads/cover_new.jpg'
 
 
-def test_wishlist_tabs_show_books_movies_or_both(client, db, people):
-    """Books | Movies | Both on top of the wishlist; Both is the default."""
+def test_wishlist_tabs_show_books_movies_or_music(client, db, people):
+    """Books | Movies & TV | Music on top of the wishlist, Books the default:
+    no All tab (Phil, 2026-11-19), so old ?show=all and both links open Books."""
     alice = people['alice']
     book = add_book(db, alice, title='Wished Book')
     movie = add_book(db, alice, title='Wished Movie')
@@ -828,15 +829,13 @@ def test_wishlist_tabs_show_books_movies_or_both(client, db, people):
     def page(query=''):
         return client.get('/wishlist/view' + query).get_data(as_text=True)
 
-    both = page()
-    assert 'Wished Book' in both and 'Wished Movie' in both
-    assert re.search(r'href="/wishlist/view\?show=all"\s+class="tab tab-active"', both)
-    assert 'Wished Book' in page('?show=both')          # the tab's name before Vinyls
-    books = page('?show=books')
-    assert 'Wished Book' in books and 'Wished Movie' not in books
+    for query in ('', '?show=books', '?show=all', '?show=both', '?show=nonsense'):
+        books = page(query)
+        assert 'Wished Book' in books and 'Wished Movie' not in books, query
+        assert re.search(r'href="/wishlist/view\?show=books"\s+class="tab tab-active"', books), query
+    assert 'show=all' not in page()
     movies = page('?show=movies')
     assert 'Wished Movie' in movies and 'Wished Book' not in movies
-    assert 'Wished Movie' in page('?show=nonsense')     # unknown: both
 
 
 def test_rack_prints_a_label_on_every_case(client, db, people, static_root):
