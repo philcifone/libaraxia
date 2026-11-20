@@ -146,9 +146,11 @@ def data_zip(conn, user_id):
     files = {
         'library.csv': library_csv(conn, user_id),
         'reading_sessions.csv': _csv(
-            ['Book ID', 'Title', 'Author', 'Date Started', 'Date Completed'] + TYPE_COLUMNS,
+            # Page and Progress (%): manual reading progress (16.0f), blank when none
+            ['Book ID', 'Title', 'Author', 'Date Started', 'Date Completed', 'Page', 'Progress (%)'] + TYPE_COLUMNS,
             conn.execute('''
                 SELECT b.id, b.title, b.author, s.date_started, s.date_completed,
+                       s.progress_page, CAST(ROUND(s.progress * 100) AS INTEGER),
                        b.media_type, COALESCE(b.format, '')
                 FROM reading_sessions s JOIN books b ON b.id = s.book_id
                 WHERE s.user_id = ? ORDER BY s.date_completed, s.date_started

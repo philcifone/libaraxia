@@ -38,8 +38,9 @@ and a session with a start date. A user should be able to say "page 140" or
   1. The item page's reading history (`#item-history`): the open session
      shows "On page [140] of 312 · 45 %" with a Save button. A plain POST
      form, no script (the chips there work the same way).
-  2. The session form (`read.manage_session`) gets the same field, so a
-     session can be started with progress.
+  2. ~~The session form gets the same field.~~ Dropped while building
+     (2026-11-20): the field above already opens a session when there's
+     none, so a second way in only added a field to the dates form.
   - Not in this phase: a quick control on the Currently Reading row in
     Collections. It's possible later, but the item page is one tap away.
 - **Setting progress with no open session** opens one, started today, and

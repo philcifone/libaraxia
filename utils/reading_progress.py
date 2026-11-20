@@ -121,3 +121,44 @@ def rings(conn, user_id):
             'ORDER BY date_started, session_id', (user_id,)):
         found[r['book_id']] = (r['progress'], r['progress_at'])   # the latest open session wins
     return found
+
+
+def ring_map(conn, user_id):
+    """{book_id: 0..1}: what the cover's ring shows for you, from your
+    manual progress and your Audiobookshelf progress. When a book has both,
+    the newer wins (Phil, 2026-11-20: listen, then read a few pages of the
+    paper copy, and the paper copy's page is the number until you listen
+    again). An ABS value with no time yet (synced before migration 046)
+    loses to a manual one."""
+    from utils import abs_import, audiobookshelf
+    merged = rings(conn, user_id)
+    if audiobookshelf.enabled():
+        for book_id, (share, at) in abs_import.dated_rings(conn, user_id).items():
+            mine = merged.get(book_id)
+            if mine is None or (at is not None and (mine[1] is None or at > mine[1])):
+                merged[book_id] = (share, at)
+    return {book_id: share for book_id, (share, _at) in merged.items()}
+
+
+def panel(conn, user_id, book, status):
+    """What the item page's progress field needs, or None when it has no
+    field: books only, and only while you're reading it (an open session,
+    or the status Currently Reading). `status` is your status on it.
+    {'takes_page', 'page_count', 'page', 'percent' (whole number), 'at',
+    'ago' ('2 days ago'), 'done' (at the end: offer Mark as read)}."""
+    from utils.bulk import ago
+    if media.media_type_of(book) != media.BOOK:
+        return None
+    session = open_session(conn, user_id, book['id'])
+    if session is None and status != CURRENTLY_READING:
+        return None
+    share = session['progress'] if session else None
+    return {
+        'takes_page': takes_page(book),
+        'page_count': book['page_count'],
+        'page': session['progress_page'] if session else None,
+        'percent': None if share is None else round(share * 100),
+        'at': session['progress_at'] if session else None,
+        'ago': ago(session['progress_at']) if session and session['progress_at'] else '',
+        'done': share is not None and share >= 1,
+    }

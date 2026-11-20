@@ -358,7 +358,7 @@ def create_app():
     # What one cover's box carries: {media, format, faces, ring}, or {} for
     # no item (a picture that stays a plain box). format is the shown one
     # (none for an unshelved movie or album, as the grid has it); ring is
-    # the viewer's own Audiobookshelf progress (abs_ring below).
+    # the viewer's own reading progress (cover_ring below).
     def cover_box(row):
         from utils import media
         if not row:
@@ -371,7 +371,7 @@ def create_app():
             'media': item['media_type'],
             'format': media.shown_format(item) or '',
             'faces': cache[item['id']],
-            'ring': abs_ring(item['id']),
+            'ring': cover_ring(item['id']),
         }
     app.add_template_global(cover_box, 'cover_box')
 
@@ -385,18 +385,19 @@ def create_app():
         return lent_for(get_db(), _current_user.id, [row['id'] for row in rows])
     app.add_template_global(lent_map, 'lent_map')
 
-    # The Audiobookshelf progress ring on a cover (Phil, 2026-11-19;
-    # utils/abs_import.rings): the viewer's own progress on a book id, 0 to
-    # 1, or None. One query per request, kept on g.
-    def abs_ring(book_id):
+    # The progress ring on a cover: the viewer's own progress on a book id,
+    # 0 to 1, or None. Audiobookshelf's (Phil, 2026-11-19) and manual
+    # progress (16.0f), the newer of the two (utils/reading_progress.ring_map).
+    # One query per request, kept on g.
+    def cover_ring(book_id):
         from flask import g
-        from utils import abs_import
-        if not _current_user.is_authenticated or not audiobookshelf.enabled():
+        from utils import reading_progress
+        if not _current_user.is_authenticated:
             return None
-        if 'abs_rings' not in g:
-            g.abs_rings = abs_import.rings(get_db(), _current_user.id)
-        return g.abs_rings.get(book_id)
-    app.add_template_global(abs_ring, 'abs_ring')
+        if 'cover_rings' not in g:
+            g.cover_rings = reading_progress.ring_map(get_db(), _current_user.id)
+        return g.cover_rings.get(book_id)
+    app.add_template_global(cover_ring, 'cover_ring')
 
     # The placeholder sets an add form offers for a media type (16.0c,
     # utils/faces.sets_for_type): [(body label, [set rows])]

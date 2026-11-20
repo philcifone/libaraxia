@@ -963,9 +963,10 @@ def card_json(conn, viewer_id, books, looker_id=None):
     marks = viewer_marks(conn, viewer_id, [b['id'] for b in books])
     faces = box_faces(conn, books)
     lent = lent_map(conn, looker_id or viewer_id, [b['id'] for b in books])
-    # The Audiobookshelf ring: the looker's own progress, never the shelf owner's
-    from utils import abs_import, audiobookshelf
-    rings = abs_import.rings(conn, looker_id or viewer_id) if audiobookshelf.enabled() else {}
+    # The progress ring (Audiobookshelf or manual, the newer): the looker's
+    # own progress, never the shelf owner's
+    from utils.reading_progress import ring_map
+    rings = ring_map(conn, looker_id or viewer_id)
     out = []
     for b in books:
         mark = marks.get(b['id'], {})

@@ -152,3 +152,119 @@ def test_the_route_is_a_404_on_a_book_you_cannot_see(client, db, people):
     login(client, 'bob')
     assert client.post(f'/read/{hers}/progress', data={'page': '1'}).status_code == 404
     assert sessions(db, people['bob'], hers) == []
+
+
+# --- the ring: manual and Audiobookshelf, the newer wins (Phil, 2026-11-20) ---
+
+@pytest.fixture
+def abs_on(monkeypatch):
+    monkeypatch.setenv('AUDIOBOOKSHELF_URL', 'http://192.168.1.171:13378')
+
+
+def abs_link(db, user_id, book_id, share, at):
+    db.execute("INSERT INTO abs_links (user_id, abs_item_id, book_id, outcome, progress, progress_at) "
+               "VALUES (?, ?, ?, 'attached', ?, ?)", (user_id, f'li_{book_id}', book_id, share, at))
+    db.commit()
+
+
+def test_the_newer_of_manual_and_audiobookshelf_is_the_ring(db, people, abs_on):
+    alice = people['alice']
+    dune = book_with(db, alice, page_count=400)
+    abs_link(db, alice, dune, 0.6, '2026-01-01 10:00:00')           # listened in January
+    assert reading_progress.ring_map(db, alice) == {dune: 0.6}
+    reading_progress.set_progress(db, alice, dune, page='100')      # then read the paper copy: now
+    assert reading_progress.ring_map(db, alice) == {dune: 0.25}
+    db.execute("UPDATE abs_links SET progress = 0.7, progress_at = '2999-01-01 00:00:00'")   # listened again
+    assert reading_progress.ring_map(db, alice) == {dune: 0.7}
+    # ABS progress from before migration 046 has no time: manual wins
+    db.execute('UPDATE abs_links SET progress_at = NULL')
+    assert reading_progress.ring_map(db, alice) == {dune: 0.25}
+    # ...but alone it still shows
+    db.execute('UPDATE reading_sessions SET progress = NULL')
+    assert reading_progress.ring_map(db, alice) == {dune: 0.7}
+    assert reading_progress.ring_map(db, people['bob']) == {}
+
+
+def test_without_audiobookshelf_configured_only_manual_progress_rings(db, people):
+    alice = people['alice']
+    dune = book_with(db, alice, page_count=400)
+    emma = book_with(db, alice, title='Emma', page_count=100)
+    abs_link(db, alice, emma, 0.6, '2999-01-01 00:00:00')
+    reading_progress.set_progress(db, alice, dune, page='100')
+    assert reading_progress.ring_map(db, alice) == {dune: 0.25}
+
+
+def test_the_grid_shows_your_manual_ring_and_nobody_elses(client, db, people):
+    dune = book_with(db, people['alice'], page_count=400)
+    reading_progress.set_progress(db, people['alice'], dune, page='100')
+    db.commit()
+    login(client, 'alice')
+    assert 'data-abs-ring="25"' in client.get('/base/index?show=all').get_data(as_text=True)
+    r = client.get('/base/index?show=all', headers={'X-Requested-With': 'XMLHttpRequest'})
+    assert [b['abs_progress'] for b in r.get_json()['books'] if b['id'] == dune] == [0.25]
+    assert 'data-abs-ring="25"' in client.get(f'/books/book/{dune}').get_data(as_text=True)
+    login(client, 'bob')                                             # same household, same shelf
+    assert 'data-abs-ring' not in client.get('/base/shared-library?show=all').get_data(as_text=True)
+    assert 'data-abs-ring' not in client.get(f'/books/book/{dune}').get_data(as_text=True)
+
+
+# --- the item page ------------------------------------------------------------
+
+def page(client, book_id):
+    return client.get(f'/books/book/{book_id}').get_data(as_text=True)
+
+
+def test_the_field_shows_while_you_are_reading(client, db, people):
+    dune = book_with(db, people['bob'], page_count=400)
+    login(client, 'bob')
+    assert 'data-reading-progress' not in page(client, dune)        # not reading it
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'currently reading')",
+               (people['bob'], dune))
+    db.commit()
+    html = page(client, dune)
+    assert 'data-reading-progress' in html and 'name="page"' in html and 'of 400' in html
+    client.post(f'/read/{dune}/progress', data={'page': '100'})
+    html = page(client, dune)
+    assert 'value="100"' in html and '25 %' in html and 'updated just now' in html
+    assert 'data-progress-done' not in html
+    # Finished reading it (the session too): no field
+    db.execute("UPDATE reading_sessions SET date_completed = ?", (TODAY,))
+    db.execute("UPDATE collections SET status = 'read'")
+    db.commit()
+    assert 'data-reading-progress' not in page(client, dune)
+
+
+def test_no_page_count_asks_for_a_percent_and_the_end_offers_mark_as_read(client, db, people):
+    dune = book_with(db, people['bob'])
+    login(client, 'bob')
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'currently reading')",
+               (people['bob'], dune))
+    db.commit()
+    html = page(client, dune)
+    assert 'name="percent"' in html and 'name="page"' not in html
+    client.post(f'/read/{dune}/progress', data={'percent': '100'})
+    html = page(client, dune)
+    assert 'data-progress-done' in html and 'Mark as Read' in html
+    # Marking it read lands on the session form, as the status chip does
+    r = client.post('/collections/collections/status/add', data={'id': dune, 'status': 'read'})
+    assert 'finished=1' in r.headers['Location']
+
+
+def test_movies_have_no_field(client, db, people):
+    film = book_with(db, people['bob'], title='Alien', media_type='video')
+    db.execute("INSERT INTO collections (user_id, book_id, status) VALUES (?, ?, 'want to watch')",
+               (people['bob'], film))
+    db.commit()
+    login(client, 'bob')
+    assert 'data-reading-progress' not in client.get(f'/videos/{film}').get_data(as_text=True)
+
+
+def test_the_export_carries_page_and_progress(db, people):
+    import csv, io, zipfile
+    from utils import export
+    dune = book_with(db, people['alice'], page_count=400)
+    reading_progress.set_progress(db, people['alice'], dune, page='100')
+    db.commit()
+    with zipfile.ZipFile(io.BytesIO(export.data_zip(db, people['alice']))) as z:
+        rows = list(csv.DictReader(io.StringIO(z.read('reading_sessions.csv').decode('utf-8-sig'))))
+    assert [(r['Title'], r['Page'], r['Progress (%)']) for r in rows] == [('Dune', '100', '25')]

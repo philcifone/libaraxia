@@ -514,6 +514,42 @@
                             </button>
                         </div>
 
+                        {# Manual reading progress (16.0f, utils/reading_progress.panel): while
+                           you're reading a book, the page you're on (or a percent for a book
+                           with no page count, an ebook or an audiobook). It goes on the open
+                           session, and opens one today if there isn't one. Yours only. #}
+                        {% if progress %}
+                        <form action="{{ url_for('read.set_progress', book_id=book.id) }}" method="POST"
+                              class="reading-progress flex flex-wrap items-center gap-x-3 gap-y-2 mb-4 text-sm" data-reading-progress>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            {% if progress.takes_page %}
+                            <label for="progress-page" class="text-content-primary">On page</label>
+                            <input type="number" id="progress-page" name="page" min="0" step="1" inputmode="numeric" required
+                                   value="{{ progress.page if progress.page is not none else '' }}"
+                                   class="w-24 bg-secondary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <span class="text-content-secondary">of {{ progress.page_count }}{% if progress.percent is not none %} · {{ progress.percent }} %{% endif %}</span>
+                            {% else %}
+                            <label for="progress-percent" class="text-content-primary">Progress</label>
+                            <input type="number" id="progress-percent" name="percent" min="0" max="100" step="any" inputmode="decimal" required
+                                   value="{{ progress.percent if progress.percent is not none else '' }}"
+                                   class="w-24 bg-secondary border border-primary-hover rounded px-3 py-2 text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+                            <span class="text-content-secondary">%</span>
+                            {% endif %}
+                            <button type="submit" class="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Save</button>
+                            {% if progress.ago %}<span class="text-xs text-content-secondary">updated {{ progress.ago }}</span>{% endif %}
+                        </form>
+                        {% if progress.done %}
+                        <form action="{{ url_for('collections.add_to_status_collection') }}" method="post"
+                              class="flex flex-wrap items-center gap-3 mb-4 text-sm" data-progress-done>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="id" value="{{ book.id }}">
+                            <span class="text-content-primary">Finished?</span>
+                            <button type="submit" name="status" value="read"
+                                    class="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg btn">Mark as {{ m.status_labels['read'] }}</button>
+                        </form>
+                        {% endif %}
+                        {% endif %}
+
                         <!-- Add/Edit Session Form (Hidden by default) -->
                         {# session_prefill (?finished=1, just marked done): book_detail.js opens
                            the form with these, today as the finished date #}

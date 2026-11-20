@@ -707,6 +707,27 @@ def test_progress_is_kept_for_the_ring(app, db, people, abs_server):
     assert abs_import.rings(db, people['bob']) == {}
 
 
+def test_progress_is_dated_by_when_you_listened(db, people, abs_server):
+    """16.0f: the ring shows the newer of ABS and manual progress, so each
+    ABS value carries ABS's own lastUpdate (when you listened), or now when
+    ABS gives none and the value moved."""
+    alice = people['alice']
+    abs_server([item('Halfway')], [progress('li_halfway', 0.4)])
+    abs_import.sync(db, who(alice), 'key')
+    run(db, alice)
+    when = lambda: db.execute('SELECT progress_at FROM abs_links').fetchone()[0]
+    assert when() == abs_import.stamp(MS) == '2023-11-14 22:13:20'
+    # The live line: no lastUpdate and the same value keeps the time...
+    abs_import.store_progress(db, alice, 'li_halfway', 0.4)
+    assert when() == '2023-11-14 22:13:20'
+    # ...a new value without one is dated now, and one with it by ABS
+    abs_import.store_progress(db, alice, 'li_halfway', 0.5)
+    assert when() > '2026-01-01'
+    abs_import.store_progress(db, alice, 'li_halfway', 0.6, updated_ms=MS + 1000)
+    assert when() == '2023-11-14 22:13:21'
+    assert abs_import.dated_rings(db, alice) == {book_row(db, 'Halfway')['id']: (0.6, '2023-11-14 22:13:21')}
+
+
 def test_ring_on_the_grid_and_lists_is_yours_alone(client, db, people, abs_server, monkeypatch):
     from blueprints import audiobookshelf as abs_bp
     alice = people['alice']
@@ -730,6 +751,18 @@ def test_ring_on_the_grid_and_lists_is_yours_alone(client, db, people, abs_serve
                         {'progress': 0.9, 'currentTime': 32400, 'duration': 36000, 'isFinished': False})
     assert client.get(f'/abs/progress/{book}').get_json()['progress'] == 0.9
     assert 'data-abs-ring="90"' in client.get('/base/index?show=all').get_data(as_text=True)
+
+    # A page typed on the paper copy afterwards is newer: the live answer's
+    # `ring` says so, even from the cache, and so do the grids (16.0f)
+    from utils import reading_progress
+    reading_progress.set_progress(db, alice, book, percent='25')     # an audiobook: a percent
+    db.execute("UPDATE reading_sessions SET progress_at = '2999-01-01 00:00:00' WHERE progress IS NOT NULL")
+    db.commit()
+    answer = client.get(f'/abs/progress/{book}').get_json()
+    assert (answer['progress'], answer['ring']) == (0.9, 0.25)
+    assert 'data-abs-ring="25"' in client.get('/base/index?show=all').get_data(as_text=True)
+    db.execute('UPDATE reading_sessions SET progress = NULL')
+    db.commit()
 
     # bob shares the shelf: the book, never alice's ring
     login(client, 'bob')

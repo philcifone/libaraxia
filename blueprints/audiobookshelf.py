@@ -220,7 +220,7 @@ def progress(book_id):
     key = (current_user.id, link['abs_item_id'])
     cached = _PROGRESS_CACHE.get(key)
     if cached and time.monotonic() - cached[0] < PROGRESS_SECONDS:
-        return jsonify(cached[1])
+        return _with_ring(conn, book_id, cached[1])
     try:
         prog = abs_.progress(token, link['abs_item_id'])
     except AbsError:
@@ -228,9 +228,19 @@ def progress(book_id):
     answer = {'success': True, **abs_import.progress_line(prog, fmt, link),
               'link': abs_.item_link(link['abs_item_id'])}
     # The covers' ring follows what this just read
-    abs_import.store_progress(conn, current_user.id, link['abs_item_id'], answer.get('progress'))
+    abs_import.store_progress(conn, current_user.id, link['abs_item_id'], answer.get('progress'),
+                              updated_ms=(prog or {}).get('lastUpdate'))
     conn.commit()
     if len(_PROGRESS_CACHE) > 1000:
         _PROGRESS_CACHE.clear()
     _PROGRESS_CACHE[key] = (time.monotonic(), answer)
-    return jsonify(answer)
+    return _with_ring(conn, book_id, answer)
+
+
+def _with_ring(conn, book_id, answer):
+    """The answer plus `ring`: what the cover's ring should show now, the
+    newer of this ABS progress and your manual progress (16.0f), worked out
+    on every request (not cached), so a page typed a moment ago isn't
+    covered up by ABS's older position."""
+    from utils.reading_progress import ring_map
+    return jsonify({**answer, 'ring': ring_map(conn, current_user.id).get(book_id)})
