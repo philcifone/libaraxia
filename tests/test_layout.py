@@ -2063,3 +2063,39 @@ def test_shelf_row_covers_link_to_their_items(client, db, people):
             for tag in re.findall(r'</?a\b', card):
                 depth += 1 if tag == '<a' else -1
                 assert depth <= 1, url
+
+
+def test_show_everything_includes_ownerless_items_you_have_data_on(client, db, people):
+    """Phil, 2026-11-19: "if I want to see everything, I want to see
+    *everything*". Show: Everything also lists an item with no owner (from
+    before items had owners) that you reviewed, marked No owner; ownerless
+    items you never touched, and other people's, stay out; the default view
+    and a friend's grid never show them."""
+    from conftest import add_review
+    alice, carol = people['alice'], people['carol']
+    mine = add_book(db, alice, 'Infinite Jest')
+    old = db.execute("INSERT INTO books (title, author) VALUES ('Infinite Jest', 'DFW')").lastrowid
+    stray = db.execute("INSERT INTO books (title, author) VALUES ('Stray', 'Nobody')").lastrowid
+    db.commit()
+    add_review(db, alice, old)
+    add_review(db, carol, stray)                  # carol's data, not alice's
+    login(client, 'alice')
+
+    def ids(url):
+        r = client.get(url, headers={'X-Requested-With': 'XMLHttpRequest'})
+        return {b['id']: b for b in r.get_json()['books']}
+
+    everything = ids('/base/index?show=all')
+    assert set(everything) == {mine, old}
+    assert everything[old]['no_owner'] and not everything[mine]['no_owner']
+    page = client.get('/base/index?show=all').get_data(as_text=True)
+    assert page.count('data-no-owner>No owner</span>') == 1
+    # The search finds it too, and the default and Unshelved views don't
+    assert set(ids('/base/index?show=all&search_term=jest')) == {mine, old}
+    assert set(ids('/base/index')) == {mine}
+    assert old not in ids('/base/index?show=not_owned')
+    # The household's Everything: your own ownerless items
+    assert old in ids('/base/shared-library?show=all')
+    # A friend's grid (carol looking at alice's): never
+    login(client, 'carol')
+    assert set(ids("/base/library/alice?show=all")) <= {mine}

@@ -59,6 +59,7 @@
                                narrator and length (runtime_minutes). #}
                             {% set details = [
                                 ('Format', book['format'] or 'Book'),
+                                ('Narrator', book['narrator'] if book['format'] == 'Audiobook' else false),
                                 ('Length', runtime if book['format'] == 'Audiobook' else false),
                                 ('Publisher', book['publisher']),
                                 ('Publication Year', book['publish_year']),

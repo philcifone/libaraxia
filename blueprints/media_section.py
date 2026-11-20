@@ -27,7 +27,7 @@ from flask_login import login_required, current_user
 from models import can_view_book, get_library_members, is_friends_with
 from utils import households, media, search, sorting
 from utils.reviews import then_review_values
-from utils.book_utils import (process_image, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
+from utils.book_utils import (process_image, grid_source, shelf_filter, show_choice, off_shelf_matches, wishlist_matches,
                               _normalise, get_filter_options)
 from utils.database import get_db
 from utils import copy_fields, cover_crop, faces, item3d
@@ -128,10 +128,9 @@ class Section:
         (grid_query.view_ids), so a filter added here is matched there. Status, rating and tag
         filters are the viewer's own, as on the Library pages. `lent_ok`:
         False on a friend's grid (shelf_filter)."""
-        marks = ','.join('?' * len(owner_ids))
-        # self.view is one of our own view names, never request input
-        sql = f"SELECT b.* FROM {self.view} b WHERE b.added_by IN ({marks})"
-        params = list(owner_ids)
+        # self.view is one of our own view names, never request input.
+        # Show: Everything also brings in ownerless items you have data on (grid_source)
+        sql, params = grid_source(self.view, owner_ids, args, viewer_id, lent_ok)
         sql += shelf_filter(args, lent_ok=lent_ok)
 
         term = (args.get('search_term') or '').strip()

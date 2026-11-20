@@ -136,12 +136,15 @@ def test_audiobook_narrator_and_length(client, db, people):
     row = db.execute("SELECT * FROM books WHERE title = 'Project Hail Mary'").fetchone()
     assert (row['format'], row['narrator'], row['runtime_minutes'], row['owned']) == ('Audiobook', 'Ray Porter', 970, 0)
     page = client.get(f"/books/book/{row['id']}").get_data(as_text=True)
-    assert 'data-narrator' in page and 'Narrated by Ray Porter' in page and '16 h 10 min' in page
+    # In the facts, not the heading (Phil, 2026-11-19)
+    assert 'font-medium break-words">Ray Porter</p>' in page and '16 h 10 min' in page
+    heading = page[page.index('<div class="page-heading '):page.index('</header>')]
+    assert 'Ray Porter' not in heading
 
     client.post(f"/books/edit/{row['id']}", data={**form, 'format': 'Book'})
     row = db.execute('SELECT * FROM books WHERE id = ?', (row['id'],)).fetchone()
     assert (row['format'], row['narrator'], row['runtime_minutes']) == (None, None, None)
-    assert 'data-narrator' not in client.get(f"/books/book/{row['id']}").get_data(as_text=True)
+    assert 'Ray Porter' not in client.get(f"/books/book/{row['id']}").get_data(as_text=True)
     # The narrator is found by the Books search (and exported)
     db.execute("UPDATE books SET format = 'Audiobook', narrator = 'Ray Porter' WHERE id = ?", (row['id'],))
     db.commit()

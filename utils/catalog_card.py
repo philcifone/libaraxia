@@ -215,6 +215,11 @@ def title_paragraph(book):
     if by and kind == media.VIDEO:
         # "directed by", or "created by" for a TV show (media.KIND_WORDS)
         by = f"{media.KIND_WORDS.get(media.kind_of(book), {}).get('by', 'directed by')} {by}"
+    # An audiobook's reader, as a cataloguer adds one: "/ Andy Weir ; read
+    # by Ray Porter." (the heading leaves the narrator out, Phil 2026-11-19)
+    narrator = (book['narrator'] or '').strip() if 'narrator' in book.keys() else ''
+    if narrator and book['format'] == media.AUDIOBOOK:
+        by = f'{by} ; read by {narrator}' if by else f'read by {narrator}'
     text = f'{title} / {by}.' if by else f'{title}.'
     imprint = ', '.join(str(x) for x in (book['publisher'], book['publish_year']) if x)
     if imprint:

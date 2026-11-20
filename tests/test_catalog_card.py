@@ -61,6 +61,10 @@ def test_a_movie_is_a_title_entry_filed_by_format():
     assert card['tracings'] == '1. Comedy.  I. Stanley Kubrick.'
     show = row(media_type='video', video_kind='tv', title='Twin Peaks', author='David Lynch', format='DVD')
     assert 'created by David Lynch' in catalog_card.title_paragraph(show)
+    # An audiobook's reader, as a cataloguer writes it; a printed book has none
+    heard = row(title='Project Hail Mary', author='Andy Weir', format='Audiobook', narrator='Ray Porter')
+    assert catalog_card.title_paragraph(heard) == 'Project Hail Mary / Andy Weir ; read by Ray Porter.'
+    assert 'read by' not in catalog_card.title_paragraph(row(title='X', author='Y', narrator='Ray Porter'))
     assert catalog_card.physical_description(show) == '1 videodisc'
     assert catalog_card.standard_number(row(media_type='video', barcode='0012345678905')) == 'UPC 0012345678905'
 

@@ -55,9 +55,9 @@
                 <span class="block text-lg sm:text-xl text-content-secondary mt-2">{{ book['subtitle'] }}</span>
             {% endif %}
         </h1>
-        {# No "by" line without a creator (Phil, 2026-11-15) #}
+        {# No "by" line without a creator (Phil, 2026-11-15). An audiobook's
+           narrator isn't here (Phil, 2026-11-19): it's in the facts #}
         {% if book['author'] %}<p class="text-base sm:text-xl text-content-secondary italic" data-byline>{{ m.by }} {{ book['author'] }}</p>{% endif %}
-        {% if book['narrator'] and book['format'] == 'Audiobook' %}<p class="text-sm sm:text-base text-content-secondary italic" data-narrator>Narrated by {{ book['narrator'] }}</p>{% endif %}
     </div>
 </header>
 {% endcall %}

@@ -24,8 +24,12 @@
                 <a href="{{ item_url(book) }}"
                    class="book-link block bg-secondary-bg rounded-lg overflow-hidden card-link">
                     <div class="book-cover relative w-full h-64 overflow-hidden bg-primary">
-                        {# Only shown when Show asks for them; marked so they can't pass for owned #}
-                        {% if book.owned == 0 %}
+                        {# Only shown when Show asks for them; marked so they can't pass for owned.
+                           No owner: Show: Everything brings in ownerless items you have data on
+                           (book_utils.grid_source, Phil 2026-11-19) #}
+                        {% if book.added_by is none %}
+                        <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill" title="From before items had owners: on no one's shelf, kept for your review and history" data-no-owner>No owner</span>
+                        {% elif book.owned == 0 %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-bold bg-accent text-on-accent border border-card rounded-pill">Unshelved</span>
                         {% elif book.removed_at %}
                         <span class="absolute top-2 left-2 z-10 px-2 py-0.5 text-xs font-medium bg-primary-bg text-content-secondary border border-card rounded-pill">Removed</span>
