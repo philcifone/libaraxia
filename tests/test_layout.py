@@ -597,7 +597,7 @@ def test_og_dark_accent_text_is_readable():
         rule = re.search(r'\[data-swatch="' + name + r'"\]\s*\{([^}]*)\}', css).group(1)
         assert '--acc-t:' in rule and '--acc-t-hover:' in rule, name
     built = pathlib.Path('static/css/output.css').read_text()
-    assert 'color: rgb(var(--accent-text) / var(--tw-text-opacity, 1))' in built
+    assert 'color:rgb(var(--accent-text)/var(--tw-text-opacity,1))' in built.replace(' ', '')
     assert not re.search(r'(?<![-\w])color: rgb\(var\(--accent\)\);', css)   # borders may keep it
 
 
@@ -1102,15 +1102,28 @@ def test_buttons_take_the_styles_corners():
     assert '.crop-dialog .crop-stage, .crop-dialog .crop-panel { border-radius: var(--r-xl); }' in css
 
 
+def _selector_form(sel):
+    """One selector as both the source and the minified build write it
+    (16.0g: output.css is minified): no space around > + ~, attribute
+    values unquoted where they can be, ::before / ::after as :before /
+    :after, and "  " as " "."""
+    sel = ' '.join(sel.split())
+    sel = re.sub(r'\s*([>+~])\s*', r'\1', sel)
+    sel = re.sub(r'="([\w-]+)"\]', r'=\1]', sel)
+    sel = re.sub(r'\(\s+', '(', sel)
+    sel = sel.replace(':nth-child(1)', ':first-child').replace(':nth-child(even)', ':nth-child(2n)')
+    return re.sub(r'::(before|after|placeholder|selection|marker)', r':\1', sel)
+
+
 def _css_selectors(text):
-    """Every rule's selectors in a stylesheet, whitespace-normalised."""
+    """Every rule's selectors in a stylesheet, normalised (_selector_form)."""
     text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
     found, buf = set(), ''
     for ch in text:
         if ch == '{':
             sel = ' '.join(buf.split())
             if sel and not sel.startswith('@'):
-                found |= {' '.join(part.split()) for part in sel.split(',')}
+                found |= {_selector_form(part) for part in sel.split(',')}
             buf = ''
         elif ch in '};':
             buf = ''

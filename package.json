@@ -4,7 +4,7 @@
   "description": "",
   "main": "tailwind.config.js",
   "scripts": {
-    "build:css": "tailwindcss -i ./static/styles.css -o ./static/css/output.css",
+    "build:css": "tailwindcss -i ./static/styles.css -o ./static/css/output.css --minify",
     "watch:css": "tailwindcss -i ./static/styles.css -o ./static/css/output.css --watch"
   },
   "keywords": [],
