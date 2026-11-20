@@ -56,6 +56,24 @@
         {% endif %}
     </section>
 
+    {% if suggested %}
+    <section class="bg-secondary rounded-lg p-6 mb-8 card" data-merge-suggested>
+        <h2 class="label text-sm pb-1 mb-3">Likely pairs</h2>
+        <ul class="divide-y divide-rule text-sm">
+            {% for s in suggested %}
+            <li class="flex flex-wrap items-center gap-3 py-3">
+                <span class="flex-1 min-w-[12rem]">
+                    <span class="block text-content-primary font-medium">{{ s.fold.title }}</span>
+                    <span class="block text-content-secondary">#{{ s.fold.id }} into #{{ s.keep.id }}. {{ s.why }}</span>
+                </span>
+                <a href="{{ url_for('merge.index', keep=s.keep.id, fold=s.fold.id) }}"
+                   class="px-3 py-1.5 bg-primary hover:bg-primary-hover text-content-primary rounded-lg btn btn-outline">Preview</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
     {% elif not fold %}
     {# Pick the record to fold into keep #}
     <section class="bg-secondary rounded-lg p-6 mb-8 card space-y-5">

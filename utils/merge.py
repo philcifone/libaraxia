@@ -498,3 +498,75 @@ def recent(conn, user, limit=10):
     """Your merges, newest first, for undo."""
     return conn.execute("SELECT * FROM bulk_edits WHERE user_id = ? AND action = ? ORDER BY id DESC LIMIT ?",
                         (user.id, ACTION_KEY, limit)).fetchall()
+
+
+# ------------------------------------------------------------------ suggestions (step 6)
+
+def _keys(title, author, subtitle=None):
+    from utils.book_matching import _title_keys, stored_title_forms
+    return {k for t in stored_title_forms(title or '', subtitle) for k in _title_keys(t, author)}
+
+
+def suggestions(conn, user, limit=50):
+    """Likely pairs, for the start page: [{'keep', 'fold', 'why'}]. Only the
+    two cases the tool is for, never two owned copies (a second copy is
+    often on purpose, Phil 2026-11-20):
+
+    1. an unowned record someone has data on (from before owners, 2025-10)
+       beside an owned copy of the same work belonging to someone with data
+       on it;
+    2. an audiobook Audiobookshelf's import created as its own record
+       (`abs_links.outcome = 'created'`) beside a copy of the same work on
+       the same user's records that isn't an audiobook (the listens
+       imported before the dash-subtitle fix, 2026-11-19).
+
+    Same type, same title and author by book_matching's rules. An admin
+    sees everyone's; anyone else only pairs they may merge themselves."""
+    targets = {}
+    for b in conn.execute("SELECT * FROM books WHERE added_by IS NOT NULL"):
+        for k in _keys(b['title'], b['author'], b['subtitle']):
+            targets.setdefault((b['media_type'], k), []).append(b)
+
+    def copies(book):
+        found = {}
+        from utils.book_matching import wanted_title_forms, _title_keys
+        for t in wanted_title_forms(book['title'] or ''):
+            for k in _title_keys(t, book['author']):
+                for b in targets.get((book['media_type'], k), []):
+                    if b['id'] != book['id']:
+                        found[b['id']] = b
+        return list(found.values())
+
+    out, seen = [], set()
+
+    def offer(keep, fold, why):
+        if (keep['id'], fold['id']) in seen or may_merge(conn, user, keep, fold):
+            return
+        seen.add((keep['id'], fold['id']))
+        out.append({'keep': dict(keep), 'fold': dict(fold), 'why': why})
+
+    # 1. Unowned records holding someone's data
+    data_users = '''SELECT user_id FROM read_data WHERE book_id = ?
+                    UNION SELECT user_id FROM collections WHERE book_id = ?
+                    UNION SELECT user_id FROM reading_sessions WHERE book_id = ?'''
+    for fold in conn.execute("SELECT * FROM books WHERE added_by IS NULL ORDER BY LOWER(title)").fetchall():
+        holders = {r[0] for r in conn.execute(data_users, (fold['id'],) * 3)}
+        if not holders or (not user.is_admin and user.id not in holders):
+            continue
+        names = ', '.join(sorted(_usernames(conn, holders).values(), key=str.lower))
+        for keep in copies(fold):
+            if keep['added_by'] in holders and (user.is_admin or keep['added_by'] == user.id):
+                offer(keep, fold, f'From before owners, with {names}’s data on it, beside a copy that has an owner.')
+
+    # 2. Audiobookshelf listens that came in as their own record
+    sql = ("SELECT b.*, l.user_id AS listener FROM abs_links l JOIN books b ON b.id = l.book_id "
+           "WHERE l.outcome = 'created' AND b.format = 'Audiobook'")
+    params = []
+    if not user.is_admin:
+        sql += ' AND l.user_id = ?'
+        params.append(user.id)
+    for fold in conn.execute(sql, params).fetchall():
+        for keep in copies(fold):
+            if keep['added_by'] == fold['listener'] and keep['format'] != 'Audiobook':
+                offer(keep, fold, 'Imported from Audiobookshelf as its own audiobook, beside your other copy.')
+    return out[:limit]

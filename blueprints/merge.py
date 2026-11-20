@@ -44,6 +44,7 @@ def index():
         'merge.html', keep=keep, fold=fold, preview=preview, reason=reason, query=query,
         found=merging.candidates(conn, current_user, keep, query) if keep and not fold else [],
         merges=merging.recent(conn, current_user),
+        suggested=merging.suggestions(conn, current_user) if not keep else [],
         m=media.item_labels(keep) if keep else None)
 
 

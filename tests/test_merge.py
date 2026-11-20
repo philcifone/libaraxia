@@ -234,3 +234,29 @@ def test_refused_merges_say_why(client, db, people):
     login(client, 'bob')
     page = client.get(f'/merge/?keep={mine}&fold={film}').get_data(as_text=True)
     assert 'data-merge-refused' in page and 'same kind' in page and 'name="keep"' not in page
+
+
+# --- suggestions (step 6) -----------------------------------------------------
+
+def test_suggestions_are_the_two_cases_and_never_two_owned_copies(db, people):
+    alice, bob = people['alice'], people['bob']
+    old = unowned(db, 'Dune')
+    add_review(db, alice, old)
+    mine = add_book(db, alice, 'Dune')
+    add_book(db, alice, 'Dune')                          # a second owned copy: never paired with the first
+    add_book(db, alice, 'Emma'); add_book(db, alice, 'Emma')
+    paper = add_book(db, bob, 'Blood in the Machine', 'Brian Merchant')
+    listen = add_book(db, bob, 'Blood in the Machine - The Origins of the Rebellion Against Big Tech', 'Brian Merchant')
+    db.execute("UPDATE books SET format = 'Audiobook', owned = 0 WHERE id = ?", (listen,))
+    db.execute("INSERT INTO abs_links (user_id, abs_item_id, book_id, outcome) VALUES (?, 'li_1', ?, 'created')", (bob, listen))
+    lonely = unowned(db, 'Nobody Reads This')            # unowned, no data: not suggested
+    db.commit()
+
+    pairs = lambda uid: {(s['fold']['id'], s['keep']['id']) for s in merge.suggestions(db, who(db, uid))}
+    admin = pairs(alice)
+    assert (old, mine) in admin and (listen, paper) in admin
+    assert not any(fold == lonely for fold, _ in admin)
+    assert all(db.execute('SELECT added_by FROM books WHERE id = ?', (f,)).fetchone()[0] is None or f == listen
+               for f, _ in admin)                        # the folded side is never an owned copy
+    assert pairs(bob) == {(listen, paper)}               # bob: only his own, and not alice's old record
+    assert pairs(people['carol']) == set()
