@@ -109,7 +109,7 @@ async function shrinkImageFile(file, max) {
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
         // PNG keeps its transparency (a disc cut out elsewhere); the rest is a photo
         const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, type, 0.9));
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, type, 0.92));
         if (!blob || blob.size >= file.size) return file;
         const name = file.name.replace(/\.[^.]*$/, '') + (type === 'image/png' ? '.png' : '.jpg');
         return new File([blob], name, { type, lastModified: file.lastModified });

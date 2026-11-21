@@ -81,7 +81,15 @@ class PhotoError(ValueError):
 AVIF = features.check('avif')
 IMAGE_FORMAT = ('AVIF', '.avif', 'image/avif') if AVIF else ('JPEG', '.jpg', 'image/jpeg')
 ALPHA_FORMAT = IMAGE_FORMAT if AVIF else ('WEBP', '.webp', 'image/webp')
-IMAGE_QUALITY = 60 if AVIF else 85          # AVIF 60 looks like JPEG 85 (measured, spec 4.1)
+# AVIF 60 (16.0g) was measured on smooth test images; on real phone photos
+# of covers it lost texture and fine print (Phil, 2026-11-21). Measured again
+# on two of them at cover size (SSIM, 1 = identical): JPEG 90 0.975-0.979,
+# AVIF 60 0.942-0.957, AVIF 80 with full-resolution colour 0.983-0.984 at
+# 70-80% of the JPEG's bytes. 4:4:4 keeps the colour as sharp as the
+# detail, which red and yellow cover lettering needs; the encode is still
+# well under a second on one core.
+IMAGE_QUALITY = 80 if AVIF else 90
+AVIF_OPTIONS = {'subsampling': '4:4:4'}
 
 # What an upload may be, covers and avatars alike
 UPLOAD_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif'}
@@ -105,6 +113,8 @@ def write_image(img, full_stem):
     options = {'quality': IMAGE_QUALITY if fmt[0] == IMAGE_FORMAT[0] else 85}
     if fmt[0] == 'JPEG':
         options['optimize'] = True
+    elif fmt[0] == 'AVIF':
+        options.update(AVIF_OPTIONS)
     img.save(full_stem + fmt[1], fmt[0], **options)
     return fmt[1]
 

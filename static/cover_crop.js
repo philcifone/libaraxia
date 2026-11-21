@@ -756,9 +756,22 @@ function initCropTool() {
         });
     });
 
+    // Once a crop is showing, a turn or flip renders it again (Phil,
+    // 2026-11-21): the result is what's being looked at, and it used to stay
+    // as it was until the next Crop, so the buttons seemed to do nothing.
+    // Before any crop the stage itself shows the turn. A press while a
+    // render is running is remembered and rendered after it.
+    let recropPending = false;
+    function recropIfShown() {
+        if (!history.length) return;
+        if (busy) { recropPending = true; return; }
+        doCrop();
+    }
+
     dialog.querySelectorAll('[data-crop-rotate]').forEach(button => {
         button.addEventListener('click', () => {
             setGeometry(rotateGeometry(geometry(), Number(button.dataset.cropRotate)));
+            recropIfShown();
         });
     });
 
@@ -766,6 +779,7 @@ function initCropTool() {
         button.addEventListener('click', () => {
             setGeometry(flipGeometry(geometry(), button.dataset.cropFlip));
             announce(button.dataset.cropFlip === 'h' ? 'Flipped left to right' : 'Flipped top to bottom');
+            recropIfShown();
         });
     });
 
@@ -862,6 +876,10 @@ function initCropTool() {
             button.disabled = saving;                       // a Save still going keeps it off
             button.textContent = 'Crop';
             refreshSave();
+            if (recropPending) {
+                recropPending = false;
+                doCrop();          // a turn pressed mid-render (returns at once if nothing changed)
+            }
         }
     }
 

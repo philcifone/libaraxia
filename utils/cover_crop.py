@@ -395,7 +395,7 @@ def stage_upload(file_storage):
     relative = f'{STAGE_DIR}/{secrets.token_urlsafe(16)}.jpg'
     full = os.path.join(_static_root(), relative)
     os.makedirs(os.path.dirname(full), exist_ok=True)
-    img.save(full, 'JPEG', quality=90)
+    img.save(full, 'JPEG', quality=95)     # a working copy; the cover is encoded from it once more
     return {'source': relative, 'width': img.width, 'height': img.height}
 
 
