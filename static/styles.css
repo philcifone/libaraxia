@@ -4422,11 +4422,6 @@ and to the right for its faces */
     box-shadow: inset 0 2px 4px rgb(0 0 0 / .4);
 }
 
-/* The Appearance card's summary: a heading with a disclosure arrow */
-.appearance-card > summary { list-style: none; }
-.appearance-card > summary::-webkit-details-marker { display: none; }
-.appearance-card > summary::after { content: "+"; font-size: 1.5rem; line-height: 1; color: rgb(var(--ink-2)); }
-.appearance-card[open] > summary::after { content: "\2212"; }
 
 /* ---- Profile stats: Year by year (ROADMAP 12.2) ----
    One bar per year, split by type on one scale (_profile_stats.html), the

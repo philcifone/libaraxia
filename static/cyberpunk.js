@@ -3,13 +3,27 @@
 //
 // Loaded in <head> without defer, like shelf.js, so the boot screen can be
 // up before the first paint.
+//
+// Two ways in: a page that loads in Cyberpunk (the boot if this login hasn't
+// had one), or window.cyberpunkStart(), which Settings -> Appearance calls
+// on choosing the style (sidebar.js) to boot there and then. The sidebar's
+// style cycler skips Cyberpunk (Phil, 2026-11-21), so it never boots one.
 (() => {
     const root = document.documentElement;
-    if (root.dataset.style !== 'cyberpunk') return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let glitching = false;          // the glitch timer runs once per page
 
-    const booting = boot();
-    glitch(booting);
+    // live: called after the page loaded (Appearance), not at load
+    function start(live) {
+        if (root.dataset.style !== 'cyberpunk' || reduced) return;
+        const booting = boot(live);
+        if (!glitching) {
+            glitching = true;
+            glitch(booting, live);
+        }
+    }
+    window.cyberpunkStart = () => start(true);
+    start(false);
 
     // ---- The boot screen ----------------------------------------------------
     // Five seconds of terminal start-up. Typed a character at a time, each
@@ -31,16 +45,17 @@
     //
     // The readouts (user, item, collection and friend counts) come from
     // <meta name="boot-stats">, which the first page after login carries
-    // (app.boot_stats). Without it (a later page, the style switched on
-    // mid-session) the lines just say OK.
+    // (app.boot_stats). Without it (the style chosen in Appearance mid-session)
+    // the lines just say OK. That live boot also stores the mark, so the
+    // next page doesn't boot a second time.
     //
     // Returns the time in ms until the app shows, or null when not booting.
-    function boot() {
+    function boot(live) {
         const KEY = 'cyberpunkBoot';
         const mark = document.querySelector('meta[name="login-mark"]')?.content;
-        if (!mark) return null;
+        if (!mark || root.dataset.boot) return null;    // already booting
         try {
-            if (localStorage.getItem(KEY) === mark) return null;
+            if (!live && localStorage.getItem(KEY) === mark) return null;
             localStorage.setItem(KEY, mark);
         } catch {
             return null;
@@ -149,7 +164,8 @@
             root.dataset.boot = 'run';
             timer = setTimeout(done, END + 50);
         };
-        document.addEventListener('DOMContentLoaded', mount);
+        if (live) mount();
+        else document.addEventListener('DOMContentLoaded', mount);
         return END;
     }
 
@@ -161,7 +177,7 @@
     // to read as a glitch. On a timer, not on hover, so it works the same on
     // a phone; never on a tap. Skipped while the tab is
     // hidden, so a tab left open doesn't queue them up.
-    function glitch(bootMs) {
+    function glitch(bootMs, live) {
         const FIRST = 500;          // after the page (or the boot screen) is up
         const EVERY = 10000;        // Phil, 2026-11-18 (was 30 s)
         const LENGTH = 450;         // the animation's length in the CSS
@@ -180,15 +196,18 @@
             return seen >= r.height / 2;
         };
         const random = () => {
-            if (document.hidden) return;
+            // The style can be switched away live; the timer then idles
+            if (document.hidden || root.dataset.style !== 'cyberpunk') return;
             const seen = [...document.querySelectorAll(POOL)].filter(onScreen);
             run(seen[Math.floor(Math.random() * seen.length)]);
         };
-        document.addEventListener('DOMContentLoaded', () => {
+        const begin = () => {
             setTimeout(() => {
                 run(document.querySelector('.page-title, .detail-title') || document.querySelector('.site-title'));
                 setInterval(random, EVERY);
             }, (bootMs || 0) + FIRST);
-        });
+        };
+        if (live) begin();
+        else document.addEventListener('DOMContentLoaded', begin);
     }
 })();

@@ -79,7 +79,7 @@ async function setAppearance(kindOrChanges, value) {
             previous[kind] = root.dataset[kind];
         }
     }
-    if (!Object.keys(changes).length) return;
+    if (!Object.keys(changes).length) return false;
     const show = settings => Object.entries(settings).forEach(([kind, v]) => {
         root.dataset[kind] = v;
         showChoice(kind, v);
@@ -102,20 +102,28 @@ async function setAppearance(kindOrChanges, value) {
                 && document.querySelector('.view-bar.cabinet-part')) {
             location.reload();
         }
+        return true;
     } catch (err) {
         show(previous);
         showFlashMessage('error', 'Could not save appearance settings.');
+        return false;
     }
 }
 
-// Settings -> Account -> Appearance: the swatches and the dropdowns
+// Settings -> Account -> Appearance: the swatches and the dropdowns.
+// Choosing Cyberpunk here (from another style, once saved) plays its boot
+// screen on the spot (cyberpunk.js), which counts as this login's boot.
+async function pickAppearance(kind, value) {
+    const saved = await setAppearance(kind, value);
+    if (saved && kind === 'style' && value === 'cyberpunk') window.cyberpunkStart?.();
+}
 document.addEventListener('click', event => {
     const btn = event.target.closest('[data-theme-picker] .theme-opt');
-    if (btn) setAppearance(btn.dataset.kind, btn.dataset.value);
+    if (btn) pickAppearance(btn.dataset.kind, btn.dataset.value);
 });
 document.addEventListener('change', event => {
     const select = event.target.closest('[data-theme-picker] select[data-kind]');
-    if (select) setAppearance(select.dataset.kind, select.value);
+    if (select) pickAppearance(select.dataset.kind, select.value);
 });
 
 // The sidebar's sun/moon: the other mode from the one in effect (while
@@ -131,6 +139,9 @@ document.addEventListener('click', event => {
 // Each button steps to the next choice after the one in effect and saves it
 // through setAppearance, the same as Settings -> Account -> Appearance. Its title names
 // what's on now, and a status line announces it to screen readers.
+// data-cycle-skip lists choices it names but never steps to: Cyberpunk,
+// only found in Appearance (Phil, 2026-11-21). From one of those it steps
+// to the first choice.
 function cycleLabel(button) {
     const values = button.dataset.cycleValues.split(',');
     const names = button.dataset.cycleNames.split(',');
@@ -150,7 +161,8 @@ document.addEventListener('click', async event => {
     const button = event.target.closest('[data-cycle]');
     if (!button) return;
     const kind = button.dataset.cycle;
-    const values = button.dataset.cycleValues.split(',');
+    const skip = (button.dataset.cycleSkip || '').split(',');
+    const values = button.dataset.cycleValues.split(',').filter(v => !skip.includes(v));
     const current = document.documentElement.dataset[kind];
     const next = values[(values.indexOf(current) + 1) % values.length];
     // The font cycler steps through the text fonts and sets the headings to

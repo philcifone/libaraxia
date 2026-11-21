@@ -80,14 +80,17 @@
             {# Cyclers (14c): each click moves to the next style, accent or
                font and saves it, like Settings -> Account -> Appearance
                (sidebar.js). data-cycle-values / -names are the choices in
-               order. The font one is hidden in Outrun and Cyberpunk, which have their own
-               fonts. Hidden until the toggle above opens the row. #}
+               order; data-cycle-skip, ones it names but never steps to
+               (Cyberpunk: Appearance only, Phil 2026-11-21). The font one is
+               hidden in Outrun and Cyberpunk, which have their own fonts.
+               Hidden until the toggle above opens the row. #}
             <div id="sidebar-cyclers" class="sidebar-icons flex items-center justify-center gap-3" hidden>
-                {% for kind, icon_name, what, choices, extra in [
-                    ('style', 'mop-sparkles', 'Style', theme_styles, ''),
-                    ('accent', 'palette', 'Accent colour', theme_accents, ''),
-                    ('font', 'type', 'Font', theme_fonts, 'data-font-picker')] %}
+                {% for kind, icon_name, what, choices, extra, skip in [
+                    ('style', 'mop-sparkles', 'Style', theme_styles, '', 'cyberpunk'),
+                    ('accent', 'palette', 'Accent colour', theme_accents, '', ''),
+                    ('font', 'type', 'Font', theme_fonts, 'data-font-picker', '')] %}
                 <button type="button" class="sidebar-icon" data-cycle="{{ kind }}" {{ extra }}
+                        {%- if skip %} data-cycle-skip="{{ skip }}"{% endif %}
                         data-cycle-what="{{ what }}"
                         data-cycle-values="{{ choices.keys()|join(',') }}"
                         data-cycle-names="{{ choices.values()|join(',') }}"

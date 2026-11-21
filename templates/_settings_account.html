@@ -94,12 +94,10 @@
     </div>
 </section>
 
-<!-- Appearance (12.4): its own card, closed by default -->
-<details class="appearance-card bg-secondary rounded-xl card">
-    <summary class="flex items-center justify-between gap-4 p-4 sm:p-6 cursor-pointer">
-        <h2 class="text-2xl font-display text-content-primary">Appearance</h2>
-        <span class="hidden sm:inline mr-auto text-sm text-content-secondary">Style, mode, palette, font, accent</span>
-    </summary>
+<!-- Appearance (12.4): its own card, always open like the others (Phil,
+     2026-11-21; it was a closed disclosure) -->
+<section class="appearance-card bg-secondary rounded-xl p-4 sm:p-6 card">
+    <h2 class="text-2xl font-display text-content-primary mb-4">Appearance</h2>
     {# One row per setting, label left, control right (Phil, 2026-11-20):
        dropdowns, so a long choice list never wraps into a second row of
        buttons. Accent stays as swatches. A <select> can't show each option
@@ -109,7 +107,7 @@
        text fonts in effect. #}
     {% set select_cls = 'theme-select flex-1 min-w-0 max-w-xs bg-primary border border-rule-strong rounded-lg px-3 py-2 text-sm text-content-primary focus:ring-2 focus:ring-accent outline-none' %}
     {% set label_cls = 'w-16 shrink-0 text-sm text-content-secondary' %}
-    <div class="px-4 sm:px-6 pb-6 space-y-4" id="appearance-settings" data-theme-picker>
+    <div class="space-y-4" id="appearance-settings" data-theme-picker>
         <label class="flex items-center gap-4">
             <span class="{{ label_cls }}">Style</span>
             <select class="{{ select_cls }}" data-kind="style">
@@ -181,7 +179,7 @@
             </div>
         </div>
     </div>
-</details>
+</section>
 
 <!-- Account: export everything, deactivate or delete -->
 <section class="bg-secondary rounded-xl p-6 card">

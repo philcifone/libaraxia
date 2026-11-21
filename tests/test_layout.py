@@ -1030,15 +1030,17 @@ def test_profile_stats_same_blocks_for_every_type(client, db, people):
 
 
 def test_appearance_card_and_its_dropdowns(client, db, people):
-    """12.4: Appearance is its own collapsible card. Since 2026-11-20 each
-    setting is a dropdown row (accent stays swatches); Mode offers Light,
-    Dark and Follow system, the stored default."""
+    """12.4: Appearance is its own card, open like the others since
+    2026-11-21 (it was a closed disclosure). Since 2026-11-20 each setting is
+    a dropdown row (accent stays swatches); Mode offers Light, Dark and
+    Follow system, the stored default."""
     login(client, 'alice')
     page = client.get('/user/settings').get_data(as_text=True)
-    card = page[page.index('<details class="appearance-card'):]
-    card = card[:card.index('</details>')]
+    card = page[page.index('<section class="appearance-card'):]
+    card = card[:card.index('</section>')]
     assert 'id="appearance-settings" data-theme-picker' in card
-    assert '<details class="appearance-card bg-secondary rounded-xl card">' in page     # closed
+    assert 'appearance-card' not in page.replace('<section class="appearance-card', '', 1)
+    assert '<details' not in card and '<summary' not in card                          # nothing to open
     for kind in ('style', 'palette', 'mode', 'font'):
         assert re.search(rf'<select[^>]*data-kind="{kind}"', card), kind
     mode = card[card.index('data-kind="mode"'):]

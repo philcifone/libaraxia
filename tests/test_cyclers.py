@@ -34,3 +34,29 @@ def test_cyclers_sit_in_their_own_row_behind_a_toggle(client, people):
     assert ' hidden>' in row.split('\n')[0] and row.count('data-cycle=') == 3
     css = open('static/styles.css').read()
     assert '#sidebar-cyclers[hidden] { display: none; }' in css
+
+
+def test_style_cycler_skips_cyberpunk(client, people):
+    """Cyberpunk is Appearance only (Phil, 2026-11-21): the style cycler still
+    names it (its title while in it) but never steps to it, so it never sets
+    off the boot screen on the next page."""
+    login(client, 'alice')
+    html = client.get('/collections/collections').get_data(as_text=True)
+    style = html[html.index('data-cycle="style"'):]
+    assert 'data-cycle-skip="cyberpunk"' in style[:style.index('>')]
+    assert html.count('data-cycle-skip=') == 1                  # accent and font skip nothing
+    js = open('static/sidebar.js').read()
+    assert "button.dataset.cycleSkip" in js and '.filter(v => !skip.includes(v))' in js
+
+
+def test_choosing_cyberpunk_in_appearance_boots_there(client, people):
+    """Choosing Cyberpunk in Appearance plays the boot on that page, once
+    saved, and stores the login's mark so the next page doesn't boot again."""
+    sidebar = open('static/sidebar.js').read()
+    assert "kind === 'style' && value === 'cyberpunk') window.cyberpunkStart?.()" in sidebar
+    assert 'const saved = await setAppearance(kind, value);' in sidebar
+    js = open('static/cyberpunk.js').read()
+    assert 'window.cyberpunkStart = () => start(true);' in js
+    # A live boot ignores the stored mark (it is the first) but still stores it
+    assert "if (!live && localStorage.getItem(KEY) === mark) return null;" in js
+    assert 'localStorage.setItem(KEY, mark);' in js
