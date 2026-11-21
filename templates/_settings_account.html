@@ -100,92 +100,86 @@
         <h2 class="text-2xl font-display text-content-primary">Appearance</h2>
         <span class="hidden sm:inline mr-auto text-sm text-content-secondary">Style, mode, palette, font, accent</span>
     </summary>
-    <div class="px-4 sm:px-6 pb-6 space-y-3" id="appearance-settings" data-theme-picker>
-            <div class="flex flex-wrap gap-x-8 gap-y-3">
-                {% for kind, label, options, current in [
-                    ('style', 'Style', theme_styles, theme_style),
-                    ('mode', 'Mode', mode_choices, theme_mode)
-                ] %}
-                <div class="flex items-center gap-3"{% if kind == 'mode' %} data-mode-picker{% endif %}>
-                    <span class="text-sm text-content-secondary w-12">{{ label }}</span>
-                    <div class="flex" role="group" aria-label="{{ label }}">
-                        {% for key, name in options.items() %}
-                        <button type="button"
-                                class="theme-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
-                                data-kind="{{ kind }}" data-value="{{ key }}"
-                                aria-pressed="{{ 'true' if key == current else 'false' }}">
-                            {{ name }}
-                        </button>
-                        {% endfor %}
-                    </div>
-                    {% if kind == 'mode' %}{% include '_follow_system.html' %}{% endif %}
-                </div>
-                {% endfor %}
-                {# Palette (16.0): OG only, its own greys or Shelf's walnut; hidden in the other styles (styles.css) #}
-                <div class="flex items-center gap-3" data-palette-picker>
-                    <span class="text-sm text-content-secondary w-12">Palette</span>
-                    <div class="flex" role="group" aria-label="Palette">
-                        {% for key, name in theme_palettes.items() %}
-                        <button type="button"
-                                class="theme-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
-                                data-kind="palette" data-value="{{ key }}"
-                                aria-pressed="{{ 'true' if key == theme_palette else 'false' }}">
-                            {{ name }}
-                        </button>
-                        {% endfor %}
-                    </div>
-                </div>
-                {# data-outrun-note: shown in Outrun and Cyberpunk, both dark only with fixed fonts #}
-                <p data-outrun-note class="text-sm text-content-secondary">This style is always dark and has its own fonts, so Mode and Font are hidden.</p>
-                {# Font: each option in its own face (.font-opt in styles.css); Theme = the style's own #}
-                <div class="flex items-center gap-3" data-font-picker>
-                    <span class="text-sm text-content-secondary w-12">Font</span>
-                    <div class="flex flex-wrap" role="group" aria-label="Font">
-                        {% for key, name in theme_fonts.items() %}
-                        <button type="button"
-                                class="theme-opt font-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
-                                data-kind="font" data-value="{{ key }}"
-                                aria-pressed="{{ 'true' if key == theme_font else 'false' }}">
-                            {{ name }}
-                        </button>
-                        {% endfor %}
-                    </div>
-                </div>
-                {# Tilt glare (16.0 step 12, Shelf only): the light on the covers
-                   moves as you tilt your phone. Saved per device by tilt.js, not
-                   with the rest of Appearance, so no .theme-opt here #}
-                <div data-tilt-picker>
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm text-content-secondary w-12">Tilt</span>
-                        <div class="flex" role="group" aria-label="Tilt glare">
-                            {% for key, name in [('off', 'Off'), ('on', 'On')] %}
-                            <button type="button" data-click="setTilt" data-value="{{ key }}"
-                                    class="tilt-opt px-3 py-1 text-sm border border-rule-strong -ml-px first:ml-0 first:rounded-l last:rounded-r transition-colors"
-                                    aria-pressed="{{ 'true' if key == 'off' else 'false' }}">
-                                {{ name }}
-                            </button>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <p class="mt-1 text-sm text-content-secondary">The light on covers moves as you tilt your phone. Saved on this device only.</p>
-                    <p data-tilt-note class="mt-1 text-sm text-content-secondary" hidden></p>
-                </div>
-                {# Accent (8B.5): both styles; Classic shows each swatch's dark shade (styles.css) #}
-                <div class="flex items-center gap-3" data-accent-picker>
-                    <span class="text-sm text-content-secondary w-12">Accent</span>
-                    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Accent colour">
-                        {% for key, name in theme_accents.items() %}
-                        <button type="button" title="{{ name }}"
-                                class="theme-opt accent-opt p-1 border border-rule-strong transition-colors"
-                                data-kind="accent" data-value="{{ key }}"
-                                aria-pressed="{{ 'true' if key == theme_accent else 'false' }}">
-                            <span class="accent-swatch block w-5 h-5" data-swatch="{{ key }}" aria-hidden="true"></span>
-                            <span class="sr-only">{{ name }}</span>
-                        </button>
-                        {% endfor %}
-                    </div>
-                </div>
+    {# One row per setting, label left, control right (Phil, 2026-11-20):
+       dropdowns, so a long choice list never wraps into a second row of
+       buttons. Accent stays as swatches. A <select> can't show each option
+       in its own face (iPhone uses its own picker), so each font dropdown
+       is drawn in the font it has chosen (.font-opt[data-value], kept in
+       step by sidebar.js), and a sample under them shows the heading and
+       text fonts in effect. #}
+    {% set select_cls = 'theme-select flex-1 min-w-0 max-w-xs bg-primary border border-rule-strong rounded-lg px-3 py-2 text-sm text-content-primary focus:ring-2 focus:ring-accent outline-none' %}
+    {% set label_cls = 'w-16 shrink-0 text-sm text-content-secondary' %}
+    <div class="px-4 sm:px-6 pb-6 space-y-4" id="appearance-settings" data-theme-picker>
+        <label class="flex items-center gap-4">
+            <span class="{{ label_cls }}">Style</span>
+            <select class="{{ select_cls }}" data-kind="style">
+                {% for key, name in theme_styles.items() %}<option value="{{ key }}"{{ ' selected' if key == theme_style }}>{{ name }}</option>{% endfor %}
+            </select>
+        </label>
+        {# data-outrun-note: shown in Outrun and Cyberpunk, both dark only with fixed fonts #}
+        <p data-outrun-note class="text-sm text-content-secondary">This style is always dark and has its own fonts, so Mode and the fonts are hidden.</p>
+        {# Palette (16.0): OG only, its own greys or Shelf's walnut; hidden in the other styles (styles.css) #}
+        <label class="flex items-center gap-4" data-palette-picker>
+            <span class="{{ label_cls }}">Palette</span>
+            <select class="{{ select_cls }}" data-kind="palette">
+                {% for key, name in theme_palettes.items() %}<option value="{{ key }}"{{ ' selected' if key == theme_palette }}>{{ name }}</option>{% endfor %}
+            </select>
+        </label>
+        {# Mode (12.4): 'system', the stored default, is "Follow system" #}
+        <label class="flex items-center gap-4" data-mode-picker>
+            <span class="{{ label_cls }}">Mode</span>
+            <select class="{{ select_cls }}" data-kind="mode">
+                {% for key, name in [('light', 'Light'), ('dark', 'Dark'), ('system', 'Follow system')] %}<option value="{{ key }}"{{ ' selected' if key == theme_mode }}>{{ name }}</option>{% endfor %}
+            </select>
+        </label>
+        {# Fonts (2026-11-20): headings and text apart. Theme is the style's
+           own pair; a font picked in one leaves the other alone #}
+        <div class="space-y-4" data-font-picker>
+            {% for kind, label, choices, current in [('heading', 'Headings', theme_headings, theme_heading),
+                                                      ('font', 'Text', theme_fonts, theme_font)] %}
+            <label class="flex items-center gap-4">
+                <span class="{{ label_cls }}">{{ label }}</span>
+                <select class="{{ select_cls }} font-opt" data-kind="{{ kind }}" data-value="{{ current }}">
+                    {% for key, name in choices.items() %}<option value="{{ key }}"{{ ' selected' if key == current }}>{{ name }}</option>{% endfor %}
+                </select>
+            </label>
+            {% endfor %}
+            {# Both faces in effect, from the page's own --font-display and
+               --font-body, so it follows every change with no script #}
+            <div class="ml-20 text-content-primary" data-font-sample>
+                <p class="font-display text-lg">Headings look like this</p>
+                <p class="font-primary text-sm">and everything else like this.</p>
             </div>
+        </div>
+        {# Tilt glare (16.0 step 12, Shelf only): the light on the covers
+           moves as you tilt your phone. Saved per device by tilt.js, not
+           with the rest of Appearance, so no data-kind here #}
+        <div data-tilt-picker>
+            <label class="flex items-center gap-4">
+                <span class="{{ label_cls }}">Tilt</span>
+                <select class="{{ select_cls }}" data-change="setTilt" aria-describedby="tilt-help">
+                    <option value="off" selected>Off</option>
+                    <option value="on">On</option>
+                </select>
+            </label>
+            <p id="tilt-help" class="mt-1 ml-20 text-sm text-content-secondary">The light on covers moves as you tilt your phone. Saved on this device only.</p>
+            <p data-tilt-note class="mt-1 ml-20 text-sm text-content-secondary" hidden></p>
+        </div>
+        {# Accent (8B.5): every style; Classic shows each swatch's dark shade (styles.css) #}
+        <div class="flex items-center gap-4" data-accent-picker>
+            <span class="{{ label_cls }}">Accent</span>
+            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Accent colour">
+                {% for key, name in theme_accents.items() %}
+                <button type="button" title="{{ name }}"
+                        class="theme-opt accent-opt p-1 border border-rule-strong transition-colors"
+                        data-kind="accent" data-value="{{ key }}"
+                        aria-pressed="{{ 'true' if key == theme_accent else 'false' }}">
+                    <span class="accent-swatch block w-5 h-5" data-swatch="{{ key }}" aria-hidden="true"></span>
+                    <span class="sr-only">{{ name }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </details>
 

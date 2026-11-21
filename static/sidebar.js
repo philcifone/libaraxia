@@ -46,39 +46,51 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// ---- Appearance: style and mode pickers ------------------------------------
-// Mode is Light | Dark (12.4). Following the system (data-mode="system", the
-// default), the button for the mode in effect shows pressed, and changes
-// with the device; "Follow system" (.follow-system) goes back to that.
+// ---- Appearance: Settings -> Account -> Appearance and the sidebar ----------
+// Appearance is a dropdown per setting (select[data-kind]) plus the accent
+// swatches (.theme-opt buttons). Mode 'system' (the default) follows the
+// device; the sidebar's sun/moon reads the mode in effect from darkQuery.
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-function syncModeButtons() {
-    const mode = document.documentElement.dataset.mode;
-    const effective = mode === 'system' ? (darkQuery.matches ? 'dark' : 'light') : mode;
-    document.querySelectorAll('.theme-opt[data-kind="mode"]:not(.follow-system)')
-        .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === effective)));
+
+// Show a choice on every picker for that setting: the pressed swatch, the
+// dropdown's value (a select's data-value also sets a font dropdown's face, .font-opt)
+function showChoice(kind, value) {
+    document.querySelectorAll(`.theme-opt[data-kind="${kind}"]`)
+        .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
+    document.querySelectorAll(`select[data-kind="${kind}"]`).forEach(s => {
+        s.value = value;
+        s.dataset.value = value;
+    });
 }
-document.addEventListener('DOMContentLoaded', syncModeButtons);
-darkQuery.addEventListener('change', syncModeButtons);
 
-// Apply an appearance setting instantly (data-style / data-mode / ... on
-// <html>), then save it; revert if the save fails. Every picker on the page
-// is kept in step.
-async function setAppearance(kind, value) {     // kind: 'style', 'mode', 'accent', 'font' or 'palette'
+// Apply appearance settings instantly (data-style / data-mode / ... on
+// <html>), then save them; revert if the save fails. Every picker on the
+// page is kept in step. One setting is setAppearance('font', 'jost');
+// several at once pass an object, setAppearance({font: 'jost', heading: 'jost'}).
+// Keys: 'style', 'mode', 'accent', 'font' (text), 'heading' or 'palette'.
+async function setAppearance(kindOrChanges, value) {
     const root = document.documentElement;
-    const previous = root.dataset[kind];
-    const press = value => kind === 'mode' ? syncModeButtons()
-        : document.querySelectorAll(`.theme-opt[data-kind="${kind}"]`)
-            .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
-
-    if (value === previous) return;
-    root.dataset[kind] = value;
-    press(value);
+    const wanted = typeof kindOrChanges === 'string' ? { [kindOrChanges]: value } : kindOrChanges;
+    const changes = {};
+    const previous = {};
+    for (const [kind, v] of Object.entries(wanted)) {
+        if (root.dataset[kind] !== v) {
+            changes[kind] = v;
+            previous[kind] = root.dataset[kind];
+        }
+    }
+    if (!Object.keys(changes).length) return;
+    const show = settings => Object.entries(settings).forEach(([kind, v]) => {
+        root.dataset[kind] = v;
+        showChoice(kind, v);
+    });
+    show(changes);
 
     try {
         const response = await fetch('/user/update_theme', {
             method: 'POST',
             headers: getCSRFHeaders(),
-            body: JSON.stringify({ [kind]: value })
+            body: JSON.stringify(changes)
         });
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.message);
@@ -86,21 +98,24 @@ async function setAppearance(kind, value) {     // kind: 'style', 'mode', 'accen
         // Shelf style (Filters in the bottom row, Batch; _view_bar.html), so
         // switching into or out of Shelf there reloads it, once saved. Only
         // there: every tab row is a cabinet too (tab_row), drawn by CSS alone
-        if (kind === 'style' && (value === 'shelf') !== (previous === 'shelf')
+        if ('style' in changes && (changes.style === 'shelf') !== (previous.style === 'shelf')
                 && document.querySelector('.view-bar.cabinet-part')) {
             location.reload();
         }
     } catch (err) {
-        root.dataset[kind] = previous;
-        press(previous);
+        show(previous);
         showFlashMessage('error', 'Could not save appearance settings.');
     }
 }
 
-// Any [data-theme-picker] group of .theme-opt buttons (Profile -> Appearance)
+// Settings -> Account -> Appearance: the swatches and the dropdowns
 document.addEventListener('click', event => {
     const btn = event.target.closest('[data-theme-picker] .theme-opt');
     if (btn) setAppearance(btn.dataset.kind, btn.dataset.value);
+});
+document.addEventListener('change', event => {
+    const select = event.target.closest('[data-theme-picker] select[data-kind]');
+    if (select) setAppearance(select.dataset.kind, select.value);
 });
 
 // The sidebar's sun/moon: the other mode from the one in effect (while
@@ -138,7 +153,9 @@ document.addEventListener('click', async event => {
     const values = button.dataset.cycleValues.split(',');
     const current = document.documentElement.dataset[kind];
     const next = values[(values.indexOf(current) + 1) % values.length];
-    await setAppearance(kind, next);
+    // The font cycler steps through the text fonts and sets the headings to
+    // the same, as one font for the page; Appearance sets them apart
+    await setAppearance(kind === 'font' ? { font: next, heading: next } : { [kind]: next });
     const now = cycleLabel(button);
     let status = document.getElementById('cycle-status');
     if (!status) {

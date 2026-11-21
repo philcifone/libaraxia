@@ -11,7 +11,7 @@ from utils import bulk, media, reviews, shelves, personal_backups
 from utils.stats import type_stats as stats_for_type, reading_goals, all_stats, collection_value as value_card
 from utils.media import BOOK, VIDEO, RECORD, only
 from utils.rate_limiting import limiter
-from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, username_error, THEME_STYLES, THEME_MODES, ACCENTS, FONTS, PALETTES
+from models import User, admin_required, get_friendship_status, is_friends_with, shares_library_with, username_error, THEME_STYLES, THEME_MODES, ACCENTS, FONTS, HEADING_FONTS, PALETTES
 from werkzeug.utils import secure_filename
 import bcrypt
 import os
@@ -337,30 +337,40 @@ def update_bio():
 # the styles and fonts would have hit 60: it only writes the user's own row
 @limiter.limit("300 per hour")
 def update_theme():
-    """Save the Appearance settings (style, light/dark mode, accent colour, font, palette)."""
+    """Save Appearance settings (style, light/dark mode, accent colour, text
+    font, heading font, palette): any subset, each checked against its list.
+
+    Only the settings sent are written. Writing all of them, the ones not
+    sent from the values loaded with this request, lost changes: change two
+    dropdowns quickly and the second save, read before the first committed,
+    put the first one back."""
     data = request.get_json(silent=True) or {}
-    style = data.get('style', current_user.theme_style)
-    mode = data.get('mode', current_user.theme_mode)
-    accent = data.get('accent', current_user.accent)
-    font = data.get('font', current_user.font)
-    palette = data.get('palette', current_user.palette)
-    if (style not in THEME_STYLES or mode not in THEME_MODES or accent not in ACCENTS
-            or font not in FONTS or palette not in PALETTES):
+    # JSON key -> (column, allowed values, User attribute)
+    settings = {
+        'style': ('theme_style', THEME_STYLES, 'theme_style'),
+        'mode': ('color_mode', THEME_MODES, 'theme_mode'),
+        'accent': ('accent', ACCENTS, 'accent'),
+        'font': ('font', FONTS, 'font'),
+        'heading': ('heading_font', HEADING_FONTS, 'heading_font'),
+        'palette': ('palette', PALETTES, 'palette'),
+    }
+    changes = {key: data[key] for key in settings if key in data}
+    if not changes or any(value not in settings[key][1] for key, value in changes.items()):
         return jsonify({'success': False, 'message': 'Unknown theme setting'}), 400
 
     conn = get_db()
     try:
-        conn.execute('UPDATE users SET theme_style = ?, color_mode = ?, accent = ?, font = ?, palette = ? '
-                     'WHERE id = ?', (style, mode, accent, font, palette, current_user.id))
+        # Column names come from the fixed table above, never from the request
+        assignments = ', '.join(f'{settings[key][0]} = ?' for key in changes)
+        conn.execute(f'UPDATE users SET {assignments} WHERE id = ?', (*changes.values(), current_user.id))
         conn.commit()
     except Exception:
         current_app.logger.exception('Error saving theme settings')
         return jsonify({'success': False, 'message': 'Could not save appearance settings'}), 500
 
-    current_user.theme_style, current_user.theme_mode, current_user.accent = style, mode, accent
-    current_user.font, current_user.palette = font, palette
-    return jsonify({'success': True, 'style': style, 'mode': mode, 'accent': accent, 'font': font,
-                    'palette': palette})
+    for key, value in changes.items():
+        setattr(current_user, settings[key][2], value)
+    return jsonify({'success': True, **changes})
 
 @user_blueprint.route('/update_password', methods=['POST'])
 @login_required

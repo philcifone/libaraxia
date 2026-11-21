@@ -27,8 +27,9 @@ CREATE TABLE users (
     theme_style TEXT NOT NULL DEFAULT 'house',
     color_mode TEXT NOT NULL DEFAULT 'system',
     accent TEXT NOT NULL DEFAULT 'green',   -- models.ACCENTS (migration 026)
-    font TEXT NOT NULL DEFAULT 'theme',     -- models.FONTS (migration 028)
-    palette TEXT NOT NULL DEFAULT 'theme'   -- models.PALETTES (migration 035)
+    font TEXT NOT NULL DEFAULT 'theme',     -- models.FONTS, the text font (migration 028)
+    palette TEXT NOT NULL DEFAULT 'theme',  -- models.PALETTES (migration 035)
+    heading_font TEXT NOT NULL DEFAULT 'theme'  -- models.HEADING_FONTS (migration 047)
 );
 -- Unique ignoring case too: "Phil" and "phil" would look the same (migration 033)
 CREATE UNIQUE INDEX idx_users_username_nocase ON users(username COLLATE NOCASE);
@@ -687,4 +688,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('043_audiobook_fields.sql'),
     ('044_audiobookshelf.sql'),
     ('045_abs_progress.sql'),
-    ('046_reading_progress.sql');
+    ('046_reading_progress.sql'),
+    ('047_heading_font.sql');

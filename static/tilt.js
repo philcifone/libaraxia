@@ -97,7 +97,7 @@ if (typeof window !== 'undefined') (() => {
         return Orientation.requestPermission().then(r => r === 'granted').catch(() => false);
     }
 
-    // The Appearance row: the pressed button, and a line saying why Tilt
+    // The Appearance row: the dropdown's value, and a line saying why Tilt
     // can't run here when it can't
     function why() {
         if (!Orientation) return 'This browser has no tilt sensor.';
@@ -106,8 +106,8 @@ if (typeof window !== 'undefined') (() => {
         return '';
     }
     function sync() {
-        document.querySelectorAll('[data-click="setTilt"]')
-            .forEach(b => b.setAttribute('aria-pressed', String((b.dataset.value === 'on') === on)));
+        document.querySelectorAll('[data-change="setTilt"]')
+            .forEach(s => { s.value = on ? 'on' : 'off'; });
         document.querySelectorAll('[data-tilt-note]').forEach(p => {
             p.textContent = why();
             p.hidden = !p.textContent;
@@ -115,12 +115,13 @@ if (typeof window !== 'undefined') (() => {
     }
 
     registerActions({
-        setTilt: button => {
-            const want = button.dataset.value === 'on';
+        setTilt: select => {
+            const want = select.value === 'on';
             if (want === on) return;
             if (!want) { on = false; save(false); stop(); sync(); return; }
             askPermission().then(granted => {
                 if (!granted) {
+                    sync();                 // back to Off
                     showFlashMessage('error', 'Tilt was blocked. To allow it, turn on Motion & Orientation Access for this site in Safari\'s settings, then try again.');
                     return;
                 }

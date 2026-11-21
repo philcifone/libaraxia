@@ -672,6 +672,65 @@ def test_shelf_style_bookcase(client, db, people):
     assert css.count('--shelf-front: 80 54 34;') == 2
 
 
+def test_heading_font_apart_from_the_text_font(client, db, people):
+    """2026-11-20: headings and text are two settings. Theme stays each
+    style's pair; a heading font sets only --font-display / --font-title and
+    a text font only --font-body. Both offer the same fonts."""
+    from models import FONTS, HEADING_FONTS
+    login(client, 'alice')
+    page = client.get('/user/settings').get_data(as_text=True)
+    assert 'data-heading="theme"' in page
+    assert re.search(r'<select[^>]*data-kind="heading"', page) and re.search(r'<select[^>]*data-kind="font"', page)
+    assert 'young_serif' in FONTS
+    assert set(FONTS) <= set(HEADING_FONTS)          # the cycler sets both from FONTS
+
+    assert client.post('/user/update_theme', json={'heading': 'comic-sans'}).status_code == 400
+    assert client.post('/user/update_theme', json={'heading': 'young_serif', 'font': 'literata'}).status_code == 200
+    assert tuple(db.execute("SELECT heading_font, font FROM users WHERE username = 'alice'").fetchone()) == ('young_serif', 'literata')
+    html = client.get('/books/').get_data(as_text=True)
+    assert 'data-font="literata" data-heading="young_serif"' in html
+    # one setting at a time leaves the other alone
+    assert client.post('/user/update_theme', json={'font': 'courier'}).status_code == 200
+    assert scalar(db, "SELECT heading_font FROM users WHERE username = 'alice'") == 'young_serif'
+
+    css = (ROOT / 'static/styles.css').read_text()
+    fixed = ':not([data-style="outrun"]):not([data-style="cyberpunk"])'
+    for key in HEADING_FONTS:
+        if key == 'theme':
+            continue
+        rule = re.search(rf':root\[data-heading="{key}"\]{re.escape(fixed)} {{([^}}]*)}}', css)
+        assert rule and '--font-display' in rule.group(1) and '--font-body' not in rule.group(1), key
+        assert f'.font-opt[data-value="{key}"]' in css, key
+    for key in FONTS:
+        if key == 'theme':
+            continue
+        rule = re.search(rf':root\[data-font="{key}"\]{re.escape(fixed)} {{([^}}]*)}}', css)
+        assert rule and '--font-body' in rule.group(1) and '--font-display' not in rule.group(1), key
+    # Labels typed on Shelf's cards name Courier Prime themselves, so no font choice reaches them
+    holders = css[css.index(':root[data-style="shelf"] :where(.cabinet-drawers .tab > span'):]
+    assert 'font-family: "Courier Prime"' in holders[:holders.index('}')]
+    js = (ROOT / 'static/sidebar.js').read_text()
+    assert "kind === 'font' ? { font: next, heading: next }" in js
+
+
+def test_a_theme_save_writes_only_what_it_was_sent(client, db, people, monkeypatch):
+    """Two dropdowns changed quickly: the second save starts before the first
+    commits. It must not write back the first setting as it read it."""
+    import blueprints.user as user_bp
+    login(client, 'alice')
+    assert client.post('/user/update_theme', json={}).status_code == 400
+    real_get_db = user_bp.get_db
+
+    def other_save_commits_now():
+        # The other request (Headings -> Garamond) commits while this one runs
+        db.execute("UPDATE users SET heading_font = 'garamond' WHERE username = 'alice'")
+        db.commit()
+        return real_get_db()
+    monkeypatch.setattr(user_bp, 'get_db', other_save_commits_now)
+    assert client.post('/user/update_theme', json={'font': 'literata'}).get_json() == {'success': True, 'font': 'literata'}
+    assert tuple(db.execute("SELECT heading_font, font FROM users WHERE username = 'alice'").fetchone()) == ('garamond', 'literata')
+
+
 def test_font_choice_saved_and_on_the_page(client, db, people):
     """Font (Settings -> Account -> Appearance): saved per user, on <html data-font>,
     each choice has a CSS block and self-hosted OFL files; unknown is refused."""
@@ -688,7 +747,7 @@ def test_font_choice_saved_and_on_the_page(client, db, people):
     for key in FONTS:
         if key != 'theme':
             assert f':root[data-font="{key}"]' in css and f'.font-opt[data-value="{key}"]' in css, key
-    for font in ('libre-baskerville', 'eb-garamond', 'literata', 'jost'):
+    for font in ('libre-baskerville', 'eb-garamond', 'literata', 'jost', 'outfit', 'courier-prime', 'young-serif'):
         d = pathlib.Path('static/fonts') / font
         assert any(d.glob('*.woff2')) and (d / 'OFL.txt').is_file(), font
         assert f"/static/fonts/{font}/" in css, font
@@ -966,25 +1025,28 @@ def test_profile_stats_same_blocks_for_every_type(client, db, people):
     assert 'tab-library' not in page                     # the old Library tab is gone
 
 
-def test_appearance_card_and_two_mode_buttons(client, db, people):
-    """12.4: Appearance is its own collapsible card, not part of Settings, and
-    Mode is Light | Dark plus a "Follow system" link (hidden by CSS while
-    following). 'system' stays the stored default and a valid choice."""
+def test_appearance_card_and_its_dropdowns(client, db, people):
+    """12.4: Appearance is its own collapsible card. Since 2026-11-20 each
+    setting is a dropdown row (accent stays swatches); Mode offers Light,
+    Dark and Follow system, the stored default."""
     login(client, 'alice')
     page = client.get('/user/settings').get_data(as_text=True)
     card = page[page.index('<details class="appearance-card'):]
     card = card[:card.index('</details>')]
     assert 'id="appearance-settings" data-theme-picker' in card
     assert '<details class="appearance-card bg-secondary rounded-xl card">' in page     # closed
-    modes = re.findall(r'data-kind="mode" data-value="(\w+)"', card)
-    assert sorted(modes) == ['dark', 'light', 'system'] and 'class="theme-opt follow-system' in card
+    for kind in ('style', 'palette', 'mode', 'font'):
+        assert re.search(rf'<select[^>]*data-kind="{kind}"', card), kind
+    mode = card[card.index('data-kind="mode"'):]
+    mode = mode[:mode.index('</select>')]
+    assert re.findall(r'<option value="(\w+)"', mode) == ['light', 'dark', 'system']
+    assert '<option value="system" selected>Follow system</option>' in mode      # alice's default
+    assert 'data-font-sample' in card and len(re.findall(r'class="theme-opt accent-opt', card)) >= 7
     # The sidebar's shortcut is the sun/moon toggle (test_sidebar_has_the_mode_shortcut)
     sidebar = page[page.index('Welcome,'):page.index('auth/logout')]
     assert 'data-mode-toggle' in sidebar and 'data-kind="mode"' not in sidebar
-    css = (ROOT / 'static/styles.css').read_text()
-    assert ':root[data-mode="system"] .follow-system { display: none; }' in css
     js = (ROOT / 'static/sidebar.js').read_text()
-    assert 'function syncModeButtons' in js and "prefers-color-scheme: dark" in js
+    assert 'function showChoice' in js and "select[data-kind]" in js and "prefers-color-scheme: dark" in js
     # Following the system is still a mode you can go back to
     assert client.post('/user/update_theme', json={'mode': 'dark'}).status_code == 200
     assert client.post('/user/update_theme', json={'mode': 'system'}).status_code == 200

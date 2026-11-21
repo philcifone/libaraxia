@@ -1,5 +1,6 @@
 """create_database.sql and the manage.py migration runner."""
 import os
+import pathlib
 import re
 import shutil
 import sqlite3
@@ -674,3 +675,15 @@ def test_app_connections_wait_for_locks(db_path):
         assert conn.execute('PRAGMA synchronous').fetchone()[0] == 1      # NORMAL
     finally:
         conn.close()
+
+
+def test_047_headings_keep_the_font_they_had(tmp_path):
+    """Until 047 users.font set headings and text alike: every user's headings
+    start in the font they already had."""
+    conn = sqlite3.connect(tmp_path / 'x.db')
+    conn.executescript("CREATE TABLE users (id INTEGER PRIMARY KEY, font TEXT NOT NULL DEFAULT 'theme');"
+                       "INSERT INTO users (font) VALUES ('garamond'), ('theme');")
+    conn.executescript((pathlib.Path(ROOT) / 'migrations/047_heading_font.sql').read_text())
+    assert conn.execute('SELECT font, heading_font FROM users ORDER BY id').fetchall() == [
+        ('garamond', 'garamond'), ('theme', 'theme')]
+    conn.close()

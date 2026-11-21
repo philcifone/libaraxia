@@ -76,10 +76,18 @@ DEFAULT_THEME_MODE = 'system'
 ACCENTS = {'green': 'Green', 'aqua': 'Aqua', 'blue': 'Blue', 'purple': 'Purple',
            'orange': 'Orange', 'red': 'Red', 'yellow': 'Yellow'}
 DEFAULT_ACCENT = 'green'
-# Font choice (users.font, data-font; styles.css "Font choice"). 'theme'
-# keeps the style's own fonts; the others set body and headings alike.
-FONTS = {'theme': 'Theme', 'baskerville': 'Baskerville', 'garamond': 'Garamond',
-         'literata': 'Literata', 'jost': 'Jost'}
+# Fonts (Settings -> Account -> Appearance; styles.css "Font choice"): one
+# for text (users.font, data-font) and one for headings and page titles
+# (users.heading_font, data-heading). 'theme' keeps the style's own: Young
+# Serif headings everywhere, Courier Prime text in Negative Earth, Outfit in
+# OG and Shelf. Outrun and Cyberpunk ignore both. Both lists are the same
+# (Young Serif for text too, Phil 2026-11-21); kept as two names so either
+# can differ later. The header's font cycler steps through FONTS and sets
+# both (sidebar.js).
+FONTS = {'theme': 'Theme', 'young_serif': 'Young Serif', 'baskerville': 'Baskerville',
+         'garamond': 'Garamond', 'literata': 'Literata', 'jost': 'Jost', 'outfit': 'Outfit',
+         'courier': 'Courier'}
+HEADING_FONTS = FONTS
 DEFAULT_FONT = 'theme'
 # Colour palette (users.palette, data-palette; styles.css "OG walnut").
 # 'theme' keeps the style's own colours; 'walnut' gives OG the Shelf
@@ -92,7 +100,7 @@ DEFAULT_PALETTE = 'theme'
 class User(UserMixin):
     def __init__(self, id, username, email, is_active=True, is_admin=False, avatar_url=None, email_verified=True, bio=None,
                  theme_style=DEFAULT_THEME_STYLE, theme_mode=DEFAULT_THEME_MODE, accent=DEFAULT_ACCENT, font=DEFAULT_FONT,
-                 palette=DEFAULT_PALETTE):
+                 palette=DEFAULT_PALETTE, heading_font=DEFAULT_FONT):
         self.id = id
         self.username = username
         self.email = email
@@ -105,6 +113,7 @@ class User(UserMixin):
         self.theme_mode = theme_mode if theme_mode in THEME_MODES else DEFAULT_THEME_MODE
         self.accent = accent if accent in ACCENTS else DEFAULT_ACCENT
         self.font = font if font in FONTS else DEFAULT_FONT
+        self.heading_font = heading_font if heading_font in HEADING_FONTS else DEFAULT_FONT
         self.palette = palette if palette in PALETTES else DEFAULT_PALETTE
 
     def get_id(self):

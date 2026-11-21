@@ -46,8 +46,9 @@ def test_tilt_switch_is_in_appearance_and_the_script_on_every_page(client, db, p
     login(client, 'alice')
     page = client.get('/user/settings').get_data(as_text=True)
     assert 'data-tilt-picker' in page and 'data-tilt-note' in page
-    assert page.count('data-click="setTilt"') == 2
-    assert 'tilt-opt' in page and 'theme-opt" data-click="setTilt"' not in page   # not saved with the theme
+    tilt = page[page.index('data-change="setTilt"') - 300:page.index('data-change="setTilt"')]
+    assert page.count('data-change="setTilt"') == 1
+    assert 'data-kind' not in tilt.split('<select')[-1]      # saved per device, not with the theme
     assert re.search(r'/static/tilt\.js\?v=\w+" defer></script>', page)
     css = pathlib.Path('static/styles.css').read_text()
     assert ':root:not([data-style="shelf"]) [data-tilt-picker] { display: none; }' in css

@@ -37,7 +37,7 @@ from blueprints.loans import loans_blueprint
 from blueprints.audiobookshelf import abs_blueprint
 from blueprints.merge import merge_blueprint
 from config import DevelopmentConfig, ProductionConfig
-from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
+from models import User, DEFAULT_THEME_STYLE, DEFAULT_THEME_MODE, THEME_STYLES, THEME_MODES, ACCENTS, DEFAULT_ACCENT, FONTS, HEADING_FONTS, DEFAULT_FONT, PALETTES, DEFAULT_PALETTE
 from utils.rate_limiting import limiter
 
 def create_app():
@@ -175,6 +175,7 @@ def create_app():
                 accent=user_dict.get('accent'),
                 font=user_dict.get('font'),
                 palette=user_dict.get('palette'),
+                heading_font=user_dict.get('heading_font'),
             )
         return None
 
@@ -475,11 +476,11 @@ def create_app():
             'theme_accents': ACCENTS,
             'theme_font': user.font if signed_in else DEFAULT_FONT,
             'theme_fonts': FONTS,
+            'theme_heading': user.heading_font if signed_in else DEFAULT_FONT,
+            'theme_headings': HEADING_FONTS,
             'theme_palette': user.palette if signed_in else DEFAULT_PALETTE,
             'theme_palettes': PALETTES,
             'theme_modes': THEME_MODES,
-            # The Mode buttons (12.4): 'system' is the default, reached by "Follow system"
-            'mode_choices': {k: v for k, v in THEME_MODES.items() if k != 'system'},
         }
 
     @app.context_processor

@@ -304,39 +304,44 @@
         }
     }
 
-    /* ---- Font choice (Profile -> Appearance -> Font; users.font, data-font).
-       "theme" (no block) keeps the style's own fonts. A choice sets body,
-       headings and page titles alike, in every style but Outrun and
-       Cyberpunk (their fonts are fixed; the picker hides there); it comes
-       after the style blocks. ---- */
-    :root[data-font="baskerville"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
-        --font-body: "Libre Baskerville", Georgia, serif;
-        --font-display: "Libre Baskerville", Georgia, serif;
-        --font-title: var(--font-display);
-    }
+    /* ---- Font choice (Settings -> Account -> Appearance; models.FONTS).
+       Two settings: data-font (users.font) sets the text, --font-body;
+       data-heading (users.heading_font) sets headings and page titles,
+       --font-display and --font-title. "theme" (no block) keeps the
+       style's own: Young Serif headings, Courier Prime or Outfit text.
+       Not in Outrun and Cyberpunk (their fonts are fixed; the pickers hide
+       there). After the style blocks, so these win. Labels typed on cards
+       in the Shelf style (the cabinet's label holders, slips, the library
+       card) name Courier Prime directly and never follow these. ---- */
+    :root[data-font="young_serif"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-body: "Young Serif", serif; }
+    :root[data-font="baskerville"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-body: "Libre Baskerville", Georgia, serif; }
+    :root[data-font="garamond"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-body: "EB Garamond Variable", Garamond, Georgia, serif; }
+    :root[data-font="literata"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-body: "Literata Variable", Georgia, serif; }
+    :root[data-font="jost"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-body: "Jost Variable", "Futura", system-ui, sans-serif; }
+    :root[data-font="outfit"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-body: "Outfit Variable", system-ui, sans-serif; }
+    :root[data-font="courier"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-body: "Courier Prime", "Courier New", monospace; }
+    :root[data-heading="baskerville"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-display: "Libre Baskerville", Georgia, serif; --font-title: var(--font-display); }
+    :root[data-heading="garamond"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-display: "EB Garamond Variable", Garamond, Georgia, serif; --font-title: var(--font-display); }
+    :root[data-heading="literata"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-display: "Literata Variable", Georgia, serif; --font-title: var(--font-display); }
+    :root[data-heading="jost"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-display: "Jost Variable", "Futura", system-ui, sans-serif; --font-title: var(--font-display); }
+    :root[data-heading="outfit"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-display: "Outfit Variable", system-ui, sans-serif; --font-title: var(--font-display); }
+    :root[data-heading="courier"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-display: "Courier Prime", "Courier New", monospace; --font-title: var(--font-display); }
+    :root[data-heading="young_serif"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { --font-display: "Young Serif", serif; --font-title: var(--font-display); }
     /* Garamond's small x-height reads a size smaller than the rest at the
-       same font-size; font-size-adjust scales it to match. */
-    :root[data-font="garamond"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
-        --font-body: "EB Garamond Variable", Garamond, Georgia, serif;
-        --font-display: "EB Garamond Variable", Garamond, Georgia, serif;
-        --font-title: var(--font-display);
-        font-size-adjust: .44;   /* about Literata's size; .5 overshot */
-    }
-    :root[data-font="literata"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
-        --font-body: "Literata Variable", Georgia, serif;
-        --font-display: "Literata Variable", Georgia, serif;
-        --font-title: var(--font-display);
-    }
-    :root[data-font="jost"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) {
-        --font-body: "Jost Variable", "Futura", system-ui, sans-serif;
-        --font-display: "Jost Variable", "Futura", system-ui, sans-serif;
-        --font-title: var(--font-display);
-    }
-    /* The picker shows each option in its own font */
+       same font-size; font-size-adjust scales it to match (about Literata's
+       size; .5 overshot). It inherits, so it is set where Garamond is used:
+       the page for text, headings for headings, and taken off the other. */
+    :root[data-font="garamond"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) { font-size-adjust: .44; }
+    :root[data-font="garamond"]:not([data-heading="garamond"]):not([data-style="outrun"]):not([data-style="cyberpunk"]) :is(h1, h2, h3, h4, .font-display, .page-title) { font-size-adjust: none; }
+    :root[data-heading="garamond"]:not([data-style="outrun"]):not([data-style="cyberpunk"]) :is(h1, h2, h3, h4, .font-display, .page-title) { font-size-adjust: .44; }
+    /* Appearance's font dropdowns, each drawn in the font it has chosen */
     .font-opt[data-value="baskerville"] { font-family: "Libre Baskerville", Georgia, serif; }
-    .font-opt[data-value="garamond"]    { font-family: "EB Garamond Variable", Garamond, serif; font-size-adjust: .44; }
-    .font-opt[data-value="literata"]    { font-family: "Literata Variable", Georgia, serif; }
-    .font-opt[data-value="jost"]        { font-family: "Jost Variable", system-ui, sans-serif; }
+    .font-opt[data-value="garamond"] { font-family: "EB Garamond Variable", Garamond, Georgia, serif; font-size-adjust: .44; }
+    .font-opt[data-value="literata"] { font-family: "Literata Variable", Georgia, serif; }
+    .font-opt[data-value="jost"] { font-family: "Jost Variable", "Futura", system-ui, sans-serif; }
+    .font-opt[data-value="outfit"] { font-family: "Outfit Variable", system-ui, sans-serif; }
+    .font-opt[data-value="courier"] { font-family: "Courier Prime", "Courier New", monospace; }
+    .font-opt[data-value="young_serif"] { font-family: "Young Serif", serif; }
 
     /* ---- Accent colours (8B.5, Profile -> Appearance; both styles, see Classic below).
        Each sets a light shade (Gruvbox faded, darkened for yellow) and a dark
@@ -1270,8 +1275,8 @@
     }
 
     /* Appearance picker (profile): pressed option is filled */
-    .theme-opt, .tilt-opt { @apply text-content-secondary hover:bg-primary-hover; }
-    .theme-opt[aria-pressed="true"], .tilt-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
+    .theme-opt { @apply text-content-secondary hover:bg-primary-hover; }
+    .theme-opt[aria-pressed="true"] { @apply bg-accent text-on-accent hover:bg-accent; }
 
     /* Choice chips (the item page's status and collections, 16.0): a tap
        sets it, the pressed one is filled. One per choice, so they wrap. */
@@ -4417,12 +4422,6 @@ and to the right for its faces */
     box-shadow: inset 0 2px 4px rgb(0 0 0 / .4);
 }
 
-/* ---- Mode: Light | Dark, and "Follow system" (ROADMAP 12.4) ----
-   The link only shows once a mode was chosen (_follow_system.html). It's a
-   .theme-opt for the click handler, so undo the pressed-button look. */
-:root[data-mode="system"] .follow-system { display: none; }
-.theme-opt.follow-system,
-.theme-opt.follow-system[aria-pressed] { background: none; border: 0; padding: 0; color: rgb(var(--accent-text)); }
 /* The Appearance card's summary: a heading with a disclosure arrow */
 .appearance-card > summary { list-style: none; }
 .appearance-card > summary::-webkit-details-marker { display: none; }
