@@ -52,6 +52,15 @@ Settings (paths, service name, health URL) are variables at the top of `deploy.s
 
 ## Prod's setup, for reference
 
+- **Gunicorn runs threaded workers with a long timeout** (since 2026-11-21), set in a drop-in made with `sudo systemctl edit library-catalog`:
+
+  ```ini
+  [Service]
+  ExecStart=
+  ExecStart=/home/phil/library-catalog/venv/bin/gunicorn -w 2 -k gthread --threads 4 --timeout 120 -b 0.0.0.0:8000 "app:create_app()"
+  ```
+
+  The empty `ExecStart=` clears the unit's own line before the new one is set. Why: with the old `-w 4` sync workers, a phone uploading a photo over a weak signal held a whole worker while the body trickled in, and gunicorn's 30 s timeout killed it mid-upload. The visitor got a bare "Internal Server Error" (gunicorn's page, not Flask's), and the journal showed `WORKER TIMEOUT` with a traceback ending in `sock.recv`. With `gthread`, a slow client occupies one thread and the timeout no longer applies to a request waiting on its client. Two processes also fit a small box better than four: Pillow opening a big photo can take a few hundred MB. The app is safe threaded: the DB connection is per request, the rate limiter's memory store is thread-safe, and the only module globals are lookup throttles and the cover-jobs thread. The browser also shrinks photos before upload now (`data-shrink`, `common.js`), so uploads are about 1 MB either way. To check what's running: `systemctl cat library-catalog`. To go back: `sudo systemctl revert library-catalog`.
 - **Outside access is a Cloudflare tunnel** (`cloudflared` on the same machine), no reverse proxy. Every outside request reaches gunicorn from 127.0.0.1 with the visitor's address in `X-Forwarded-For`, so prod's `.env` has `TRUSTED_PROXY_COUNT=1` (checked 2026-11-20). At 0, every outside visitor would share one rate-limit bucket. LAN requests carry no such header and are counted by their own address.
 - Cloudflare compresses text at its edge; on the LAN, responses are uncompressed, which costs nothing noticeable. Static files carry a year's cache headers from the app itself (`utils/static_cache.py`), which Cloudflare honours; uploads are `private`, so its edge doesn't keep them.
 - The database is in WAL mode (`manage.py migrate` sets it): `library.db`, `library.db-wal` and `library.db-shm` belong together. The daily ZFS snapshot takes all three at once.

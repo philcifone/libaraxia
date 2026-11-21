@@ -112,8 +112,10 @@ This builds `library.db` from `create_database.sql`. Later, after `git pull`, th
 
 ```shell
 python3 app.py                                      # development server on :5000
-gunicorn -w 4 -b 0.0.0.0:5000 'app:create_app()'    # production
+gunicorn -w 2 -k gthread --threads 4 --timeout 120 -b 0.0.0.0:5000 'app:create_app()'    # production
 ```
+
+Threaded workers and a long timeout let a slow phone upload finish instead of being cut off at gunicorn's default 30 s; see [deploy/README.md](deploy/README.md#prods-setup-for-reference).
 
 Open `http://localhost:5000`. With no users yet, you're sent to registration, and **the first account becomes the admin**.
 
