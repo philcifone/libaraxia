@@ -8,11 +8,13 @@
 
    `fab_label` names the button for screen readers (default "Add").
 
-   z-30: above the page, below the sidebar (z-40) and top bar (z-50). The
+   z-[35]: above the page's z-30 layers (the search row and, in the Shelf
+   style, the view bar, which come later in the page and so painted over the
+   menu at the same z-30), below the sidebar (z-40) and top bar (z-50). The
    container is click-through: the hidden menu above the button still takes up
    space, and without this it swallowed clicks on whatever was underneath.
    Behaviour (open/close, Escape, the backdrop) is in static/fab.js. #}
-<div class="fixed bottom-4 right-[30px] sm:bottom-6 sm:right-[38px] z-30 pointer-events-none flex flex-col items-end" id="fab-container">
+<div class="fixed bottom-4 right-[30px] sm:bottom-6 sm:right-[38px] z-[35] pointer-events-none flex flex-col items-end" id="fab-container">
     <div id="fab-menu" class="flex flex-col items-end gap-2 mb-3 opacity-0 pointer-events-none translate-y-4 transition-all duration-200">
         {% for label, url in fab_items %}
         <a href="{{ url }}" tabindex="-1"
@@ -31,7 +33,8 @@
     </button>
 </div>
 
-<!-- Backdrop: a click outside the open menu closes it -->
-<div id="fab-backdrop" class="fixed inset-0 z-20 hidden"></div>
+{# Backdrop: a click outside the open menu closes it. Just under the button
+   and over the search row, so that click doesn't land in the box instead. #}
+<div id="fab-backdrop" class="fixed inset-0 z-[34] hidden"></div>
 
 <script src="{{ url_for('static', filename='fab.js') }}" defer></script>

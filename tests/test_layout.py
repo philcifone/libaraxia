@@ -234,12 +234,16 @@ def test_fab_does_not_block_the_sidebar_or_page():
     sidebar = (ROOT / 'templates' / '_sidebar.html').read_text()
     container = re.search(r'<div class="([^"]*)" id="fab-container">', fab).group(1).split()
     assert 'pointer-events-none' in container
-    fab_z = int(next(t for t in container if t.startswith('z-'))[2:])
+    fab_z = int(next(t for t in container if t.startswith('z-'))[2:].strip('[]'))
     sidebar_z = int(re.search(r'id="sidebar"\s+class="[^"]*\bz-(\d+)', sidebar).group(1))
     assert fab_z < sidebar_z
     assert re.search(r'id="fab-toggle"\s+class="pointer-events-auto', fab)
-    backdrop_z = int(re.search(r'id="fab-backdrop" class="[^"]*\bz-(\d+)', fab).group(1))
+    backdrop_z = int(re.search(r'id="fab-backdrop" class="[^"]*\bz-\[?(\d+)', fab).group(1))
     assert backdrop_z < fab_z   # the open menu's click-to-close backdrop sits under it
+    # Regression (prod, 2026-11-21): the search row and the Shelf style's
+    # view bar are z-30 and come later in the page, so at the same z-30 they
+    # painted over the open menu. The menu and its backdrop go above them.
+    assert backdrop_z > 30
 
 
 def test_no_native_alert_or_confirm():

@@ -62,6 +62,102 @@ function coverSrc(url) {
     return /^https?:\/\//i.test(url) ? '/books/thumbnail?url=' + encodeURIComponent(url) : url;
 }
 
+// --- Shrinking photos before upload ----------------------------------------------
+// A phone photo is 5 to 15 MB; on a weak mobile signal it took longer than
+// gunicorn's 30 s worker timeout just to arrive, and the upload died as an
+// "Internal Server Error" (prod, 2026-11-21: WORKER TIMEOUT in sock.recv).
+// The server keeps at most 2400 px anyway (cover_crop.STAGE_MAX, photos
+// 2000), so the browser scales it down first: about 0.5 to 1 MB, upright
+// (browsers apply the EXIF rotation when drawing), and with no EXIF, so the
+// phone's GPS position never leaves it either.
+//
+// Opt in with data-shrink="<longest side in px>" on an <input type="file">.
+// A capture-phase listener takes the change event first, swaps the shrunk
+// files into the input, and fires `change` again, so every other handler
+// (previews, the crop tool, the photo and avatar uploads, a plain form
+// submit) sees only the small file. Anything that can't be decoded here
+// (HEIC outside Safari, a broken file) is sent as it was; the server judges.
+
+// The size to scale (w, h) to so its longest side is at most `max`; null
+// when it already fits. Pure, tested under node (tests/test_shrink_js.py).
+function shrinkSize(w, h, max) {
+    if (!(w > 0 && h > 0 && max > 0) || Math.max(w, h) <= max) return null;
+    const scale = max / Math.max(w, h);
+    return [Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))];
+}
+
+// Over this a file is re-encoded even when its pixels already fit
+const SHRINK_BYTES = 1.5 * 1024 * 1024;
+
+async function shrinkImageFile(file, max) {
+    // GIFs may be animated; small files aren't worth a second lossy encode
+    if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+    const url = URL.createObjectURL(file);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const el = new Image();
+            el.onload = () => resolve(el);
+            el.onerror = reject;
+            el.src = url;
+        });
+        const size = shrinkSize(img.naturalWidth, img.naturalHeight, max);
+        if (!size && file.size <= SHRINK_BYTES) return file;
+        const [w, h] = size || [img.naturalWidth, img.naturalHeight];
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        // PNG keeps its transparency (a disc cut out elsewhere); the rest is a photo
+        const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, type, 0.9));
+        if (!blob || blob.size >= file.size) return file;
+        const name = file.name.replace(/\.[^.]*$/, '') + (type === 'image/png' ? '.png' : '.jpg');
+        return new File([blob], name, { type, lastModified: file.lastModified });
+    } catch (err) {
+        return file;
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+const shrinkRefired = new WeakSet();     // our own re-fired events, let through
+
+window.addEventListener('change', async event => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== 'file' || !input.dataset.shrink) return;
+    if (shrinkRefired.has(event) || !input.files?.length) return;
+    event.stopImmediatePropagation();
+    const max = parseInt(input.dataset.shrink, 10);
+    const form = input.form;
+    // Hold a submit until the swap is done, so the big file is never sent
+    form?.setAttribute('data-shrinking', '');
+    try {
+        const files = await Promise.all(Array.from(input.files).map(f => shrinkImageFile(f, max)));
+        const transfer = new DataTransfer();
+        files.forEach(f => transfer.items.add(f));
+        input.files = transfer.files;
+    } catch (err) {
+        console.error('Shrinking the upload failed; sending it as it is', err);
+    } finally {
+        form?.removeAttribute('data-shrinking');
+    }
+    const again = new Event('change', { bubbles: true });
+    shrinkRefired.add(again);
+    input.dispatchEvent(again);
+}, true);
+
+// A submit while a photo is still being shrunk (a second at most) waits for it
+window.addEventListener('submit', event => {
+    const form = event.target;
+    if (!form.hasAttribute?.('data-shrinking')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const submitter = event.submitter;
+    const retry = () => form.hasAttribute('data-shrinking')
+        ? setTimeout(retry, 100) : form.requestSubmit(submitter || undefined);
+    retry();
+}, true);
+
 // --- Camera -------------------------------------------------------------------
 
 // Why the barcode scanner can't use the camera here, or null if it can.

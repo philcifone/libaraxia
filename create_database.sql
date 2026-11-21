@@ -423,6 +423,17 @@ CREATE TABLE reading_goals (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Each user's last sort per media type (migration 048, utils/sorting.py)
+CREATE TABLE sort_preferences (
+    user_id INTEGER NOT NULL,
+    media_type TEXT NOT NULL,
+    sort_by TEXT NOT NULL,
+    sort_order TEXT NOT NULL CHECK (sort_order IN ('asc', 'desc')),
+    PRIMARY KEY (user_id, media_type),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (media_type) REFERENCES media_types(name)
+);
+
 CREATE TABLE book_tags (
     tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -689,4 +700,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('044_audiobookshelf.sql'),
     ('045_abs_progress.sql'),
     ('046_reading_progress.sql'),
-    ('047_heading_font.sql');
+    ('047_heading_font.sql'),
+    ('048_sort_preferences.sql');

@@ -66,10 +66,10 @@ def library_page(template, owner_ids, data_user, **extra):
     X-Requested-With and gets JSON."""
     page = request.args.get("page", 1, type=int)
     per_page = max(12, min(request.args.get("per_page", 30, type=int), 100))
-    # Sort (utils/sorting.py: the menu's choices, unknown ones fall back to title)
-    sort_by, sort_order = sorting.choice(request.args, media.BOOK)
-
     conn = get_db()
+    # Sort (utils/sorting.py: the menu's choices, unknown ones fall back to
+    # title); none in the URL means your last one on a Books grid
+    sort_by, sort_order = sorting.remembered(conn, current_user.id, request.args, media.BOOK)
     # The filters live in utils/grid_query.py, shared with bulk edit's selection of a view
     query, params = grid_query.books_query(owner_ids, request.args, data_user, current_user.id,
                                            lent_ok='friend' not in extra)

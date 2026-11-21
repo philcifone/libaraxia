@@ -55,6 +55,34 @@ def choice(args=None, media_type=media.BOOK, default='title', default_order='asc
     return sort_by, order
 
 
+def remembered(conn, user_id, args=None, media_type=media.BOOK, save=True):
+    """choice() for a shelf grid, with the user's last sort for this media
+    type standing in for a URL that doesn't name one (migration 048; Phil,
+    2026-11-21: Back or a link shouldn't undo the sort).
+
+    A URL with ?sort_by= is a choice: it's used and, with `save`, kept as the
+    new preference. Saving on a GET is deliberate: this is a view setting,
+    like the shelf_section cookie, and the worst a forged link can do is
+    re-sort your grid. Bulk edit's view_ids reads without saving."""
+    args = request.args if args is None else args
+    row = conn.execute('SELECT sort_by, sort_order FROM sort_preferences'
+                       ' WHERE user_id = ? AND media_type = ?', (user_id, media_type)).fetchone()
+    stored = tuple(row) if row else None
+    if 'sort_by' not in args:
+        # Through choice(), so a stored key this section no longer offers falls back
+        return choice({'sort_by': stored[0], 'sort_order': stored[1]} if stored else {}, media_type)
+    picked = choice(args, media_type)
+    # Only a change is written: infinite scroll asks the same URL page after page
+    if save and picked != stored:
+        conn.execute(
+            'INSERT INTO sort_preferences (user_id, media_type, sort_by, sort_order)'
+            ' VALUES (?, ?, ?, ?) ON CONFLICT (user_id, media_type) DO UPDATE SET'
+            ' sort_by = excluded.sort_by, sort_order = excluded.sort_order',
+            (user_id, media_type, *picked))
+        conn.commit()
+    return picked
+
+
 def order_by(sort_by, sort_order, viewer_id):
     """' ORDER BY ...' and its parameters for a choice() result."""
     expr = SORTS[sort_by]

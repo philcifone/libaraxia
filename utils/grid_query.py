@@ -161,9 +161,11 @@ def view_ids(conn, user, view, args):
 
     if kind == media.BOOK:
         query, params = books_query(owner_ids, args, user.id, user.id)
-        sort_by, sort_order = sorting.choice(args, media.BOOK)
+        # The page's order, the remembered sort included (read, not saved)
+        sort_by, sort_order = sorting.remembered(conn, user.id, args, media.BOOK, save=False)
         order_sql, order_params = sorting.order_by(sort_by, sort_order, user.id)
         rows = conn.execute(query + order_sql, [*params, *order_params]).fetchall()
     else:
-        rows, _, _ = _section(kind).filtered(conn, owner_ids, args, user.id)
+        rows, _, _ = _section(kind).filtered(conn, owner_ids, args, user.id,
+                                             sort_user=user.id, save_sort=False)
     return [row['id'] for row in rows]

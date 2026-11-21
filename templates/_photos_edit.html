@@ -63,7 +63,7 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <label class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline cursor-pointer">
                         {{ ('Replace' if photo else 'Add ' ~ photo_labels[kind]|lower) }}
-                        <input type="file" name="photo" accept="image/*" class="sr-only" data-change="uploadPhotos">
+                        <input type="file" name="photo" accept="image/*" data-shrink="2000" class="sr-only" data-change="uploadPhotos">
                     </label>
                     <button type="submit" class="text-sm underline text-content-secondary" data-photo-submit>Upload</button>
                 </form>
@@ -138,7 +138,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label class="px-4 py-2 bg-primary hover:bg-primary-hover text-content-primary text-sm rounded-lg btn btn-outline cursor-pointer">
                 Add photos
-                <input type="file" name="photo" accept="image/*" multiple class="sr-only" data-change="uploadPhotos">
+                <input type="file" name="photo" accept="image/*" data-shrink="2000" multiple class="sr-only" data-change="uploadPhotos">
             </label>
             <button type="submit" class="text-sm underline text-content-secondary" data-photo-submit>Upload</button>
             <span class="text-xs text-content-secondary">Up to {{ photo_limit }} per {{ noun }}.</span>

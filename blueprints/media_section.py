@@ -118,7 +118,7 @@ class Section:
         match_sql, match_params = self.search_match(term, viewer_id)
         return off_shelf_matches(conn, self.view, owner_ids, match_sql, match_params, viewer_id)
 
-    def filtered(self, conn, owner_ids, args, viewer_id, lent_ok=True):
+    def filtered(self, conn, owner_ids, args, viewer_id, lent_ok=True, sort_user=None, save_sort=True):
         """Items owned by `owner_ids`, with the search, filters and sort from
         the query string. The parameter names are the Library's
         (search_term, genre, read_status, rating, tags[], show), so
@@ -127,7 +127,10 @@ class Section:
         Movies & TV's. Bulk edit's "select all in this view" runs this too
         (grid_query.view_ids), so a filter added here is matched there. Status, rating and tag
         filters are the viewer's own, as on the Library pages. `lent_ok`:
-        False on a friend's grid (shelf_filter)."""
+        False on a friend's grid (shelf_filter). `sort_user`: whose remembered
+        sort stands in when the URL names none (sorting.remembered; the
+        viewer, not the friend whose shelf it is); `save_sort` False only
+        reads it (bulk edit)."""
         # self.view is one of our own view names, never request input.
         # Show: Everything also brings in ownerless items you have data on (grid_source)
         sql, params = grid_source(self.view, owner_ids, args, viewer_id, lent_ok)
@@ -165,7 +168,10 @@ class Section:
             params += [viewer_id, *tags]
 
         # The menu's choices for this section (utils/sorting.py)
-        sort_by, sort_order = sorting.choice(args, self.media_type)
+        if sort_user is None:
+            sort_by, sort_order = sorting.choice(args, self.media_type)
+        else:
+            sort_by, sort_order = sorting.remembered(conn, sort_user, args, self.media_type, save=save_sort)
         order_sql, order_params = sorting.order_by(sort_by, sort_order, viewer_id)
         return conn.execute(sql + order_sql, params + order_params).fetchall(), sort_by, sort_order
 
@@ -330,7 +336,7 @@ def make_blueprint(section: Section) -> Blueprint:
         # yours and the household's (11.3)
         data_user = owner_ids[0] if tab == 'friend' else current_user.id
         rows, sort_by, sort_order = section.filtered(conn, owner_ids, request.args, data_user,
-                                                     lent_ok=tab != 'friend')
+                                                     lent_ok=tab != 'friend', sort_user=current_user.id)
         return render_template(
             'media_grid.html', books=rows, tab=tab, marks_user=data_user,
             total_count=len(rows), has_more=False, current_page=1,

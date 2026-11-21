@@ -134,3 +134,28 @@ def test_a_friends_grid_names_them(client, db, people):
     assert 'Search your' in page
     add_book(db, people['alice'], title='Emma')
     assert '>Your rating</option>' in client.get('/books/').get_data(as_text=True)
+
+
+def test_the_last_sort_is_remembered_per_user_and_type(client, db, people):
+    """Phil, 2026-11-21: a sort picked on a shelf stays when Back or a link
+    opens the grid without one, per media type and per user (migration 048)."""
+    alice, bob = people['alice'], people['bob']
+    add_book(db, alice, title='Alpha')
+    add_book(db, alice, title='Beta')
+    add_video(db, alice, title='Able', barcode=None)
+    add_video(db, alice, title='Baker', barcode=None)
+    login(client, 'alice')
+    assert titles(client, '/books/') == ['Alpha', 'Beta']                    # default: A-Z
+    assert titles(client, '/books/?sort_by=title&sort_order=desc') == ['Beta', 'Alpha']
+    # No sort in the URL: the one just picked, menu included
+    assert titles(client, '/books/') == ['Beta', 'Alpha']
+    assert '<option value="desc" selected>' in client.get('/books/').get_data(as_text=True)
+    # Movies keep their own (still the default here)
+    page = client.get('/videos/').get_data(as_text=True)
+    assert in_page_order(page, ['Able', 'Baker']) == ['Able', 'Baker']
+    # Choosing again replaces it
+    titles(client, '/books/?sort_by=title&sort_order=asc')
+    assert titles(client, '/books/') == ['Alpha', 'Beta']
+    assert db.execute('SELECT COUNT(*) FROM sort_preferences WHERE user_id = ?', (alice,)).fetchone()[0] == 1
+    # Another user's preference isn't alice's: bob has none saved
+    assert db.execute('SELECT COUNT(*) FROM sort_preferences WHERE user_id = ?', (bob,)).fetchone()[0] == 0
