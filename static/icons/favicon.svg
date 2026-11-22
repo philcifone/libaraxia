@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- The favicon: icon.svg cropped tighter, since a browser tab never masks it
+       and the glyph should fill the 16-32px square. -->
+  <rect width="512" height="512" fill="#282828"/>
+  <g transform="translate(256 256) scale(20) translate(-12 -11.75)"
+     fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#ebdbb2" stroke-width="1.75" d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <g stroke="#b8bb26" stroke-width="1.75">
+      <path d="M7.5 9.5v9"/>
+      <path d="M10.5 11v7.5"/>
+      <path d="M13.5 11v7.5"/>
+      <path d="m15.5 11 2.25 7.5"/>
+    </g>
+  </g>
+</svg>

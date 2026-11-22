@@ -20,6 +20,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Libaraxia{% endblock %}</title>
+    {# Home screen and tabs (static/icons/README.md). The manifest makes "Add
+       to Home Screen" a standalone app with this icon; Apple reads its own
+       apple-touch-icon and title. theme-color tints the phone's status bar:
+       Gruvbox dark here, then common.js matches it to the page's background
+       so every style and mode gets its own. #}
+    <link rel="manifest" href="{{ url_for('static', filename='icons/manifest.webmanifest') }}">
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon-32.png') }}" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <meta name="apple-mobile-web-app-title" content="Libaraxia">
+    <meta name="theme-color" content="#282828">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
     {# Not deferred: inline page scripts may call its helpers while the page parses. #}
     <script src="{{ url_for('static', filename='common.js') }}"></script>
@@ -37,6 +48,9 @@
     {% set boot = boot_stats() if theme_style == 'cyberpunk' else none %}
     {% if boot %}<meta name="boot-stats" data-user="{{ current_user.username }}" data-items="{{ boot['items'] }}" data-lists="{{ boot['lists'] }}" data-friends="{{ boot['friends'] }}">{% endif %}
     <script src="{{ url_for('static', filename='cyberpunk.js') }}"></script>
+    {# The home-screen app's launch splash, every style but Cyberpunk. Not
+       deferred, for the same reason (static/splash.js). #}
+    <script src="{{ url_for('static', filename='splash.js') }}"></script>
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}bg-primary min-h-screen{% endblock %}">

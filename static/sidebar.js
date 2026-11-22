@@ -80,10 +80,13 @@ async function setAppearance(kindOrChanges, value) {
         }
     }
     if (!Object.keys(changes).length) return false;
-    const show = settings => Object.entries(settings).forEach(([kind, v]) => {
-        root.dataset[kind] = v;
-        showChoice(kind, v);
-    });
+    const show = settings => {
+        Object.entries(settings).forEach(([kind, v]) => {
+            root.dataset[kind] = v;
+            showChoice(kind, v);
+        });
+        syncThemeColor();               // the status bar follows (common.js)
+    };
     show(changes);
 
     try {

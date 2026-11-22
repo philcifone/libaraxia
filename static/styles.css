@@ -5000,6 +5000,60 @@ html[data-gr-bar="on"] body { padding-bottom: 5rem; }      /* the last row clear
 /* Shelf: the magnifier stays a round glass */
 :root[data-style="shelf"] .crop-loupe { border-radius: 50%; }
 
+/* ---- Launch splash (splash.js; the home-screen app, Phil 2026-11-22) ----
+   Each launch of the installed app, every style but Cyberpunk (its boot
+   screen instead). data-splash="on": a plain cover in the page's background
+   from the first paint, until the script has the body. "run": the splash
+   (.app-splash) is up, the glyph and word rising in. "out": a 250 ms fade
+   (FADE in splash.js), then the script removes it. Over everything, dialogs
+   and flash messages included. Colours and corners are the style's tokens,
+   so every style, mode and accent gets its own; the word is always Young
+   Serif (Phil). */
+:root[data-splash="on"]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgb(var(--paper));
+}
+.app-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    background: rgb(var(--paper));
+    cursor: default;
+    transition: opacity 250ms ease-out;
+}
+:root[data-splash="out"] .app-splash { opacity: 0; }
+.app-splash-icon {
+    width: clamp(5rem, 24vw, 7.5rem);
+    height: auto;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    animation: app-splash-in 450ms ease-out both;
+}
+.app-splash-house { stroke: rgb(var(--ink)); stroke-width: 1.75; }
+.app-splash-book { stroke: rgb(var(--accent)); stroke-width: 1.75; }
+.app-splash-word {
+    font: 400 clamp(1.75rem, 8vw, 2.5rem) / 1 "Young Serif", serif;
+    color: rgb(var(--ink));
+    letter-spacing: .02em;
+    animation: app-splash-in 450ms ease-out 80ms both;
+}
+@keyframes app-splash-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app-splash, .app-splash-icon, .app-splash-word { transition: none; animation: none; }
+}
+
 /* ==== Cyberpunk (forked from Outrun, Phil 2026-11-18) ====
    A sci-fi HUD after Phil's reference: no sky, grid, sunset or glow; a flat
    near-black screen, thin lines in the accent, titles in Audiowide capitals.

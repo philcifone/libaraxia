@@ -746,3 +746,23 @@ window.addEventListener('resize', () => {
     cancelAnimationFrame(fitTitleFrame);
     fitTitleFrame = requestAnimationFrame(fitTitle);
 });
+
+// ---- The phone's status bar colour (2026-11-22) -----------------------------
+// <meta name="theme-color"> tints the status bar of the home-screen app (and
+// Android Chrome's address bar). base.html starts it at Gruvbox dark; this
+// sets it to the page's own background, so it matches every style, mode and
+// palette. Again after Appearance or a cycler changes them (sidebar.js calls
+// it) and when the device switches light/dark while Mode follows the system.
+function syncThemeColor() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta || !document.body) return;
+    // A see-through body (Cyberpunk draws its grid behind it) shows <html>'s
+    // background, so take the first of the two that has a colour
+    const clear = c => !c || c === 'transparent' || /rgba\(.*,\s*0\)$/.test(c);
+    const bg = [document.body, document.documentElement]
+        .map(el => getComputedStyle(el).backgroundColor)
+        .find(c => !clear(c));
+    if (bg) meta.content = bg;
+}
+document.addEventListener('DOMContentLoaded', syncThemeColor);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeColor);
