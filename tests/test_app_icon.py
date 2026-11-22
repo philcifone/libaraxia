@@ -77,3 +77,4 @@ def test_launch_splash_only_in_the_installed_app(client, people):
     assert 'prefers-reduced-motion: reduce' in splash
     # Over the scanlines and every dialog (the highest elsewhere is 70)
     assert 'z-index: 100;' in splash
+    assert 'const HOLD = 1100;' in js                   # about 1.35 s with the fade (Phil)

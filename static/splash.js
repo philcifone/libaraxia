@@ -30,7 +30,7 @@
     // The timing, in ms: the splash holds this long once the page has parsed,
     // then fades. Short on purpose: a splash covers a launch, it shouldn't
     // add to it. Reduced motion drops the fade (CSS), not the splash.
-    const HOLD = 600;
+    const HOLD = 1100;          // Phil, 2026-11-22 (was 600)
     const FADE = 250;           // matches .app-splash's transition in styles.css
 
     // Ask for Young Serif now, so the word is in it by the time it shows
