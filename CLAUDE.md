@@ -4,6 +4,7 @@ Guidance for Claude Code in this repository. Kept short on purpose: it is loaded
 
 - **Open work** lives in [ROADMAP.md](ROADMAP.md), numbered phases worked in order. Check it before a task; tick items when done.
 - **Finished phases** are in [docs/ROADMAP-ARCHIVE.md](docs/ROADMAP-ARCHIVE.md) under their original numbers, which code comments cite ("ROADMAP 7.2b"). Grep it, don't read it whole.
+- **Vocabulary** for Phil to learn from is [VOCAB.md](VOCAB.md): proper terms for features, code and infrastructure, plus the everyday words they replace. Add terms as work brings them up.
 - **The module map** (every blueprint, utility, table, template partial, script, theme, env var) is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Read the section you need before working in an unfamiliar area, and update it when you add or rename a module.
 
 ## Project
