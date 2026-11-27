@@ -41,10 +41,11 @@ def admin():
 @limiter.limit('120 per hour')
 def add():
     """Upload a placeholder: medium, kind, name and the file (`photo`). A
-    top or bottom is turned to lie wide, a spine or side to stand tall."""
+    top or bottom is turned to lie wide, a spine or side to stand tall; a
+    disc's front or back (DVDs and CDs) is left as it is."""
     conn = get_db()
     medium, kind = request.form.get('medium'), request.form.get('kind')
-    if medium not in faces.MEDIA or kind not in faces.KINDS:
+    if medium not in faces.MEDIA or kind not in faces.kinds_for(medium):
         abort(400)
     file = request.files.get('photo')
     if not file or not file.filename:
@@ -52,8 +53,9 @@ def add():
         return _back(medium)
     try:
         name = faces._clean_name(request.form.get('name') or faces.kind_label(medium, kind))
-        path = save_photo(file, None, folder=image_utils.FACES_FOLDER,
-                          shape='wide' if kind in ('top', 'bottom') else 'tall')
+        # A disc's front and back are round: left as they came
+        shape = None if kind in faces.DISC_KINDS else ('wide' if kind in ('top', 'bottom') else 'tall')
+        path = save_photo(file, None, folder=image_utils.FACES_FOLDER, shape=shape)
     except (PhotoError, faces.FaceError) as e:
         flash(str(e), 'error')
         return _back(medium)

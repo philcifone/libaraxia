@@ -4,6 +4,7 @@ Image management utilities: item photos, file cleanup and orphan detection
 import os
 import shutil
 import uuid
+from functools import lru_cache
 
 from flask import current_app
 from PIL import Image, ImageOps, UnidentifiedImageError, features
@@ -36,6 +37,41 @@ def upload_exists(image_path):
     the letter placeholder instead of a broken image (the browser's "?"):
     {% if user.avatar_url|upload_exists %}."""
     return is_safe_upload_path(image_path) and os.path.isfile(os.path.join(STATIC_ROOT, image_path))
+
+
+def is_disc(image_path):
+    """True when a stored image is a disc cut out with the crop tool's Disc
+    shape (cover_crop.render, mask "disc"): see-through at all four
+    corners. A bare DVD or CD then shows as the disc itself, with no box
+    round it (Phil, 2026-11-26). Nothing records the shape, so the picture
+    is read, which also catches a disc cut before this existed; the answer
+    is remembered per file and modification time."""
+    if not is_safe_upload_path(image_path):
+        return False
+    full = os.path.join(STATIC_ROOT, image_path)
+    try:
+        return _disc_at(full, os.stat(full).st_mtime_ns)
+    except OSError:
+        return False
+
+
+@lru_cache(maxsize=8192)
+def _disc_at(full_path, mtime):
+    try:
+        with Image.open(full_path) as img:
+            # Most covers have no alpha at all: the header says so, and the
+            # pixels are never decoded
+            if 'A' not in img.getbands() and 'transparency' not in img.info:
+                return False
+            alpha = img.convert('RGBA').getchannel('A')
+    except (OSError, UnidentifiedImageError, ValueError):
+        return False
+    w, h = alpha.size
+    if w < 8 or h < 8:
+        return False
+    # A pixel in from each corner, so an edge's antialiasing doesn't count
+    corners = ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2))
+    return all(alpha.getpixel(xy) < 16 for xy in corners)
 
 
 def cover_missing(image_path):

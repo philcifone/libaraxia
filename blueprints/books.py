@@ -602,6 +602,8 @@ def _book_tools_context(conn, book):
              if book['added_by'] is not None else None)
     in_wishlist = conn.execute('SELECT 1 FROM wishlist WHERE user_id = ? AND book_id = ?',
                                (current_user.id, book['id'])).fetchone() is not None
+    item_photos = photos.photos_of(conn, book['id'])
+    held = faces.placeholder_urls(conn, book, item_photos)
     return {
         'library_members': _transfer_candidates(conn),
         'owner_username': owner['username'] if owner else None,
@@ -609,12 +611,14 @@ def _book_tools_context(conn, book):
         'others_with_data': other_users_with_book_data(conn, book['id'], book['added_by']),
         'in_wishlist': in_wishlist,
         # The Photos section (_photos_edit.html, ROADMAP 16.0a)
-        'photos': photos.photos_of(conn, book['id']),
+        'photos': item_photos,
         'photo_kinds': photos.kinds_for(media.media_type_of(book), book['format']),
         'photo_labels': {kind: photos.label(kind, book['format'], media.media_type_of(book)) for kind in photos.KINDS},
         # What it still needs before it turns in 3D (utils/item3d.py)
-        'photos_missing_3d': item3d.missing(book, photos.photos_of(conn, book['id'])),
-        'has_3d_shape': item3d.shape_for(media.media_type_of(book), book['format']) is not None,
+        # (a bare disc's front and back may be its placeholders)
+        'photos_missing_3d': item3d.missing(book, item_photos, held),
+        'has_3d_shape': item3d.shape_of(book, held) is not None,
+        'is_disc': item3d.shape_of(book, held) == item3d.DISC,
         'photo_limit': photos.MAX_PER_ITEM,
         # Placeholder faces it may pick (utils/faces.py, 16.0c)
         'face_options': faces.options_for(conn, book),

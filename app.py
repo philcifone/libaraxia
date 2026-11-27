@@ -345,6 +345,8 @@ def create_app():
             'media_type': media.media_type_of(row),
             'format': row['format'] if 'format' in keys else None,
             'owned': row['owned'] if 'owned' in keys else None,
+            # A bare disc draws no box (utils/faces.is_disc_item)
+            'cover_image_url': row['cover_image_url'] if 'cover_image_url' in keys else None,
         }
 
     # The ids of every item with a face to draw: a top, side or spine photo,
@@ -358,6 +360,16 @@ def create_app():
                 'SELECT book_id FROM item_photos WHERE kind IN (?, ?, ?) UNION SELECT book_id FROM item_faces',
                 (TOP, SIDE, SPINE))}
         return g.faced_ids
+
+    # A bare disc (utils/faces.disc_box, Phil 2026-11-26): no box in Shelf,
+    # just the disc. The Disc fronts picked for items with no cover photo
+    # are read once per request.
+    def _disc(item):
+        from flask import g
+        from utils import faces
+        if 'disc_fronts' not in g:
+            g.disc_fronts = faces.disc_fronts(get_db())
+        return faces.disc_box(item, g.disc_fronts)
 
     def _face_cache():
         from flask import g
@@ -381,7 +393,8 @@ def create_app():
         return got
     app.add_template_global(box_faces, 'box_faces')
 
-    # What one cover's box carries: {media, format, faces, ring}, or {} for
+    # What one cover's box carries: {media, format, faces, ring, shape,
+    # disc_front}, or {} for
     # no item (a picture that stays a plain box). format is the shown one
     # (none for an unshelved movie or album, as the grid has it); ring is
     # the viewer's own reading progress (cover_ring below).
@@ -398,11 +411,14 @@ def create_app():
                 box_faces([item])
             else:
                 cache[item['id']] = ''
+        shape, front = _disc(item)
         return {
             'media': item['media_type'],
             'format': media.shown_format(item) or '',
             'faces': cache[item['id']],
             'ring': cover_ring(item['id']),
+            'shape': shape,             # 'disc' for a bare disc, else ''
+            'disc_front': front,        # a coverless disc's picked front, or None
         }
     app.add_template_global(cover_box, 'cover_box')
 

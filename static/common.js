@@ -11,7 +11,7 @@
 //   confirmSubmit(form, event, message, options)                (confirm in a submit handler)
 //   dismissFlash(element)   close the flash message containing element
 //   <div data-read-more>    long text clamped with a "Read more" toggle (below)
-//   noCoverHtml(title, author, {size, box, ring, media, format, faces})  placeholder for a book with no cover
+//   noCoverHtml(title, author, {size, box, ring, media, format, faces, shape, discFront})  placeholder for a book with no cover
 //   progressRingHtml(share)  the Audiobookshelf progress ring on a cover (0 to 1)
 
 'use strict';
@@ -519,6 +519,7 @@ document.addEventListener('error', event => {
                 ring: ring ? Number(ring.dataset.absRing) / 100 : null,
                 media: box.dataset.media, format: box.dataset.format,
                 faces: box.getAttribute('style'),
+                // a disc whose file failed is a plain binding, not a disc
             });
         }
         return;
@@ -544,19 +545,21 @@ document.addEventListener('load', event => {
 // above uses to title the placeholder it swaps in. media, format and faces
 // make it the item's box in Shelf (boxAttrsHtml); ring is the
 // Audiobookshelf progress, 0 to 1.
-function coverBoxHtml(src, alt, imgClass, { author = null, ring = null, media = null, format = null, faces = null } = {}) {
+function coverBoxHtml(src, alt, imgClass, { author = null, ring = null, media = null, format = null, faces = null, shape = null } = {}) {
     const authorAttr = author === null ? '' : ` data-author="${escapeHtml(author)}"`;
-    return `<span class="cover-box"${boxAttrsHtml({ media, format, faces })}><img src="/static/${escapeHtml(src)}" alt="${escapeHtml(alt)}"${authorAttr}`
+    return `<span class="cover-box"${boxAttrsHtml({ media, format, faces, shape })}><img src="/static/${escapeHtml(src)}" alt="${escapeHtml(alt)}"${authorAttr}`
          + ` class="${imgClass}"><span class="cover-sheen" aria-hidden="true"></span>${progressRingHtml(ring)}</span>`;
 }
 
 // A cover box's attributes: the twin of _covers.html box_attrs() (keep the
 // two in step). data-media and data-format, which the Shelf style's box
-// rules key on, and the top and side photos (--face-top / --face-side, as
+// rules key on, data-shape="disc" for a bare disc (card_json's `shape`: no
+// box), and the top and side photos (--face-top / --face-side, as
 // card_json's `faces`) as its style. Nothing without a media type.
-function boxAttrsHtml({ media = null, format = null, faces = null } = {}) {
+function boxAttrsHtml({ media = null, format = null, faces = null, shape = null } = {}) {
     const type = media ? ` data-media="${escapeHtml(media)}" data-format="${escapeHtml(format || '')}"` : '';
-    return type + (faces ? ` style="${escapeHtml(faces)}"` : '');
+    const disc = shape ? ` data-shape="${escapeHtml(shape)}"` : '';
+    return type + disc + (faces ? ` style="${escapeHtml(faces)}"` : '');
 }
 
 // The Audiobookshelf progress ring: _covers.html progress_ring()'s twin
@@ -620,7 +623,13 @@ if (document.documentElement.dataset.style === 'shelf') {
 // --- No cover -----------------------------------------------------------------
 // The JS twin of templates/_no_cover.html (keep the two in step): a plain
 // binding with the title on it, for cards built in script.
-function noCoverHtml(title, author, { size = 'md', box = 'w-full h-full', ring = null, media = null, format = null, faces = null } = {}) {
+function noCoverHtml(title, author, { size = 'md', box = 'w-full h-full', ring = null, media = null, format = null, faces = null, shape = null, discFront = null } = {}) {
+    // A DVD or CD with no cover photo and a picked Disc front shows that
+    // disc (card_json's disc_front), as _no_cover.html does
+    if (discFront) {
+        return `<div class="no-cover-disc relative ${box}"${boxAttrsHtml({ media, format, faces, shape })} aria-hidden="true">`
+             + `<img src="/static/${escapeHtml(discFront)}" alt="" class="w-full h-full object-contain">${progressRingHtml(ring)}</div>`;
+    }
     const titleHtml = title ? `<span class="no-cover-title">${escapeHtml(title)}</span>` : '';
     const authorHtml = title && author && size !== 'sm'
         ? `<span class="no-cover-author">${escapeHtml(author)}</span>` : '';

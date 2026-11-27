@@ -413,12 +413,12 @@ class InfiniteScroll {
 
 
         // cover-box: as _book_grid.html; the item's box (type, format, faces) and ring
-        const box = { ring: book.abs_progress, media: book.media_type, format: book.format, faces: book.faces };
+        const box = { ring: book.abs_progress, media: book.media_type, format: book.format, faces: book.faces, shape: book.shape };
         const coverImage = book.cover_image_url
             ? coverBoxHtml(book.cover_image_url, book.title,
                 'book-cover-img object-contain w-full h-full group-hover:opacity-90 transition-opacity duration-200',
                 { author: book.author || '', ...box })
-            : noCoverHtml(book.title, book.author, box);
+            : noCoverHtml(book.title, book.author, { ...box, discFront: book.disc_front });
 
         // List view's columns: year, your status, your rating (card_json)
         const rating = Number(book.rating) || 0;

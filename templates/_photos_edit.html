@@ -10,9 +10,37 @@
    (utils/item3d.py; ROADMAP 16.0a).
    A face without a photo offers the admin's placeholders for it, and the
    item's placeholder sets fill several at once (16.0c, blueprints/faces.py).
+   A bare disc (its cover cut out with the crop tool's Disc shape, or a
+   picked Disc front with no cover; utils/item3d.shape_of, Phil 2026-11-26)
+   has only a back: the other faces are left out, and the back's
+   placeholders are the admin's Disc backs. With no cover photo a DVD or CD
+   may pick a Disc front, which stands in for the cover.
    Needs: book, photos, photo_kinds, photo_labels, photo_limit,
-   photos_missing_3d, has_3d_shape, face_options, m (or a book page's noun). #}
+   photos_missing_3d, has_3d_shape, is_disc, face_options, m (or a book
+   page's noun). #}
 {% set noun = m.noun if m else 'book' %}
+
+{# One face's placeholder picker: the owner's pick, else None (the plain
+   look); a photo always wins over it #}
+{% macro face_choice(fo, kind, book, disc) -%}
+{% set picked = fo.chosen.get(kind) %}
+<form action="{{ url_for('faces.choose', book_id=book['id']) }}" method="POST"
+      class="flex flex-wrap items-center gap-2" data-face-choice="{{ kind }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    {% if picked %}
+    <img src="{{ url_for('static', filename=picked['path']) }}" alt="Placeholder: {{ picked['name'] }}"
+         class="{{ 'h-16 w-auto max-w-[2.5rem]' if kind in ('spine', 'side') else ('h-16 w-16' if kind in ('front', 'back') and disc else 'h-8 w-auto max-w-[8rem]') }} object-contain border border-dashed border-rule-strong">
+    {% endif %}
+    <label for="face-{{ kind }}" class="text-sm text-content-secondary">Placeholder</label>
+    <select id="face-{{ kind }}" name="placeholder_id"
+            class="bg-primary border border-rule-strong rounded-lg px-2 py-1 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
+        <option value="">None</option>
+        {% for p in fo.kinds[kind] %}<option value="{{ p['id'] }}"{% if picked and picked['id'] == p['id'] %} selected{% endif %}>{{ p['name'] }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Save</button>
+</form>
+{%- endmacro %}
 {% set gallery = photos['gallery'] %}
 <section id="photos" class="bg-secondary-bg rounded-xl p-4 sm:p-6 mt-8 card" data-photos-book="{{ book['id'] }}">
     <h2 class="text-xl font-display text-content-primary">Photos</h2>
@@ -49,10 +77,18 @@
     {% endif %}
 
     <div class="mt-6 grid sm:grid-cols-2 gap-6">
-        {% for kind in photo_kinds if kind != 'gallery' %}
+        {# No cover photo on a DVD or CD: the Disc front placeholder can stand in #}
+        {% if fo and fo.kinds.get('front') %}
+        <div class="space-y-2" data-disc-front>
+            <h3 class="label text-sm pb-1">Disc front</h3>
+            <p class="text-sm text-content-secondary">No cover photo yet: a disc placeholder can stand in for it.</p>
+            {{ face_choice(fo, 'front', book, is_disc) }}
+        </div>
+        {% endif %}
+        {% for kind in (['back'] if is_disc else photo_kinds) if kind != 'gallery' %}
         {% set photo = photos[kind] %}
         <div class="space-y-2">
-            <h3 class="label text-sm pb-1">{{ photo_labels[kind] }}</h3>
+            <h3 class="label text-sm pb-1">{{ 'Back of the disc' if is_disc else photo_labels[kind] }}</h3>
             {% if photo %}
             <img src="{{ url_for('static', filename=photo['path']) }}" alt="{{ photo_labels[kind] }} of {{ book['title'] }}"
                      class="{{ 'h-48 w-auto' if kind in ('spine', 'side') else ('h-16 w-auto max-w-full object-contain' if kind in ('top', 'bottom') else 'h-40 w-auto max-w-full object-contain') }} border border-rule-strong">
@@ -81,23 +117,7 @@
             {# No photo: the placeholder that stands in for it (16.0c), the
                owner's pick, else the plain look; a photo always wins #}
             {% if not photo and fo and fo.kinds.get(kind) %}
-            {% set picked = fo.chosen.get(kind) %}
-            <form action="{{ url_for('faces.choose', book_id=book['id']) }}" method="POST"
-                  class="flex flex-wrap items-center gap-2" data-face-choice="{{ kind }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="kind" value="{{ kind }}">
-                {% if picked %}
-                <img src="{{ url_for('static', filename=picked['path']) }}" alt="Placeholder: {{ picked['name'] }}"
-                     class="{{ 'h-16 w-auto max-w-[2.5rem]' if kind in ('spine', 'side') else 'h-8 w-auto max-w-[8rem]' }} object-contain border border-dashed border-rule-strong">
-                {% endif %}
-                <label for="face-{{ kind }}" class="text-sm text-content-secondary">Placeholder</label>
-                <select id="face-{{ kind }}" name="placeholder_id"
-                        class="bg-primary border border-rule-strong rounded-lg px-2 py-1 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent">
-                    <option value="">None</option>
-                    {% for p in fo.kinds[kind] %}<option value="{{ p['id'] }}"{% if picked and picked['id'] == p['id'] %} selected{% endif %}>{{ p['name'] }}</option>{% endfor %}
-                </select>
-                <button type="submit" class="text-sm underline text-content-secondary hover:text-content-primary">Save</button>
-            </form>
+            {{ face_choice(fo, kind, book, is_disc) }}
             {% endif %}
         </div>
         {% endfor %}

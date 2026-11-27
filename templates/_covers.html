@@ -33,11 +33,13 @@
 {%- endmacro %}
 
 {# The box's attributes from cover_box(item): data-media and data-format,
-   which the Shelf rules key on, and the faces' photos (--face-top,
+   which the Shelf rules key on, data-shape="disc" for a bare disc (no box
+   at all: styles.css "A bare disc"), and the faces' photos (--face-top,
    --face-side) as its style. Nothing for no item. JS twin: boxAttrsHtml()
    in common.js. #}
 {% macro box_attrs(box) -%}
 {%- if box.media %} data-media="{{ box.media }}" data-format="{{ box.format }}"{% endif %}
+{%- if box.shape %} data-shape="{{ box.shape }}"{% endif %}
 {%- if box.faces %} style="{{ box.faces }}"{% endif %}
 {%- endmacro %}
 

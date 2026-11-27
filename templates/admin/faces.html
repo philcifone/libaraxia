@@ -71,7 +71,7 @@
                     {% for p in k.rows %}
                     <li class="flex gap-3 items-start" data-placeholder="{{ p.id }}">
                         <img src="{{ url_for('static', filename=p.path) }}" alt="{{ p.name }}"
-                             class="{{ 'h-28 w-auto max-w-[3rem]' if k.kind in ('spine', 'side') else 'h-12 w-auto max-w-[9rem]' }} object-contain border border-rule-strong shrink-0">
+                             class="{{ 'h-28 w-auto max-w-[3rem]' if k.kind in ('spine', 'side') else ('h-16 w-16' if k.kind in ('front', 'back') else 'h-12 w-auto max-w-[9rem]') }} object-contain border border-rule-strong shrink-0">
                         <div class="min-w-0 flex-1 space-y-2">
                             <form action="{{ url_for('faces.rename', placeholder_id=p.id) }}" method="POST" class="flex gap-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

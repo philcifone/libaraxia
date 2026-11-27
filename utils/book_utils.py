@@ -1100,6 +1100,8 @@ def card_json(conn, viewer_id, books, looker_id=None):
     from utils.loans import lent_map
     marks = viewer_marks(conn, viewer_id, [b['id'] for b in books])
     faces = box_faces(conn, books)
+    from utils.faces import disc_box, disc_fronts
+    fronts = disc_fronts(conn, [b['id'] for b in books])
     lent = lent_map(conn, looker_id or viewer_id, [b['id'] for b in books])
     # The progress ring (Audiobookshelf or manual, the newer): the looker's
     # own progress, never the shelf owner's
@@ -1109,6 +1111,7 @@ def card_json(conn, viewer_id, books, looker_id=None):
     for b in books:
         mark = marks.get(b['id'], {})
         status = mark.get('status')
+        shape, disc_front = disc_box(b, fronts)
         out.append({
             'id': b['id'],
             'title': b['title'],
@@ -1135,6 +1138,9 @@ def card_json(conn, viewer_id, books, looker_id=None):
             'rating': mark.get('rating'),
             # The Shelf style's box faces: top and side photos (photos.box_faces)
             'faces': faces.get(b['id'], ''),
+            # A bare disc: no box, and a coverless one's Disc front (faces.disc_box)
+            'shape': shape,
+            'disc_front': disc_front,
         })
     return out
 

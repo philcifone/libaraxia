@@ -816,7 +816,7 @@ def test_shelf_boxes_and_the_rack_easter_egg(client, db, people):
     # One cover component (16.0): the macro and its JS twin make the box, and
     # the grid (server-rendered and infinite scroll) goes through them
     assert '<span class="cover-box' in pathlib.Path('templates/_covers.html').read_text()
-    assert '<span class="cover-box"${boxAttrsHtml({ media, format, faces })}><img' in pathlib.Path('static/common.js').read_text()
+    assert '<span class="cover-box"${boxAttrsHtml({ media, format, faces, shape })}><img' in pathlib.Path('static/common.js').read_text()
     assert 'cover_img(' in pathlib.Path('templates/_book_grid.html').read_text()
     assert 'coverBoxHtml(' in pathlib.Path('static/script.js').read_text()
     # The egg: Movies only
@@ -1911,7 +1911,8 @@ def test_cover_box_takes_the_book_id_over_a_rows_own(app, db, people):
     with app.test_request_context():
         cover_box = app.jinja_env.globals['cover_box']
         row = {'id': 9999, 'book_id': book, 'media_type': 'video', 'format': 'VHS', 'owned': 1}
-        assert cover_box(row) == {'media': 'video', 'format': 'VHS', 'faces': '', 'ring': None}
+        assert cover_box(row) == {'media': 'video', 'format': 'VHS', 'faces': '', 'ring': None,
+                                  'shape': '', 'disc_front': None}
         # an unshelved movie has no copy, so no format (as on the grid)
         assert cover_box(dict(row, owned=0))['format'] == ''
         assert cover_box(None) == {}

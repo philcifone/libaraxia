@@ -26,7 +26,15 @@ from flask import url_for
 from utils import image_utils, photos
 from utils.media import BOOK, VIDEO, RECORD, is_digital, media_type_of
 
-KINDS = photos.EDGES        # the faces a placeholder can stand in for
+# The faces a placeholder can stand in for: every medium's edges, and a
+# bare disc's two sides on DVDs and CDs (migration 049, Phil 2026-11-26): a
+# disc kept without its case. 'front' stands in for the cover of an item
+# with no cover photo, and only then; both are used only on a disc
+# (is_disc_item), so a cased DVD never shows a disc's back.
+FRONT = 'front'
+DISC_KINDS = (FRONT, photos.BACK)
+KINDS = photos.EDGES + DISC_KINDS
+DISC_MEDIA = ('dvd', 'cd')
 
 # Mediums, in the admin page's tab order: (label, a media type and format
 # that have it, for the face labels: a book's side is its "Fore-edge")
@@ -49,10 +57,40 @@ def medium_label(medium):
     return MEDIA[medium][0]
 
 
+def kinds_for(medium):
+    """The faces a medium's placeholders can be: the edges, and on DVDs and
+    CDs a disc's front and back."""
+    return KINDS if medium in DISC_MEDIA else photos.EDGES
+
+
 def kind_label(medium, kind):
-    """A face's name for this medium: "Fore-edge" on a book, "Left side" on a VHS."""
+    """A face's name for this medium: "Fore-edge" on a book, "Left side" on
+    a VHS, "Disc front" on a DVD."""
+    if kind in DISC_KINDS:
+        return 'Disc front' if kind == FRONT else 'Disc back'
     _, media_type, fmt = MEDIA[medium]
     return photos.label(kind, fmt, media_type)
+
+
+def _cover(item):
+    """An item's stored cover path, or None for a row without the column."""
+    try:
+        return item['cover_image_url']
+    except (KeyError, IndexError):
+        return None
+
+
+def is_disc_item(item, choices):
+    """Whether an item is a bare disc: its cover is one cut out with the
+    crop tool's Disc shape (image_utils.is_disc), or it has no cover photo
+    and its owner picked a Disc front. `choices`: {kind: placeholder row}.
+    Only a DVD's or a CD's medium has disc faces to pick; any item with a
+    disc cover is a disc."""
+    cover = _cover(item)
+    if image_utils.upload_exists(cover):
+        return image_utils.is_disc(cover)
+    row = choices.get(FRONT)
+    return bool(row) and image_utils.upload_exists(row['path'])
 
 
 def medium_for(media_type, fmt=None):
@@ -78,6 +116,38 @@ def _url(row):
     return url_for('static', filename=row['path'])
 
 
+# --- A bare disc on a cover's box (Phil, 2026-11-26) -------------------------
+
+def disc_fronts(conn, ids=None):
+    """{book_id: path} of the Disc front placeholders items' owners picked,
+    whose files are there; for `ids` only when given."""
+    sql = ("SELECT f.book_id, p.path FROM item_faces f JOIN face_placeholders p ON p.id = f.placeholder_id "
+           "WHERE f.kind = 'front'")
+    params = ()
+    if ids is not None:
+        ids = list(ids)
+        if not ids:
+            return {}
+        sql += f" AND f.book_id IN ({','.join('?' * len(ids))})"
+        params = ids
+    return {r[0]: r[1] for r in conn.execute(sql, params) if image_utils.upload_exists(r[1])}
+
+
+def disc_box(item, fronts):
+    """What a cover's box needs to know of a disc: (shape, front path).
+    shape is 'disc' for a movie or album whose cover is a disc cut-out, or
+    which has no cover photo and a picked Disc front (`fronts`, from
+    disc_fronts); front is that placeholder's path, for the no-cover
+    placeholder to show. ('', None) for everything else."""
+    if media_type_of(item) not in (VIDEO, RECORD):
+        return '', None
+    cover = _cover(item)
+    if image_utils.upload_exists(cover):
+        return ('disc' if image_utils.is_disc(cover) else ''), None
+    front = fronts.get(item['id'])
+    return ('disc', front) if front else ('', None)
+
+
 # --- The library (admin) ------------------------------------------------------
 
 def placeholder(conn, placeholder_id):
@@ -88,9 +158,9 @@ def library(conn):
     """Everything the admin page shows, by medium in MEDIA's order:
     [{'medium', 'label', 'kinds': [{'kind', 'label', 'rows': [rows]}],
       'sets': [{'row', 'members': {kind: placeholder row}}]}]."""
-    by_medium = {m: {kind: [] for kind in KINDS} for m in MEDIA}
+    by_medium = {m: {kind: [] for kind in kinds_for(m)} for m in MEDIA}
     for row in conn.execute('SELECT * FROM face_placeholders ORDER BY name COLLATE NOCASE, id'):
-        if row['medium'] in by_medium:
+        if row['medium'] in by_medium and row['kind'] in by_medium[row['medium']]:
             by_medium[row['medium']][row['kind']].append(row)
     members = {}
     for row in conn.execute('SELECT m.set_id, m.kind, p.* FROM face_set_members m '
@@ -102,7 +172,7 @@ def library(conn):
             sets[row['medium']].append({'row': row, 'members': members.get(row['id'], {})})
     return [{'medium': m, 'label': medium_label(m),
              'kinds': [{'kind': kind, 'label': kind_label(m, kind), 'rows': by_medium[m][kind]}
-                       for kind in KINDS],
+                       for kind in kinds_for(m)],
              'sets': sets[m]}
             for m in MEDIA]
 
@@ -110,7 +180,7 @@ def library(conn):
 def add_placeholder(conn, medium, kind, name, path):
     """Insert a placeholder (its file already saved). Returns its id. The
     caller commits."""
-    if medium not in MEDIA or kind not in KINDS:
+    if medium not in MEDIA or kind not in kinds_for(medium):
         raise FaceError('Unknown kind of placeholder.')
     return conn.execute('INSERT INTO face_placeholders (medium, kind, name, path) VALUES (?, ?, ?, ?)',
                         (medium, kind, _clean_name(name), path)).lastrowid
@@ -163,7 +233,7 @@ def update_set(conn, set_id, name, members):
     if not row:
         raise FaceError('That set is gone.')
     conn.execute('UPDATE face_sets SET name = ? WHERE id = ?', (_clean_name(name), set_id))
-    for kind in KINDS:
+    for kind in kinds_for(row['medium']):
         pid = members.get(kind)
         conn.execute('DELETE FROM face_set_members WHERE set_id = ? AND kind = ?', (set_id, kind))
         if not pid:
@@ -185,14 +255,25 @@ def delete_set(conn, set_id):
 def options_for(conn, item):
     """What the edit page offers an item: {'kinds': {kind: [placeholder rows
     of its medium]}, 'sets': [set rows with at least one member], 'chosen':
-    {kind: placeholder row}}. Empty when it has no medium."""
+    {kind: placeholder row}}. Empty when it has no medium.
+
+    A disc's faces only where they can apply: the Disc back when the item
+    is a disc or has no cover yet, the Disc front only with no cover (a
+    cover photo is the front). A cased DVD is offered neither."""
     medium = medium_for(media_type_of(item), item['format'])
     out = {'kinds': {kind: [] for kind in KINDS}, 'sets': [], 'chosen': chosen(conn, item['id'])}
     if not medium:
         return out
+    has_cover = image_utils.upload_exists(item['cover_image_url'])
+    offered = set(kinds_for(medium))
+    if has_cover:
+        offered.discard(FRONT)
+        if not image_utils.is_disc(item['cover_image_url']):
+            offered.discard(photos.BACK)
     for row in conn.execute('SELECT * FROM face_placeholders WHERE medium = ? '
                             'ORDER BY name COLLATE NOCASE, id', (medium,)):
-        out['kinds'][row['kind']].append(row)
+        if row['kind'] in offered:
+            out['kinds'][row['kind']].append(row)
     out['sets'] = conn.execute(
         'SELECT s.* FROM face_sets s WHERE s.medium = ? '
         'AND EXISTS (SELECT 1 FROM face_set_members m WHERE m.set_id = s.id) '
@@ -262,16 +343,22 @@ def apply_on_add(conn, book_id, set_id):
 def placeholder_urls(conn, item, item_photos, choices=None):
     """{kind: URL} of the placeholders an item's owner picked for faces it
     has no photo of (spec section 5, step 3); a VHS sleeve's right side is
-    left to its left side's photo (step 2). `choices` may be passed in,
-    read once for a page of items."""
+    left to its left side's photo (step 2). A disc's front and back count
+    only on a disc (is_disc_item), the front only with no cover photo.
+    `choices` may be passed in, read once for a page of items."""
     if not medium_for(media_type_of(item), item['format']):
         return {}
     if choices is None:
         choices = chosen(conn, item['id'])
     sleeve = item_photos.get(photos.TOP) and item_photos.get(photos.SPINE)
+    disc = is_disc_item(item, choices)
     out = {}
     for kind in KINDS:
         if item_photos.get(kind):
+            continue
+        if kind in DISC_KINDS and not disc:
+            continue
+        if kind == FRONT and image_utils.upload_exists(_cover(item)):
             continue
         if kind == photos.SIDE and item['format'] == 'VHS' and sleeve:
             continue

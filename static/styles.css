@@ -1586,7 +1586,8 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
              plastic edges, or card ones in a paper sleeve (.item3d-paper)
      case    a DVD or cassette: black plastic
      tape    a VHS sleeve: a top without a photo is card in the cover's
-             colour (--edge); the open bottom is the black tape inside */
+             colour (--edge); the open bottom is the black tape inside
+     disc    a bare DVD or CD: round, front and back only */
 .item3d-box {
     --h: 400px;
     --w: calc(var(--h) * var(--a, .66));
@@ -1657,6 +1658,16 @@ html:has(.cover-zoom[open]) { overflow: hidden; }
 /* A CD in a paper sleeve (front and back only, Phil 2026-11-15): thin,
    its edges card in the cover's colour, as a record sleeve's */
 .item3d-paper :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom):not(:has(img)) { background: rgb(var(--edge, 222 214 196)); }
+
+/* A bare disc (Phil, 2026-11-26): round, a front and a back a disc's
+   thickness apart (--dr), no edges. The faces are see-through outside the
+   disc and in its spindle hole, so the light dims the picture itself
+   (a filter follows its alpha) rather than washing the square face. A
+   photo of the back that wasn't cut out is clipped round. */
+.item3d-disc .item3d-face { background: transparent; border-radius: 50%; }
+.item3d-disc .item3d-face::after { content: none; }
+.item3d-disc .item3d-face img { object-fit: cover; filter: brightness(calc(1 - var(--shade, 0) * .62)); }
+.item3d-disc :is(.item3d-spine, .item3d-side, .item3d-top, .item3d-bottom) { display: none; }
 
 /* The dialog it turns in */
 .item3d {
@@ -3973,6 +3984,25 @@ and to the right for its faces */
         color-mix(in srgb, rgb(var(--box-top)) 88%, black) var(--leaf) calc(var(--leaf) + var(--leaf-line)));
 }
 :root[data-style="shelf"] .cover-stand .cover-box > img { max-width: 100%; height: auto; }
+
+/* A bare disc (Phil, 2026-11-26): a DVD or CD kept without its case, its
+   cover cut out with the crop tool's Disc shape, or a picked Disc front
+   standing in for a missing cover (data-shape="disc": app.cover_box,
+   utils/faces.disc_box; .no-cover-disc, _no_cover.html). No box: no top or
+   side face, no box shadow or sheen, just the disc, with a soft shadow that
+   follows its round edge and leaves the spindle hole clear. A filter, not
+   a box-shadow, since a box-shadow would be square; there are few discs
+   on a page. */
+:root[data-style="shelf"] .cover-box[data-shape="disc"]::before,
+:root[data-style="shelf"] .cover-box[data-shape="disc"]::after { content: none; }
+/* The box's shadow is cleared at the variable, so the grid's and the
+   bookcases' own rules (box-shadow: var(--box-shadow)) draw none either */
+:root[data-style="shelf"] .cover-box[data-shape="disc"] { --box-shadow: 0 0 0 transparent; box-shadow: none; }
+:root[data-style="shelf"] .cover-box[data-shape="disc"] .cover-sheen { display: none; }
+:root[data-style="shelf"] :is(.cover-box[data-shape="disc"], .no-cover-disc) > img {
+    border-radius: 0;
+    filter: drop-shadow(4px -2px 5px rgb(0 0 0 / var(--box-shade)));
+}
 
 
 /* Wishlists (yours and a friend's, _wishlist_card.html): each section is

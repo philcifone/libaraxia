@@ -115,7 +115,8 @@ def wind_back_to_023(conn):
                                                      '031_bulk_edits.sql', '034_video_kind.sql',
                                                      '036_item_photos.sql', '037_condition_grades.sql',
                                                      '038_item_value.sql', '040_photo_kinds.sql',
-                                                     '041_faces.sql', '043_audiobook_fields.sql');
+                                                     '041_faces.sql', '043_audiobook_fields.sql',
+                                                     '049_disc_faces.sql');   -- rebuilds 041's tables
     """)
 
 
@@ -520,7 +521,8 @@ UNDO_036_TO_038 = """
     DELETE FROM schema_migrations
      WHERE name IN ('036_item_photos.sql', '037_condition_grades.sql', '038_item_value.sql',
                     '040_photo_kinds.sql', '041_faces.sql',    -- 040 rebuilds item_photos, so it goes with 036; 041 adds to it
-                    '043_audiobook_fields.sql');               -- books.narrator, after 038's columns
+                    '043_audiobook_fields.sql',                -- books.narrator, after 038's columns
+                    '049_disc_faces.sql');                     -- rebuilds 041's tables
 """
 
 
@@ -629,7 +631,7 @@ def test_040_keeps_photos_already_there(template_db, tmp_path):
         CREATE INDEX idx_item_photos_book ON item_photos(book_id, kind, position);
         CREATE UNIQUE INDEX idx_item_photos_one_back ON item_photos(book_id) WHERE kind = 'back';
         CREATE UNIQUE INDEX idx_item_photos_one_spine ON item_photos(book_id) WHERE kind = 'spine';
-        DELETE FROM schema_migrations WHERE name IN ('040_photo_kinds.sql', '041_faces.sql');
+        DELETE FROM schema_migrations WHERE name IN ('040_photo_kinds.sql', '041_faces.sql', '049_disc_faces.sql');
         DROP TABLE item_faces; DROP TABLE face_set_members; DROP TABLE face_sets; DROP TABLE face_placeholders;
         INSERT INTO books (id, title, author) VALUES (7, 'A book', 'A');
         INSERT INTO item_photos (id, book_id, kind, path, caption) VALUES (5, 7, 'back', 'uploads/photos/7/a.jpg', 'Rear');

@@ -9,10 +9,16 @@
    no-cover-long marks a long title, so a small cover can drop the author
    (the Shelf movie case does). item: the item's row, as cover_img's
    (_covers.html): the placeholder is that item's box in Shelf, with the
-   viewer's Audiobookshelf ring; unset: a plain binding. #}
+   viewer's Audiobookshelf ring; unset: a plain binding.
+   A DVD or CD with no cover photo whose owner picked a Disc front
+   (utils/faces.py, migration 049) shows that disc instead, as a bare disc
+   (cover_box's disc_front; JS twin noCoverHtml's discFront). #}
 {% from '_covers.html' import box_attrs, progress_ring %}
 {%- set size = size or 'md' -%}
 {%- set cover = cover_box(item|default(none)) -%}
+{%- if cover.disc_front %}
+<div class="no-cover-disc relative {{ box or 'w-full h-full' }}"{{ box_attrs(cover) }} aria-hidden="true"><img src="{{ url_for('static', filename=cover.disc_front) }}" alt="" class="w-full h-full object-contain">{{ progress_ring(cover.ring) }}</div>
+{%- else %}
 <div class="no-cover no-cover-{{ size }}{% if title and title|length > 30 %} no-cover-long{% endif %} {{ box or 'w-full h-full' }}"{{ box_attrs(cover) }} aria-hidden="true">
     {%- if title %}
     <span class="no-cover-title">{{ title }}</span>
@@ -22,3 +28,4 @@
     {%- endif %}
     {{- progress_ring(cover.ring) }}
 </div>
+{%- endif %}

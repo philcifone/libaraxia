@@ -203,10 +203,12 @@ CREATE UNIQUE INDEX idx_item_photos_one_each ON item_photos(book_id, kind) WHERE
 -- and each item's choices (nothing is automatic: an item shows a
 -- placeholder only where its owner picked one). Files under
 -- static/uploads/faces/; find_orphaned_images reads face_placeholders.
+-- 'front' and 'back' are a bare disc's (migration 049; DVDs and CDs only,
+-- utils/faces.DISC_KINDS).
 CREATE TABLE face_placeholders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     medium TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
+    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom', 'front', 'back')),
     name TEXT NOT NULL,
     path TEXT NOT NULL,              -- 'uploads/faces/...', relative to static/
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -223,7 +225,7 @@ CREATE TABLE face_sets (
 
 CREATE TABLE face_set_members (
     set_id INTEGER NOT NULL REFERENCES face_sets(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
+    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom', 'front', 'back')),
     placeholder_id INTEGER NOT NULL REFERENCES face_placeholders(id) ON DELETE CASCADE,
     PRIMARY KEY (set_id, kind)
 );
@@ -232,7 +234,7 @@ CREATE TABLE face_set_members (
 -- that face wins over it; deleting the placeholder drops the choice.
 CREATE TABLE item_faces (
     book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom')),
+    kind TEXT NOT NULL CHECK (kind IN ('spine', 'side', 'top', 'bottom', 'front', 'back')),
     placeholder_id INTEGER NOT NULL REFERENCES face_placeholders(id) ON DELETE CASCADE,
     PRIMARY KEY (book_id, kind)
 );
@@ -701,4 +703,5 @@ INSERT INTO schema_migrations (name) VALUES
     ('045_abs_progress.sql'),
     ('046_reading_progress.sql'),
     ('047_heading_font.sql'),
-    ('048_sort_preferences.sql');
+    ('048_sort_preferences.sql'),
+    ('049_disc_faces.sql');

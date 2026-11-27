@@ -754,7 +754,8 @@
                 <button type="button" data-click="item3dTurn" data-angle="0">Front</button>
                 {# A sleeve's edges are only worth a turn when photographed (a
                    gatefold's spine); a right side when it's a photo of its own #}
-                {% if not (item3d.shape == 'sleeve' or item3d.paper) or item3d.faces.spine %}
+                {# A disc has no spine to turn to #}
+                {% if item3d.shape != 'disc' and (not (item3d.shape == 'sleeve' or item3d.paper) or item3d.faces.spine) %}
                 <button type="button" data-click="item3dTurn" data-angle="90">{{ 'Left' if item3d.shape == 'tape' else 'Spine' }}</button>
                 {% endif %}
                 <button type="button" data-click="item3dTurn" data-angle="180">Back</button>

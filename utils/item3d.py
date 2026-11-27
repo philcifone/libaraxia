@@ -27,6 +27,12 @@ Shapes, by media type and format:
             top is card in the cover's colour, and the open bottom is
             black, the tape inside. A double box is simply a wider spine
             photo: the thickness comes from it.
+    disc    a bare DVD or CD, kept without its case (Phil, 2026-11-26):
+            its cover is the disc, cut out with the crop tool's Disc shape
+            (or, with no cover photo, the Disc front placeholder its owner
+            picked). Round, a front and a back and as thin as a disc; the
+            back is a photo or the Disc back placeholder. Any movie or
+            album whose cover is a disc is one, whatever its format.
 
 `model()` answers with everything the template needs (templates/_item3d.html):
 the faces' URLs and the proportions, read from the photos themselves, so
@@ -43,7 +49,7 @@ from utils import image_utils, photos
 from utils.book_utils import on_shelf
 from utils.media import BOOK, VIDEO, RECORD, is_digital, media_type_of
 
-BOOK_SHAPE, SLEEVE, JEWEL, CASE, TAPE = 'book', 'sleeve', 'jewel', 'case', 'tape'
+BOOK_SHAPE, SLEEVE, JEWEL, CASE, TAPE, DISC = 'book', 'sleeve', 'jewel', 'case', 'tape', 'disc'
 
 # Photos (besides the cover) a shape must have before it turns. A tuple
 # inside is "any one of these".
@@ -53,6 +59,7 @@ NEEDS = {
     JEWEL: (photos.BACK,),
     CASE: (photos.BACK, photos.SPINE),
     TAPE: (photos.BACK, (photos.SPINE, photos.SIDE)),
+    DISC: (photos.BACK,),           # or the Disc back placeholder
 }
 
 # Thickness as a share of the height, where no spine photo gives it: a
@@ -60,6 +67,7 @@ NEEDS = {
 # paper sleeve about 2 mm on 125
 FIXED_DEPTH = {SLEEVE: 0.012, JEWEL: 0.083}
 PAPER_CD_DEPTH = 0.016
+DISC_DEPTH = 0.01           # 1.2 mm on 120: drawn at its 3px least
 
 
 def shape_for(media_type, fmt=None):
@@ -74,6 +82,23 @@ def shape_for(media_type, fmt=None):
             return JEWEL
         return CASE if fmt == 'Cassette' else SLEEVE
     return None
+
+
+def shape_of(item, placeholders=None):
+    """The shape this item is: shape_for its type and format, except a
+    movie or album whose cover is a disc (faces.is_disc_item), which is a
+    disc. `placeholders`: {kind: URL} from faces.placeholder_urls, whose
+    'front' is there only for a disc with no cover photo."""
+    media_type = media_type_of(item)
+    shape = shape_for(media_type, item['format'])
+    if media_type in (VIDEO, RECORD):
+        cover = item['cover_image_url']
+        if image_utils.upload_exists(cover):
+            if image_utils.is_disc(cover):
+                return DISC
+        elif (placeholders or {}).get('front'):
+            return DISC
+    return shape
 
 
 @lru_cache(maxsize=4096)
@@ -93,13 +118,21 @@ def _aspect(path):
         return None
 
 
-def missing(item, item_photos):
+def missing(item, item_photos, placeholders=None):
     """Labels of what this item still needs before it turns in 3D ("Back",
-    "Spine"), cover first; [] when it's ready or has no shape at all."""
+    "Spine"), cover first; [] when it's ready or has no shape at all. A
+    disc's front and back may be its placeholders (`placeholders`, as
+    shape_of): a bare disc is often missing its paperwork."""
     fmt = item['format']
-    shape = shape_for(media_type_of(item), fmt)
+    placeholders = placeholders or {}
+    shape = shape_of(item, placeholders)
     if not shape:
         return []
+    if shape == DISC:
+        out = [] if (image_utils.upload_exists(item['cover_image_url']) or placeholders.get('front')) else ['Cover']
+        if not (item_photos[photos.BACK] or placeholders.get(photos.BACK)):
+            out.append('Back of the disc')
+        return out
     out = [] if image_utils.upload_exists(item['cover_image_url']) else ['Cover']
     for need in NEEDS[shape]:
         choices = need if isinstance(need, tuple) else (need,)
@@ -120,9 +153,11 @@ def model(item, item_photos, placeholders=None):
     spine photo or placeholder), 'title', 'author'}.
     """
     fmt = item['format']
-    shape = shape_for(media_type_of(item), fmt)
-    if not shape or missing(item, item_photos):
+    shape = shape_of(item, placeholders)
+    if not shape or missing(item, item_photos, placeholders):
         return None
+    if shape == DISC:
+        return _disc_model(item, item_photos, placeholders or {})
     aspect = _aspect(item['cover_image_url'])
     if not aspect:
         return None
@@ -149,6 +184,23 @@ def model(item, item_photos, placeholders=None):
     return {
         'shape': shape, 'faces': faces, 'paper': paper,
         'aspect': round(aspect, 4), 'depth': round(min(0.6, max(0.008, depth)), 4),
+        'title': item['title'], 'author': item['author'],
+    }
+
+
+def _disc_model(item, item_photos, placeholders):
+    """A bare disc's model: round, so square, and thin. The front is the
+    cover (the disc itself) or the Disc front placeholder; the back a
+    photo or the Disc back placeholder (missing() made sure of both).
+    The edges are drawn by the CSS, as a disc's rim."""
+    cover = item['cover_image_url']
+    front = (url_for('static', filename=cover) if image_utils.upload_exists(cover)
+             else placeholders['front'])
+    back = (url_for('static', filename=item_photos[photos.BACK]['path']) if item_photos[photos.BACK]
+            else placeholders[photos.BACK])
+    return {
+        'shape': DISC, 'faces': {'front': front, 'back': back}, 'paper': False,
+        'aspect': 1.0, 'depth': DISC_DEPTH,
         'title': item['title'], 'author': item['author'],
     }
 
